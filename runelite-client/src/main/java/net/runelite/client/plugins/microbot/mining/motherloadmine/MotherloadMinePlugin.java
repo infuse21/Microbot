@@ -1,8 +1,14 @@
 package net.runelite.client.plugins.microbot.mining.motherloadmine;
 
 import com.google.inject.Provides;
+import java.util.ArrayList;
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.GameState;
 import net.runelite.api.ObjectID;
 import net.runelite.api.WallObject;
+import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.WallObjectSpawned;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
@@ -12,12 +18,14 @@ import net.runelite.client.plugins.microbot.mining.motherloadmine.enums.MLMStatu
 import net.runelite.client.ui.overlay.OverlayManager;
 
 import javax.inject.Inject;
+import java.util.List;
 import java.awt.*;
 
+@Slf4j
 @PluginDescriptor(
         name = PluginDescriptor.Mocrosoft + "MotherlodeMine",
         description = "A bot that mines paydirt in the motherlode mine",
-        tags = {"paydirt", "mine", "motherlode"},
+        tags = {"paydirt", "mine", "motherlode", "mlm"},
         enabledByDefault = false
 )
 public class MotherloadMinePlugin extends Plugin {
@@ -31,6 +39,9 @@ public class MotherloadMinePlugin extends Plugin {
     @Inject
     private MotherloadMineScript motherloadMineScript;
 
+	@Getter
+	private List<WorldPoint> blacklistedCrates = new ArrayList<>();
+
     @Provides
     MotherloadMineConfig provideConfig(ConfigManager configManager) {
         return configManager.getConfig(MotherloadMineConfig.class);
@@ -39,7 +50,7 @@ public class MotherloadMinePlugin extends Plugin {
     @Override
     protected void startUp() throws AWTException {
         overlayManager.add(motherloadMineOverlay);
-        motherloadMineScript.run(config);
+        motherloadMineScript.run();
     }
 
     @Subscribe
@@ -54,7 +65,7 @@ public class MotherloadMinePlugin extends Plugin {
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            log.trace("Error while processing wall object event: {} - ", e.getMessage(), e);
         }
 
     }
@@ -62,5 +73,14 @@ public class MotherloadMinePlugin extends Plugin {
     protected void shutDown() {
         motherloadMineScript.shutdown();
         overlayManager.remove(motherloadMineOverlay);
+		blacklistedCrates.clear();
     }
+
+	@Subscribe
+	public void onGameStateChanged(GameStateChanged event)
+	{
+		if (event.getGameState() == GameState.HOPPING || event.getGameState() == GameState.LOGIN_SCREEN) {
+			blacklistedCrates.clear();
+		}
+	}
 }

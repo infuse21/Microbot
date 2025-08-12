@@ -3,8 +3,8 @@ package net.runelite.client.plugins.microbot.github;
 import lombok.SneakyThrows;
 import net.runelite.client.RuneLite;
 import net.runelite.client.config.ConfigManager;
+import net.runelite.client.plugins.microbot.externalplugins.MicrobotPluginManager;
 import net.runelite.client.plugins.microbot.github.models.FileInfo;
-import net.runelite.client.plugins.microbot.sideloading.MicrobotPluginManager;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.PluginPanel;
 import org.json.JSONArray;
@@ -237,6 +237,8 @@ public class GithubPanel extends PluginPanel {
         progressDialog.setSize(300, 75);
         progressDialog.setLocationRelativeTo(this);
 
+        List<String> downloadedPlugins = new ArrayList<>();
+
         // Background task
         SwingWorker<Void, Integer> worker = new SwingWorker<>() {
             @SneakyThrows
@@ -249,6 +251,7 @@ public class GithubPanel extends PluginPanel {
                     System.out.println("Downloading file: " + fileName);
                     GithubDownloader.downloadFile(downloadUrl);
                     publish(i + 1);
+                    downloadedPlugins.add(fileName);
                 }
                 return null;
             }
@@ -271,7 +274,8 @@ public class GithubPanel extends PluginPanel {
 
         worker.execute();
         progressDialog.setVisible(true); // blocks until worker finishes
-        microbotPluginManager.loadSideLoadPlugins(new ArrayList<>());
+        microbotPluginManager.saveInstalledPlugins(downloadedPlugins);
+        microbotPluginManager.loadSideLoadPlugins();
 
     }
 

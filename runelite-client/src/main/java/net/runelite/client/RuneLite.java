@@ -43,7 +43,7 @@ import net.runelite.client.discord.DiscordService;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.externalplugins.ExternalPluginManager;
 import net.runelite.client.plugins.PluginManager;
-import net.runelite.client.plugins.microbot.sideloading.MicrobotPluginManager;
+import net.runelite.client.plugins.microbot.externalplugins.MicrobotPluginManager;
 import net.runelite.client.rs.ClientLoader;
 import net.runelite.client.ui.ClientUI;
 import net.runelite.client.ui.FatalErrorDialog;
@@ -109,9 +109,6 @@ public class RuneLite
 
 	private static final int MAX_OKHTTP_CACHE_SIZE = 20 * 1024 * 1024; // 20mb
 	public static String USER_AGENT = "RuneLite/" + RuneLiteProperties.getVersion();
-
-	// A seperated comma delimited list of jars to side load
-	private static List<String> jarsToSideLoad = new ArrayList<>();
 
 	@Getter
 	private static Injector injector;
@@ -188,10 +185,6 @@ public class RuneLite
 		parser.accepts("profile", "Configuration profile to use").withRequiredArg();
 		parser.accepts("noupdate", "Skips the launcher update");
 		parser.accepts("clean-randomdat", "Clean random dat file");
-		OptionSpec<String> plugins = parser.accepts("plugins")
-				.withRequiredArg()
-				.ofType(String.class)
-				.withValuesSeparatedBy(',');
 
         final ArgumentAcceptingOptionSpec<String> proxyInfo = parser.accepts("proxy", "Use a proxy server for your runelite session")
                 .withRequiredArg().ofType(String.class);
@@ -296,10 +289,6 @@ public class RuneLite
                 });
             }
         }
-
-		if (options.has("plugins")) {
-			jarsToSideLoad = options.valuesOf(plugins);
-		}
 
         Thread.setDefaultUncaughtExceptionHandler((thread, throwable) ->
         {
@@ -479,7 +468,7 @@ public class RuneLite
 		pluginManager.loadSideLoadPlugins();
 		externalPluginManager.loadExternalPlugins();
 
-        microbotPluginManager.loadSideLoadPlugins(jarsToSideLoad);
+        microbotPluginManager.loadSideLoadPlugins();
 
         SplashScreen.stage(.70, null, "Finalizing configuration");
 

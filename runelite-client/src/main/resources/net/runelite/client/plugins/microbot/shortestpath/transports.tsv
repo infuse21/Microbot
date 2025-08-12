@@ -3559,8 +3559,7 @@
 											
 # Mort'ton											
 3495 3465 0	3477 9845 0	Open;Trapdoor;5055									
-3477 9845 0	3495 3465 0	Climb-up;Ladder;5054								2	
-3495 3464 0	3477 9845 0	Open;Trapdoor;5055									
+3477 9845 0	3495 3465 0	Climb-up;Ladder;5054								2
 3478 9846 0	3495 3465 0	Climb-up;Ladder;5054								2	
 3476 9846 0	3495 3465 0	Climb-up;Ladder;5054								2	
 3477 9847 0	3495 3465 0	Climb-up;Ladder;5054								2	

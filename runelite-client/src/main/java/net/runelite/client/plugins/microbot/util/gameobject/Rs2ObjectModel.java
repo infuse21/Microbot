@@ -1,6 +1,7 @@
 package net.runelite.client.plugins.microbot.util.gameobject;
 
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import net.runelite.api.*;
 import net.runelite.api.coords.WorldPoint;
@@ -12,6 +13,7 @@ import net.runelite.client.plugins.microbot.Microbot;
  */
 @Data
 @Getter
+@EqualsAndHashCode
 public class Rs2ObjectModel {
     
     /**

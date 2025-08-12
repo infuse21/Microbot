@@ -3,6 +3,7 @@ package net.runelite.client.plugins.microbot.util.cache;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Constants;
 import net.runelite.api.NPC;
+import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.NpcDespawned;
 import net.runelite.api.events.NpcSpawned;
 import net.runelite.client.eventbus.Subscribe;
@@ -317,7 +318,11 @@ public class Rs2NpcCache extends Rs2Cache<Integer, Rs2NpcModel> {
     public void onNpcDespawned(final NpcDespawned event) {        
         getInstance().handleEvent(event);
     }
-
+    @Subscribe(priority = 40)
+    public void onGameStateChanged(final GameStateChanged event) {      
+        // Also let the strategy handle the event, region changes and loading of a map trigger despawn events for NPCs correctly
+        getInstance().handleEvent(event);
+    }
     
     /**
      * Resets the singleton instance. Used for testing.

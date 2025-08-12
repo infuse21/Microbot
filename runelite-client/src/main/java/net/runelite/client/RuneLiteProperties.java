@@ -70,7 +70,13 @@ public class RuneLiteProperties
 
 	public static String getVersion()
 	{
-		return properties.getProperty(RUNELITE_VERSION);
+		var version = properties.getProperty(RUNELITE_VERSION);
+
+		if (!version.isBlank()) {
+			return version.split("-")[0].trim();
+		}
+
+		return version;
 	}
 
 	public static String getCommit()

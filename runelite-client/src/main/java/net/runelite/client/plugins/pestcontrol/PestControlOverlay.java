@@ -32,12 +32,6 @@ import net.runelite.api.Client;
 import net.runelite.api.NPC;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.Widget;
-
-import static net.runelite.client.plugins.microbot.pestcontrol.PestControlScript.portals;
-import static net.runelite.client.plugins.pestcontrol.Portal.BLUE;
-import static net.runelite.client.plugins.pestcontrol.Portal.PURPLE;
-import static net.runelite.client.plugins.pestcontrol.Portal.RED;
-import static net.runelite.client.plugins.pestcontrol.Portal.YELLOW;
 import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.ui.overlay.OverlayUtil;
@@ -108,10 +102,10 @@ public class PestControlOverlay extends Overlay
 		PortalContext yellow = game.getYellow();
 		PortalContext red = game.getRed();
 
-		Widget purpleHealth = portals.stream().filter(x -> x == PURPLE).findFirst().get().getHitPoints();
-		Widget blueHealth = portals.stream().filter(x -> x == BLUE).findFirst().get().getHitPoints();
-		Widget yellowHealth = portals.stream().filter(x -> x == YELLOW).findFirst().get().getHitPoints();
-		Widget redHealth = portals.stream().filter(x -> x == RED).findFirst().get().getHitPoints();
+		Widget purpleHealth = PURPLE.getHitPoints();
+		Widget blueHealth = BLUE.getHitPoints();
+		Widget yellowHealth = YELLOW.getHitPoints();
+		Widget redHealth = RED.getHitPoints();
 
 		// Check for dead portals
 		if (isZero(purpleHealth))

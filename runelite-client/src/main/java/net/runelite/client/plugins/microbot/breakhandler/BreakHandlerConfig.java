@@ -4,6 +4,7 @@ import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.ConfigSection;
+import net.runelite.client.config.Range;
 import net.runelite.client.plugins.microbot.util.antiban.enums.PlaySchedule;
 
 @ConfigGroup(BreakHandlerConfig.configGroup)
@@ -131,13 +132,106 @@ public interface BreakHandlerConfig extends Config {
         return false;
     }
 
+    @ConfigItem(
+            keyName = "shutdownClient",
+            name = "Shutdown Client",
+            description = "<html><b style='color:red;'>WARNING:</b> This will completely shutdown the entire RuneLite client during breaks.<br/>Use with caution - you will need to manually restart the client after breaks.</html>",
+            position = 3,
+            section = breakBehaviorOptions
+    )
+    default boolean shutdownClient() {
+        return false;
+    }
+
+    // ============================================================
+    // Advanced Options Section
+    // ============================================================
+    @ConfigSection(
+            name = "Advanced Options",
+            description = "Advanced timing and retry configuration (for experienced users)",
+            position = 2
+    )
+    String advancedOptions = "advancedOptions";
+
+    @ConfigItem(
+            keyName = "combatCheckInterval",
+            name = "Combat Check Interval",
+            description = "How often to check for safe conditions when waiting to break (in seconds)",
+            position = 0,
+            section = advancedOptions
+    )
+    @Range(min = 1, max = 60)
+    default int combatCheckInterval() {
+        return 30;
+    }
+
+    @ConfigItem(
+            keyName = "logoutRetryDelay",
+            name = "Logout Retry Delay",
+            description = "Delay between logout attempts (in seconds)",
+            position = 1,
+            section = advancedOptions
+    )
+    @Range(min = 1, max = 30)
+    default int logoutRetryDelay() {
+        return 3;
+    }
+
+    @ConfigItem(
+            keyName = "loginRetryDelay",
+            name = "Login Retry Delay",
+            description = "Delay between login attempts (in seconds)",
+            position = 2,
+            section = advancedOptions
+    )
+    @Range(min = 1, max = 60)
+    default int loginRetryDelay() {
+        return 5;
+    }
+
+    @ConfigItem(
+            keyName = "maxLogoutRetries",
+            name = "Max Logout Retries",
+            description = "Maximum number of logout attempts before giving up",
+            position = 3,
+            section = advancedOptions
+    )
+    @Range(min = 1, max = 20)
+    default int maxLogoutRetries() {
+        return 5;
+    }
+
+    @ConfigItem(
+            keyName = "maxLoginRetries",
+            name = "Max Login Retries",
+            description = "Maximum number of login attempts before giving up",
+            position = 4,
+            section = advancedOptions
+    )
+    @Range(min = 1, max = 20)
+    default int maxLoginRetries() {
+        return 3;
+    }
+
+    @ConfigItem(
+            keyName = "safeConditionTimeout",
+            name = "Safe Condition Timeout",
+            description = "Maximum time to wait for safe conditions before skipping break (in minutes)",
+            position = 5,
+            section = advancedOptions
+    )
+    @Range(min = 1, max = 10)
+    default int safeConditionTimeout() {
+        return 10;
+    }
+
     // ============================================================
     // Play Schedule Configuration Section
     // ============================================================
     @ConfigSection(
             name = "Play Schedule",
             description = "Options related to using a play schedule",
-            position = 2
+            position = 3
     )
     String usePlaySchedule = "usePlaySchedule";
 

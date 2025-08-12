@@ -1,5 +1,6 @@
 package net.runelite.client.plugins.microbot.TaF.GemCrabKiller;
 
+import net.runelite.api.GameObject;
 import net.runelite.api.ItemID;
 import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
@@ -206,21 +207,33 @@ public class GemCrabKillerScript extends Script {
         if (Rs2Bank.isOpen()) {
             Rs2Bank.closeBank();
         }
+        
+       
         var npc = Rs2Npc.getNpc(CRAB_NPC_ID);
-        if (Rs2Player.isNearArea(CLOSEST_CRAB_LOCATION_TO_BANK, 10) && npc != null) {
+        if (npc != null) {
             gemCrabKillerState = GemCrabKillerState.FIGHTING;
             return;
         }
-        if (Rs2Player.isNearArea(CLOSEST_CRAB_LOCATION_TO_BANK, 20) && npc == null) {
-            Rs2GameObject.interact(CAVE_ENTRANCE_ID, "Crawl-through");
-            return;
-        }
+
+         // Check if we're near the cave entrance before walking
+        GameObject caveEntrance = Rs2GameObject.getGameObject(CAVE_ENTRANCE_ID,Rs2Player.getLocalPlayer().getWorldLocation());
+        if (caveEntrance != null) {
+            // Check if the cave entrance has the "Crawl-through" action
+            var composition = Microbot.getClientThread().runOnClientThreadOptional(() -> 
+                Microbot.getClient().getObjectDefinition(CAVE_ENTRANCE_ID)).orElse(null);
+            if (composition != null && Rs2GameObject.hasAction(composition, "Crawl-through")) {
+                Rs2GameObject.interact(CAVE_ENTRANCE_ID, "Crawl-through");
+                sleepUntil(() -> Rs2Npc.getNpc(CRAB_NPC_ID) != null, 5000);         
+                if (Rs2Npc.getNpc(CRAB_NPC_ID) != null) {
+                    gemCrabKillerState = GemCrabKillerState.FIGHTING;
+                }
+                return;
+            }
+        }        
         if (npc == null) {
             Rs2Walker.walkTo(CLOSEST_CRAB_LOCATION_TO_BANK);
         }
-        if (npc != null) {
-            gemCrabKillerState = GemCrabKillerState.FIGHTING;
-        }
+       
     }
 
     @Override

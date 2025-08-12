@@ -161,7 +161,7 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
     @Setter
     public static WorldMapPoint marker;
     @Setter
-    public static WorldPoint lastLocation = new WorldPoint(0, 0, 0);
+    public static volatile WorldPoint lastLocation = new WorldPoint(0, 0, 0);
     private NavigationButton navButton;
     private Shape minimapClipFixed;
     private Shape minimapClipResizeable;
@@ -171,16 +171,16 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
 
     @Getter
     @Setter
-    public static ExecutorService pathfindingExecutor = Executors.newSingleThreadExecutor();
+    public static volatile ExecutorService pathfindingExecutor = Executors.newSingleThreadExecutor();
     @Getter
     @Setter
-    public static Future<?> pathfinderFuture;
+    public static volatile Future<?> pathfinderFuture;
     @Getter
     public static final Object pathfinderMutex = new Object();
 	private static final Map<String, Object> configOverride = new HashMap<>(50);
     @Getter
     @Setter
-    public static Pathfinder pathfinder;
+    public static volatile Pathfinder pathfinder;
     @Getter
     public static PathfinderConfig pathfinderConfig;
     @Getter
@@ -364,9 +364,9 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
 			@SuppressWarnings("unchecked")
 			Map<String, Object> configOverride = (objConfigOverride instanceof Map<?,?>) ? ((Map<String, Object>) objConfigOverride) : null;
 			if (configOverride != null && !configOverride.isEmpty()) {
-				this.configOverride.clear();
+				ShortestPathPlugin.configOverride.clear();
 				for (String key : configOverride.keySet()) {
-					this.configOverride.put(key, configOverride.get(key));
+                    ShortestPathPlugin.configOverride.put(key, configOverride.get(key));
 				}
 				cacheConfigValues();
 			}
@@ -418,7 +418,7 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
 			boolean useOld = targets.isEmpty() && pathfinder != null;
 			restartPathfinding(start, useOld ? pathfinder.getTargets() : targets, useOld);
 		} else if (PLUGIN_MESSAGE_CLEAR.equals(action)) {
-			this.configOverride.clear();
+			ShortestPathPlugin.configOverride.clear();
 			cacheConfigValues();
 			setTarget(null);
 		}
@@ -451,16 +451,18 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
 
     @Subscribe
     public void onGameTick(GameTick tick) {
-        Player localPlayer = client.getLocalPlayer();
-        if (localPlayer == null || pathfinder == null) {
+        final WorldPoint myLoc = Rs2Player.getWorldLocation();
+        final Pathfinder pathfinder = ShortestPathPlugin.pathfinder;
+        if (myLoc == null || pathfinder == null || !pathfinder.isDone()) {
             return;
         }
 
-        var path = pathfinder.getPath();
+        final List<WorldPoint> path = pathfinder.getPath();
+        if (path == null) return;
 
         for (WorldPoint target : pathfinder.getTargets()) {
-            if (Rs2Player.getWorldLocation().distanceTo(target) < reachedDistance
-                    && Rs2Tile.getReachableTilesFromTile(Rs2Player.getWorldLocation(), reachedDistance).containsKey(path.get(path.size() - 1))) {
+            if (myLoc.distanceTo(target) < reachedDistance
+                    && Rs2Tile.getReachableTilesFromTile(myLoc, reachedDistance).containsKey(path.get(path.size() - 1))) {
                 setTarget(null);
                 if (Microbot.getClientThread().scheduledFuture != null) {
                     Microbot.getClientThread().scheduledFuture.cancel(true);
@@ -507,8 +509,9 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
             if (Microbot.isDebug()) {
                 addMenuEntry(event, SET, TEST, 0);
             }
+            final Pathfinder pathfinder = ShortestPathPlugin.pathfinder;
             if (pathfinder != null) {
-                if (pathfinder.getTargets().size() >= 1) {
+                if (!pathfinder.getTargets().isEmpty()) {
                     addMenuEntry(event, SET, TARGET + ColorUtil.wrapWithColorTag(" " +
                             (pathfinder.getTargets().size() + 1), JagexColors.MENU_TARGET), 0);
                 }
@@ -685,12 +688,16 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
                 worldMapPointManager.add(marker);
             }
 
-            WorldPoint start = WorldPoint.fromLocalInstance(client, localPlayer.getLocalLocation());
-            lastLocation = start;
+            final Pathfinder pathfinder = ShortestPathPlugin.pathfinder;
+            final WorldPoint start;
             if (startPointSet && pathfinder != null) {
                 start = pathfinder.getStart();
+                lastLocation = WorldPoint.fromLocalInstance(client, localPlayer.getLocalLocation());
+            } else {
+                start = WorldPoint.fromLocalInstance(client, localPlayer.getLocalLocation());
+                lastLocation = start;
             }
-            Set<WorldPoint> destinations = new HashSet<>(targets);
+            final Set<WorldPoint> destinations = new HashSet<>(targets);
             if (pathfinder != null && append) {
                 destinations.addAll(pathfinder.getTargets());
             }

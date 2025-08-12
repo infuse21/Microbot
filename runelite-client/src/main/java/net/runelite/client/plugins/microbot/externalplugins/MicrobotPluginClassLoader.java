@@ -1,4 +1,4 @@
-package net.runelite.client.plugins.microbot.sideloading;
+package net.runelite.client.plugins.microbot.externalplugins;
 
 import lombok.extern.slf4j.Slf4j;
 

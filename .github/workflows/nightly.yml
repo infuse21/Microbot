@@ -5,7 +5,7 @@ on:
     - cron: "0 0 * * *"
 
 env:
-  version: "1.9.7"
+  version: ${microbot.version}
 
 jobs:
   build:
@@ -35,6 +35,19 @@ jobs:
         run: |
           COMMIT_SHA=$(git rev-parse --short HEAD)
           mvn clean package -Dmicrobot.commit.sha=$COMMIT_SHA
+
+      - name: Read microbot.version from POM
+        id: version
+        run: |
+          V=$(mvn -q -f runelite-client/pom.xml help:evaluate \
+                -Dexpression=microbot.version -DforceStdout)
+          # fallback to project.version if the property isn't defined
+          if [ -z "$V" ]; then
+            V=$(mvn -q -f runelite-client/pom.xml help:evaluate \
+                  -Dexpression=project.version -DforceStdout)
+          fi
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          echo "Using version: $V"
 
       - name: Create Release
         uses: "marvinpinto/action-automatic-releases@latest"
@@ -72,4 +85,4 @@ jobs:
             EOL
 
       - name: Deploy to Nexus
-        run: mvn deploy:deploy-file -DgroupId=com.microbot -DartifactId=client -Dversion=$version -Dpackaging=jar -Dfile=runelite-client/target/microbot-$version.jar -DrepositoryId=microbot-nightly -Durl=https://nexus.microbot.cloud/repository/microbot-nightly/
+        run: mvn deploy:deploy-file -DgroupId=com.microbot -DartifactId=client -Dversion=${{ steps.version.outputs.version }} -Dpackaging=jar -Dfile=runelite-client/target/microbot-${{ steps.version.outputs.version }}.jar -DrepositoryId=microbot-nightly -Durl=https://nexus.microbot.cloud/repository/microbot-nightly/

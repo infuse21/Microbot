@@ -160,7 +160,7 @@ public class MicrobotPlugin extends Plugin
 
 		topLevelConfigPanel = topLevelConfigPanelProvider.get();
 
-		final BufferedImage icon = ImageUtil.loadImageResource(getClass(), "microbot_config_icon.png");
+		final BufferedImage icon = ImageUtil.loadImageResource(getClass(), "microbot_config_icon_lg.png");
 
 		navButton = NavigationButton.builder()
 			.tooltip("Community Plugins")

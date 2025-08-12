@@ -17,7 +17,7 @@ import java.awt.image.BufferedImage;
         description = "Allows to download plugins from a github and sideload them",
         tags = {"github", "microbot"},
         enabledByDefault = false,
-        hidden = false
+        hidden = true
 )
 @Slf4j
 public class GithubPlugin extends Plugin {

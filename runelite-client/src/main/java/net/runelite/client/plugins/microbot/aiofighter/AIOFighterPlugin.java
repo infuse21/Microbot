@@ -147,8 +147,18 @@ public class AIOFighterPlugin extends Plugin {
         potionManagerScript.run(config);
         safetyScript.run(config);
         slayerScript.run(config);
-        Microbot.getSpecialAttackConfigs()
-                .setSpecialAttack(true);
+        
+        // Configure special attack settings
+        if (config.useSpecialAttack() && config.specWeapon() != null) {
+            Microbot.getSpecialAttackConfigs()
+                    .setSpecialAttack(true)
+                    .setSpecialAttackWeapon(config.specWeapon())
+                    .setMinimumSpecEnergy(config.specWeapon().getEnergyRequired());
+        } else {
+            Microbot.getSpecialAttackConfigs()
+                    .setSpecialAttack(config.useSpecialAttack());
+        }
+        
         Rs2Slayer.blacklistedSlayerMonsters = getBlacklistedSlayerNpcs();
         bankerScript.run(config);
         shopScript.run(config);
@@ -172,6 +182,7 @@ public class AIOFighterPlugin extends Plugin {
         slayerScript.shutdown();
         shopScript.shutdown();
         resetLocation();
+        Microbot.getSpecialAttackConfigs().reset();
         overlayManager.remove(playerAssistOverlay);
         overlayManager.remove(playerAssistInfoOverlay);
         playerAssistInfoOverlay.myButton.unhookMouseListener();
@@ -383,6 +394,17 @@ public class AIOFighterPlugin extends Plugin {
                 setCenter(Rs2Player.getWorldLocation());
             }
 
+        }
+        // Handle special attack weapon config changes
+        if (event.getKey().equals("Use special attack") || event.getKey().equals("Spec weapon")) {
+            if (config.useSpecialAttack() && config.specWeapon() != null) {
+                Microbot.getSpecialAttackConfigs()
+                        .setSpecialAttack(true)
+                        .setSpecialAttackWeapon(config.specWeapon())
+                        .setMinimumSpecEnergy(config.specWeapon().getEnergyRequired());
+            } else {
+                Microbot.getSpecialAttackConfigs().reset();
+            }
         }
     }
 

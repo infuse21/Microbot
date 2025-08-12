@@ -54,9 +54,4 @@ public class FletchingPlugin extends Plugin {
         fletchingScript.shutdown();
         overlayManager.remove(fletchingOverlay);
     }
-
-    @Subscribe
-    public void onWidgetLoaded(WidgetLoaded event) {
-        fletchingScript.onWidgetLoaded(event);
-    }
 }

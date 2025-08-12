@@ -108,12 +108,7 @@ public class BankerScript extends Script {
     public boolean needBanking() {
         if(config.currentInventorySetup() == null){
             AIOFighterPlugin.setCurrentSlayerInventorySetup(config.defaultInventorySetup());
-        }
-        Rs2InventorySetup inventorySetup = new Rs2InventorySetup(
-                config.slayerMode() ? config.currentInventorySetup().getName() : config.inventorySetup().getName(),
-                mainScheduledFuture
-        );
-
+        }        
         if(!config.bank()){
             return false;
         }
@@ -136,6 +131,14 @@ public class BankerScript extends Script {
             bankingTriggered = true;
             return true;
         }
+        if (config.currentInventorySetup() ==null ){
+            return false; // No current inventory setup, and also no default setup, so no need to bank because of the inventory setup
+        }
+
+        Rs2InventorySetup inventorySetup = new Rs2InventorySetup(
+                config.slayerMode() ? config.currentInventorySetup().getName() : config.inventorySetup().getName(),
+                mainScheduledFuture
+        );
 
         // (3) If food is required but not available
         if (needsFood(inventorySetup)) {

@@ -2,7 +2,6 @@ package net.runelite.client.plugins.microbot.util.cache;
 
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Player;
-import net.runelite.client.config.RuneScapeProfileType;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
@@ -30,7 +29,6 @@ public class Rs2CacheManager implements AutoCloseable {
     
     // Profile management - similar to Rs2Bank
     private static String rsProfileKey = null;
-    private static RuneScapeProfileType worldType;
     private static AtomicBoolean loggedInCacheStateKnown = new AtomicBoolean(false);
     
     // Cache loading retry configuration
@@ -165,6 +163,31 @@ public class Rs2CacheManager implements AutoCloseable {
             Rs2SpiritTreeCache.getInstance().invalidateAll();            
         } catch (Exception e) {
             log.error("Error invalidating caches: {}", e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Triggers scene scans for all entity caches to repopulate them after clearing.
+     * This ensures caches are immediately synchronized with the current game scene.
+     * Should be called after invalidating caches to provide immediate data availability.
+     */
+    public static void triggerSceneScansForAllCaches() {
+        try {
+            if (!Microbot.loggedIn || Microbot.getClient() == null || Microbot.getClient().getLocalPlayer() == null) {
+                log.debug("Cannot trigger scene scans - not logged in");
+                return;
+            }
+            
+            log.debug("Triggering scene scans for all entity caches after cache invalidation");
+            
+            // Trigger scene scans for all entity caches with small delays to stagger the operations
+            Rs2NpcCache.requestSceneScan();
+            Rs2GroundItemCache.requestSceneScan();
+            Rs2ObjectCache.requestSceneScan();
+            
+            log.debug("Scene scan requests sent to all entity caches");
+        } catch (Exception e) {
+            log.error("Error triggering scene scans: {}", e.getMessage(), e);
         }
     }
     
@@ -391,7 +414,6 @@ public class Rs2CacheManager implements AutoCloseable {
             }
             
             Rs2CacheManager.rsProfileKey = profileKey;
-            worldType = RuneScapeProfileType.getCurrent(Microbot.getClient());
             
             log.info("Loading persistent caches from configuration for profile: {}", profileKey);
             
@@ -585,7 +607,6 @@ public class Rs2CacheManager implements AutoCloseable {
         Rs2Bank.emptyCacheState();
         // Clear cache manager state
         rsProfileKey = null;
-        worldType = null;
         loggedInCacheStateKnown.set(false);
         Rs2CacheManager.invalidateAllCaches(false);
         log.info("Emptied all cache states");

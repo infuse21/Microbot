@@ -1,7 +1,6 @@
 package net.runelite.client.plugins.microbot.shortestpath.pathfinder;
 
 import net.runelite.api.coords.WorldPoint;
-import net.runelite.client.plugins.microbot.shortestpath.TransportType;
 
 public class TransportNode extends Node implements Comparable<TransportNode> {
     public TransportNode(WorldPoint point, Node previous, int travelTime) {

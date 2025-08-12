@@ -49,10 +49,21 @@ public class Rs2DepositBox {
      *
      * @return the deposit box widget, or {@code null} if the deposit box is not open
      */
-    private static Widget getDepositBoxWidget() {
+    public static Widget getDepositBoxWidget() {
         if (!isOpen()) return null;
         return Rs2Widget.getWidget(DEPOSITBOX_PARENT_WIDGET_ID, 0);
     }
+
+	/**
+	 * Retrieves the bounding rectangle of the deposit box widget.
+	 *
+	 * @return the bounding rectangle of the deposit box widget, or {@code null} if the deposit box is not open or has no bounds
+	 */
+	public static Rectangle getDepositBoxBounds() {
+		Widget widget = getDepositBoxWidget();
+		if (widget == null || widget.getBounds() == null) return null;
+		return widget.getBounds();
+	}
 
     /**
      * Closes the deposit box interface.
@@ -64,8 +75,7 @@ public class Rs2DepositBox {
         Widget closeDepositBox = Rs2Widget.findWidget("Close", List.of(getDepositBoxWidget()), false);
         if (closeDepositBox == null) return false;
         Rs2Widget.clickWidget(closeDepositBox);
-        sleepUntilOnClientThread(() -> !isOpen());
-        return true;
+        return sleepUntil(() -> !isOpen());
     }
 
     /**
@@ -106,7 +116,7 @@ public class Rs2DepositBox {
         if (depositAllWidget == null) return;
 
         Rs2Widget.clickWidget(depositAllWidget);
-        sleepUntil(Rs2Inventory::isEmpty);
+        Rs2Inventory.waitForInventoryChanges(5000);
     }
 
     /**

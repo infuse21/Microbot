@@ -45,7 +45,7 @@ public interface TitheFarmingConfig extends Config {
             section = scriptSettings
     )
     default TitheFarmLanes Lanes() {
-        return TitheFarmLanes.LANE_2_3;
+        return TitheFarmLanes.LANE_1_2;
     }
 
     @ConfigItem(

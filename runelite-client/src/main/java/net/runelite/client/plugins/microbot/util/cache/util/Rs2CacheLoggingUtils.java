@@ -410,7 +410,7 @@ public class Rs2CacheLoggingUtils {
             
             // Ground Item Cache - uses boolean method
             if (Rs2GroundItemCache.getInstance() != null) {
-                //Rs2GroundItemCache.logState(LogOutputMode.FILE_ONLY);
+                Rs2GroundItemCache.logState(LogOutputMode.FILE_ONLY);
             }
             
             // Skill Cache - uses boolean method

@@ -44,12 +44,13 @@ public class MicrobotOverlay extends OverlayPanel {
         cacheButton.setOnClick(() -> {
             try {
                 Rs2CacheManager.invalidateAllCaches(false);
+                Rs2CacheManager.triggerSceneScansForAllCaches(); // Repopulate caches immediately
                 //Microbot.getClientThread().runOnClientThreadOptional(
                   //  ()-> {Microbot.openPopUp("Cache Manager", String.format("Cleared Cache:<br><br><col=ffffff>%s</col>", "All caches have been invalidated!"));
                     //    return true;}
                     //); // causes Exception java.lang.IllegalStateException: component does not exist
             } catch (Exception e) {
-                Microbot.log("Cache Manager: All caches have been invalidated!");
+                Microbot.log("Cache Manager: All caches have been invalidated and repopulated!");
             }
         });
         

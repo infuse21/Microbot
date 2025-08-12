@@ -98,11 +98,11 @@ public class SpiritTreeUpdateStrategy implements CacheUpdateStrategy<SpiritTree,
                         log.debug("Adventure log widget not found, skipping spirit tree update");
                         return;
                     }
-                    log.info("Adventure log widget loaded (group {}), checking for spirit tree locations", event.getGroupId());
+                    log.debug("Adventure log widget loaded (group {}), checking for spirit tree locations", event.getGroupId());
                     boolean hasRightTitle = Rs2Widget.hasWidgetText(SPIRIT_TREE_WIDGET_TITLE, ADVENTURE_LOG_GROUP_ID, ADVENTURE_LOG_CONTAINER_CHILD, false);
                             
                     if (hasRightTitle) {
-                        log.info("Spirit tree locations widget detected, updating cache from widget data");
+                        log.debug("Spirit tree locations widget detected, updating cache from widget data");
                         updateCacheFromWidget(cache);
                         
                     }
@@ -188,7 +188,7 @@ public class SpiritTreeUpdateStrategy implements CacheUpdateStrategy<SpiritTree,
                     );
 
                     cache.put(tree, newData);
-                    log.info("Updated POH spirit tree cache for {} - {}", tree.name(), pohSpiritTreePresent ? "tree present and available" : "no tree present");
+                    log.debug("Updated POH spirit tree cache for {} - {}", tree.name(), pohSpiritTreePresent ? "tree present and available" : "no tree present");
                 });
         } catch (Exception e) {
             log.error("Error updating POH spirit tree cache: {}", e.getMessage(), e);
@@ -203,7 +203,7 @@ public class SpiritTreeUpdateStrategy implements CacheUpdateStrategy<SpiritTree,
 			// Extract available destinations from the widget
 			List<SpiritTree> availableSpiritTrees = SpiritTree.extractAvailableFromWidget();
 			WorldPoint playerLocation = getPlayerLocation();
-			log.info("Widget extraction found {} available spirit tree destinations", availableSpiritTrees.size());
+			log.debug("Widget extraction found {} available spirit tree destinations", availableSpiritTrees.size());
 			for (SpiritTree spiritTree : SpiritTree.values()) {
 				boolean isAvailable = availableSpiritTrees.contains(spiritTree);
 				boolean availableForTravel = spiritTree.hasQuestRequirements();

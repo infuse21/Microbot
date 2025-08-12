@@ -11,11 +11,15 @@ import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
@@ -61,6 +65,15 @@ public abstract class Rs2Cache<K, V> implements AutoCloseable, CacheOperations<K
     }
     
     /**
+     * Gets the current UTC time as ZonedDateTime.
+     * 
+     * @return Current UTC time as ZonedDateTime
+     */
+    public static ZonedDateTime getCurrentUtcTime() {
+        return ZonedDateTime.now(ZoneOffset.UTC);
+    }
+    
+    /**
      * Formats a timestamp (in milliseconds since epoch) to a human-readable UTC string.
      * 
      * @param timestampMillis The timestamp in milliseconds since epoch
@@ -68,6 +81,16 @@ public abstract class Rs2Cache<K, V> implements AutoCloseable, CacheOperations<K
      */
     public static String formatUtcTimestamp(long timestampMillis) {
         return UTC_TIMESTAMP_FORMATTER.format(Instant.ofEpochMilli(timestampMillis));
+    }
+    
+    /**
+     * Formats a ZonedDateTime to a human-readable UTC string.
+     * 
+     * @param zonedDateTime The ZonedDateTime to format
+     * @return Formatted UTC timestamp string
+     */
+    public static String formatUtcTimestamp(ZonedDateTime zonedDateTime) {
+        return UTC_TIMESTAMP_FORMATTER.format(zonedDateTime.withZoneSameInstant(ZoneOffset.UTC));
     }
     
     // ============================================
@@ -110,8 +133,7 @@ public abstract class Rs2Cache<K, V> implements AutoCloseable, CacheOperations<K
     
     // Cache configuration
     private final long ttlMillis;
-    private volatile boolean enableCustomTTLInvalidation = false;
-    private final long globalInvalidationInterval;
+    private volatile boolean enableCustomTTLInvalidation = false;    
     private final long creationTime;
     
     // Strategy composition - following framework guidelines
@@ -120,8 +142,10 @@ public abstract class Rs2Cache<K, V> implements AutoCloseable, CacheOperations<K
     @SuppressWarnings("rawtypes")
     private volatile ValueWrapper valueWrapper; // Optional value wrapping
     
-    // Optional scheduled cleanup task
+    // Periodic cleanup system
+    private final ScheduledExecutorService cleanupExecutor;
     private ScheduledFuture<?> cleanupTask;
+    private final long cleanupIntervalMs;
     
     // ============================================
     // Region Change Detection - Unified Support
@@ -310,7 +334,7 @@ public abstract class Rs2Cache<K, V> implements AutoCloseable, CacheOperations<K
      * @param cacheName The name of this cache for logging and debugging
      */
     public Rs2Cache(String cacheName) {
-        this(cacheName, CacheMode.AUTOMATIC_INVALIDATION, 30_000L, 60_000L);
+        this(cacheName, CacheMode.AUTOMATIC_INVALIDATION, 30_000L);
     }
     
     /**
@@ -320,8 +344,9 @@ public abstract class Rs2Cache<K, V> implements AutoCloseable, CacheOperations<K
      * @param cacheMode The cache invalidation mode
      */
     public Rs2Cache(String cacheName, CacheMode cacheMode) {
-        this(cacheName, cacheMode, 30_000L, 60_000L);
+        this(cacheName, cacheMode, 30_000L);
     }
+  
     
     /**
      * Constructor for cache with full configuration.
@@ -329,14 +354,20 @@ public abstract class Rs2Cache<K, V> implements AutoCloseable, CacheOperations<K
      * @param cacheName The name of this cache for logging and debugging
      * @param cacheMode The cache invalidation mode
      * @param ttlMillis Time-to-live for individual cache entries in milliseconds
-     * @param globalInvalidationInterval Interval for global cache invalidation in milliseconds
      */
-    public Rs2Cache(String cacheName, CacheMode cacheMode, long ttlMillis, long globalInvalidationInterval) {
+    public Rs2Cache(String cacheName, CacheMode cacheMode, long ttlMillis) {
         this.cacheName = cacheName;
         this.cacheMode = cacheMode;
         this.ttlMillis = ttlMillis;
-        this.globalInvalidationInterval = globalInvalidationInterval;
         this.creationTime = getCurrentUtcTimestamp();
+        
+        // Initialize cleanup system
+        this.cleanupIntervalMs = Math.min(ttlMillis / 4, 30000); // Quarter of TTL or max 30 seconds
+        this.cleanupExecutor = Executors.newSingleThreadScheduledExecutor(r -> {
+            Thread thread = new Thread(r, "Rs2Cache-Cleanup-" + cacheName);
+            thread.setDaemon(true);
+            return thread;
+        });
         
         this.cache = new ConcurrentHashMap<>();
         this.cacheTimestamps = new ConcurrentHashMap<>();
@@ -351,8 +382,11 @@ public abstract class Rs2Cache<K, V> implements AutoCloseable, CacheOperations<K
         this.queryStrategies = new CopyOnWriteArrayList<>();
         this.valueWrapper = null;
         
-        log.debug("Created unified cache: {} with mode: {}, TTL: {}ms, Global invalidation: {}ms", 
-                cacheName, cacheMode, ttlMillis, globalInvalidationInterval);
+        // Start periodic cleanup task for all cache modes
+        startPeriodicCleanup();
+        
+        log.debug("Created unified cache: {} with mode: {}, TTL: {}ms, Global invalidation: {}ms, Cleanup interval: {}ms", 
+                cacheName, cacheMode, ttlMillis, cleanupIntervalMs);
     }
     
     // ============================================
@@ -418,16 +452,13 @@ public abstract class Rs2Cache<K, V> implements AutoCloseable, CacheOperations<K
             return null;
         }
         
-        // Only check for automatic invalidation in AUTOMATIC_INVALIDATION mode
-        if (cacheMode == CacheMode.AUTOMATIC_INVALIDATION) {
-            checkGlobalInvalidation();
-        }
+        // No longer need checkGlobalInvalidation() - handled by periodic cleanup
         
         Object cachedValue = cache.get(key);
         Long timestamp = cacheTimestamps.get(key);
         
         // Check if value exists and is not expired (respect cache mode)
-        if (cachedValue != null && timestamp != null && !isExpired(timestamp)) {
+        if (cachedValue != null && timestamp != null && !isExpired(key)) {
             cacheHits.incrementAndGet();
             log.trace("Cache hit for key {} in cache {}", key, cacheName);
             
@@ -442,6 +473,19 @@ public abstract class Rs2Cache<K, V> implements AutoCloseable, CacheOperations<K
         cacheMisses.incrementAndGet();
         log.trace("Cache miss for key {} in cache {}", key, cacheName);
         return null;
+    }
+    
+    /**
+     * Gets a raw cached value without expiration checking or additional operations.
+     * This method is specifically designed for update strategies during scene synchronization
+     * to avoid triggering recursive cache operations like scene scans.
+     * 
+     * @param key The key to retrieve
+     * @return The raw cached value or null if not present
+     */
+    @Override
+    public V getRawValue(K key) {
+        return getRawCachedValue(key);
     }
     
     /**
@@ -574,14 +618,12 @@ public abstract class Rs2Cache<K, V> implements AutoCloseable, CacheOperations<K
             return Collections.emptyList();
         }
         
-        if (cacheMode == CacheMode.AUTOMATIC_INVALIDATION) {
-            checkGlobalInvalidation();
-        }
+        // No longer need checkGlobalInvalidation() - handled by periodic cleanup
         
         return cache.entrySet().stream()
                 .filter(entry -> {
                     Long timestamp = cacheTimestamps.get(entry.getKey());
-                    return timestamp != null && !isExpired(timestamp);
+                    return timestamp != null && !isExpired(entry.getKey());
                 })
                 .map(entry -> {
                     if (valueWrapper != null) {
@@ -609,15 +651,14 @@ public abstract class Rs2Cache<K, V> implements AutoCloseable, CacheOperations<K
         if (isShutdown.get()) {
             return Stream.empty();
         }
-        if (cacheMode == CacheMode.AUTOMATIC_INVALIDATION) {
-            checkGlobalInvalidation();
-        }
+        // No longer need checkGlobalInvalidation() - handled by periodic cleanup
+        
         // Defensive copy for strong consistency, but less efficient:
         List<Map.Entry<K, Object>> entries = new ArrayList<>(cache.entrySet());
         return entries.stream()
             .filter(entry -> {
             Long timestamp = cacheTimestamps.get(entry.getKey());
-            return timestamp != null && !isExpired(timestamp);
+            return timestamp != null && !isExpired(entry.getKey());
             })
             .map(entry -> {
             if (valueWrapper != null) {
@@ -684,7 +725,7 @@ public abstract class Rs2Cache<K, V> implements AutoCloseable, CacheOperations<K
     
     @Override
     public boolean containsKey(K key) {
-        return cache.containsKey(key) && !isExpired(cacheTimestamps.get(key));
+        return cache.containsKey(key) && !isExpired(key);
     }
     
     @Override
@@ -695,6 +736,16 @@ public abstract class Rs2Cache<K, V> implements AutoCloseable, CacheOperations<K
     @Override
     public String getCacheName() {
         return cacheName;
+    }
+    
+    @Override
+    public Stream<K> keyStream() {
+        return entryStream().map(Map.Entry::getKey);
+    }
+    
+    @Override
+    public Stream<V> valueStream() {
+        return entryStream().map(Map.Entry::getValue);
     }
     
     // ============================================
@@ -727,7 +778,6 @@ public abstract class Rs2Cache<K, V> implements AutoCloseable, CacheOperations<K
         // Configuration
         sb.append("CONFIGURATION:\n");
         sb.append(String.format("TTL (milliseconds): %d\n", ttlMillis));
-        sb.append(String.format("Global Invalidation Interval: %d ms\n", globalInvalidationInterval));
         sb.append(String.format("Persistence Enabled: %s\n", persistenceEnabled));
         if (persistenceEnabled) {
             sb.append(String.format("Config Key: %s\n", configKey));
@@ -865,14 +915,12 @@ public abstract class Rs2Cache<K, V> implements AutoCloseable, CacheOperations<K
             return Stream.empty();
         }
         
-        if (cacheMode == CacheMode.AUTOMATIC_INVALIDATION) {
-            checkGlobalInvalidation();
-        }
+        // No longer need checkGlobalInvalidation() - handled by periodic cleanup
         
         return cache.entrySet().stream()
                 .filter(entry -> {
                     Long timestamp = cacheTimestamps.get(entry.getKey());
-                    return timestamp != null && !isExpired(timestamp);
+                    return timestamp != null && !isExpired(entry.getKey());
                 })
                 .map(entry -> {
                     V value;
@@ -898,17 +946,14 @@ public abstract class Rs2Cache<K, V> implements AutoCloseable, CacheOperations<K
             return result;
         }
         
-        // Check for automatic invalidation
-        if (cacheMode == CacheMode.AUTOMATIC_INVALIDATION) {
-            checkGlobalInvalidation();
-        }
+        // No longer need checkGlobalInvalidation() - handled by periodic cleanup
         
         for (Map.Entry<K, Object> entry : cache.entrySet()) {
             K key = entry.getKey();
             Long timestamp = cacheTimestamps.get(key);
             
             // Only include non-expired entries
-            if (timestamp != null && !isExpired(timestamp)) {
+            if (timestamp != null && !isExpired(key)) {
                 Object cachedValue = entry.getValue();
                 
                 // Unwrap value if wrapper is present
@@ -949,14 +994,19 @@ public abstract class Rs2Cache<K, V> implements AutoCloseable, CacheOperations<K
     // ============================================
     
     /**
-     * Checks if a timestamp is expired based on the TTL and cache mode.
+     * Checks if a cache entry is expired.
+     * This method can be overridden by subclasses to implement custom expiration logic.
+     * 
+     * @param key The cache key to check for expiration
+     * @return true if the entry should be considered expired
      */
-    private boolean isExpired(Long timestamp) {
+    protected boolean isExpired(K key) {
+        Long timestamp = cacheTimestamps.get(key);
         if (timestamp == null) {
             return true;
         }
         
-        // EVENT_DRIVEN_ONLY mode: entries never expire by time
+        // EVENT_DRIVEN_ONLY mode: entries never expire by time (unless custom logic overrides)
         if (cacheMode == CacheMode.EVENT_DRIVEN_ONLY && !enableCustomTTLInvalidation) {
             return false;
         }
@@ -966,24 +1016,126 @@ public abstract class Rs2Cache<K, V> implements AutoCloseable, CacheOperations<K
             return false;
         }
         
-        // AUTOMATIC_INVALIDATION mode: check TTL
-        return getCurrentUtcTimestamp() - timestamp > ttlMillis;
+        // AUTOMATIC_INVALIDATION mode: check TTL and remove if expired
+        long currentTime = getCurrentUtcTimestamp();
+        if (currentTime - timestamp > ttlMillis) {
+            // Item has expired - remove it immediately from cache
+            Object removedValue = cache.remove(key);
+            cacheTimestamps.remove(key);
+            if (removedValue != null) {
+                log.debug("Removed expired entry during TTL check: key={} in cache {}", key, cacheName);
+            }
+            return true;
+        }
+        
+        return false;
     }
     
     /**
-     * Checks if global invalidation is needed and performs it if necessary.
+     * Protected method to get raw cached value without TTL validation.
+     * Used by subclasses for custom expiration logic to avoid recursion.
+     * 
+     * @param key The cache key
+     * @return The raw cached value or null if not present
      */
-    private void checkGlobalInvalidation() {
-        if (cacheMode != CacheMode.AUTOMATIC_INVALIDATION) {
+    @SuppressWarnings("unchecked")
+    protected V getRawCachedValue(K key) {
+        Object cachedValue = cache.get(key);
+        if (cachedValue == null) {
+            return null;
+        }
+        
+        // Unwrap value if wrapper is present
+        if (valueWrapper != null) {
+            return (V) valueWrapper.unwrap(cachedValue);
+        } else {
+            return (V) cachedValue;
+        }
+    }
+    
+    /**
+     * Public method for strategies to access raw cached values without triggering
+     * additional cache operations (like scene scans). This prevents recursive scanning.
+     * 
+     * @param key The cache key
+     * @return The raw cached value or null if not present
+     */
+    public V getRawCachedValueForStrategy(K key) {
+        return getRawCachedValue(key);
+    }
+    
+    /**
+     * Starts the periodic cleanup task for all cache modes.
+     * AUTOMATIC_INVALIDATION: Removes expired entries based on TTL
+     * EVENT_DRIVEN_ONLY: Can be overridden by subclasses for custom cleanup (e.g., despawn checking)
+     * MANUAL_ONLY: Generally no cleanup, but available for override
+     */
+    protected void startPeriodicCleanup() {
+        if (cleanupExecutor.isShutdown()) {
+            return;
+        }
+        
+        cleanupTask = cleanupExecutor.scheduleWithFixedDelay(() -> {
+            try {
+                performPeriodicCleanup();
+            } catch (Exception e) {
+                log.warn("Error during periodic cleanup for cache {}: {}", cacheName, e.getMessage());
+            }
+        }, cleanupIntervalMs, cleanupIntervalMs, TimeUnit.MILLISECONDS);
+        
+        log.debug("Started periodic cleanup for cache {} every {}ms", cacheName, cleanupIntervalMs);
+    }
+    
+    /**
+     * Performs the actual periodic cleanup.
+     * Can be overridden by subclasses to implement custom cleanup logic.
+     * Default implementation removes expired entries for AUTOMATIC_INVALIDATION mode.
+     */
+    protected void performPeriodicCleanup() {
+        if (isShutdown.get()) {
+            return;
+        }
+        
+        if (cacheMode == CacheMode.AUTOMATIC_INVALIDATION) {
+            performTtlCleanup();
+        }
+        // For other modes, subclasses can override this method for custom cleanup
+    }
+    
+    /**
+     * Removes expired entries based on TTL for AUTOMATIC_INVALIDATION mode.
+     * This replaces the global invalidation approach with per-entry checking.
+     */
+    private void performTtlCleanup() {
+        if (cache.isEmpty()) {
             return;
         }
         
         long currentTime = getCurrentUtcTimestamp();
-        if (currentTime - lastGlobalInvalidation.get() > globalInvalidationInterval) {
-            if (lastGlobalInvalidation.compareAndSet(lastGlobalInvalidation.get(), currentTime)) {
-                log.debug("Performing global invalidation for cache {}", cacheName);
-                invalidateAll();
+        List<K> expiredKeys = new ArrayList<>();
+        
+        // Collect expired keys
+        for (Map.Entry<K, Object> entry : cache.entrySet()) {
+            K key = entry.getKey();
+            Long timestamp = cacheTimestamps.get(key);
+            
+            if (timestamp == null || (currentTime - timestamp) > ttlMillis) {
+                expiredKeys.add(key);
             }
+        }
+        
+        // Remove expired entries
+        int removedCount = 0;
+        for (K key : expiredKeys) {
+            if (cache.remove(key) != null) {
+                cacheTimestamps.remove(key);
+                removedCount++;
+            }
+        }
+        
+        if (removedCount > 0) {
+            totalInvalidations.addAndGet(removedCount);
+            log.debug("Removed {} expired entries from cache {}", removedCount, cacheName);
         }
     }
     
@@ -1108,8 +1260,7 @@ public abstract class Rs2Cache<K, V> implements AutoCloseable, CacheOperations<K
                 cacheMisses.get(),
                 totalInvalidations.get(),
                 getCurrentUtcTimestamp() - creationTime,
-                ttlMillis,
-                globalInvalidationInterval,
+                ttlMillis,                
                 getEstimatedMemorySize()
         );
     }
@@ -1126,12 +1277,11 @@ public abstract class Rs2Cache<K, V> implements AutoCloseable, CacheOperations<K
         public final long totalInvalidations;
         public final long uptime;
         public final long ttlMillis;
-        public final long globalInvalidationInterval;
         public final long estimatedMemoryBytes;
         
         public CacheStatistics(String cacheName, CacheMode cacheMode, int currentSize, 
                              long cacheHits, long cacheMisses, long totalInvalidations,
-                             long uptime, long ttlMillis, long globalInvalidationInterval,
+                             long uptime, long ttlMillis,
                              long estimatedMemoryBytes) {
             this.cacheName = cacheName;
             this.cacheMode = cacheMode;
@@ -1141,7 +1291,6 @@ public abstract class Rs2Cache<K, V> implements AutoCloseable, CacheOperations<K
             this.totalInvalidations = totalInvalidations;
             this.uptime = uptime;
             this.ttlMillis = ttlMillis;
-            this.globalInvalidationInterval = globalInvalidationInterval;
             this.estimatedMemoryBytes = estimatedMemoryBytes;
         }
         
@@ -1171,6 +1320,19 @@ public abstract class Rs2Cache<K, V> implements AutoCloseable, CacheOperations<K
         if (isShutdown.compareAndSet(false, true)) {
             if (cleanupTask != null) {
                 cleanupTask.cancel(true);
+            }
+            
+            // Shutdown cleanup executor
+            if (cleanupExecutor != null && !cleanupExecutor.isShutdown()) {
+                cleanupExecutor.shutdown();
+                try {
+                    if (!cleanupExecutor.awaitTermination(5, TimeUnit.SECONDS)) {
+                        cleanupExecutor.shutdownNow();
+                    }
+                } catch (InterruptedException e) {
+                    cleanupExecutor.shutdownNow();
+                    Thread.currentThread().interrupt();
+                }
             }
             
             // Detach and close all strategies

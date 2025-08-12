@@ -14,6 +14,11 @@ import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
 import java.awt.*;
 
 public class Rs2UiHelper {
+
+	public static final Pattern COL_TAG_PATTERN = Pattern.compile("<col=[^>]+>|</col>");
+	// Regex to extract base name and numeric suffix, e.g., "Super attack (4)" -> "Super attack", 4
+	public static final Pattern ITEM_NAME_SUFFIX_PATTERN = Pattern.compile("^(.*?)(?:\\s*\\((\\d+)\\))?$");
+
     public static boolean isRectangleWithinViewport(Rectangle rectangle) {
         int viewportHeight = Microbot.getClient().getViewportHeight();
         int viewportWidth = Microbot.getClient().getViewportWidth();
@@ -123,7 +128,7 @@ public class Rs2UiHelper {
      * @return the text without color tags.
      */
     public static String stripColTags(String text) {
-        return text != null ? text.replaceAll("<col=[^>]+>|</col>", "") : "";
+        return text != null ? COL_TAG_PATTERN.matcher(text).replaceAll("") : "";
     }
 
 	public static Rectangle getDefaultRectangle() {

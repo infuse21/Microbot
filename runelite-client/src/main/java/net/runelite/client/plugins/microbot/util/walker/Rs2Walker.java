@@ -86,7 +86,7 @@ public class Rs2Walker {
     public static ShortestPathConfig config;
     static int stuckCount = 0;
     static WorldPoint lastPosition;
-    static WorldPoint currentTarget;
+    static volatile WorldPoint currentTarget;
     static int nextWalkingDistance = 10;
 
     static final int OFFSET = 10; // max offset of the exact area we teleport to
@@ -172,14 +172,17 @@ public class Rs2Walker {
     }
 
     /**
-     * Core walk method contains all the logic to succesfully walk to the destination
-     * this contains doors, gameobjects, teleports, spells etc...
+     * Core walk method contains all the logic to successfully walk to the destination
+     * this contains doors, game objects, teleports, spells etc...
      *
      * @param target
      * @param distance
      */
     private static WalkerState processWalk(WorldPoint target, int distance) {
-        if (debug) return WalkerState.EXIT;
+        if (debug) {
+            log.info("Pathfinder in debug, exiting");
+            return WalkerState.EXIT;
+        }
         try {
             if (!Microbot.isLoggedIn()) {
                 setTarget(null);
@@ -214,23 +217,26 @@ public class Rs2Walker {
                 return WalkerState.EXIT;
             }
 
-            if ((pathfinder = ShortestPathPlugin.getPathfinder()) == null) {
-                log.error("pathfinder is null, exiting: 162");
-                setTarget(null);
-                return WalkerState.EXIT;
+            final List<WorldPoint> path = pathfinder.getPath();
+            final WorldPoint dst;
+            if (path == null || path.isEmpty()) {
+                log.debug("Path is {}, using current location as destination", path == null ? "null" : "empty");
+                dst = Rs2Player.getWorldLocation();
+            } else {
+                dst = path.get(path.size()-1);
             }
 
-            List<WorldPoint> path = pathfinder.getPath();
-            int pathSize = path.size();
-
-
-            if (path.get(pathSize - 1).distanceTo(target) > config.reachedDistance()) {
-                log.warn("Location impossible to reach");
+            if (dst == null || dst.distanceTo(target) > distance) {
+                log.warn("Location {} impossible to reach", dst);
                 setTarget(null);
                 return WalkerState.UNREACHABLE;
             }
 
-            if (!path.isEmpty() && isNear(path.get(pathSize - 1))) {
+            if (path == null || path.isEmpty()) {
+                return WalkerState.ARRIVED;
+            }
+
+            if (isNear(dst)) {
                 setTarget(null);
             }
 
@@ -244,15 +250,11 @@ public class Rs2Walker {
                 }
             }
 
-            if ((pathfinder = ShortestPathPlugin.getPathfinder()) == null) {
-                setTarget(null);
-                return WalkerState.EXIT;
-            }
-
             int indexOfStartPoint = getClosestTileIndex(path);
             if (indexOfStartPoint == -1) {
                 log.error("The walker is confused, unable to find our starting point in the web, exiting.");
                 setTarget(null);
+                log.error("pathfinder is null, exiting: 255");
                 return WalkerState.EXIT;
             }
 
@@ -387,11 +389,13 @@ public class Rs2Walker {
             }
         } catch (Exception ex) {
             if (ex instanceof InterruptedException) {
+                log.info("Pathfinder was interrupted, exiting: 397");
                 setTarget(null);
                 return WalkerState.EXIT;
             }
-            log.trace("Exception in Rs2Walker: {} - ", ex.getMessage(), ex);
+            log.error("Exception in Rs2Walker:", ex);
         }
+        log.info("Exiting walker: 403");
         return WalkerState.EXIT;
     }
 
@@ -1081,15 +1085,20 @@ public class Rs2Walker {
 
                 boolean found = false;
 
+				final String name = comp.getName();
+
                 if (object instanceof WallObject) {
                     int orientation = ((WallObject) object).getOrientationA();
 
                     if (searchNeighborPoint(orientation, probe, fromWp) || searchNeighborPoint(orientation, probe, toWp)) {
-                        found = true;
+						log.info("Found WallObject door - name {} with action {} at {} - from {} to {}", name, action, probe, fromWp, toWp);
+						found = true;
+					} else if (searchNeighborPoint(orientation + 1, probe, fromWp) || searchNeighborPoint(orientation + 1, probe, toWp)) {
+						found = true;
                     }
                 } else {
-                    String name = comp.getName();
                     if (name != null && name.toLowerCase().contains("door")) {
+						log.info("Found GameObject door - name {} with action {} at {} - from {} to {}", name, action, probe, fromWp, toWp);
                         found = true;
                     }
                 }
@@ -1215,7 +1224,6 @@ public class Rs2Walker {
 
         var tiles = Rs2Tile.getReachableTilesFromTile(Rs2Player.getWorldLocation(), 20);
 
-        //Exception to handle objects that handle long animations or walk
         /**
          * Exception to handle objects that handle long animations or walk
          * ignore colission if we did not find a valid tile to walk on
@@ -1265,9 +1273,13 @@ public class Rs2Walker {
      * @param target
      */
     public static void setTarget(WorldPoint target) {
-        if (target != null && !Microbot.isLoggedIn()) return;
+        if (target != null && !Microbot.isLoggedIn()) {
+            log.warn("Unable to set target: not logged in");
+            return;
+        }
         Player localPlayer = Microbot.getClient().getLocalPlayer();
         if (!ShortestPathPlugin.isStartPointSet() && localPlayer == null) {
+            log.warn("Start point is not set and player is null");
             return;
         }
 

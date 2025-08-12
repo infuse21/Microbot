@@ -1,17 +1,29 @@
 package net.runelite.client.plugins.microbot.util.grounditem;
 
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.Constants;
 import net.runelite.api.ItemComposition;
+import net.runelite.api.Perspective;
+import net.runelite.api.Point;
+import net.runelite.api.Scene;
 import net.runelite.api.Tile;
 import net.runelite.api.TileItem;
+import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
+import net.runelite.client.util.RSTimeUnit;
+
+import java.awt.Rectangle;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 
 /**
  * Enhanced model for ground items with caching, tick tracking, and despawn utilities.
@@ -23,6 +35,8 @@ import java.time.Instant;
  */
 @Data
 @Getter
+@EqualsAndHashCode
+@Slf4j
 public class Rs2GroundItemModel {
     
     private final TileItem tileItem;
@@ -37,9 +51,10 @@ public class Rs2GroundItemModel {
     private final long creationTime;
     private final int creationTick;
     
-    // Despawn tracking fields
-    private final Duration despawnTime;
+    // Despawn tracking fields - following GroundItemsOverlay pattern
     private final Instant spawnTime;
+    private final Duration despawnDuration;
+    private final Duration visibleDuration;
     
     /**
      * Creates a new Rs2GroundItemModel from a TileItem and Tile.
@@ -56,13 +71,27 @@ public class Rs2GroundItemModel {
         this.isOwned = tileItem.getOwnership() == TileItem.OWNERSHIP_SELF;
         this.isLootAble = !(tileItem.getOwnership() == TileItem.OWNERSHIP_OTHER);
         this.creationTime = System.currentTimeMillis();
-        this.creationTick = Microbot.getClientThread().runOnClientThreadOptional(
-            () -> Microbot.getClient().getTickCount()
-        ).orElse(0);
+        this.creationTick =  Microbot.getClient().getTickCount();
+
         
-        // Initialize despawn tracking
+        // Initialize despawn tracking following GroundItemsPlugin.buildGroundItem() pattern
         this.spawnTime = Instant.now();
-        this.despawnTime = Duration.ofSeconds(tileItem.getDespawnTime());
+        
+        // Calculate despawn time exactly like GroundItemsPlugin.buildGroundItem()
+        // final int despawnTime = item.getDespawnTime() - client.getTickCount();
+        // .despawnTime(Duration.of(despawnTime, RSTimeUnit.GAME_TICKS))
+        int despawnTime = 0;
+        int visibleTime = 0;
+        if (tileItem.getDespawnTime() > this.creationTick){
+            despawnTime = tileItem.getDespawnTime() - this.creationTick;
+           
+        }
+        if (tileItem.getVisibleTime() > this.creationTick) {
+            visibleTime = tileItem.getVisibleTime() - this.creationTick;   
+        }
+        // Use the exact same pattern as official RuneLite GroundItemsPlugin
+        this.despawnDuration = Duration.of(despawnTime, RSTimeUnit.GAME_TICKS);
+        this.visibleDuration = Duration.of(visibleTime, RSTimeUnit.GAME_TICKS);
         
         // Load item composition on client thread
         this.itemComposition = Microbot.getClientThread().runOnClientThreadOptional(
@@ -71,6 +100,13 @@ public class Rs2GroundItemModel {
         
         // Get name from composition or use default
         this.name = (itemComposition != null) ? itemComposition.getName() : "Unknown Item";
+        log.debug("Created Rs2GroundItemModel: {} x{} at {} | Spawn: {} | Despawn: {} (Local) | tick despawn: {} | current tick: {}", 
+            name, quantity, location, 
+            spawnTime.atZone(ZoneOffset.systemDefault()).format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")),
+            getDespawnTime().atZone(ZoneOffset.systemDefault()).format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")),
+            tileItem.getDespawnTime(),
+             this.creationTick
+            );
     }
     
     // ============================================
@@ -83,9 +119,7 @@ public class Rs2GroundItemModel {
      * @return The number of ticks since creation
      */
     public int getTicksSinceCreation() {
-        return Microbot.getClientThread().runOnClientThreadOptional(
-            () -> Microbot.getClient().getTickCount() - creationTick
-        ).orElse(0);
+        return  Microbot.getClient().getTickCount() - creationTick;        
     }
     
     /**
@@ -111,12 +145,39 @@ public class Rs2GroundItemModel {
     // ============================================
     
     /**
-     * Gets the absolute time when this item will despawn.
+     * Gets the spawn time as an Instant (following GroundItemsOverlay pattern).
+     * 
+     * @return Instant when the item spawned
+     */
+    public Instant getSpawnTime() {
+        return spawnTime;
+    }
+    
+    /**
+     * Gets the despawn duration for this item.
+     * 
+     * @return Duration until despawn from spawn time
+     */
+    public Duration getDespawnDuration() {
+        return despawnDuration;
+    }
+    
+    /**
+     * Gets the absolute time when this item will despawn (following GroundItemsOverlay pattern).
      * 
      * @return Instant when the item despawns
      */
     public Instant getDespawnTime() {
-        return spawnTime.plus(despawnTime);
+        return spawnTime.plus(despawnDuration);
+    }
+    
+    /**
+     * Gets the UTC timestamp when this item will despawn.
+     * 
+     * @return UTC timestamp in milliseconds when item despawns
+     */
+    public long getDespawnTimestampUtc() {
+        return getDespawnTime().toEpochMilli();
     }
     
     /**
@@ -141,8 +202,47 @@ public class Rs2GroundItemModel {
      * @return Ticks until despawn, or 0 if already despawned
      */
     public int getTicksUntilDespawn() {
-        Duration timeLeft = getTimeUntilDespawn();
-        return (int) (timeLeft.toMillis() / 600); // 600ms per tick
+        // Convert despawnDuration back to ticks using RSTimeUnit pattern
+        long despawnTicks = despawnDuration.toMillis() / Constants.GAME_TICK_LENGTH;
+        
+        int currentTick = Microbot.getClientThread().runOnClientThreadOptional(
+            () -> Microbot.getClient().getTickCount()
+        ).orElse((int)(creationTick + despawnTicks + 1)); // Fallback assumes despawned
+        
+        int ticksSinceSpawn = currentTick - creationTick;
+        long ticksRemaining = despawnTicks - ticksSinceSpawn;
+        return Math.max(0, (int)ticksRemaining);
+    }
+    
+    // ============================================
+    // UTC Timestamp Getter Methods
+    // ============================================
+    
+    /**
+     * Gets the UTC spawn time as ZonedDateTime.
+     * 
+     * @return Spawn time in UTC
+     */
+    public ZonedDateTime getSpawnTimeUtc() {
+        return spawnTime.atZone(ZoneOffset.UTC);
+    }
+    
+    /**
+     * Gets the UTC spawn timestamp in milliseconds.
+     * 
+     * @return Spawn timestamp in UTC milliseconds
+     */
+    public long getSpawnTimestampUtc() {
+        return spawnTime.toEpochMilli();
+    }
+    
+    /**
+     * Gets the total number of ticks this item should exist before despawning.
+     * 
+     * @return Total despawn ticks
+     */
+    public int getDespawnTicks() {
+        return (int)(despawnDuration.toMillis() / Constants.GAME_TICK_LENGTH);
     }
     
     /**
@@ -155,15 +255,37 @@ public class Rs2GroundItemModel {
     }
     
     /**
-     * Checks if this item has despawned based on time.
+     * Checks if this item has despawned based on game ticks.
+     * This is more accurate than real-time checking since OSRS is tick-based.
      * 
      * @return true if the item should have despawned
      */
     public boolean isDespawned() {
-        return Instant.now().isAfter(getDespawnTime());
+        if (isPersistened()) {
+            return false; // Persisted items never despawn
+        }
+    
+		return Instant.now().isAfter(getDespawnTime());
+        // Use tick-based calculation for more accurate game timing
+        //long despawnTicks = despawnDuration.toMillis() / Constants.GAME_TICK_LENGTH;        
+        //int currentTick = Microbot.getClient().getTickCount();        
+        //int ticksSinceSpawn = currentTick - creationTick;
+        //return ticksSinceSpawn >= despawnTicks;
+    }
+    public boolean isPersistened(){
+        // Check if the despawn duration is negative or very large
+        return despawnDuration.isNegative() ||despawnDuration.isZero() || despawnDuration.toMillis() > 24 * 60 * 60 * 1000; // More than 24 hours
     }
     
     /**
+     * Checks if this item has despawned based on UTC timestamp (fallback method).
+     * Less accurate than tick-based method but useful when client is unavailable.
+     * 
+     * @return true if the item should have despawned based on time
+     */
+    public boolean isDespawnedByTime() {
+        return ZonedDateTime.now(ZoneOffset.UTC).isAfter(getDespawnTime().atZone(ZoneOffset.UTC));
+    }    /**
      * Checks if this item will despawn within the specified number of seconds.
      * 
      * @param seconds The time threshold in seconds
@@ -430,18 +552,211 @@ public class Rs2GroundItemModel {
     }
     
     // ============================================
+    // Scene and Viewport Detection Methods
+    // ============================================
+    
+    /**
+     * Checks if this ground item is still present in the current scene.
+     * This verifies that the TileItem still exists on its tile in the scene.
+     * 
+     * @return true if the item is still in the current scene, false otherwise
+     */
+    public boolean isInCurrentScene() {
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            try {
+                Scene scene = Microbot.getClient().getTopLevelWorldView().getScene();
+                
+                // Check if the world point is within current scene bounds using WorldPoint.isInScene
+                if (!WorldPoint.isInScene(scene, location.getX(), location.getY())) {
+                    return false;
+                }
+                
+                // Convert world point to local coordinates for scene tile access
+                LocalPoint localPoint = LocalPoint.fromWorld(Microbot.getClient().getTopLevelWorldView(), location);
+                if (localPoint == null) {
+                    return false;
+                }
+                
+                // Get the tile from the scene using local coordinates
+                Tile[][][] sceneTiles = scene.getTiles();
+                int plane = location.getPlane();
+                int sceneX = localPoint.getSceneX();
+                int sceneY = localPoint.getSceneY();
+                
+                // Validate scene coordinates
+                if (plane < 0 || plane >= sceneTiles.length ||
+                    sceneX < 0 || sceneX >= Constants.SCENE_SIZE ||
+                    sceneY < 0 || sceneY >= Constants.SCENE_SIZE) {
+                    return false;
+                }
+                
+                Tile sceneTile = sceneTiles[plane][sceneX][sceneY];
+                if (sceneTile == null) {
+                    return false;
+                }
+                
+                // Check if our TileItem is still on this tile
+                if (sceneTile.getGroundItems() != null) {
+                    for (TileItem item : sceneTile.getGroundItems()) {
+                        if (item.getId() == this.id && 
+                            item.getQuantity() == this.quantity &&
+                            item.equals(this.tileItem)) {
+                            return true;
+                        }
+                    }
+                }
+                
+                return false;
+            } catch (Exception e) {
+                log.warn("Error checking if ground item is in current scene: {}", e.getMessage());
+                return false;
+            }
+        }).orElse(false);
+    }
+    
+    /**
+     * Checks if this ground item is visible and clickable in the current viewport.
+     * This combines scene presence checking with viewport visibility detection.
+     * 
+     * @return true if the item is visible and clickable in the viewport, false otherwise
+     */
+    public boolean isVisibleInViewport() {
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            try {
+                // First check if item is still in scene
+                if (!isInCurrentScene()) {
+                    return false;
+                }
+                
+                // Convert world location to canvas point using Perspective.localToCanvas
+                LocalPoint localPoint = LocalPoint.fromWorld(Microbot.getClient().getTopLevelWorldView(), location);
+                if (localPoint == null) {
+                    return false;
+                }
+                
+                Point canvasPoint = Perspective.localToCanvas(Microbot.getClient(), localPoint, location.getPlane());
+                if (canvasPoint == null) {
+                    return false;
+                }
+                
+                // Check if the point is within the viewport bounds
+                // Following the pattern from Rs2ObjectCacheUtils.isPointInViewport
+                int viewportX = Microbot.getClient().getViewportXOffset();
+                int viewportY = Microbot.getClient().getViewportYOffset();
+                int viewportWidth = Microbot.getClient().getViewportWidth();
+                int viewportHeight = Microbot.getClient().getViewportHeight();
+                
+                return canvasPoint.getX() >= viewportX && 
+                       canvasPoint.getX() <= viewportX + viewportWidth &&
+                       canvasPoint.getY() >= viewportY && 
+                       canvasPoint.getY() <= viewportY + viewportHeight;
+                       
+            } catch (Exception e) {
+                log.warn("Error checking if ground item is visible in viewport: {}", e.getMessage());
+                return false;
+            }
+        }).orElse(false);
+    }
+    
+    /**
+     * Gets the canvas point for this ground item if it's visible.
+     * Useful for click operations and overlay rendering.
+     * 
+     * @return the Point on the canvas, or null if not visible
+     */
+    public Point getCanvasPoint() {
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            try {
+                if (!isInCurrentScene()) {
+                    return null;
+                }
+                
+                LocalPoint localPoint = LocalPoint.fromWorld(Microbot.getClient().getTopLevelWorldView(), location);
+                if (localPoint == null) {
+                    return null;
+                }
+                
+                return Perspective.localToCanvas(Microbot.getClient(), localPoint, location.getPlane());
+            } catch (Exception e) {
+                log.warn("Error getting canvas point for ground item: {}", e.getMessage());
+                return null;
+            }
+        }).orElse(null);
+    }
+    
+    /**
+     * Checks if this ground item is clickable (in scene and in viewport).
+     * Convenience method that combines isInCurrentScene() and isVisibleInViewport().
+     * 
+     * @return true if the item can be clicked, false otherwise
+     */
+    public boolean isClickable() {
+        return isInCurrentScene() && isVisibleInViewport();
+    }
+    
+    /**
+     * Checks if this ground item is currently clickable by the player within a specific distance.
+     * This combines scene presence, viewport visibility, and distance checks.
+     * 
+     * @param maxDistance The maximum interaction distance in tiles
+     * @return true if the item is clickable within the specified distance, false otherwise
+     */
+    public boolean isClickable(int maxDistance) {
+        // Check if item is lootable first
+        if (!isLootAble) {
+            return false;
+        }
+        
+        // Check if item has despawned
+        if (isDespawned()) {
+            return false;
+        }
+        
+        // Check distance from player
+        if (!isWithinDistanceFromPlayer(maxDistance)) {
+            return false;
+        }
+        
+        // Check if visible in viewport (includes scene presence check)
+        return isVisibleInViewport();
+    }
+    
+    /**
+     * Gets the viewport bounds as a Rectangle for utility calculations.
+     * Following the pattern from Rs2ObjectCacheUtils.getViewportBounds.
+     * 
+     * @return Rectangle representing the current viewport bounds, or null if unavailable
+     */
+    public Rectangle getViewportBounds() {
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            try {
+                int viewportX = Microbot.getClient().getViewportXOffset();
+                int viewportY = Microbot.getClient().getViewportYOffset();
+                int viewportWidth = Microbot.getClient().getViewportWidth();
+                int viewportHeight = Microbot.getClient().getViewportHeight();
+                
+                return new Rectangle(viewportX, viewportY, viewportWidth, viewportHeight);
+            } catch (Exception e) {
+                log.warn("Error getting viewport bounds: {}", e.getMessage());
+                return null;
+            }
+        }).orElse(null);
+    }
+    
+    // ============================================
     // Utility Methods
     // ============================================
     
     /**
-     * Gets a string representation of this item.
+     * Gets a string representation of this item with UTC timing information.
      * 
      * @return String representation
      */
     @Override
     public String toString() {
-        return String.format("Rs2GroundItemModel{id=%d, name='%s', quantity=%d, location=%s, owned=%s, lootable=%s, value=%d, despawnIn=%ds}", 
-                id, name, quantity, location, isOwned, isLootAble, getTotalValue(), getSecondsUntilDespawn());
+        return String.format("Rs2GroundItemModel{id=%d, name='%s', quantity=%d, location=%s, owned=%s, lootable=%s, value=%d, despawnTicksLeft=%d, spawnTimeUtc='%s', despawnTimeUtc='%s'}", 
+                id, name, quantity, location, isOwned, isLootAble, getTotalValue(), getTicksUntilDespawn(), 
+                getSpawnTimeUtc().toString(), getDespawnTime().atZone(ZoneOffset.UTC).toString());
     }
     
     /**

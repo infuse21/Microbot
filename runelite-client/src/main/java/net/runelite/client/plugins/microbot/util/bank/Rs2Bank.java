@@ -514,7 +514,7 @@ public class Rs2Bank {
         if (amount <= 0) return true;
         int selected = Microbot.getVarbitValue(VarbitID.BANK_QUANTITY_TYPE);
         int configuredX = Microbot.getVarbitValue(VarbitID.BANK_REQUESTEDQUANTITY);
-        boolean hasX = configuredX > 0;        
+        boolean hasX = configuredX > 0;
         boolean isInventory = (container == BANK_INVENTORY_ITEM_CONTAINER);
         int xSetOffset = -1;
         int xPromptOffset = -1;
@@ -1240,7 +1240,7 @@ public class Rs2Bank {
                 if (!Rs2GameObject.interact(nearestObj.get(), "Bank")) return false;
             } else {
                 final Rs2NpcModel banker = Rs2Npc.getBankerNPC();
-                if (!Rs2Npc.interact(banker, "Bank")) return false;
+                if (banker == null || !Rs2Npc.interact(banker, "Bank")) return false;
             }
 
             return sleepUntil(Rs2Bank::isOpen, 5_000);
@@ -1481,12 +1481,12 @@ public class Rs2Bank {
      * @return The item widget, or null if the item isn't found.
      */
     private static Rs2ItemModel findBankItem(String name, boolean exact, int amount) {
-    final String lowerCaseName = name.toLowerCase();
-    final Stream<Rs2ItemModel> items = getAll()
-            .filter(x -> exact ? x.getName().equalsIgnoreCase(lowerCaseName) : x.getName().toLowerCase().contains(lowerCaseName))
-            .filter(x -> x.getQuantity() >= amount);
-    return exact ? items.findAny().orElse(null) : items.min(Comparator.comparingInt(item -> item.getName().length())).orElse(null);
-}
+        final String lowerCaseName = name.toLowerCase();
+        final Stream<Rs2ItemModel> items = getAll()
+                .filter(x -> exact ? x.getName().equalsIgnoreCase(lowerCaseName) : x.getName().toLowerCase().contains(lowerCaseName))
+                .filter(x -> x.getQuantity() >= amount);
+        return exact ? items.findAny().orElse(null) : items.min(Comparator.comparingInt(item -> item.getName().length())).orElse(null);
+    }
 
     /**
      * Finds an item in the bank based on a list of names.
@@ -1594,7 +1594,7 @@ public class Rs2Bank {
                 .collect(Collectors.toSet());
         long accessibleBanksTime = System.nanoTime() - accessibleBanksStart;
         log.info("\n\tAccessible banks filtering performance: \n\t{}ms, Found {} accessible banks out of {} total",
-                 accessibleBanksTime / 1_000_000.0, accessibleBanks.size(), BankLocation.values().length);
+                accessibleBanksTime / 1_000_000.0, accessibleBanks.size(), BankLocation.values().length);
 
         if (accessibleBanks.isEmpty()) {
             Microbot.log("No accessible banks found");
@@ -1620,12 +1620,12 @@ public class Rs2Bank {
         }
         // Create a WorldArea around the final tile to be more generous
         WorldPoint nearestTile = path.get(path.size() - 1);
-		WorldArea nearestTileArea = new WorldArea(nearestTile, 2, 2);
+        WorldArea nearestTileArea = new WorldArea(nearestTile, 2, 2);
         Optional<BankLocation> byPath = accessibleBanks.stream()
                 .filter(b -> {
-					WorldArea accessibleBankArea = new WorldArea(b.getWorldPoint(), 2, 2);
-					return accessibleBankArea.intersectsWith2D(nearestTileArea);
-				})
+                    WorldArea accessibleBankArea = new WorldArea(b.getWorldPoint(), 2, 2);
+                    return accessibleBankArea.intersectsWith2D(nearestTileArea);
+                })
                 .findFirst();
         BankLocation returnBankLocation = null;
         if (byPath.isPresent()) {
@@ -1795,7 +1795,7 @@ public class Rs2Bank {
      * @param e The event containing the latest bank items.
      */
     public static void updateLocalBank(ItemContainerChanged e) {
-        synchronized (lock) {            
+        synchronized (lock) {
             List<Rs2ItemModel> list = updateItemContainer(InventoryID.BANK.getId(), e);
             if (list != null) {
                 // Update the centralized bank data (Rs2BankData.set() is already synchronized)                
@@ -1969,7 +1969,7 @@ public class Rs2Bank {
             return false;
         }
 
-		synchronized(Rs2Bank.class) {
+        synchronized(Rs2Bank.class) {
             if (!isBankPinWidgetVisible()) return true;
             for (int i = 0; i < pin.length(); i++) {
                 final char c = pin.charAt(i);
@@ -1988,7 +1988,7 @@ public class Rs2Bank {
                 }
             }
             return true;
-		}
+        }
     }
 
     public static boolean handleBankPin() {
@@ -2033,7 +2033,7 @@ public class Rs2Bank {
     /**
      * Banks at specific bank location if your inventory does not have enough emptyslots (0 emptyslots being full). Will walk back to the initialplayerlocation passed as param
      *
-     * @param itemNames the item names
+     * @param itemNames The item names, which can be either item names or item IDs as strings.
      * @param exactItemNames
      * @param initialPlayerLocation
      * @param bankLocation
@@ -2046,7 +2046,11 @@ public class Rs2Bank {
             boolean isBankOpen = Rs2Bank.walkToBankAndUseBank(bankLocation);
             if (isBankOpen) {
                 for (String itemName : itemNames) {
-                    depositAll(itemName,false);
+                    if (itemName.matches("\\d+")) {
+                        depositAll(Integer.parseInt(itemName));
+                    } else {
+                        depositAll(itemName, false);
+                    }
                     //Rs2Bank.depositAll(x -> x.name.toLowerCase().contains(itemName));
                 }
             }
@@ -2205,6 +2209,31 @@ public class Rs2Bank {
      */
     public static boolean emptySeedBox() {
         return empty(ItemID.SEED_BOX,ItemID.SEED_BOX_OPEN);
+    }
+
+    /**
+     * Empties the looting bag if one is present. The bank must be open.
+     *
+     * @return true if the looting bag was emptied, false otherwise.
+     */
+    public static boolean depositLootingBag(){
+        if(!Rs2Inventory.contains(ItemID.LOOTING_BAG_OPEN)) return false;
+        if(!Rs2Bank.isOpen()) return false;
+
+        //The looting bag's deposit-loot widget's ID is 983046
+        if (Rs2Inventory.interact(ItemID.LOOTING_BAG_OPEN, "View")) {
+            sleepUntil(()-> Rs2Widget.getWidget(983046) != null, Rs2Random.between(2000,5000));
+            if(Rs2Widget.getWidget(983046) != null){
+                if(Rs2Widget.clickWidget(983046)){
+                    sleepUntil(()-> Rs2Widget.getWidget(15,11).getChildren()[0] == null, Rs2Random.between(500,1000));
+                    if(Rs2Widget.clickWidget(983048)){ // close the bag
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
     }
 
 

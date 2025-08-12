@@ -1,20 +1,22 @@
 package net.runelite.client.plugins.microbot.shortestpath.pathfinder;
 
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.shortestpath.WorldPointUtil;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
+@Slf4j
 public class Pathfinder implements Runnable {
     private PathfinderStats stats;
+    @Getter
     private volatile boolean done = false;
     private volatile boolean cancelled = false;
 
-    @Getter
-    private final WorldPoint start;
-    @Getter
-    private final Set<WorldPoint> targets;
+    private final int start;
+    private final Set<Integer> targets;
 
     private final PathfinderConfig config;
     private final CollisionMap map;
@@ -26,10 +28,9 @@ public class Pathfinder implements Runnable {
     private final Queue<Node> pending = new PriorityQueue<>(256);
     private final VisitedTiles visited;
 
-    @SuppressWarnings("unchecked") // Casting EMPTY_LIST is safe here
-    private List<WorldPoint> path = (List<WorldPoint>)Collections.EMPTY_LIST;
+    private volatile List<WorldPoint> path = Collections.emptyList();
     private boolean pathNeedsUpdate = false;
-    private Node bestLastNode;
+    private volatile Node bestLastNode;
     /**
      * Teleportation transports are updated when this changes.
      * Can be either:
@@ -39,30 +40,36 @@ public class Pathfinder implements Runnable {
      */
     private int wildernessLevel;
 
-    public Pathfinder(PathfinderConfig config, WorldPoint start, WorldPoint target) {
-        stats = new PathfinderStats();
-        this.config = config;
-        this.map = config.getMap();
-        this.start = start;
-        this.targets = Set.of(target);
-        visited = new VisitedTiles(map);
-        targetInWilderness = PathfinderConfig.isInWilderness(target);
-        wildernessLevel = 31;
-    }
-
-    public Pathfinder(PathfinderConfig config, WorldPoint start, Set<WorldPoint> targets) {
+    public Pathfinder(PathfinderConfig config, int start, Set<Integer> targets) {
         stats = new PathfinderStats();
         this.config = config;
         this.map = config.getMap();
         this.start = start;
         this.targets = targets;
         visited = new VisitedTiles(map);
-        targetInWilderness = PathfinderConfig.isInWilderness(targets);
+        targetInWilderness = PathfinderConfig.isInWildernessPackedPoint(targets);
         wildernessLevel = 31;
+        log.debug("Created Pathfinder src={} dst={} config={}",
+                WorldPointUtil.toString(this.start),
+                WorldPointUtil.toString(this.targets),
+                config
+        );
     }
 
-    public boolean isDone() {
-        return done;
+    public Pathfinder(PathfinderConfig config, WorldPoint start, Set<WorldPoint> targets) {
+        this(config, WorldPointUtil.packWorldPoint(start), targets.stream().map(WorldPointUtil::packWorldPoint).collect(Collectors.toSet()));
+    }
+
+    public Pathfinder(PathfinderConfig config, WorldPoint start, WorldPoint target) {
+        this(config, start, Set.of(target));
+    }
+
+    public WorldPoint getStart() {
+        return WorldPointUtil.unpackWorldPoint(start);
+    }
+
+    public Set<WorldPoint> getTargets() {
+        return targets.stream().map(WorldPointUtil::unpackWorldPoint).collect(Collectors.toSet());
     }
 
     public void cancel() {
@@ -79,6 +86,10 @@ public class Pathfinder implements Runnable {
     }
 
     public List<WorldPoint> getPath() {
+        if (!done && !cancelled) throw new IllegalStateException("Pathfinder is not done");
+        if (cancelled) {
+            log.warn("Getting cancelled path");
+        }
         Node lastNode = bestLastNode; // For thread safety, read bestLastNode once
         if (lastNode == null) {
             return path;
@@ -120,6 +131,7 @@ public class Pathfinder implements Runnable {
         long cutoffDurationMillis = config.getCalculationCutoffMillis();
         long cutoffTimeMillis = System.currentTimeMillis() + cutoffDurationMillis;
 
+        config.refreshTeleports(start, 31);
         while (!cancelled && (!boundary.isEmpty() || !pending.isEmpty())) {
             Node node = boundary.peekFirst();
             Node p = pending.peek();
@@ -156,15 +168,15 @@ public class Pathfinder implements Runnable {
                 }
             }
 
-            if (targets.contains(WorldPointUtil.unpackWorldPoint(node.packedPosition))) {
+            if (targets.contains(node.packedPosition)) {
                 bestLastNode = node;
                 pathNeedsUpdate = true;
                 break;
             }
 
-            for (WorldPoint target : targets) {
-                int distance = WorldPointUtil.distanceBetween(node.packedPosition, WorldPointUtil.packWorldPoint(target));
-                long heuristic = distance + (long) WorldPointUtil.distanceBetween(node.packedPosition, WorldPointUtil.packWorldPoint(target), 2);
+            for (int target : targets) {
+                int distance = WorldPointUtil.distanceBetween(node.packedPosition, target);
+                long heuristic = distance + (long) WorldPointUtil.distanceBetween(node.packedPosition, target, 2);
 
                 if (heuristic < bestHeuristic || (heuristic <= bestHeuristic && distance < bestDistance)) {
 
@@ -190,6 +202,12 @@ public class Pathfinder implements Runnable {
         pending.clear();
 
         stats.end(); // Include cleanup in stats to get the total cost of pathfinding
+
+        log.debug("Pathfinding completed DstNode={} src={} dst={} Stats={}",
+                bestLastNode == null ? "null" : WorldPointUtil.toString(bestLastNode.packedPosition),
+                WorldPointUtil.toString(start),
+                WorldPointUtil.toString(targets),
+                getStats().toString());
     }
 
     public static class PathfinderStats {
@@ -216,6 +234,11 @@ public class Pathfinder implements Runnable {
         private void end() {
             endNanos = System.nanoTime();
             ended = true;
+        }
+
+        @Override
+        public String toString() {
+            return String.format("PathfinderStats(nodes=%d,transports=%d,time=%dms)", nodesChecked, transportsChecked, getElapsedTimeNanos() / 1_000_000);
         }
     }
 }

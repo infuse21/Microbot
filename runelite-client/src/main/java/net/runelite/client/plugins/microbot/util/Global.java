@@ -1,6 +1,5 @@
 package net.runelite.client.plugins.microbot.util;
 
-import com.google.common.util.concurrent.Uninterruptibles;
 import lombok.SneakyThrows;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;

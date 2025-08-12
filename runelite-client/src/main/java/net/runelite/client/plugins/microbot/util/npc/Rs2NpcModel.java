@@ -1,5 +1,6 @@
 package net.runelite.client.plugins.microbot.util.npc;
 
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import net.runelite.api.NPC;
 import net.runelite.api.NPCComposition;
@@ -10,6 +11,7 @@ import net.runelite.client.plugins.microbot.util.ActorModel;
 import org.jetbrains.annotations.Nullable;
 
 @Getter
+@EqualsAndHashCode(callSuper = true) // Ensure equality checks include ActorModel fields
 public class Rs2NpcModel extends ActorModel implements NPC
 {
 

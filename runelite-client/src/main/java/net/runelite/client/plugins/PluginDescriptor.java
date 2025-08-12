@@ -130,4 +130,10 @@ public @interface PluginDescriptor
 	boolean loadInSafeMode() default true;
 
 	boolean priority() default false;
+
+	String author() default "";
+	String version() default "1.0.0";
+	String minClientVersion() default "1.0.0";
+	String iconUrl() default "";
+	boolean isExternal() default false; // Indicates if the plugin is an external plugin, loaded from a JAR file
 }

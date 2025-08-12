@@ -1,22 +1,26 @@
 package net.runelite.client.plugins.microbot.util.cache.strategy.entity;
 
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 import java.util.concurrent.ScheduledExecutorService;
 
 import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
 
+import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
+import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.ItemDespawned;
 import net.runelite.api.events.ItemSpawned;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.cache.strategy.CacheOperations;
 import net.runelite.client.plugins.microbot.util.cache.strategy.CacheUpdateStrategy;
 import net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItemModel;
+import net.runelite.client.plugins.microbot.util.cache.Rs2GroundItemCache;
 
 /**
  * Enhanced cache update strategy for ground item data.
@@ -26,8 +30,11 @@ import net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItemModel;
 @Slf4j
 public class GroundItemUpdateStrategy implements CacheUpdateStrategy<String, Rs2GroundItemModel> {
     
+    GameState lastGameState = null;
+    
     // ScheduledExecutorService for non-blocking operations
     private final ScheduledExecutorService executorService;
+    private ScheduledFuture<?> periodicSceneScanTask;
     private ScheduledFuture<?> sceneScanTask;
     
     // Scene scan tracking
@@ -72,6 +79,8 @@ public class GroundItemUpdateStrategy implements CacheUpdateStrategy<String, Rs2
             handleItemSpawned((ItemSpawned) event, cache);
         } else if (event instanceof ItemDespawned) {
             handleItemDespawned((ItemDespawned) event, cache);
+        } else if (event instanceof GameStateChanged) {
+            handleGameStateChanged((GameStateChanged) event, cache);
         }
     }
     
@@ -88,14 +97,33 @@ public class GroundItemUpdateStrategy implements CacheUpdateStrategy<String, Rs2
             return;
         }
         
-        // Submit scene scan to executor service for non-blocking execution
-        executorService.schedule(() -> {
-            try {
-                performSceneScanInternal(cache);
-            } catch (Exception e) {
-                log.error("Error during ground item scene scan", e);
-            }
-        }, delayMs, TimeUnit.MILLISECONDS); // delay before scan
+        // Respect minimum scan interval unless forced
+        if ((System.currentTimeMillis() - lastSceneScan) < MIN_SCAN_INTERVAL_MS) {
+            log.debug("Skipping ground item scene scan due to minimum interval not reached");
+            scanActive.set(false);
+            return;
+        }
+        
+        if (sceneScanTask != null && !sceneScanTask.isDone()) {
+            log.debug("Skipping ground item scene scan - already scheduled or running");
+            return; // Don't perform scan if already scheduled or running
+        }
+        
+        if (scanActive.compareAndSet(false, true)) {
+            // Submit scene scan to executor service for non-blocking execution
+            sceneScanTask = executorService.schedule(() -> {
+                try {
+                    performSceneScanInternal(cache);
+                } catch (Exception e) {
+                    log.error("Error during ground item scene scan", e);
+                } finally {
+                    scanActive.set(false);                    
+                }
+            }, delayMs, TimeUnit.MILLISECONDS); // delay before scan
+        } else {
+            log.debug("Skipping ground item scene scan - already active");
+            return; // Don't perform scan if already active
+        }
     }
     
     /**
@@ -114,14 +142,20 @@ public class GroundItemUpdateStrategy implements CacheUpdateStrategy<String, Rs2
         // Cancel existing task if any
         stopPeriodicSceneScan();
         
-        sceneScanTask = executorService.scheduleWithFixedDelay(() -> {
+        periodicSceneScanTask = executorService.scheduleWithFixedDelay(() -> {
             try {
-                if (scanRequest.get() && Microbot.loggedIn) {
-                    log.debug("Periodic ground item scene scan triggered");
-                    performSceneScanInternal(cache);
+                if (scanActive.compareAndSet(false, true)) {
+                    if (scanRequest.get() && Microbot.loggedIn) {
+                        log.debug("Periodic ground item scene scan triggered");
+                        performSceneScanInternal(cache);
+                    }
+                } else {
+                    log.debug("Skipping scheduled ground item scene scan - already active");
                 }
             } catch (Exception e) {
                 log.error("Error in periodic ground item scene scan", e);
+            } finally {
+                scanActive.set(false);                
             }
         }, intervalSeconds, intervalSeconds, TimeUnit.SECONDS);
         
@@ -132,9 +166,9 @@ public class GroundItemUpdateStrategy implements CacheUpdateStrategy<String, Rs2
      * Stops periodic scene scanning.
      */
     public void stopPeriodicSceneScan() {
-        if (sceneScanTask != null && !sceneScanTask.isDone()) {
-            sceneScanTask.cancel(false);
-            sceneScanTask = null;
+        if (periodicSceneScanTask != null && !periodicSceneScanTask.isDone()) {
+            periodicSceneScanTask.cancel(false);
+            periodicSceneScanTask = null;
             log.debug("Stopped periodic ground item scene scanning");
         }
     }
@@ -146,93 +180,121 @@ public class GroundItemUpdateStrategy implements CacheUpdateStrategy<String, Rs2
      * @return true if a scan would be beneficial
      */
     public boolean requestSceneScan(CacheOperations<String, Rs2GroundItemModel> cache) {
+        if (scanActive.get()) {
+            log.debug("Skipping scene scan request - already active");
+            return false; // Don't request scan if already active
+        }
         if (scanRequest.compareAndSet(false, true)) {
             log.debug("Ground item scene scan requested");
-            performSceneScan(cache, 0);
+            performSceneScan(cache, 5); // Perform with 5ms delay for stability
         }
         if (!Microbot.getClient().isClientThread()){
-            sleepUntil(()->!scanRequest.get()); 
+            sleepUntil(()->!scanRequest.get(), 1000); // Wait until scan is requested and reset
         }        
         return !scanRequest.get(); // Return true if scan was requested,reseted               
     }
     
     /**
-     * Performs the actual scene scan to populate ground items from tiles.
-     * Scans all tiles in the scene to find ground items similar to ObjectUpdateStrategy.
+     * Performs the actual scene scan to synchronize ground items with the current scene.
+     * This method both adds new items found in the scene AND removes cached items no longer present.
+     * Provides complete scene synchronization in a single operation.
      */
     private void performSceneScanInternal(CacheOperations<String, Rs2GroundItemModel> cache) {
-        if (scanActive.compareAndSet(false, true)) {
-            try {
-                long currentTime = System.currentTimeMillis();
-                
-               // Check minimum interval to prevent excessive scanning
-                if (currentTime - lastSceneScan < MIN_SCAN_INTERVAL_MS) {
-                    log.debug("Skipping Ground scene scan - too soon since last scan");
-                    scanActive.set(false);
-                    return;
-                }
-                Player player = Microbot.getClient().getLocalPlayer();
-                if (player == null) {
-                    log.warn("Cannot perform ground item scene scan - no player");
-                    scanActive.set(false);
-                    return;
-                }
-                
-                Scene scene = player.getWorldView().getScene();
-                if (scene == null) {
-                    log.warn("Cannot perform ground item scene scan - no scene");
-                    scanActive.set(false);
-                    return;
-                }
-                
-                Tile[][][] tiles = scene.getTiles();
-                if (tiles == null) {
-                    log.warn("Cannot perform ground item scene scan - no tiles");
-                    scanActive.set(false);
-                    return;
-                }
-                
-                int addedItems = 0;
-                int z = player.getWorldView().getPlane();
-                
-                log.debug("Starting ground item scene scan (cache size: {})", cache.size());
-                
-                for (int x = 0; x < Constants.SCENE_SIZE; x++) {
-                    for (int y = 0; y < Constants.SCENE_SIZE; y++) {
-                        Tile tile = tiles[z][x][y];
-                        if (tile == null) continue;
-                        if(tile.getGroundItems() == null) continue; // Ensure ground items are loaded
-                        // Get ground items on this tile
-                        for (TileItem tileItem : tile.getGroundItems()) {
-                            if (tileItem != null) {
-                                String key = generateKey(tileItem, tile.getWorldLocation());
-                                
-                                // Only add if not already in cache to avoid recursive calls
-                                if (!cache.containsKey(key)) {
-                                    Rs2GroundItemModel groundItemModel = new Rs2GroundItemModel(tileItem, tile);
-                                    cache.put(key, groundItemModel);
-                                    addedItems++;
-                                }
+        try {
+            long currentTime = System.currentTimeMillis();
+            
+           // Check minimum interval to prevent excessive scanning
+            if (currentTime - lastSceneScan < MIN_SCAN_INTERVAL_MS) {
+                log.debug("Skipping Ground scene scan - too soon since last scan");
+                scanActive.set(false);
+                return;
+            }
+            Player player = Microbot.getClient().getLocalPlayer();
+            if (player == null) {
+                log.warn("Cannot perform ground item scene scan - no player");
+                scanActive.set(false);
+                return;
+            }
+            
+            Scene scene = player.getWorldView().getScene();
+            if (scene == null) {
+                log.warn("Cannot perform ground item scene scan - no scene");
+                scanActive.set(false);
+                return;
+            }
+            
+            Tile[][][] tiles = scene.getTiles();
+            if (tiles == null) {
+                log.warn("Cannot perform ground item scene scan - no tiles");
+                scanActive.set(false);
+                return;
+            }
+
+            // Build a set of all currently existing ground item keys from the scene
+            java.util.Set<String> currentSceneKeys = new java.util.HashSet<>();
+            int addedItems = 0;
+            int z = player.getWorldView().getPlane();
+            
+            log.debug("Starting ground item scene synchronization (cache size: {})", cache.size());
+            
+            // Phase 1: Scan scene and add new items
+            for (int x = 0; x < Constants.SCENE_SIZE; x++) {
+                for (int y = 0; y < Constants.SCENE_SIZE; y++) {
+                    Tile tile = tiles[z][x][y];
+                    if (tile == null) continue;
+                    if(tile.getGroundItems() == null) continue; // Ensure ground items are loaded
+                    
+                    // Get ground items on this tile
+                    for (TileItem tileItem : tile.getGroundItems()) {
+                        if (tileItem != null) {
+                            String key = generateKey(tileItem, tile.getWorldLocation());
+                            currentSceneKeys.add(key); // Track all scene items
+                            
+                            // Only add if not already in cache to avoid recursive calls
+                            if (!cache.containsKey(key)) {
+                                Rs2GroundItemModel groundItemModel = new Rs2GroundItemModel(tileItem, tile);                                
+                                cache.put(key, groundItemModel);
+                                addedItems++;
                             }
                         }
                     }
                 }
-                                                
-                if (addedItems > 0) {
-                    log.debug("Ground item scene scan completed - added {} items (total cache size: {})", 
-                            addedItems, cache.size());
-                } else {
-                    log.debug("Ground item scene scan completed - no new items added");
-                }
-                scanRequest.set(false); //NOT in finally block to allow for rescan if there are an error 
-            }catch (Exception e) {
-                log.error("Error during ground item scene scan", e);                
-            }finally {
-                scanActive.set(false);
-                lastSceneScan = System.currentTimeMillis(); // Update last scan time                
             }
-        } else {
-            log.debug("Ground item scene scan already in progress, skipping");
+            
+            // Phase 2: Remove cached items no longer in scene
+            int removedItems = 0;
+            if (!currentSceneKeys.isEmpty()) {
+                // Find cached items that are no longer in the scene using CacheOperations streaming
+                List<String> keysToRemove = cache.entryStream()
+                    .map(java.util.Map.Entry::getKey)
+                    .filter(key -> !currentSceneKeys.contains(key))
+                    .collect(Collectors.toList());
+                
+                // Remove the items that are no longer in scene
+                for (String key : keysToRemove) {
+                    Rs2GroundItemModel item = cache.getRawValue(key); // Use raw value to avoid triggering recursive scene scans
+                    cache.remove(key);
+                    if (item != null) {
+                        removedItems++;
+                        log.trace("Removed ground item not in scene: ID {} ({})", item.getId(), key);
+                    }
+                }
+            }
+                                            
+            // Log comprehensive results
+            if (addedItems > 0 || removedItems > 0) {
+                log.debug("Ground item scene synchronization completed - added {} items, removed {} items (total cache size: {})", 
+                        addedItems, removedItems, cache.size());
+            } else {
+                log.debug("Ground item scene synchronization completed - no changes made");
+            }
+            
+            scanRequest.set(false); //NOT in finally block to allow for rescan if there are an error 
+        }catch (Exception e) {
+            log.error("Error during ground item scene synchronization", e);                
+        }finally {
+            scanActive.set(false);
+            lastSceneScan = System.currentTimeMillis(); // Update last scan time                
         }
     }
     
@@ -248,10 +310,149 @@ public class GroundItemUpdateStrategy implements CacheUpdateStrategy<String, Rs2
     
     private void handleItemDespawned(ItemDespawned event, CacheOperations<String, Rs2GroundItemModel> cache) {
         TileItem item = event.getItem();
+        Rs2GroundItemModel groundItem = new Rs2GroundItemModel(item, event.getTile());
+        log.debug(groundItem.toDetailedString());
         if (item != null) {
             String key = generateKey(item, event.getTile().getWorldLocation());
             cache.remove(key);
             log.trace("Removed ground item {} at {} from cache via despawn event", item.getId(), event.getTile().getWorldLocation());
+        }
+    }
+    /**
+     * Cleanup persistent items that don't naturally despawn.
+     * This method follows the same pattern as performSceneScan with proper async execution.
+     * 
+     * @param cache The cache operations interface
+     * @param delayMs Delay before performing the cleanup
+     */
+    public void cleanupPersistentItems(CacheOperations<String, Rs2GroundItemModel> cache, long delayMs) {
+        if (executorService == null || executorService.isShutdown()) {
+            log.debug("Skipping persistent item cleanup - strategy is shut down");
+            return;
+        }
+        
+        // Submit cleanup to executor service for non-blocking execution
+        executorService.schedule(() -> {
+            try {
+                cleanupPersistentItemsInternal(cache);
+            } catch (Exception e) {
+                log.error("Error during persistent item cleanup", e);
+            }
+        }, delayMs, TimeUnit.MILLISECONDS);
+    }
+    
+    /**
+     * Internal method that performs the actual persistent item cleanup.
+     * Directly removes persistent ground items that don't naturally despawn without scene scanning.
+     * 
+     * @param cache The cache operations interface
+     * @return The number of persistent items cleaned up
+     */
+    private int cleanupPersistentItemsInternal(CacheOperations<String, Rs2GroundItemModel> cache) {
+        // Use CacheOperations streaming to find and remove persistent items
+        List<String> keysToRemove = cache.entryStream()
+            .filter(entry -> {
+                Rs2GroundItemModel item = entry.getValue();
+                // Check if this is a persistent item (using isPersistened method)
+                return item.isPersistened();
+            })
+            .map(java.util.Map.Entry::getKey)
+            .collect(Collectors.toList());
+        
+        if (keysToRemove.isEmpty()) {
+            log.debug("No persistent ground items found to cleanup");
+            return 0;
+        }
+        
+        // Remove all persistent items directly
+        int removedCount = 0;
+        for (String key : keysToRemove) {
+            Rs2GroundItemModel item = cache.getRawValue(key); // Use raw value to avoid triggering recursive scene scans
+            cache.remove(key);
+            if (item != null) {
+                removedCount++;
+                log.trace("Removed persistent ground item: ID {} ({})", item.getId(), key);
+            }
+        }
+        
+        log.debug("Cleaned up {} persistent ground items", removedCount);
+        return removedCount;
+    }
+    
+    /**
+     * Handles game state changes for ground item cache management.
+     * 
+     * <p><strong>Ground Item Despawn Handling Strategy:</strong></p>
+     * <ul>
+     *   <li>Unlike NPCs, ground items have complex despawn timing that isn't always captured by {@link net.runelite.api.events.ItemDespawned}</li>
+     *   <li>Items can despawn based on game ticks elapsed since spawn time, which may not trigger ItemDespawned events</li>
+     *   <li>We rely on {@link Rs2GroundItemCache#performPeriodicCleanup()} to check {@link Rs2GroundItemModel#isDespawned()}</li>
+     *   <li>The {@link Rs2GroundItemCache#isExpired(String)} method integrates despawn timing directly into cache operations</li>
+     *   <li>This dual approach ensures expired ground items are removed even when events are missed</li>
+     * </ul>
+     * 
+     * <p><strong>Why scene scanning is essential for ground items:</strong></p>
+     * <ul>
+     *   <li>Ground items have complex despawn mechanics not always captured by ItemDespawned events</li>
+     *   <li>Persistent items (player drops, quest items) may have indefinite lifespans requiring special detection</li>
+     *   <li>Events can be missed during region changes, network issues, or client restarts</li>
+     *   <li>Scene scanning ensures cache synchronization with actual game state after login/loading</li>
+     *   <li>The {@link #performSceneScan(CacheOperations, long)} method provides complete scene-to-cache synchronization</li>
+     * </ul>
+     * 
+     * <p><strong>Persistent Item Handling:</strong></p>
+     * <ul>
+     *   <li>Persistent items are detected using {@link Rs2GroundItemModel#isPersistened()}</li>
+     *   <li>Scene scanning includes cleanup of persistent items that should no longer exist</li>
+     *   <li>Combines natural despawn cleanup with scene validation for comprehensive item management</li>
+     * </ul>
+     * 
+     * <p><strong>Game State Specific Actions:</strong></p>
+     * <ul>
+     *   <li><strong>LOGGED_IN/LOADING:</strong> Perform scene scan with 2-tick delay for stability and cleanup persistent items</li>
+     *   <li><strong>LOGOUT States:</strong> Cancel ongoing scan operations and invalidate entire cache</li>
+     *   <li><strong>Other States:</strong> Update state tracking without additional actions</li>
+     * </ul>
+     * 
+     * @param event The game state change event
+     * @param cache The ground item cache operations interface
+     */
+    private void handleGameStateChanged(GameStateChanged event, CacheOperations<String, Rs2GroundItemModel> cache) {
+        switch (event.getGameState()) {
+            case LOGGED_IN:               
+                // Ground item despawn handling is managed by Rs2GroundItemCache.performPeriodicCleanup()
+                // and Rs2GroundItemCache.isExpired() using Rs2GroundItemModel.isDespawned()
+                lastGameState = GameState.LOGGED_IN;
+                log.debug("Player logged in - ground item despawn handled by periodic cleanup");
+                
+                // Perform scene scan to synchronize cache with current scene and cleanup persistent items                
+                performSceneScan(cache, Constants.GAME_TICK_LENGTH*2); // 2 ticks delay for stability
+                break;
+            case LOADING:
+                // Ground item despawn handling is managed by Rs2GroundItemCache.performPeriodicCleanup()
+                // and Rs2GroundItemCache.isExpired() using Rs2GroundItemModel.isDespawned()
+                lastGameState = GameState.LOADING;
+                log.debug("Game loading - ground item despawn handled by periodic cleanup");
+                
+                // Perform scene scan after loading completes and cleanup persistent items
+                performSceneScan(cache, Constants.GAME_TICK_LENGTH*2); // 2 ticks delay for stability                
+                break;
+            case LOGIN_SCREEN:
+            case LOGGING_IN:
+            case CONNECTION_LOST:                                             
+                if (sceneScanTask != null && !sceneScanTask.isDone()) {
+                    sceneScanTask.cancel(true);
+                    sceneScanTask = null;
+                }
+                // Clear scan request when logging out and stop periodic scanning
+                scanRequest.set(false); // Reset scan request
+                cache.invalidateAll();
+                lastGameState = event.getGameState();
+                log.debug("Player logged out - cleared ground item cache and stopped operations");
+                break;
+            default:
+                lastGameState = event.getGameState();
+                break;
         }
     }
     
@@ -273,7 +474,7 @@ public class GroundItemUpdateStrategy implements CacheUpdateStrategy<String, Rs2
     
     @Override
     public Class<?>[] getHandledEventTypes() {
-        return new Class<?>[]{ItemSpawned.class, ItemDespawned.class};
+        return new Class<?>[]{ItemSpawned.class, ItemDespawned.class, GameStateChanged.class};
     }
     
     @Override
@@ -284,10 +485,22 @@ public class GroundItemUpdateStrategy implements CacheUpdateStrategy<String, Rs2
     @Override
     public void onDetach(CacheOperations<String, Rs2GroundItemModel> cache) {
         log.debug("GroundItemUpdateStrategy detached from cache");
+        // Cancel periodic scanning when detaching
+        if (periodicSceneScanTask != null && !periodicSceneScanTask.isDone()) {
+            periodicSceneScanTask.cancel(false);
+            periodicSceneScanTask = null;
+        }
     }
+    
     @Override
     public void close() {
+        log.debug("Shutting down GroundItemUpdateStrategy");
         stopPeriodicSceneScan();
+        if (sceneScanTask != null && !sceneScanTask.isDone()) {
+            sceneScanTask.cancel(false);
+            sceneScanTask = null;
+            log.debug("Cancelled active ground item scene scan task");
+        }
         shutdownExecutorService();
     }
     /**

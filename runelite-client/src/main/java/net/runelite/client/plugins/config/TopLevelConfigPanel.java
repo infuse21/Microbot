@@ -35,13 +35,14 @@ import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.plugins.Plugin;
+import net.runelite.client.plugins.microbot.ui.MicrobotPluginHubPanel;
 import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.ui.components.materialtabs.MaterialTab;
 import net.runelite.client.ui.components.materialtabs.MaterialTabGroup;
 import net.runelite.client.util.ImageUtil;
 
 @Singleton
-class TopLevelConfigPanel extends PluginPanel
+public class TopLevelConfigPanel extends PluginPanel
 {
 	private final MaterialTabGroup tabGroup;
 	private final CardLayout layout;
@@ -60,7 +61,8 @@ class TopLevelConfigPanel extends PluginPanel
 		EventBus eventBus,
 		PluginListPanel pluginListPanel,
 		ProfilePanel profilePanel,
-		Provider<PluginHubPanel> pluginHubPanelProvider
+		Provider<PluginHubPanel> pluginHubPanelProvider,
+		Provider<MicrobotPluginHubPanel> microbotPluginHubPanelProvider
 	)
 	{
 		super(false);

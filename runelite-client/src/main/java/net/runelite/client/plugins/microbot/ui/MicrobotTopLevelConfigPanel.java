@@ -31,7 +31,8 @@ public class MicrobotTopLevelConfigPanel extends PluginPanel {
     @Inject
     MicrobotTopLevelConfigPanel(
             EventBus eventBus,
-            MicrobotPluginListPanel pluginListPanel
+            MicrobotPluginListPanel pluginListPanel,
+            Provider<MicrobotPluginHubPanel> microbotPluginHubPanelProvider
     ) {
         super(false);
 
@@ -51,6 +52,9 @@ public class MicrobotTopLevelConfigPanel extends PluginPanel {
 
         this.pluginListPanel = pluginListPanel;
         pluginListPanelTab = addTab(pluginListPanel.getMuxer(), "microbot_config_icon_lg.png", "Microbot Plugins");
+
+        addTab(microbotPluginHubPanelProvider, "plugin_hub_icon.png", "Microbot Hub");
+
 
         tabGroup.select(pluginListPanelTab);
 

@@ -102,7 +102,6 @@ public class BlackJackScript extends Script {
         initScript = true;
         state = BANKING;
         Microbot.enableAutoRunOn = false;
-        useStaminaPotsIfNeeded = false;
 
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
 

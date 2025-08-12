@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Constants;
 import net.runelite.api.TileItem;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.ItemDespawned;
 import net.runelite.api.events.ItemSpawned;
 import net.runelite.client.eventbus.Subscribe;
@@ -13,6 +14,9 @@ import net.runelite.client.plugins.microbot.util.cache.util.LogOutputMode;
 import net.runelite.client.plugins.microbot.util.cache.util.Rs2CacheLoggingUtils;
 import net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItemModel;
 
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -372,13 +376,7 @@ public class Rs2GroundItemCache extends Rs2Cache<String, Rs2GroundItemModel> {
     }
     
     /**
-     * Invalidates all ground item cache entries and performs a fresh scene scan.
-     */
-    public static void invalidateAllItemsAndScanScene() {
-        getInstance().invalidateAll();
-        requestSceneScan();
-        log.debug("Invalidated all ground item cache entries and triggered scene scan");
-    }
+   
     
     /**
      * Generates a unique key for ground items based on item ID, quantity, and location.
@@ -409,6 +407,13 @@ public class Rs2GroundItemCache extends Rs2Cache<String, Rs2GroundItemModel> {
     
     @Subscribe(priority = 20) // Ensure despawn events are handled first
     public void onItemDespawned(ItemDespawned event) {
+        getInstance().handleEvent(event);
+    }
+
+    @Subscribe(priority = 40)
+    public void onGameStateChanged(final GameStateChanged event) {
+        // Removed old region detection - now handled by unified Rs2Cache system
+        // Also let the strategy handle the event
         getInstance().handleEvent(event);
     }
 
@@ -592,9 +597,9 @@ public class Rs2GroundItemCache extends Rs2Cache<String, Rs2GroundItemModel> {
             String emptyMsg = "Cache is empty";            
             logContent.append(emptyMsg).append("\n");
         } else {
-            // Table format for ground items
-            String[] headers = {"Name", "Quantity", "ID", "Location", "Distance", "GE Price", "HA Price", "Owned", "Cache Timestamp"};
-            int[] columnWidths = {20, 8, 8, 18, 8, 10, 10, 6, 22};
+            // Table format for ground items with enhanced timing information
+            String[] headers = {"Name", "Quantity", "ID", "Location", "Distance", "GE Price", "HA Price", "Owned", "Spawn Time UTC", "Despawn Time UTC", "Should Despawn?", "Ticks Left", "Cache Timestamp"};
+            int[] columnWidths = {20, 8, 8, 18, 8, 10, 10, 6, 22, 22, 14, 10, 22};
             
             String tableHeader = Rs2CacheLoggingUtils.formatTableHeader(headers, columnWidths);
             logContent.append("\n").append(tableHeader);
@@ -669,6 +674,32 @@ public class Rs2GroundItemCache extends Rs2Cache<String, Rs2GroundItemModel> {
                         log.debug("Error getting cache timestamp: {}", e.getMessage());
                     }
                     
+                    // Get despawn information safely with enhanced UTC timing
+                    String despawnTimeStr = "N/A";
+                    String shouldDespawnStr = "No";
+                    String spawnTimeStr = "N/A";
+                    String ticksLeftStr = "N/A";
+                    try {
+                        // Get spawn time in UTC
+                        if (item.getSpawnTimeUtc() != null) {
+                            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM HH:mm:ss")
+                                .withZone(ZoneOffset.UTC);
+                            spawnTimeStr = formatter.format(item.getSpawnTimeUtc()) + " UTC";
+                        }
+                        
+                        // Get despawn time in UTC
+                        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM HH:mm:ss")
+                            .withZone(ZoneOffset.UTC);
+                        despawnTimeStr = formatter.format(item.getDespawnTime().atZone(ZoneOffset.UTC)) + " UTC";
+                        
+                        // Use tick-based despawn detection for accuracy
+                        shouldDespawnStr = item.isDespawned() ? "Yes" : "No";
+                        ticksLeftStr = String.valueOf(item.getTicksUntilDespawn());
+                        
+                    } catch (Exception e) {
+                        log.debug("Error getting despawn information: {}", e.getMessage());
+                    }
+                    
                     String[] values = {
                         Rs2CacheLoggingUtils.truncate(item.getName() != null ? item.getName() : "Unknown", 19),
                         String.valueOf(item.getQuantity()),
@@ -678,6 +709,10 @@ public class Rs2GroundItemCache extends Rs2Cache<String, Rs2GroundItemModel> {
                         geValueStr,
                         haValueStr,
                         item.isOwned() ? "Yes" : "No",
+                        Rs2CacheLoggingUtils.truncate(spawnTimeStr, 21),
+                        Rs2CacheLoggingUtils.truncate(despawnTimeStr, 21),
+                        shouldDespawnStr,
+                        ticksLeftStr,
                         Rs2CacheLoggingUtils.truncate(cacheTimestampStr, 21)
                     };
                     
@@ -704,6 +739,48 @@ public class Rs2GroundItemCache extends Rs2Cache<String, Rs2GroundItemModel> {
         // Dump to file if requested
         Rs2CacheLoggingUtils.outputCacheLog(getInstance().getCacheName(), logContent.toString(), mode);         
         
+    }
+    
+    /**
+     * Override periodic cleanup to check for despawned ground items.
+     * This method is called by the ScheduledExecutorService in the base cache
+     * to remove items that have naturally despawned based on their game timer.
+     */
+    @Override
+    protected void performPeriodicCleanup() {
+        updateStrategy.performSceneScan(instance, Constants.CLIENT_TICK_LENGTH /2);        
+    }
+    
+    /**
+     * Override isExpired to use ground item despawn timing instead of generic TTL.
+     * This integrates the despawn logic directly with the cache's expiration system.
+     * 
+     * @param key The cache key to check for expiration
+     * @return true if the ground item should be considered expired (despawned)
+     */
+    @Override
+    protected boolean isExpired(String key) {
+        // For EVENT_DRIVEN_ONLY mode with ground items, check despawn status directly
+        if (getCacheMode() == CacheMode.EVENT_DRIVEN_ONLY) {
+            // Access the cached value directly using the protected method to avoid recursion
+            Rs2GroundItemModel groundItem = getRawCachedValue(key);
+            if (groundItem != null && groundItem.isDespawned()) {
+                // Item has despawned - remove it immediately from cache
+                remove(key);
+                log.debug("Removed despawned ground item during expiration check: {} (ID: {}) at {}", 
+                    groundItem.getName(), groundItem.getId(), groundItem.getLocation());
+                return true;
+            }
+            // If item is not in cache, consider it expired
+            if (groundItem == null) {
+                return true;
+            }
+            // Item exists and is not despawned
+            return false;
+        }
+        
+        // For other modes, fall back to the default TTL behavior
+        return super.isExpired(key);
     }
     
    

@@ -1,10 +1,10 @@
 package net.runelite.client.plugins.microbot;
 
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicInteger;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.coords.WorldPoint;
-import net.runelite.api.events.WidgetLoaded;
-import net.runelite.api.widgets.InterfaceID;
 import net.runelite.client.plugins.microbot.globval.enums.InterfaceTab;
 import net.runelite.client.plugins.microbot.shortestpath.ShortestPathPlugin;
 import net.runelite.client.plugins.microbot.util.Global;
@@ -19,14 +19,24 @@ import java.time.LocalTime;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
+import org.jetbrains.annotations.NotNull;
 
 @Slf4j
 public abstract class Script extends Global implements IScript {
-    protected ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(10);
+	protected ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(10,
+		new ThreadFactory() {
+			private final AtomicInteger threadNumber = new AtomicInteger(1);
+			@Override
+			public Thread newThread(@NotNull Runnable r) {
+				Thread t = new Thread(r);
+				t.setName(Script.this.getClass().getSimpleName() + "-" + threadNumber.getAndIncrement());
+				return t;
+			}
+		});
     protected ScheduledFuture<?> scheduledFuture;
     protected ScheduledFuture<?> mainScheduledFuture;
+	@Deprecated(since = "1.9.7 - Blocking events are now handling turning off the level up dialog", forRemoval = true)
     public static boolean hasLeveledUp = false;
-    public static boolean useStaminaPotsIfNeeded = true;
 
     public boolean isRunning() {
         return mainScheduledFuture != null && !mainScheduledFuture.isDone();
@@ -103,13 +113,5 @@ public abstract class Script extends Global implements IScript {
         sleepUntil(() -> Rs2Tab.getCurrentTab() == InterfaceTab.LOGOUT);
         sleep(600, 1000);
         Rs2Widget.clickWidget("Click here to logout");
-    }
-
-    public void onWidgetLoaded(WidgetLoaded event) {
-        int groupId = event.getGroupId();
-
-        if (groupId == InterfaceID.LEVEL_UP) {
-            hasLeveledUp = true;
-        }
     }
 }

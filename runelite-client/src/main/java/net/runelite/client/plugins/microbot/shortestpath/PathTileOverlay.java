@@ -8,6 +8,7 @@ import net.runelite.api.Tile;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.CollisionMap;
+import net.runelite.client.plugins.microbot.shortestpath.pathfinder.Pathfinder;
 import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayPosition;
@@ -116,23 +117,10 @@ public class PathTileOverlay extends Overlay {
             this.renderCollisionMap(graphics);
         }
 
-        if (plugin.drawTiles && plugin.getPathfinder() != null && plugin.getPathfinder().getPath() != null) {
-            Color color;
-            if (plugin.getPathfinder().isDone()) {
-                color = new Color(
-                        plugin.colourPath.getRed(),
-						plugin.colourPath.getGreen(),
-						plugin.colourPath.getBlue(),
-					 plugin.colourPath.getAlpha() / 2);
-            } else {
-                color = new Color(
-                        plugin.colourPathCalculating.getRed(),
-						plugin.colourPathCalculating.getGreen(),
-						plugin.colourPathCalculating.getBlue(),
-					 plugin.colourPathCalculating.getAlpha() / 2);
-            }
+        final Pathfinder pathfinder = ShortestPathPlugin.getPathfinder();
+        if (plugin.drawTiles && pathfinder != null && pathfinder.isDone()) {
+            final List<WorldPoint> path = pathfinder.getPath();
 
-            List<WorldPoint> path = plugin.getPathfinder().getPath();
             int counter = 0;
             if (TileStyle.LINES.equals(plugin.pathStyle)) {
                 for (int i = 1; i < path.size(); i++) {

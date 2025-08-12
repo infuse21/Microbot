@@ -1,5 +1,6 @@
 package net.runelite.client.plugins.microbot.shortestpath.pathfinder;
 
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.IntStream;
 import lombok.Getter;
 import lombok.Setter;
@@ -65,15 +66,14 @@ public class PathfinderConfig {
 	@Getter
     private final Map<WorldPoint, Set<Transport>> allTransports;
     @Setter
-    private Set<Transport> usableTeleports;
-    private final List<WorldPoint> filteredTargets = new ArrayList<>(4);
+    private volatile Set<Transport> usableTeleports;
+    private final List<WorldPoint> filteredTargets = new CopyOnWriteArrayList<>();
 
     @Getter
-    private ConcurrentHashMap<WorldPoint, Set<Transport>> transports;
+    private final ConcurrentHashMap<WorldPoint, Set<Transport>> transports;
     // Copy of transports with packed positions for the hotpath; lists are not copied and are the same reference in both maps
     @Getter
-    @Setter
-    private PrimitiveIntHashMap<Set<Transport>> transportsPacked;
+    private final PrimitiveIntHashMap<Set<Transport>> transportsPacked;
 
     private final Client client;
     private final ShortestPathConfig config;
@@ -85,10 +85,10 @@ public class PathfinderConfig {
 	);
 
     @Getter
-    private long calculationCutoffMillis;
+    private volatile long calculationCutoffMillis;
     @Getter
-    private boolean avoidWilderness;
-    private boolean useAgilityShortcuts,
+    private volatile boolean avoidWilderness;
+    private volatile boolean useAgilityShortcuts,
             useGrappleShortcuts,
             useBoats,
             useCanoes,
@@ -107,26 +107,27 @@ public class PathfinderConfig {
             useWildernessObelisks;
     //START microbot variables
     @Getter
-    private int distanceBeforeUsingTeleport;
+    private volatile int distanceBeforeUsingTeleport;
     @Getter
     private final List<Restriction> resourceRestrictions;
     @Getter
     private List<Restriction> customRestrictions;
     @Getter
-    private Set<Integer> restrictedPointsPacked;
-    private boolean useNpcs;
+    private final Set<Integer> restrictedPointsPacked;
+    private final Set<Integer> internalRestrictedPointsPacked;
+    private volatile boolean useNpcs;
     //END microbot variables
-    private TeleportationItem useTeleportationItems;
+    private volatile TeleportationItem useTeleportationItems;
 
     @Getter
     @Setter
     // Used for manual calculating paths without teleport & items in caves
-    private boolean ignoreTeleportAndItems = false;
+    private volatile boolean ignoreTeleportAndItems = false;
     
     @Getter
     @Setter
     // Used to include bank items when searching for item requirements
-    private boolean useBankItems = false;
+    private volatile boolean useBankItems = false;
 
     public PathfinderConfig(SplitFlagMap mapData, Map<WorldPoint, Set<Transport>> transports,
                             List<Restriction> restrictions,
@@ -134,15 +135,16 @@ public class PathfinderConfig {
         this.mapData = mapData;
         this.map = ThreadLocal.withInitial(() -> new CollisionMap(this.mapData));
         this.allTransports = transports;
-        this.usableTeleports = new HashSet<>(allTransports.size() / 20);
+        this.usableTeleports = ConcurrentHashMap.newKeySet(allTransports.size() / 20);
         this.transports = new ConcurrentHashMap<>(allTransports.size() / 2);
         this.transportsPacked = new PrimitiveIntHashMap<>(allTransports.size() / 2);
         this.client = client;
         this.config = config;
         //START microbot variables
         this.resourceRestrictions = restrictions;
-        this.customRestrictions = new ArrayList<>();
-        this.restrictedPointsPacked = new HashSet<>();
+        this.customRestrictions = Collections.emptyList();
+        this.internalRestrictedPointsPacked = ConcurrentHashMap.newKeySet();
+        this.restrictedPointsPacked = Collections.unmodifiableSet(internalRestrictedPointsPacked);
         //END microbot variables
     }
 
@@ -151,7 +153,7 @@ public class PathfinderConfig {
     }
 
     public void refresh(WorldPoint target) {
-        calculationCutoffMillis = config.calculationCutoff() * Constants.GAME_TICK_LENGTH;
+        calculationCutoffMillis = (long) config.calculationCutoff() * Constants.GAME_TICK_LENGTH;
         avoidWilderness = ShortestPathPlugin.override("avoidWilderness", config.avoidWilderness());
         useAgilityShortcuts = ShortestPathPlugin.override("useAgilityShortcuts", config.useAgilityShortcuts());
         useGrappleShortcuts = ShortestPathPlugin.override("useGrappleShortcuts", config.useGrappleShortcuts());
@@ -247,8 +249,7 @@ public class PathfinderConfig {
     private void refreshTransports(WorldPoint target) {
         useFairyRings &= !QuestState.NOT_STARTED.equals(Rs2Player.getQuestState(Quest.FAIRYTALE_II__CURE_A_QUEEN))
                 && (Rs2Inventory.contains(ItemID.DRAMEN_STAFF, ItemID.LUNAR_MOONCLAN_LIMINAL_STAFF)
-                || Rs2Equipment.isWearing(ItemID.DRAMEN_STAFF)
-                || Rs2Equipment.isWearing(ItemID.LUNAR_MOONCLAN_LIMINAL_STAFF)
+                || Rs2Equipment.isWearing(ItemID.DRAMEN_STAFF, ItemID.LUNAR_MOONCLAN_LIMINAL_STAFF)
                 || (ShortestPathPlugin.getPathfinderConfig().useBankItems && (Rs2Bank.hasItem(ItemID.DRAMEN_STAFF)|| Rs2Bank.hasItem(ItemID.LUNAR_MOONCLAN_LIMINAL_STAFF)))
                 || Microbot.getVarbitValue(VarbitID.LUMBRIDGE_DIARY_ELITE_COMPLETE) == 1);
         useGnomeGliders &= QuestState.FINISHED.equals(Rs2Player.getQuestState(Quest.THE_GRAND_TREE));
@@ -268,9 +269,10 @@ public class PathfinderConfig {
 				// Mutate action
 				updateActionBasedOnQuestState(transport);
 
-                if (point == null && useTransport(transport)) {
+                if (!useTransport(transport)) continue;
+                if (point == null) {
                     usableTeleports.add(transport);
-                } else if (useTransport(transport)) {
+                } else {
                     usableTransports.add(transport);
                 }
             }
@@ -292,7 +294,7 @@ public class PathfinderConfig {
     }
 
     private void refreshRestrictionData() {
-        restrictedPointsPacked.clear();
+        internalRestrictedPointsPacked.clear();
         List<Restriction> allRestrictions = Stream.concat(resourceRestrictions.stream(), customRestrictions.stream())
                 .collect(Collectors.toList());
 
@@ -335,7 +337,7 @@ public class PathfinderConfig {
                 }
                 return false;
             })
-            .forEach(entry -> restrictedPointsPacked.add(entry.getPackedWorldPoint()));
+            .forEach(entry -> internalRestrictedPointsPacked.add(entry.getPackedWorldPoint()));
     }
 
     public static boolean isInWilderness(WorldPoint p) {
@@ -366,6 +368,15 @@ public class PathfinderConfig {
                 || WorldPointUtil.distanceToArea2D(packedPoint, WILDERNESS_UNDERGROUND) == 0;
     }
 
+    public static boolean isInWildernessPackedPoint(Set<Integer> packedPoints) {
+        for (int packedPoint : packedPoints) {
+            if (isInWilderness(packedPoint)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public static boolean isInWilderness(Set<WorldPoint> worldPoints) {
         for (WorldPoint worldPoint : worldPoints) {
             if (isInWilderness(worldPoint)) {
@@ -375,9 +386,9 @@ public class PathfinderConfig {
         return false;
     }
 
-    public boolean avoidWilderness(int packedPosition, int packedNeightborPosition, boolean targetInWilderness) {
+    public boolean avoidWilderness(int packedPosition, int packedNeighborPosition, boolean targetInWilderness) {
         return avoidWilderness && !targetInWilderness
-                && !isInWilderness(packedPosition) && isInWilderness(packedNeightborPosition);
+                && !isInWilderness(packedPosition) && isInWilderness(packedNeighborPosition);
     }
 
     public boolean isInLevel19Wilderness(int packedPoint) {
@@ -599,11 +610,6 @@ public class PathfinderConfig {
     private boolean hasRequiredItems(Transport transport) {
         if (requiresChronicle(transport)) return hasChronicleCharges();
 
-//        return transport.getItemIdRequirements()
-//                .stream()
-//                .flatMap(Collection::stream)
-//                .anyMatch(itemId -> Rs2Equipment.isWearing(itemId) || Rs2Inventory.hasItem(itemId) || Rs2Bank.hasItem(itemId));
-
         return transport.getItemIdRequirements()
                 .stream()
                 .flatMap(Collection::stream)
@@ -703,8 +709,6 @@ public class PathfinderConfig {
         filteringSummary.append("\tFiltering Rule: Remove consumable transport items when similar non-consumable alternatives exist\n");
 
         // Track removed transports by category
-        Map<String, Integer> removedByCategory = new HashMap<>();
-        Set<Transport> allRemovedTransports = new HashSet<>();
 
         // IMPORTANT: Create a copy of the current teleports to avoid modifying the original set while iterating
         Set<Transport> teleportsToFilter = new HashSet<>(usableTeleports);
@@ -737,12 +741,10 @@ public class PathfinderConfig {
 
         // Only now apply the filtered changes
         usableTeleports.removeAll(transportsToPurge);
-        allRemovedTransports.addAll(transportsToPurge);
-        removedByCategory.putAll(usableTeleportsResult.removedByCategory);
 
         // Generate final summary
         filteringSummary.append("--- Filtering Results ---");
-        int totalRemoved = allRemovedTransports.size();
+        int totalRemoved = transportsToPurge.size();
         if (totalRemoved > 0) {
             filteringSummary.append("\n\tTotal consumable transport items removed: ").append(totalRemoved).append("\n");
         } else {
@@ -952,5 +954,17 @@ public class PathfinderConfig {
         } else {
             return transport.getType().toString();
         }
-    }   
+    }
+
+    @Override
+    public String toString() {
+        return String.format("PathfinderConfig(useAgilityShortcuts=%b, useGrappleShortcuts=%b, useBoats=%b, useCanoes=%b, " +
+                        "useCharterShips=%b, useShips=%b, useFairyRings=%b, useGnomeGliders=%b, useMinecarts=%b, " +
+                        "useQuetzals=%b, useSpiritTrees=%b, useTeleportationLevers=%b, useTeleportationMinigames=%b, " +
+                        "useTeleportationPortals=%b, useTeleportationSpells=%b, useMagicCarpets=%b, useWildernessObelisks=%b",
+                useAgilityShortcuts, useGrappleShortcuts, useBoats, useCanoes,
+                useCharterShips,useShips,useFairyRings,useGnomeGliders,useMinecarts,
+                useQuetzals,useSpiritTrees,useTeleportationLevers,useTeleportationMinigames,
+                useTeleportationPortals,useTeleportationSpells,useMagicCarpets,useWildernessObelisks);
+    }
 }
