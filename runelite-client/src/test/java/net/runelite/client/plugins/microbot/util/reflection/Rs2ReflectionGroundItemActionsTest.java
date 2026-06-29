@@ -58,4 +58,12 @@ public class Rs2ReflectionGroundItemActionsTest {
 
         assertArrayEquals(new String[]{null, null, "Take", null, null}, actions);
     }
+
+    @Test
+    public void discoveryRemovesBlankActionsWithoutChangingMenuIndexes() {
+        String[] actions = Rs2Reflection.getGroundItemActionsFromObject(
+                GroundItemActionFixture.create(null, "", " Take ", " ", "Destroy"));
+
+        assertArrayEquals(new String[]{null, null, "Take", null, "Destroy"}, actions);
+    }
 }

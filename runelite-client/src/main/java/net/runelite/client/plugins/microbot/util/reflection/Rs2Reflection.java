@@ -184,11 +184,16 @@ public class Rs2Reflection {
 
     static String[] groundItemActionsOrDefault(String[] actions) {
         if (actions != null) {
-            for (String action : actions) {
+            String[] cleanedActions = new String[actions.length];
+            boolean hasAction = false;
+            for (int i = 0; i < actions.length; i++) {
+                String action = actions[i];
                 if (action != null && !action.isBlank()) {
-                    return actions;
+                    cleanedActions[i] = action.trim();
+                    hasAction = true;
                 }
             }
+            if (hasAction) return cleanedActions;
         }
         return defaultGroundItemActions();
     }
