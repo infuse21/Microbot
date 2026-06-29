@@ -77,6 +77,7 @@ public class Rs2Reflection {
     private static volatile Field cachedListField;
     private static volatile Field cachedStringField;
     private static volatile Class<?> cachedGroundItemClass;
+    private static final String[] DEFAULT_GROUND_ITEM_ACTIONS = new String[]{null, null, "Take", null, null};
 
     public static String[] getGroundItemActions(ItemComposition item) {
         return getGroundItemActionsFromObject(item);
@@ -84,7 +85,7 @@ public class Rs2Reflection {
 
     @SneakyThrows
     static String[] getGroundItemActionsFromObject(Object item) {
-        if (item == null) return new String[]{};
+        if (item == null) return defaultGroundItemActions();
         Class<?> itemClass = item.getClass();
         if (cachedGroundItemClass != itemClass) {
             resetGroundItemActionCache();
@@ -93,7 +94,7 @@ public class Rs2Reflection {
 
         if (cachedOuterField != null && cachedListField != null) {
             try {
-                return extractWithCache(item);
+                return groundItemActionsOrDefault(extractWithCache(item));
             } catch (Exception e) {
                 log.warn("Ground item action cache invalidated, re-discovering");
                 resetGroundItemActionCache();
@@ -135,7 +136,7 @@ public class Rs2Reflection {
                         cachedOuterField = outerField;
                         cachedListField = listField;
                         cachedStringField = null;
-                        return toStringArray(list);
+                        return groundItemActionsOrDefault(toStringArray(list));
                     }
 
                     Field stringField = null;
@@ -150,12 +151,12 @@ public class Rs2Reflection {
                     cachedOuterField = outerField;
                     cachedListField = listField;
                     cachedStringField = stringField;
-                    return extractFromBeans(list, stringField);
+                    return groundItemActionsOrDefault(extractFromBeans(list, stringField));
                 }
             }
         }
 
-        return new String[]{};
+        return defaultGroundItemActions();
     }
 
     static void resetGroundItemActionCache() {
@@ -179,6 +180,21 @@ public class Rs2Reflection {
         List<?> list = (List<?>) listObj;
         if (cachedStringField == null) return toStringArray(list);
         return extractFromBeans(list, cachedStringField);
+    }
+
+    static String[] groundItemActionsOrDefault(String[] actions) {
+        if (actions != null) {
+            for (String action : actions) {
+                if (action != null && !action.isBlank()) {
+                    return actions;
+                }
+            }
+        }
+        return defaultGroundItemActions();
+    }
+
+    private static String[] defaultGroundItemActions() {
+        return DEFAULT_GROUND_ITEM_ACTIONS.clone();
     }
 
     private static String[] toStringArray(List<?> list) {
