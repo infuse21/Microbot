@@ -5,6 +5,7 @@ import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.ConfigSection;
 import net.runelite.client.config.Range;
+import net.runelite.client.plugins.microbot.aiofishing.enums.AIOFishingDebugMode;
 import net.runelite.client.plugins.microbot.aiofishing.enums.FishingStage;
 import net.runelite.client.plugins.microbot.aiofishing.enums.GeSellPricing;
 import net.runelite.client.plugins.microbot.aiofishing.enums.HarpoonType;
@@ -41,6 +42,14 @@ public interface AIOFishingConfig extends Config {
             closedByDefault = true
     )
     String GE_SECTION = "grandexchange";
+
+    @ConfigSection(
+            name = "Debug",
+            description = "Force a workflow for live testing",
+            position = 4,
+            closedByDefault = true
+    )
+    String DEBUG_SECTION = "debug";
 
     // ---- Progression ----
 
@@ -259,11 +268,23 @@ public interface AIOFishingConfig extends Config {
     }
 
     @ConfigItem(
+            keyName = "withdrawAllForSale",
+            name = "Withdraw all when selling",
+            description = "When a fish reaches the sell threshold, withdraw its entire banked stack. "
+                    + "When off, withdraw only the configured sell stack size.",
+            position = 3,
+            section = GE_SECTION
+    )
+    default boolean withdrawAllForSale() {
+        return false;
+    }
+
+    @ConfigItem(
             keyName = "sellPricing",
             name = "Pricing",
             description = "Adaptive starts at the live market price and undercuts only if the "
                     + "offer doesn't fill - recommended. Market never undercuts. Fixed uses your price.",
-            position = 3,
+            position = 4,
             section = GE_SECTION
     )
     default GeSellPricing sellPricing() {
@@ -275,10 +296,25 @@ public interface AIOFishingConfig extends Config {
             keyName = "customSellPrice",
             name = "Fixed price (gp)",
             description = "Price per fish, used only when Pricing is set to Fixed price.",
-            position = 4,
+            position = 5,
             section = GE_SECTION
     )
     default int customSellPrice() {
         return 1000;
+    }
+
+    // ---- Debug ----
+
+    @ConfigItem(
+            keyName = "debugMode",
+            name = "Force workflow",
+            description = "Bypass the normal state decision for live testing. Selling needs an "
+                    + "active-stage catch in the inventory. Resupplying needs coins and a missing "
+                    + "active-stage tool or supply.",
+            position = 0,
+            section = DEBUG_SECTION
+    )
+    default AIOFishingDebugMode debugMode() {
+        return AIOFishingDebugMode.AUTOMATIC;
     }
 }

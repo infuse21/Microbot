@@ -427,6 +427,16 @@ Returns bank status. If open, includes items.
 ./microbot-cli bank
 ```
 
+#### GET /aio-fishing
+
+Returns read-only AIO Fishing runtime diagnostics, including the distinction between
+the enabled RuneLite plugin and its internal script, the current/forced state, stop
+reason, pending sale, last sale diagnostic, heartbeat, and any terminal future failure.
+
+```bash
+curl -H "X-Agent-Token: $MICROBOT_TOKEN" http://127.0.0.1:8081/aio-fishing
+```
+
 #### POST /bank/open
 
 Opens nearest bank and waits up to 5 seconds.

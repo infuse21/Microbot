@@ -105,6 +105,7 @@ The **Agent Server** plugin (port 8081, localhost) must be enabled for any CLI/H
 |------|---------|
 | `scripts health` | Detect stalled scripts (heartbeat age) |
 | `GET /debug/snapshot` | State machine snapshot — current state, transitions, guard results, trace buffer |
+| `GET /aio-fishing` | AIO Fishing script state, forced debug workflow, sale diagnostic, and terminal failure |
 | `screenshot save --label debug` | Visual state capture for multimodal analysis |
 
 ---

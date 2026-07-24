@@ -1,0 +1,177 @@
+package net.runelite.client.plugins.microbot.simplewoodcutting.forestry;
+
+import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.ObjectComposition;
+import net.runelite.api.gameval.ItemID;
+import net.runelite.client.plugins.microbot.BlockingEvent;
+import net.runelite.client.plugins.microbot.BlockingEventPriority;
+import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.api.tileobject.models.Rs2TileObjectModel;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
+import net.runelite.client.plugins.microbot.util.player.Rs2Player;
+import net.runelite.client.plugins.microbot.simplewoodcutting.SimpleWoodcuttingPlugin;
+import net.runelite.client.plugins.microbot.simplewoodcutting.SimpleWoodcuttingScript;
+import net.runelite.client.plugins.microbot.simplewoodcutting.enums.ForestryEvents;
+
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import static net.runelite.api.gameval.ObjectID.*;
+@Slf4j
+public class StrugglingSaplingEvent implements BlockingEvent {
+    private final SimpleWoodcuttingPlugin plugin;
+    private final List<Integer> ingredientIds = List.of(
+        GATHERING_EVENT_SAPLING_INGREDIENT_1,
+        GATHERING_EVENT_SAPLING_INGREDIENT_2,
+        GATHERING_EVENT_SAPLING_INGREDIENT_3,
+        GATHERING_EVENT_SAPLING_INGREDIENT_4A,
+        GATHERING_EVENT_SAPLING_INGREDIENT_4B,
+        GATHERING_EVENT_SAPLING_INGREDIENT_4C,
+        GATHERING_EVENT_SAPLING_INGREDIENT_5
+    );
+
+    public StrugglingSaplingEvent(SimpleWoodcuttingPlugin plugin) {
+        this.plugin = plugin;
+    }
+
+    @Override
+    public boolean validate() {
+        try{
+            if (plugin == null || !Microbot.isPluginEnabled(plugin) || !plugin.isScriptRunning() || plugin.isScriptPaused()) return false;
+            if (Microbot.getClient() == null || !Microbot.isLoggedIn()) return false;        
+            var strugglingSaplings = Microbot.getRs2TileObjectCache().query()
+                    .withName("Struggling sapling")
+                    .toListOnClientThread();
+            if (strugglingSaplings.isEmpty()) return false;
+            return strugglingSaplings.stream().anyMatch(obj ->
+                    hasAction(obj.getObjectComposition(), "Add-mulch") &&
+                            obj.getWorldLocation().distanceTo(Rs2Player.getWorldLocation()) <= SimpleWoodcuttingScript.FORESTRY_DISTANCE
+            );
+        } catch (Exception e) {
+            log.error("StrugglingSaplingEvent: Exception in validate method", e);
+            return false;
+        }
+    }
+
+    @Override
+    public boolean execute() {
+        try {
+            Microbot.log("StrugglingSaplingEvent: Executing Struggling Sapling event");
+            plugin.currentForestryEvent = ForestryEvents.STRUGGLING_SAPLING;
+            // Find the struggling sapling
+            var sapling = Microbot.getRs2TileObjectCache().query()
+                    .withName("Struggling sapling")
+                    .toListOnClientThread()
+                    .stream()
+                    .filter(obj ->
+                            hasAction(obj.getObjectComposition(), "Add-mulch") &&
+                                    obj.getWorldLocation().distanceTo(Rs2Player.getWorldLocation()) <= SimpleWoodcuttingScript.FORESTRY_DISTANCE
+                    )
+                    .findFirst()
+                    .orElse(null);
+
+            var ingredients = Microbot.getRs2TileObjectCache().query()
+                    .where(gameObject -> ingredientIds.contains(gameObject.getId()))
+                    .toList()
+                    .stream()
+                    .filter(obj -> hasAction(obj.getObjectComposition(), "Collect"))
+                    .collect(Collectors.toList());
+
+            if (ingredients.isEmpty()) {
+                Microbot.log("StrugglingSaplingEvent: No leaf ingredients available to collect. Ending event.");
+                return true;
+            }
+
+            Set<Integer> triedFirstIngredients = new HashSet<>();
+            Set<Integer> triedSecondIngredients = new HashSet<>();
+            Set<Integer> triedThirdIngredients = new HashSet<>();
+            
+            // ensure inventory space for mulch items and reward (up to 25 items)
+            if (!plugin.ensureInventorySpace(5)) {
+                Microbot.log("StrugglingSaplingEvent: Cannot make enough inventory space, ending event.");
+                return true;
+            }
+            
+            while (this.validate()) {
+                // If we have mulch stage 3 in inventory, add them to the sapling
+                if (Rs2Inventory.contains(ItemID.GATHERING_EVENT_SAPLING_MULCH_STAGE3)) {
+                    Microbot.log("StrugglingSaplingEvent: Adding mulch to the struggling sapling.");
+                    sapling.click("Add-mulch");
+                    Rs2Player.waitForAnimation();
+                    continue;
+                }
+
+                //if we have mulch in inventory, check if we know the correct ingredient or pick a random one
+                // Determine current stage
+                int stage;
+                if (Rs2Inventory.contains(ItemID.GATHERING_EVENT_SAPLING_MULCH_STAGE2)) {
+                    stage = 2;
+                } else if (Rs2Inventory.contains(ItemID.GATHERING_EVENT_SAPLING_MULCH_STAGE1)) {
+                    stage = 1;
+                } else {
+                    stage = 0;
+                }
+                var correctIngredient = plugin.saplingOrder[stage];
+
+                if (correctIngredient != null) {
+                    // Look for matching ingredient in our available ingredients
+                    for (Rs2TileObjectModel ingredient : ingredients) {
+                        if (ingredient.getId() == correctIngredient.getId()) {
+                            Microbot.log("StrugglingSaplingEvent: Collecting known correct ingredient: " + ingredient.getWorldLocation());
+                            ingredient.click("Collect");
+                            Rs2Player.waitForAnimation();
+                        }
+                    }
+                    continue;
+                }
+
+                // If we don't know the correct ingredient, try to collect a random one
+                Set<Integer> triedIngredients;
+                if (stage == 2) triedIngredients = triedThirdIngredients;
+                else if (stage == 1) triedIngredients = triedSecondIngredients;
+                else triedIngredients = triedFirstIngredients;
+
+                var availableIngredients = ingredients.stream()
+                        .filter(ingredient -> !triedIngredients.contains(ingredient.getId()))
+                        .collect(Collectors.toList());
+                if (availableIngredients.isEmpty()) {
+                    Microbot.log("StrugglingSaplingEvent: All ingredients have been tried for stage " + stage + ".");
+                    break;
+                }
+
+                Microbot.log("StrugglingSaplingEvent: No known correct ingredient, collecting a random one.");
+                var randomIngredient = availableIngredients.get((int) (Math.random() * availableIngredients.size()));
+                Microbot.log("StrugglingSaplingEvent: Collecting random ingredient: " + randomIngredient.getWorldLocation());
+                randomIngredient.click("Collect");
+                triedIngredients.add(randomIngredient.getId());
+                Rs2Player.waitForAnimation();
+            }
+
+            Microbot.log("StrugglingSaplingEvent: Finished processing struggling sapling.");
+            plugin.saplingOrder[0] = null; // Reset the sapling order after processing
+            plugin.saplingOrder[1] = null;
+            plugin.saplingOrder[2] = null;
+            plugin.incrementForestryEventCompleted();
+            return true;
+        }
+        catch (Exception e) {
+            Microbot.log("StrugglingSaplingEvent: Error during execution: " + e.getMessage() + Arrays.toString(e.getStackTrace()));
+            return this.validate();
+        }
+    }
+
+    @Override
+    public BlockingEventPriority priority() {
+        return BlockingEventPriority.NORMAL;
+    }
+
+    private static boolean hasAction(ObjectComposition composition, String wanted) {
+        return composition != null && composition.getActions() != null
+                && Arrays.stream(composition.getActions())
+                        .anyMatch(action -> action != null && action.equalsIgnoreCase(wanted));
+    }
+
+}

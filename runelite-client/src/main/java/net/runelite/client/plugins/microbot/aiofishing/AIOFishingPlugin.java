@@ -20,7 +20,6 @@ import net.runelite.client.input.MouseManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.microbot.Microbot;
-import net.runelite.client.plugins.microbot.aiofishing.enums.AIOFishingState;
 import net.runelite.client.plugins.microbot.aiofishing.enums.FishingStage;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.ui.ClientToolbar;
@@ -58,7 +57,7 @@ import java.util.stream.Collectors;
 )
 @Slf4j
 public class AIOFishingPlugin extends Plugin {
-    public static final String version = "1.0.7";
+    public static final String version = "1.0.18";
 
     @Inject
     @Getter
@@ -274,7 +273,7 @@ public class AIOFishingPlugin extends Plugin {
         synchronized (catchCounterLock) {
             if (script.isRunning()
                     && !script.isPaused()
-                    && script.getState() == AIOFishingState.FISHING) {
+                    && script.isFishingInteractionActive()) {
                 Set<String> catchNames = script.getActiveStage().getCatchItemNames().stream()
                         .map(name -> name.toLowerCase(Locale.ROOT))
                         .collect(Collectors.toSet());
