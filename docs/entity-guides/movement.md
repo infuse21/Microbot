@@ -642,3 +642,37 @@ stabilization, and any fallback that chooses a waypoint using world distance on 
 **Defensive check:** Construct a raw route whose final branch returns near its beginning. A
 spatially close waypoint beyond the raw-step budget must be rejected while an ordinary nearby
 forward waypoint remains eligible.
+
+## 29. Let the owning walker thread evaluate early-completion conditions
+
+When a script can interact before reaching the coordinate destination, pass a read-only
+completion condition to `Rs2Walker.walkUntil`. Do not run `walkTo` in one executor task while
+another task polls entities and calls `clearWalkingRoute` or interrupts the walk. The walker
+already owns its route lock and cancellation checkpoints; evaluating the condition there lets it
+stop issuing movement clicks and release its state before the script performs the interaction.
+
+**Why this matters:** A companion polling task that cancelled a walk during plugin shutdown could
+contend with the walker and client-thread calls. The plugin stopped, then unrelated scripts began
+timing out on the client thread and the client appeared frozen.
+
+**Pattern to follow:**
+
+```java
+boolean ready = Rs2Walker.walkUntil(destination, interactionDistance,
+        () -> isTargetInteractable());
+if (ready && isTargetInteractable()) {
+    interactWithTarget();
+}
+```
+
+The condition must only inspect state. It must not click, walk, sleep, or otherwise mutate game
+state. Re-query the entity before interacting because cache results are snapshots.
+
+**Where this applies:** `Rs2Walker.walkUntil`, scripts approaching moving NPCs, fishing spots,
+banks, shops, or any destination whose interactable entity can become ready before coordinate
+arrival.
+
+**Defensive check:** Existing `walkTo` and `walkWithState` overloads must not install or evaluate a
+completion condition. Test immediate condition completion without walker setup, and test that an
+exception from the condition falls back to ordinary distance-based walking instead of retaining
+the walker lock.
