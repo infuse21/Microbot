@@ -2034,6 +2034,19 @@ public class Rs2Walker {
                             int rawEdgeEnd = (i < smoothedToRaw.length) ? smoothedToRaw[i] + 1 : rawPath.size();
                             WorldPoint edgeFrom = rawEdgeStart >= 0 && rawEdgeStart < rawPath.size() ? rawPath.get(rawEdgeStart) : null;
                             WorldPoint edgeTo = rawEdgeEnd - 1 >= 0 && rawEdgeEnd - 1 < rawPath.size() ? rawPath.get(rawEdgeEnd - 1) : null;
+
+                            // A Motherlode rockfall sitting on the blocked frontier is mined here. The
+                            // static map (and the live overlay's rockfall exemption) mark the rockfall tile
+                            // passable so the route plans through it, which means the smoother walks the
+                            // player straight up to it and the earlier segment handler can miss it — the
+                            // player then ends up stuck against the rockfall with no obstacle handler having
+                            // fired. This is the same recovery point doors use, and handleRockfall is
+                            // MLM-region- and object-id-gated, so it is a no-op everywhere else.
+                            if (handleRockfallInRawSegment(rawPath, rawEdgeStart, rawEdgeEnd, reachableTilesCache)) {
+                                exitReason = "rockfall-handled-local-reachability";
+                                break;
+                            }
+
                             if (hasRecentDoorAttemptOnEdge(edgeFrom, edgeTo)) {
                                 boolean resolvedAfterWait = waitForDoorEdgeResolution(edgeFrom, edgeTo,
                                         obstaclePolicy.edgeResolutionWaitTimeoutMs());
