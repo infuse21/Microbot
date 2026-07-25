@@ -13,6 +13,7 @@ import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.shortestpath.*;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveCollisionOverlay;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveCollisionSnapshot;
+import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveCollisionView;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.policy.TransportRequirementPolicy;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
@@ -235,12 +236,10 @@ public class PathfinderConfig {
         final Map<String, Object> out = new LinkedHashMap<>();
         out.put("enabled", liveCollisionOverlay.isEnabled());
 
-        final LiveCollisionSnapshot snapshot = liveCollisionOverlay.current();
-        out.put("snapshotPresent", snapshot != null);
-        if (snapshot != null) {
-            out.put("baseX", snapshot.getBaseX());
-            out.put("baseY", snapshot.getBaseY());
-            out.put("planeCount", snapshot.getPlaneCount());
+        final LiveCollisionView view = liveCollisionOverlay.current();
+        out.put("snapshotPresent", view != null);
+        if (view != null) {
+            out.put("regionCount", view.regionCount());
         }
         out.put("tile", Map.of("x", x, "y", y, "plane", z));
 
@@ -250,12 +249,12 @@ public class PathfinderConfig {
         out.put("static", edgeReadout(staticMap, x, y, z));
         out.put("resolved", edgeReadout(resolvedMap, x, y, z));
 
-        if (snapshot != null) {
+        if (view != null) {
             final Map<String, Object> raw = new LinkedHashMap<>();
-            raw.put("n", snapshot.edge(x, y, z, LiveCollisionSnapshot.FLAG_NORTH));
-            raw.put("e", snapshot.edge(x, y, z, LiveCollisionSnapshot.FLAG_EAST));
-            raw.put("s", snapshot.edge(x, y - 1, z, LiveCollisionSnapshot.FLAG_NORTH));
-            raw.put("w", snapshot.edge(x - 1, y, z, LiveCollisionSnapshot.FLAG_EAST));
+            raw.put("n", view.edge(x, y, z, LiveCollisionSnapshot.FLAG_NORTH));
+            raw.put("e", view.edge(x, y, z, LiveCollisionSnapshot.FLAG_EAST));
+            raw.put("s", view.edge(x, y - 1, z, LiveCollisionSnapshot.FLAG_NORTH));
+            raw.put("w", view.edge(x - 1, y, z, LiveCollisionSnapshot.FLAG_EAST));
             out.put("overlayRaw", raw);
         }
         return out;

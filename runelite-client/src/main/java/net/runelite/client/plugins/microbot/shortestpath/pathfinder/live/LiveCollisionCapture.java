@@ -51,6 +51,18 @@ public final class LiveCollisionCapture {
             "open", "go-through", "walk-through", "pass", "pick-lock", "pay-toll"));
 
     /**
+     * Game objects a runtime walker handler clears in place (mines, etc.) rather than routing around —
+     * currently the Motherlode Mine rockfalls, cleared by {@code Rs2Walker.handleRockfall}. Their tiles
+     * read as fully blocked in the live scene, but the static map deliberately marks them <em>passable</em>
+     * (dumper {@code Exclusion} list) so the pathfinder plans a route through them and the runtime handler
+     * opens them. Left un-exempted, the live overlay would wall each rockfall off, the pathfinder would
+     * avoid it, and {@code handleRockfall} would never receive a through-path to mine — so we exempt every
+     * edge touching their footprint, deferring to the static-passable value exactly like an openable door.
+     */
+    private static final Set<Integer> RUNTIME_HANDLED_OBSTACLE_IDS = new HashSet<>(Arrays.asList(
+            26679, 26680)); // MOTHERLODE_ROCKFALL_1, MOTHERLODE_ROCKFALL_2
+
+    /**
      * Tiles this close to the edge of the loaded scene are left unknown (deferred to the static map),
      * because RuneLite's collision for the scene's outer ring is incomplete while adjacent chunks are
      * only partially loaded — verified live, where the border produced a uniform band of false walls out
@@ -151,8 +163,10 @@ public final class LiveCollisionCapture {
                         if (min == null || max == null || min.getX() != sx || min.getY() != sy) {
                             continue; // process a multi-tile object once, at its scene-min tile
                         }
-                        if (!gameObjectDoorIds.computeIfAbsent(
-                                gameObject.getId(), LiveCollisionCapture::isOpenableGameObjectDoor)) {
+                        final boolean exempt = RUNTIME_HANDLED_OBSTACLE_IDS.contains(gameObject.getId())
+                                || gameObjectDoorIds.computeIfAbsent(
+                                        gameObject.getId(), LiveCollisionCapture::isOpenableGameObjectDoor);
+                        if (!exempt) {
                             continue;
                         }
                         doorEdges.markGameObject(z, min.getX(), min.getY(), max.getX(), max.getY());

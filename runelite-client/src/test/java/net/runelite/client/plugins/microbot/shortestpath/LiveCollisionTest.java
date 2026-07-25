@@ -7,7 +7,9 @@ import net.runelite.client.plugins.microbot.shortestpath.pathfinder.SplitFlagMap
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveCollisionCapture;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveCollisionDoorMask;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveCollisionOverlay;
+import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveCollisionPersistence;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveCollisionSnapshot;
+import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveCollisionView;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveRouteValidator;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -349,6 +351,148 @@ public class LiveCollisionTest {
                 LiveRouteValidator.firstBlockedStep(path, 0, 2, blocked));
         assertEquals("longer lookahead finds it at index 2", 2,
                 LiveRouteValidator.firstBlockedStep(path, 0, 3, blocked));
+    }
+
+    // ---- Stage 4: multi-scene accumulation (persistent live store) ----
+
+    @Test
+    public void overlayAccumulatesAcrossScenes() {
+        LiveCollisionOverlay overlay = new LiveCollisionOverlay();
+        overlay.setEnabled(true);
+
+        // Scene A around (3200,3200): block the north edge of interior tile (3252,3252).
+        int[][][] a = openScene();
+        a[0][52][52] |= CollisionDataFlag.BLOCK_MOVEMENT_NORTH;
+        overlay.set(LiveCollisionCapture.build(3200, 3200, 1, a));
+
+        // Scene B far away around (4000,4000): block the east edge of interior tile (4052,4052).
+        int[][][] b = openScene();
+        b[0][52][52] |= CollisionDataFlag.BLOCK_MOVEMENT_EAST;
+        overlay.set(LiveCollisionCapture.build(4000, 4000, 1, b));
+
+        LiveCollisionView view = overlay.current();
+        assertNotNull(view);
+        // Both scenes are still represented — the second capture accumulated, it did not replace the first.
+        assertEquals(Boolean.FALSE, view.edge(3252, 3252, 0, FLAG_NORTH));
+        assertEquals(Boolean.FALSE, view.edge(4052, 4052, 0, FLAG_EAST));
+        // An untouched interior edge from scene A is still known-open.
+        assertEquals(Boolean.TRUE, view.edge(3252, 3252, 0, FLAG_EAST));
+        // A region never seen falls back to static (null from the view).
+        assertNull(view.edge(5000, 5000, 0, FLAG_NORTH));
+    }
+
+    @Test
+    public void reobservingAnEdgePrefersTheNewerValue() {
+        LiveCollisionOverlay overlay = new LiveCollisionOverlay();
+        overlay.setEnabled(true);
+
+        overlay.set(LiveCollisionCapture.build(3200, 3200, 1, openScene()));
+        assertEquals(Boolean.TRUE, overlay.current().edge(3252, 3252, 0, FLAG_NORTH));
+
+        int[][][] blocked = openScene();
+        blocked[0][52][52] |= CollisionDataFlag.BLOCK_MOVEMENT_NORTH;
+        overlay.set(LiveCollisionCapture.build(3200, 3200, 1, blocked));
+        assertEquals(Boolean.FALSE, overlay.current().edge(3252, 3252, 0, FLAG_NORTH));
+    }
+
+    @Test
+    public void laterUnknownEdgeDoesNotClobberEarlierKnown() {
+        LiveCollisionOverlay overlay = new LiveCollisionOverlay();
+        overlay.setEnabled(true);
+
+        // Scene A: tile (3252,3252) interior, north edge blocked (known FALSE).
+        int[][][] a = openScene();
+        a[0][52][52] |= CollisionDataFlag.BLOCK_MOVEMENT_NORTH;
+        overlay.set(LiveCollisionCapture.build(3200, 3200, 1, a));
+        assertEquals(Boolean.FALSE, overlay.current().edge(3252, 3252, 0, FLAG_NORTH));
+
+        // Scene B positioned so the same world tile lands on B's unknown border (local 2,2 < margin):
+        // its edge is unknown and must not overwrite the known FALSE learned from scene A.
+        overlay.set(LiveCollisionCapture.build(3250, 3250, 1, openScene()));
+        assertEquals(Boolean.FALSE, overlay.current().edge(3252, 3252, 0, FLAG_NORTH));
+    }
+
+    @Test
+    public void persistenceRoundTripsAcrossOverlays() throws Exception {
+        final java.io.File tmp = java.nio.file.Files.createTempDirectory("lcr-test").toFile();
+        tmp.deleteOnExit();
+
+        // Capture a scene into overlay A and persist the dirty regions.
+        LiveCollisionOverlay a = new LiveCollisionOverlay();
+        a.setEnabled(true);
+        int[][][] flags = openScene();
+        flags[0][52][52] |= CollisionDataFlag.BLOCK_MOVEMENT_NORTH;
+        a.set(LiveCollisionCapture.build(3200, 3200, 1, flags));
+        LiveCollisionPersistence writer = new LiveCollisionPersistence(tmp);
+        writer.persist(a.drainDirty());
+        writer.shutdown(); // awaits the queued write
+
+        // Load into a fresh overlay B and confirm the learned edges came back intact.
+        LiveCollisionOverlay b = new LiveCollisionOverlay();
+        b.setEnabled(true);
+        LiveCollisionPersistence reader = new LiveCollisionPersistence(tmp);
+        reader.loadIntoAsync(b);
+        reader.shutdown(); // awaits the queued load
+        LiveCollisionView view = b.current();
+        assertNotNull(view);
+        assertEquals(Boolean.FALSE, view.edge(3252, 3252, 0, FLAG_NORTH));
+        assertEquals(Boolean.TRUE, view.edge(3252, 3252, 0, FLAG_EAST));
+    }
+
+    @Test
+    public void loadedRegionDoesNotOverrideFresherCapture() throws Exception {
+        final java.io.File tmp = java.nio.file.Files.createTempDirectory("lcr-order").toFile();
+        tmp.deleteOnExit();
+
+        // Persist an OLDER region that says the north edge of (3252,3252) is BLOCKED.
+        LiveCollisionOverlay src = new LiveCollisionOverlay();
+        src.setEnabled(true);
+        int[][][] older = openScene();
+        older[0][52][52] |= CollisionDataFlag.BLOCK_MOVEMENT_NORTH;
+        src.set(LiveCollisionCapture.build(3200, 3200, 1, older));
+        LiveCollisionPersistence writer = new LiveCollisionPersistence(tmp);
+        writer.persist(src.drainDirty());
+        writer.shutdown();
+
+        // Fresh session: a live capture already observed that same edge OPEN.
+        LiveCollisionOverlay overlay = new LiveCollisionOverlay();
+        overlay.setEnabled(true);
+        overlay.set(LiveCollisionCapture.build(3200, 3200, 1, openScene()));
+        assertEquals(Boolean.TRUE, overlay.current().edge(3252, 3252, 0, FLAG_NORTH));
+
+        // Loading the older persisted region on top must NOT clobber the fresher live capture.
+        LiveCollisionPersistence reader = new LiveCollisionPersistence(tmp);
+        reader.loadIntoAsync(overlay);
+        reader.shutdown();
+        assertEquals(Boolean.TRUE, overlay.current().edge(3252, 3252, 0, FLAG_NORTH));
+    }
+
+    @Test
+    public void deleteRemovesPersistedRegions() throws Exception {
+        final java.io.File tmp = java.nio.file.Files.createTempDirectory("lcr-reset").toFile();
+        tmp.deleteOnExit();
+
+        LiveCollisionOverlay a = new LiveCollisionOverlay();
+        a.setEnabled(true);
+        int[][][] flags = openScene();
+        flags[0][52][52] |= CollisionDataFlag.BLOCK_MOVEMENT_NORTH;
+        a.set(LiveCollisionCapture.build(3200, 3200, 1, flags));
+        LiveCollisionPersistence writer = new LiveCollisionPersistence(tmp);
+        writer.persist(a.drainDirty());
+        writer.shutdown();
+
+        // Reset wipes the on-disk tree.
+        LiveCollisionPersistence resetter = new LiveCollisionPersistence(tmp);
+        resetter.deleteAllNow();
+        resetter.shutdown();
+
+        // A fresh load now finds nothing, so the overlay stays empty (static fallback everywhere).
+        LiveCollisionOverlay b = new LiveCollisionOverlay();
+        b.setEnabled(true);
+        LiveCollisionPersistence reader = new LiveCollisionPersistence(tmp);
+        reader.loadIntoAsync(b);
+        reader.shutdown();
+        assertNull(b.current());
     }
 
     @Test

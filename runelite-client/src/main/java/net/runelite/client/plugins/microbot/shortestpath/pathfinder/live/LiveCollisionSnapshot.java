@@ -20,7 +20,7 @@ import static net.runelite.api.Constants.SCENE_SIZE;
  * Built once on the client thread by {@link LiveCollisionCapture} and never mutated, so the off-thread
  * pathfinder can read it lock-free.
  */
-public final class LiveCollisionSnapshot {
+public final class LiveCollisionSnapshot implements LiveEdgeSource {
     /** North edge, flag 0 in the shared edge model. */
     public static final int FLAG_NORTH = 0;
     /** East edge, flag 1 in the shared edge model. */
@@ -54,6 +54,7 @@ public final class LiveCollisionSnapshot {
      * unknown rim — the caller falls back to the static map. Returns the cached {@code Boolean}
      * constants, so this allocates nothing on the pathfinder hot path.
      */
+    @Override
     public Boolean edge(int x, int y, int z, int flag) {
         final int lx = x - baseX;
         final int ly = y - baseY;

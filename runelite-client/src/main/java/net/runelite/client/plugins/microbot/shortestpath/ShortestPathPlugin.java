@@ -53,6 +53,7 @@ import net.runelite.client.plugins.microbot.shortestpath.pathfinder.Pathfinder;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.PathfinderConfig;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveCollisionCapture;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveCollisionOverlay;
+import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveCollisionPersistence;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveCollisionSnapshot;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveRouteValidator;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.SplitFlagMap;
@@ -288,6 +289,15 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
         keyManager.unregisterKeyListener(customLocationHotkeyListener);
         keyManager.unregisterKeyListener(this);
 
+        // Flush any live-collision the last capture learned and stop the I/O thread.
+        if (liveCollisionPersistence != null) {
+            if (pathfinderConfig != null) {
+                liveCollisionPersistence.persist(pathfinderConfig.getLiveCollisionOverlay().drainDirty());
+            }
+            liveCollisionPersistence.shutdown();
+            liveCollisionPersistence = null;
+        }
+
         overlayManager.remove(pathOverlay);
         overlayManager.remove(pathMinimapOverlay);
         overlayManager.remove(pathMapOverlay);
@@ -392,6 +402,7 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
             "maxSimilarTransportDistance"
     );
     private static final String RELOAD_TRANSPORT_DEFINITIONS_KEY = "reloadTransportDefinitions";
+    private static final String RESET_LEARNED_COLLISION_KEY = "resetLearnedCollision";
     private final Pattern TRANSPORT_OPTIONS_REGEX = Pattern.compile("^use\\w+$");
 
     @Subscribe
@@ -420,6 +431,16 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
             } else {
                 overlayManager.remove(etaOverlayPanel);
             }
+            return;
+        }
+
+        // One-shot developer action: wipe everything the live overlay has learned (memory + disk).
+        if (RESET_LEARNED_COLLISION_KEY.equals(event.getKey()) && Boolean.parseBoolean(event.getNewValue())) {
+            resetLearnedCollision();
+            if (pathfinder != null) {
+                restartPathfinding(pathfinder.getStart(), pathfinder.getTargets());
+            }
+            configManager.setConfiguration(CONFIG_GROUP, RESET_LEARNED_COLLISION_KEY, false);
             return;
         }
 
@@ -584,10 +605,37 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
     // Only the next few tiles of the route matter — far-ahead changes are re-checked as the player nears
     // them, and may clear before then.
     private static final int LIVE_RECALC_LOOKAHEAD = 15;
+    // Disk backing for the accumulated live-collision store. Created when the flag is enabled (needs the
+    // client's cache revision as the invalidation key) and torn down when it is disabled or the plugin stops.
+    private LiveCollisionPersistence liveCollisionPersistence = null;
 
     /** Flags the live-collision snapshot for rebuild. Cheap (a volatile write); fired from object events. */
     private void markLiveCollisionDirty() {
         liveCollisionDirty = true;
+    }
+
+    /**
+     * Wipes everything the live overlay has learned — the in-memory accumulation and the on-disk store for
+     * every cache revision — then forces an immediate recapture so, while the flag is still on, the store
+     * refills from scratch. The developer escape hatch for a bad capture that has corrupted routing.
+     */
+    private void resetLearnedCollision() {
+        if (pathfinderConfig != null) {
+            pathfinderConfig.getLiveCollisionOverlay().clear();
+        }
+        if (liveCollisionPersistence != null) {
+            liveCollisionPersistence.deleteAllAsync();
+        } else if (client != null) {
+            // Flag is off, so no active store — delete the on-disk tree via a transient handle.
+            final LiveCollisionPersistence tmpStore = new LiveCollisionPersistence(client.getRevision());
+            tmpStore.deleteAllNow();
+            tmpStore.shutdown();
+        }
+        lastLiveCaptureBaseX = Integer.MIN_VALUE;
+        lastLiveCaptureBaseY = Integer.MIN_VALUE;
+        liveCollisionDirty = true;
+        liveRouteValidationPending = false;
+        log.info("[ShortestPath] Live collision store reset (in-memory + disk)");
     }
 
     @Subscribe
@@ -627,6 +675,17 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
             lastLiveCaptureBaseX = Integer.MIN_VALUE; // force a capture on enable, drop snapshot on disable
             liveCollisionDirty = enabled;
             liveRouteValidationPending = false;
+            if (enabled) {
+                // Seed the freshly enabled store with everything learned in earlier sessions for this cache
+                // revision, then let live captures accumulate on top.
+                if (liveCollisionPersistence == null) {
+                    liveCollisionPersistence = new LiveCollisionPersistence(client.getRevision());
+                }
+                liveCollisionPersistence.loadIntoAsync(overlay);
+            } else if (liveCollisionPersistence != null) {
+                liveCollisionPersistence.shutdown();
+                liveCollisionPersistence = null;
+            }
         }
         if (!enabled) {
             liveCollisionDirty = false;
@@ -646,7 +705,9 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
         if (captureNeeded) {
             final LiveCollisionSnapshot snapshot = LiveCollisionCapture.captureOnClientThread();
             if (snapshot == null) {
-                overlay.clear();
+                // Do NOT clear: the overlay now accumulates every scene it has seen, so entering an
+                // instance or a transient loading gap must not discard already-learned regions. The static
+                // map is used for the instance simply because no accumulated region covers its coordinates.
                 if (wv.isInstance()) {
                     // Instances intentionally use static collision. Latch this scene so we do not retry
                     // every tick; leaving it changes the base or produces a non-instance capture request.
@@ -663,6 +724,10 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
             }
 
             overlay.set(snapshot);
+            // Persist the regions this capture just changed so the learned collision survives a restart.
+            if (liveCollisionPersistence != null) {
+                liveCollisionPersistence.persist(overlay.drainDirty());
+            }
             lastLiveCaptureBaseX = baseX;
             lastLiveCaptureBaseY = baseY;
             liveCollisionDirty = false;

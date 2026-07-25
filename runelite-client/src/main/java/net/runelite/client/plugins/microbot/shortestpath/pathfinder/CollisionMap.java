@@ -6,7 +6,7 @@ import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.shortestpath.Transport;
 import net.runelite.client.plugins.microbot.shortestpath.TransportType;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveCollisionOverlay;
-import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveCollisionSnapshot;
+import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveEdgeSource;
 import net.runelite.client.plugins.microbot.shortestpath.WorldPointUtil;
 import net.runelite.client.plugins.microbot.util.coords.Rs2WorldPoint;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
@@ -30,10 +30,10 @@ public class CollisionMap {
     private final LiveCollisionOverlay overlay;
 
     /**
-     * Snapshot pinned for the duration of one search, so a mid-search swap on the client thread cannot
-     * mix two scenes into a single path. Refreshed via {@link #beginSearch()}.
+     * Live view pinned for the duration of one search, so a mid-search merge on the client thread cannot
+     * mix two states into a single path. Refreshed via {@link #beginSearch()}.
      */
-    private LiveCollisionSnapshot pinnedSnapshot;
+    private LiveEdgeSource pinnedLive;
 
     public byte[] getPlanes() {
         return collisionData.getRegionMapPlaneCounts();
@@ -54,11 +54,11 @@ public class CollisionMap {
      * client thread is free to swap in a newer snapshot.
      */
     public void beginSearch() {
-        pinnedSnapshot = overlay.current();
+        pinnedLive = overlay.current();
     }
 
     private boolean get(int x, int y, int z, int flag) {
-        final LiveCollisionSnapshot live = pinnedSnapshot;
+        final LiveEdgeSource live = pinnedLive;
         if (live != null) {
             final Boolean liveEdge = live.edge(x, y, z, flag);
             if (liveEdge != null) {
