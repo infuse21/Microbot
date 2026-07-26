@@ -71,4 +71,21 @@ public final class WalkerRouteState {
     public volatile long idleNudgeStationarySinceMs = 0L;
     /** Wall-clock ms of the last active-route idle nudge. */
     public volatile long lastActiveRouteIdleNudgeAtMs = 0L;
+
+    // ---- misc per-walk-session timers / flags. ----
+
+    /** Wall-clock ms of the last unreachable-tile recovery click. */
+    public volatile long lastUnreachableRecoveryClickAtMs = 0L;
+    /** Wall-clock ms the current walk session started. */
+    public volatile long walkSessionStartedAtMs = 0L;
+    /** Whether the first movement click of this walk session has been marked. */
+    public volatile boolean firstMovementClickMarked = false;
+    /** Suppress tryDirectShortWalk minimap clicks until this wall-clock ms (post door-nudge window). */
+    public volatile long suppressTryDirectShortWalkUntilMs = 0L;
+    /** Reason string of the last route clear (diagnostics). */
+    public volatile String lastRouteClearReason = "";
+    /** Wall-clock ms of the last route clear. */
+    public volatile long lastRouteClearAtMs = 0L;
+    /** Tier label of the last route click (diagnostics). */
+    public volatile String lastRouteClickTier = "none";
 }

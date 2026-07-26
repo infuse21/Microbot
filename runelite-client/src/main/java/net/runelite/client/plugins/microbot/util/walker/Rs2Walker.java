@@ -232,9 +232,7 @@ public class Rs2Walker {
     private static volatile int rawScanFocusedDoorAttempts = 0;
     private static volatile long doorInteractionSettleUntilMs = 0L;
     private static volatile long lastDoorEdgePassSkipAtMs = 0L;
-    private static volatile long lastUnreachableRecoveryClickAtMs = 0L;
-    private static volatile long walkSessionStartedAtMs = 0L;
-    private static volatile boolean firstMovementClickMarked = false;
+    // misc route-timer state migrated to WalkerRouteState (see routeState)
     /**
      * Consolidated route state (P1 walker decomposition, enabling step). Fields are migrated here in
      * cohesive clusters; first cluster: transport handoff. See {@link WalkerRouteState}.
@@ -317,8 +315,8 @@ public class Rs2Walker {
     }
 
     private static void markWalkSessionStart(WorldPoint target) {
-        walkSessionStartedAtMs = System.currentTimeMillis();
-        firstMovementClickMarked = false;
+        routeState.walkSessionStartedAtMs = System.currentTimeMillis();
+        routeState.firstMovementClickMarked = false;
         startupPhasesLogged.clear();
         routeState.lastTransportHandledAtLocation = null;
         routeState.lastTransportOriginLocation = null;
@@ -338,22 +336,22 @@ public class Rs2Walker {
     }
 
     private static void markFirstMovementClick(String phase, WorldPoint target, WorldPoint at, String detail) {
-        if (firstMovementClickMarked) {
+        if (routeState.firstMovementClickMarked) {
             return;
         }
-        long startedAt = walkSessionStartedAtMs;
+        long startedAt = routeState.walkSessionStartedAtMs;
         if (startedAt <= 0) {
             return;
         }
-        firstMovementClickMarked = true;
+        routeState.firstMovementClickMarked = true;
         WebWalkLog.tmark(phase, System.currentTimeMillis() - startedAt, target, at, detail);
     }
 
     private static void markStartupPhase(String phase, WorldPoint target, String detail) {
-        if (firstMovementClickMarked || !startupPhasesLogged.add(phase)) {
+        if (routeState.firstMovementClickMarked || !startupPhasesLogged.add(phase)) {
             return;
         }
-        long startedAt = walkSessionStartedAtMs;
+        long startedAt = routeState.walkSessionStartedAtMs;
         if (startedAt <= 0) {
             return;
         }
@@ -483,7 +481,7 @@ public class Rs2Walker {
     private static final ObstaclePolicy STEADY_OBSTACLE_POLICY = new SteadyObstaclePolicy();
 
     private static WalkerPhase currentWalkerPhase() {
-        if (firstMovementClickMarked) {
+        if (routeState.firstMovementClickMarked) {
             return WalkerPhase.STEADY;
         }
         return WalkerPhase.STARTUP;
@@ -587,7 +585,7 @@ public class Rs2Walker {
      * After a successful door canvas nudge, {@link #tryDirectShortWalk} is skipped briefly so the next
      * movement beat is not minimap (same-frame minimap after scene click looks robotic).
      */
-    private static volatile long suppressTryDirectShortWalkUntilMs = 0L;
+    // routeState.suppressTryDirectShortWalkUntilMs migrated to WalkerRouteState (see routeState)
     private static final long POST_DOOR_NUDGE_SUPPRESS_TRY_DIRECT_MS = 2200L;
 
     /** Max wait after scene canvas / recovery clicks until movement stops (avoids minimap churn while in-flight). */
@@ -842,15 +840,19 @@ public class Rs2Walker {
         setTarget(null, reason != null && !reason.isBlank() ? reason : "unspecified");
     }
 
-    @Getter
-    private static volatile String lastRouteClearReason = "";
+    // lastRouteClearReason / lastRouteClearAtMs migrated to WalkerRouteState; the @Getter-generated
+    // accessors are preserved explicitly here because ShortestPathScript reads them as public API.
+    public static String getLastRouteClearReason() {
+        return routeState.lastRouteClearReason;
+    }
 
-    @Getter
-    private static volatile long lastRouteClearAtMs = 0L;
+    public static long getLastRouteClearAtMs() {
+        return routeState.lastRouteClearAtMs;
+    }
 
     private static void logRouteClear(String reason) {
-        lastRouteClearReason = reason == null ? "" : reason;
-        lastRouteClearAtMs = System.currentTimeMillis();
+        routeState.lastRouteClearReason = reason == null ? "" : reason;
+        routeState.lastRouteClearAtMs = System.currentTimeMillis();
         if (reason == null || reason.isBlank()) {
             WebWalkLog.routeClearMissingReason(Thread.currentThread().getName());
         } else {
@@ -2236,7 +2238,7 @@ public class Rs2Walker {
                                 hintRouteProgressIndex(path,
                                         Math.min(recoverIdx, i + INTERIM_CLOSE_TILES),
                                         target);
-                                lastUnreachableRecoveryClickAtMs = System.currentTimeMillis();
+                                routeState.lastUnreachableRecoveryClickAtMs = System.currentTimeMillis();
                                 // Sticky interim: subsequent iterations travel toward this point via the
                                 // interim-in-flight path instead of re-running the (false-negative)
                                 // reachability check and re-clicking every tick.
@@ -2475,7 +2477,7 @@ public class Rs2Walker {
                     }
                     markStartupPhase("click_candidate_found", target,
                             "to=" + compactWorldPoint(clickTarget)
-                                    + " sel=" + lastRouteClickTier + " fb=" + fallbackTag);
+                                    + " sel=" + routeState.lastRouteClickTier + " fb=" + fallbackTag);
                     WorldPoint clickedTarget = clickMiniMapOrFallback(rawPath, clickTarget, playerLoc,
                             MINIMAP_REACH_EUCLIDEAN - 1, rawPath == null || rawPath.isEmpty(), rawAnchorIndex);
                     boolean clicked = clickedTarget != null;
@@ -2598,7 +2600,7 @@ public class Rs2Walker {
                 maybeCanvasNudgeAfterDoor(target, distance, path);
                 // Arm after nudge returns so the window does not expire during in-nudge waits; covers path-adj
                 // door opens even when canvas nudge had no candidates / failed (still defer tryDirectShortWalk minimap).
-                suppressTryDirectShortWalkUntilMs = System.currentTimeMillis() + POST_DOOR_NUDGE_SUPPRESS_TRY_DIRECT_MS;
+                routeState.suppressTryDirectShortWalkUntilMs = System.currentTimeMillis() + POST_DOOR_NUDGE_SUPPRESS_TRY_DIRECT_MS;
                 WorldPoint plAfterDoor = Rs2Player.getWorldLocation();
                 if (!path.isEmpty() && plAfterDoor != null && target != null) {
                     WorldPoint pathLastDoor = path.get(path.size() - 1);
@@ -3311,7 +3313,7 @@ public class Rs2Walker {
     private static WorldPoint selectRouteClickTarget(List<WorldPoint> rawPath, WorldPoint playerLoc,
                                                      int maxEuclidean, int rawAnchorIndex) {
         if (rawPath == null || rawPath.isEmpty() || playerLoc == null) {
-            lastRouteClickTier = "norawpath";
+            routeState.lastRouteClickTier = "norawpath";
             return null;
         }
         // Anti-ban: vary HOW FAR ALONG the route we click. Selection otherwise always returns the
@@ -3341,7 +3343,7 @@ public class Rs2Walker {
                 selected = selectRouteClickTargetAnchored(rawPath, playerLoc, maxEuclidean, -1);
             }
             if (selected != null) {
-                lastRouteClickTier = lastRouteClickTier + "@player";
+                routeState.lastRouteClickTier = routeState.lastRouteClickTier + "@player";
             }
         }
         return selected;
@@ -3382,10 +3384,10 @@ public class Rs2Walker {
         WorldPoint forward = findFurthestRawPathPointMatching(rawPath, playerLoc, maxEuclidean,
                 rawAnchorIndex, Rs2Walker::isKnownWalkableOrUnloaded);
         if (forward != null && !forward.equals(playerLoc)) {
-            lastRouteClickTier = "route";
+            routeState.lastRouteClickTier = "route";
             return forward;
         }
-        lastRouteClickTier = "none";
+        routeState.lastRouteClickTier = "none";
         return null;
     }
 
@@ -3395,7 +3397,7 @@ public class Rs2Walker {
      * {@code rejoin} when selection fell through). Surfaced in the {@code click_candidate_found}
      * tmark so a log alone shows which selection path a click came from.
      */
-    private static volatile String lastRouteClickTier = "none";
+    // routeState.lastRouteClickTier migrated to WalkerRouteState (see routeState)
 
 
 
@@ -3684,7 +3686,7 @@ public class Rs2Walker {
         routeState.interimLastDistanceToTarget = distanceToInterimOrMax(clickedTarget, playerLoc);
         routeState.interimLastRetargetAtMs = routeState.interimSetAtMs;
         if (markRecoveryCooldown) {
-            lastUnreachableRecoveryClickAtMs = routeState.interimSetAtMs;
+            routeState.lastUnreachableRecoveryClickAtMs = routeState.interimSetAtMs;
         }
         if ("active route idle nudge".equals(logLabel)) {
             routeState.lastActiveRouteIdleNudgeAtMs = routeState.interimSetAtMs;
@@ -4337,7 +4339,7 @@ public class Rs2Walker {
         if (!inInstance && localRouteDetoursFromComputedRoute(rawPath, end, directClickMaxDistance)) {
             return WalkerState.MOVING;
         }
-        long suppressUntil = suppressTryDirectShortWalkUntilMs;
+        long suppressUntil = routeState.suppressTryDirectShortWalkUntilMs;
         if (suppressUntil != 0L && System.currentTimeMillis() < suppressUntil) {
             log.debug("[Walker] defer tryDirectShortWalk minimap (post door canvas nudge, {}ms window)",
                     POST_DOOR_NUDGE_SUPPRESS_TRY_DIRECT_MS);
@@ -6012,7 +6014,7 @@ public class Rs2Walker {
         WorldPoint after = Rs2Player.getWorldLocation();
         boolean progressed = isDoorEdgeNudgeResolved(before, after, fromWp, toWp);
         if (progressed) {
-            WebWalkLog.tmark("door_edge_nudge", System.currentTimeMillis() - walkSessionStartedAtMs,
+            WebWalkLog.tmark("door_edge_nudge", System.currentTimeMillis() - routeState.walkSessionStartedAtMs,
                     target, before, "from=" + compactWorldPoint(fromWp) + " to=" + compactWorldPoint(toWp));
             lastMovedTimeMs = System.currentTimeMillis();
             stuckCount = 0;
@@ -6042,7 +6044,7 @@ public class Rs2Walker {
         }
         boolean nudged = tryDoorEdgeCrossNudge(from, to, target);
         if (nudged) {
-            WebWalkLog.tmark("recent_door_edge_nudge", System.currentTimeMillis() - walkSessionStartedAtMs,
+            WebWalkLog.tmark("recent_door_edge_nudge", System.currentTimeMillis() - routeState.walkSessionStartedAtMs,
                     target, playerLoc, "from=" + compactWorldPoint(from) + " to=" + compactWorldPoint(to));
         }
         return nudged;
@@ -6196,7 +6198,7 @@ public class Rs2Walker {
                 routeState.interimLastProgressAtMs,
                 nowMs,
                 lastMovedTimeMs,
-                lastUnreachableRecoveryClickAtMs,
+                routeState.lastUnreachableRecoveryClickAtMs,
                 Rs2Player.isMoving());
     }
 
@@ -6331,7 +6333,7 @@ public class Rs2Walker {
     }
 
     private static boolean isRecoveryMovementInFlight() {
-        return System.currentTimeMillis() - lastUnreachableRecoveryClickAtMs < RECOVERY_MOVEMENT_IN_FLIGHT_MS;
+        return System.currentTimeMillis() - routeState.lastUnreachableRecoveryClickAtMs < RECOVERY_MOVEMENT_IN_FLIGHT_MS;
     }
 
     private static void markDoorInteractionSettling() {
@@ -11320,7 +11322,7 @@ public class Rs2Walker {
         }
         // Check what transport items are needed
         long compareStartedAt = System.currentTimeMillis();
-        long compareFromWalkStart = walkSessionStartedAtMs > 0 ? compareStartedAt - walkSessionStartedAtMs : 0L;
+        long compareFromWalkStart = routeState.walkSessionStartedAtMs > 0 ? compareStartedAt - routeState.walkSessionStartedAtMs : 0L;
         WebWalkLog.tmark("compare_start", compareFromWalkStart, target, pl, "bank_vs_direct");
         TransportRouteAnalysis comparison = compareRoutes(target);
         WebWalkLog.tmark("compare_done", System.currentTimeMillis() - compareStartedAt, target, pl,
