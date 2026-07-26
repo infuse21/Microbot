@@ -246,6 +246,52 @@ public final class RouteRecovery {
         return bestIdx;
     }
 
+    /**
+     * Clamps {@code target} to lie within {@code maxEuclidean} tiles of the player (same plane), stepping
+     * back along the player→target line until it fits, so a recovery click never lands outside the minimap
+     * clip. Returns {@code target} unchanged when it is already in range or cannot be clamped meaningfully.
+     */
+    public static WorldPoint clampToEuclideanRadius(WorldPoint playerLoc, WorldPoint target, int maxEuclidean) {
+        if (playerLoc == null || target == null || target.getPlane() != playerLoc.getPlane() || maxEuclidean <= 0) {
+            return target;
+        }
+        int maxSq = maxEuclidean * maxEuclidean;
+        if (euclideanSq(playerLoc, target) <= maxSq) {
+            return target;
+        }
+
+        int dx = target.getX() - playerLoc.getX();
+        int dy = target.getY() - playerLoc.getY();
+        double distance = Math.sqrt(dx * dx + dy * dy);
+        if (distance <= 1) {
+            return target;
+        }
+
+        double scale = maxEuclidean / distance;
+        int stepX = (int) Math.round(dx * scale);
+        int stepY = (int) Math.round(dy * scale);
+        if (stepX == 0 && stepY == 0) {
+            if (Math.abs(dx) >= Math.abs(dy)) {
+                stepX = Integer.signum(dx);
+            } else {
+                stepY = Integer.signum(dy);
+            }
+        }
+
+        WorldPoint clamped = new WorldPoint(playerLoc.getX() + stepX, playerLoc.getY() + stepY, playerLoc.getPlane());
+        while (!clamped.equals(playerLoc) && euclideanSq(playerLoc, clamped) > maxSq) {
+            if (Math.abs(stepX) >= Math.abs(stepY) && stepX != 0) {
+                stepX -= Integer.signum(stepX);
+            } else if (stepY != 0) {
+                stepY -= Integer.signum(stepY);
+            } else {
+                break;
+            }
+            clamped = new WorldPoint(playerLoc.getX() + stepX, playerLoc.getY() + stepY, playerLoc.getPlane());
+        }
+        return clamped.equals(playerLoc) ? target : clamped;
+    }
+
     /** Squared Euclidean distance; local copy of the trivial helper to keep this class self-contained. */
     private static int euclideanSq(WorldPoint a, WorldPoint b) {
         int dx = a.getX() - b.getX();

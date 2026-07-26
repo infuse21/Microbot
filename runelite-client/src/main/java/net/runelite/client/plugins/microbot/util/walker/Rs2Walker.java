@@ -2224,7 +2224,7 @@ public class Rs2Walker {
                             }
                             WorldPoint clickedRecoveryTarget = null;
                             if (recoverTarget != null && !recoverTarget.equals(playerLoc)) {
-                                recoverTarget = clampToEuclideanRadius(playerLoc, recoverTarget,
+                                recoverTarget = RouteRecovery.clampToEuclideanRadius(playerLoc, recoverTarget,
                                         recoveryMinimapReach - 1);
                                 clickedRecoveryTarget = clickMiniMapOrFallback(rawPath, recoverTarget, playerLoc,
                                         recoveryMinimapReach - 1, rawPath == null || rawPath.isEmpty(), rawAnchorIndex);
@@ -2478,7 +2478,7 @@ public class Rs2Walker {
                         exitReason = "door-handled-before-minimap-click";
                         break;
                     }
-                    clickTarget = clampToEuclideanRadius(playerLoc, clickTarget, MINIMAP_REACH_EUCLIDEAN - 1);
+                    clickTarget = RouteRecovery.clampToEuclideanRadius(playerLoc, clickTarget, MINIMAP_REACH_EUCLIDEAN - 1);
                     long nowBeforeClick = System.currentTimeMillis();
                     if (routeState.lastTransportHandledAtMs > 0
                             && nowBeforeClick - routeState.lastTransportHandledAtMs <= POST_TRANSPORT_PATH_TMARK_WINDOW_MS) {
@@ -3641,7 +3641,7 @@ public class Rs2Walker {
         boolean clicked = false;
         WorldPoint clickedTarget = null;
         if (clickTarget != null && !clickTarget.equals(playerLoc)) {
-            clickTarget = clampToEuclideanRadius(playerLoc, clickTarget, maxEuclidean - 1);
+            clickTarget = RouteRecovery.clampToEuclideanRadius(playerLoc, clickTarget, maxEuclidean - 1);
             clickedTarget = clickMiniMapOrFallback(rawPath, clickTarget, playerLoc,
                     maxEuclidean - 1, rawPath == null || rawPath.isEmpty(), rawAnchorIndex);
             clicked = clickedTarget != null;
@@ -5263,46 +5263,7 @@ public class Rs2Walker {
 
     // interpolateClickableTarget extracted to recovery/RouteRecovery (P1)
 
-    static WorldPoint clampToEuclideanRadius(WorldPoint playerLoc, WorldPoint target, int maxEuclidean) {
-        if (playerLoc == null || target == null || target.getPlane() != playerLoc.getPlane() || maxEuclidean <= 0) {
-            return target;
-        }
-        int maxSq = maxEuclidean * maxEuclidean;
-        if (euclideanSq(playerLoc, target) <= maxSq) {
-            return target;
-        }
-
-        int dx = target.getX() - playerLoc.getX();
-        int dy = target.getY() - playerLoc.getY();
-        double distance = Math.sqrt(dx * dx + dy * dy);
-        if (distance <= 1) {
-            return target;
-        }
-
-        double scale = maxEuclidean / distance;
-        int stepX = (int) Math.round(dx * scale);
-        int stepY = (int) Math.round(dy * scale);
-        if (stepX == 0 && stepY == 0) {
-            if (Math.abs(dx) >= Math.abs(dy)) {
-                stepX = Integer.signum(dx);
-            } else {
-                stepY = Integer.signum(dy);
-            }
-        }
-
-        WorldPoint clamped = new WorldPoint(playerLoc.getX() + stepX, playerLoc.getY() + stepY, playerLoc.getPlane());
-        while (!clamped.equals(playerLoc) && euclideanSq(playerLoc, clamped) > maxSq) {
-            if (Math.abs(stepX) >= Math.abs(stepY) && stepX != 0) {
-                stepX -= Integer.signum(stepX);
-            } else if (stepY != 0) {
-                stepY -= Integer.signum(stepY);
-            } else {
-                break;
-            }
-            clamped = new WorldPoint(playerLoc.getX() + stepX, playerLoc.getY() + stepY, playerLoc.getPlane());
-        }
-        return clamped.equals(playerLoc) ? target : clamped;
-    }
+    // clampToEuclideanRadius extracted to recovery/RouteRecovery (P1)
 
     private static int euclideanSq(WorldPoint a, WorldPoint b) {
         int dx = a.getX() - b.getX();

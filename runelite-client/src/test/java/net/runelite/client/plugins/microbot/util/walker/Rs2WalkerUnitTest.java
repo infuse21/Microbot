@@ -1087,7 +1087,7 @@ public class Rs2WalkerUnitTest {
         WorldPoint player = new WorldPoint(2875, 3418, 0);
         WorldPoint target = new WorldPoint(2886, 3428, 0);
 
-        WorldPoint clamped = Rs2Walker.clampToEuclideanRadius(player, target, 10);
+        WorldPoint clamped = RouteRecovery.clampToEuclideanRadius(player, target, 10);
 
         assertTrue(clamped.distanceTo2D(player) <= 10);
         assertTrue(clamped.getX() > player.getX());
@@ -1099,7 +1099,7 @@ public class Rs2WalkerUnitTest {
         WorldPoint player = new WorldPoint(3200, 3200, 0);
         WorldPoint target = new WorldPoint(3206, 3203, 0);
 
-        assertEquals(target, Rs2Walker.clampToEuclideanRadius(player, target, 10));
+        assertEquals(target, RouteRecovery.clampToEuclideanRadius(player, target, 10));
     }
 
     @Test
