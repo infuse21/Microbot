@@ -3412,36 +3412,14 @@ public class Rs2Walker {
      * Testable core of {@link #findReachableRejoinRawPathPoint(List, WorldPoint, int, int)} with an
      * injectable reachability predicate (so it can be exercised without a live client).
      */
+    // findReachableRejoinRawPathPoint (pure core) moved to geometry/WalkerPathGeometry (P1); same-signature
+    // wrapper so Rs2WalkerUnitTest and callers are untouched.
     static WorldPoint findReachableRejoinRawPathPoint(List<WorldPoint> rawPath, WorldPoint playerLoc,
                                                       int maxEuclidean, int rawAnchorIndex,
                                                       Predicate<WorldPoint> isReachable) {
-        if (rawPath == null || rawPath.isEmpty() || playerLoc == null || isReachable == null) {
-            return null;
-        }
-        int anchor = rawPathForwardAnchorIndex(rawPath, playerLoc, rawAnchorIndex);
-        if (anchor < 0) {
-            return null;
-        }
-        int window = maxEuclidean + 2;
-        int lo = Math.max(0, anchor - window);
-        int hi = Math.min(rawPath.size() - 1, anchor + window);
-        int maxSq = maxEuclidean * maxEuclidean;
-        // Highest index first => prefer the furthest-forward reachable point; only fall back to
-        // points behind the anchor when nothing ahead in the window is reachable.
-        for (int idx = hi; idx >= lo; idx--) {
-            WorldPoint candidate = rawPath.get(idx);
-            if (candidate == null || candidate.getPlane() != playerLoc.getPlane()
-                    || candidate.equals(playerLoc)) {
-                continue;
-            }
-            if (euclideanSq(candidate, playerLoc) > maxSq) {
-                continue;
-            }
-            if (isReachable.test(candidate)) {
-                return candidate;
-            }
-        }
-        return null;
+        return WalkerPathGeometry.findReachableRejoinRawPathPoint(rawPath, playerLoc, maxEuclidean,
+                rawAnchorIndex, isReachable, ROUTE_PROGRESS_FORWARD_SEARCH_TILES,
+                () -> getClosestTileIndex(rawPath, playerLoc));
     }
 
     static WorldPoint findFurthestVisibleKnownRawPathPoint(List<WorldPoint> rawPath,
@@ -4646,15 +4624,11 @@ public class Rs2Walker {
         return false;
     }
 
+    // rawIndexForSmoothedIndex (pure) moved to geometry/WalkerPathGeometry (P1); wrapper supplies the lazy
+    // closest-index fallback (only used when the smoothedToRaw table can't map the index).
     private static int rawIndexForSmoothedIndex(int smoothedIdx, int[] smoothedToRaw, List<WorldPoint> rawPath) {
-        if (rawPath == null || rawPath.isEmpty()) {
-            return -1;
-        }
-        if (smoothedToRaw != null && smoothedIdx >= 0 && smoothedIdx < smoothedToRaw.length) {
-            return Math.max(0, Math.min(smoothedToRaw[smoothedIdx], rawPath.size() - 1));
-        }
-        int closest = getClosestTileIndex(rawPath);
-        return closest >= 0 ? closest : -1;
+        return WalkerPathGeometry.rawIndexForSmoothedIndex(smoothedIdx, smoothedToRaw, rawPath,
+                () -> getClosestTileIndex(rawPath));
     }
 
     private static boolean handleNearbyRawPathSceneObjects(List<WorldPoint> rawPath, int handlerRange, WorldPoint target) {

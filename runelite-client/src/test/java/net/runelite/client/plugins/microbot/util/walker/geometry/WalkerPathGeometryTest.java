@@ -113,6 +113,58 @@ public class WalkerPathGeometryTest {
     // many route steps away) is exercised through the Rs2Walker wrapper in Rs2WalkerUnitTest, so it is not
     // re-asserted here — these tests focus on the pure method's radius/predicate/anchor behavior.
 
+    // --- findReachableRejoinRawPathPoint ------------------------------------------------------------
+
+    @Test
+    public void rejoinPrefersFurthestForwardReachablePoint() {
+        List<WorldPoint> path = straightRun(3200, 3200, 20);
+        WorldPoint player = wp(3205, 3200); // anchor 5
+        // Everything reachable: highest index within the window/radius wins (forward preference).
+        WorldPoint got = WalkerPathGeometry.findReachableRejoinRawPathPoint(path, player, 4, 5,
+                p -> true, FORWARD_SEARCH_TILES, failFallback());
+        assertEquals(wp(3209, 3200), got); // anchor 5 + window edge within radius 4
+    }
+
+    @Test
+    public void rejoinFallsBackBehindAnchorWhenNothingAheadIsReachable() {
+        List<WorldPoint> path = straightRun(3200, 3200, 20);
+        WorldPoint player = wp(3205, 3200); // anchor 5
+        // Only a tile behind the anchor is reachable: the two-sided window must step backward onto it.
+        WorldPoint behind = wp(3203, 3200);
+        WorldPoint got = WalkerPathGeometry.findReachableRejoinRawPathPoint(path, player, 4, 5,
+                behind::equals, FORWARD_SEARCH_TILES, failFallback());
+        assertEquals(behind, got);
+    }
+
+    // --- rawIndexForSmoothedIndex -------------------------------------------------------------------
+
+    @Test
+    public void smoothedIndexMapsThroughTableWithoutFallback() {
+        List<WorldPoint> path = straightRun(3200, 3200, 10);
+        int[] smoothedToRaw = {0, 3, 7};
+        int raw = WalkerPathGeometry.rawIndexForSmoothedIndex(1, smoothedToRaw, path, failFallback());
+        assertEquals(3, raw);
+    }
+
+    @Test
+    public void smoothedIndexClampsTableValueIntoRange() {
+        List<WorldPoint> path = straightRun(3200, 3200, 5); // valid indices 0..4
+        int[] smoothedToRaw = {0, 99}; // 99 out of range -> clamp to 4
+        assertEquals(4, WalkerPathGeometry.rawIndexForSmoothedIndex(1, smoothedToRaw, path, failFallback()));
+    }
+
+    @Test
+    public void smoothedIndexUsesFallbackWhenTableCannotMap() {
+        List<WorldPoint> path = straightRun(3200, 3200, 10);
+        AtomicInteger calls = new AtomicInteger();
+        int raw = WalkerPathGeometry.rawIndexForSmoothedIndex(5, null, path, () -> {
+            calls.incrementAndGet();
+            return 4;
+        });
+        assertEquals(4, raw);
+        assertEquals(1, calls.get());
+    }
+
     /** A fallback that fails the test if ever invoked — proves the lazy path stayed untouched. */
     private static java.util.function.IntSupplier failFallback() {
         return () -> {

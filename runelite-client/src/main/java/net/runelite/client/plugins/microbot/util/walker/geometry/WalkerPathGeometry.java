@@ -168,6 +168,70 @@ public final class WalkerPathGeometry {
         return best;
     }
 
+    /**
+     * Reachable raw-path point to rejoin the route after the player has been pushed off it (stuck on a wall,
+     * knocked back, or landed off-path after a teleport). Unlike the forward-only selection, this scans a
+     * bounded index window {@code [anchor - (maxEuclidean+2), anchor + (maxEuclidean+2)]} on BOTH sides of the
+     * anchor, highest index first, so forward points are preferred but the walker can step slightly backward
+     * onto the route line when nothing ahead is reachable — without snapping all the way to a travelled
+     * branch. Pure: reachability is injected, the anchor fallback stays lazy.
+     *
+     * @return the chosen rejoin point, or {@code null} when none in the window qualifies
+     */
+    public static WorldPoint findReachableRejoinRawPathPoint(List<WorldPoint> rawPath, WorldPoint playerLoc,
+                                                             int maxEuclidean, int rawAnchorIndex,
+                                                             Predicate<WorldPoint> isReachable,
+                                                             int forwardSearchTiles,
+                                                             IntSupplier closestIndexFallback) {
+        if (rawPath == null || rawPath.isEmpty() || playerLoc == null || isReachable == null) {
+            return null;
+        }
+        int anchor = rawPathForwardAnchorIndex(rawPath, playerLoc, rawAnchorIndex, forwardSearchTiles,
+                closestIndexFallback);
+        if (anchor < 0) {
+            return null;
+        }
+        int window = maxEuclidean + 2;
+        int lo = Math.max(0, anchor - window);
+        int hi = Math.min(rawPath.size() - 1, anchor + window);
+        int maxSq = maxEuclidean * maxEuclidean;
+        // Highest index first => prefer the furthest-forward reachable point; only fall back to points behind
+        // the anchor when nothing ahead in the window is reachable.
+        for (int idx = hi; idx >= lo; idx--) {
+            WorldPoint candidate = rawPath.get(idx);
+            if (candidate == null || candidate.getPlane() != playerLoc.getPlane()
+                    || candidate.equals(playerLoc)) {
+                continue;
+            }
+            if (euclideanSq(candidate, playerLoc) > maxSq) {
+                continue;
+            }
+            if (isReachable.test(candidate)) {
+                return candidate;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Maps a smoothed-path index to its corresponding raw-path index via the {@code smoothedToRaw} table,
+     * clamped into range. When the table is missing or the index is out of bounds, falls back to the
+     * (lazily-supplied) closest raw index so callers still get a sensible anchor.
+     *
+     * @return the raw index, or {@code -1} for an empty path with no usable fallback
+     */
+    public static int rawIndexForSmoothedIndex(int smoothedIdx, int[] smoothedToRaw, List<WorldPoint> rawPath,
+                                               IntSupplier closestIndexFallback) {
+        if (rawPath == null || rawPath.isEmpty()) {
+            return -1;
+        }
+        if (smoothedToRaw != null && smoothedIdx >= 0 && smoothedIdx < smoothedToRaw.length) {
+            return Math.max(0, Math.min(smoothedToRaw[smoothedIdx], rawPath.size() - 1));
+        }
+        int closest = closestIndexFallback.getAsInt();
+        return closest >= 0 ? closest : -1;
+    }
+
     private static int rawPathStepDistance(WorldPoint previous, WorldPoint current) {
         if (previous == null || current == null || previous.getPlane() != current.getPlane()) {
             return Integer.MAX_VALUE / 4;
