@@ -2144,6 +2144,19 @@ public class Rs2Walker {
                                 break;
                             }
 
+                            // An agility shortcut / transport sitting on the blocked frontier is TAKEN
+                            // here rather than routed around. The minimap-click fallback below picks the
+                            // furthest path tile within Euclidean minimap reach, which for a stepping-stone
+                            // (or any gap/wall shortcut) is the tile on the FAR side -- clicking it makes the
+                            // server walk the long way around the gap it should have crossed. Taking the
+                            // transport first mirrors the segment-handler transport scan (which can be
+                            // skipped in the post-transport window) and the door/rockfall handling above.
+                            if ((PohTeleports.isInHouse() || !inInstance)
+                                    && handleTransportsInRawSegment(rawPath, rawEdgeStart, rawEdgeEnd)) {
+                                exitReason = "transport-handled-local-reachability";
+                                break;
+                            }
+
                             // Door/obstacle detection above found nothing to open. The local
                             // reachability BFS is bounded (~39 tiles) and is frequently a FALSE
                             // negative — a viable route exists, just longer than the BFS radius or
