@@ -598,6 +598,9 @@ public class QuestHelperPlugin extends Plugin
 	@Subscribe
 	public void onChatMessage(ChatMessage chatMessage)
 	{
+		// Forward to the automation script so its "I can't reach that!" recovery can trigger.
+		questScript.onChatMessage(chatMessage);
+
 		if (chatMessage.getMessage().equals("The crate is full of bananas."))
 		{
 			fullCrate = true;

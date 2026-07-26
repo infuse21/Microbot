@@ -111,6 +111,7 @@ public class QuestScript extends Script {
                 if (!Microbot.isLoggedIn()) return;
                 if (!super.run()) return;
                 if (getQuestHelperPlugin().getSelectedQuest() == null) return;
+                if (getQuestHelperPlugin().getSelectedQuest().getCurrentStep() == null) return;
 
                 if (Rs2Player.isAnimating())
                     Rs2Player.waitForAnimation();
@@ -122,18 +123,30 @@ public class QuestScript extends Script {
 
                 if (questStep != null && Rs2Widget.isWidgetVisible(ComponentID.DIALOG_OPTION_OPTIONS)) {
                     var dialogOptions = Rs2Widget.getWidget(ComponentID.DIALOG_OPTION_OPTIONS);
-                    var dialogChoices = dialogOptions.getDynamicChildren();
+                    var dialogChoices = dialogOptions != null ? dialogOptions.getDynamicChildren() : null;
 
-                    for (var choice : questStep.getChoices().getChoices()) {
-                        if (choice.getExpectedPreviousLine() != null)
-                            continue; // TODO
+                    if (dialogChoices != null) {
+                        for (var choice : questStep.getChoices().getChoices()) {
+                            if (choice.getExpectedPreviousLine() != null)
+                                continue; // TODO
 
-                        if (choice.getExcludedStrings() != null && choice.getExcludedStrings().stream().anyMatch(Rs2Widget::hasWidget))
-                            continue;
+                            if (choice.getExcludedStrings() != null && choice.getExcludedStrings().stream().anyMatch(Rs2Widget::hasWidget))
+                                continue;
 
-                        for (var dialogChoice : dialogChoices) {
-                            if (dialogChoice.getText().endsWith(choice.getChoice())) {
-                                Rs2Keyboard.keyPress(dialogChoice.getOnKeyListener()[7].toString().charAt(0));
+                            for (var dialogChoice : dialogChoices) {
+                                if (dialogChoice == null || dialogChoice.getText() == null
+                                        || !dialogChoice.getText().endsWith(choice.getChoice()))
+                                    continue;
+
+                                Object[] keyListener = dialogChoice.getOnKeyListener();
+                                if (keyListener == null || keyListener.length <= 7 || keyListener[7] == null)
+                                    continue;
+
+                                String keyToken = keyListener[7].toString();
+                                if (keyToken.isEmpty())
+                                    continue;
+
+                                Rs2Keyboard.keyPress(keyToken.charAt(0));
                                 return;
                             }
                         }
@@ -185,7 +198,7 @@ public class QuestScript extends Script {
                 }
 
                 if (getQuestHelperPlugin().getSelectedQuest() != null && !Microbot.getClientThread().runOnClientThreadOptional(() ->
-                        getQuestHelperPlugin().getSelectedQuest().isCompleted()).orElse(null)) {
+                        getQuestHelperPlugin().getSelectedQuest().isCompleted()).orElse(false)) {
                     if (Rs2Widget.isWidgetVisible(ComponentID.DIALOG_OPTION_OPTIONS) && getQuestHelperPlugin().getSelectedQuest().getQuest().getId() != Quest.COOKS_ASSISTANT.getId() && !Rs2Bank.isOpen()) {
                         boolean hasOption = Rs2Dialogue.handleQuestOptionDialogueSelection();
                         //if there is no quest option in the dialogue, just click player location to remove
@@ -279,8 +292,7 @@ public class QuestScript extends Script {
                 }
 
             } catch (Exception ex) {
-                System.out.println(ex.getMessage());
-                ex.printStackTrace(System.out);
+                Microbot.log("Quest helper tick error: " + ex.getMessage(), Level.ERROR, ex);
             }
         }, 0, Rs2Random.between(400, 1000), TimeUnit.MILLISECONDS);
         return true;
@@ -1253,6 +1265,8 @@ public class QuestScript extends Script {
         itemsMissing = new ArrayList<>();
         itemRequirements = new ArrayList<>();
         grandExchangeItems = new ArrayList<>();
+        npcsHandled.clear();
+        objectsHandeled.clear();
         lastMissingRequirementNotice.clear();
         valeTotemsPromptInFlight.set(false);
         valeTotemsSessionWoodType = null;
@@ -1310,7 +1324,12 @@ public class QuestScript extends Script {
             if (step instanceof NpcEmoteStep) {
                 var emoteStep = (NpcEmoteStep) step;
 
-                for (Widget emoteWidget : Rs2Widget.getWidget(ComponentID.EMOTES_EMOTE_CONTAINER).getDynamicChildren()) {
+                var emoteContainer = Rs2Widget.getWidget(ComponentID.EMOTES_EMOTE_CONTAINER);
+                if (emoteContainer == null || emoteContainer.getDynamicChildren() == null) {
+                    return false;
+                }
+
+                for (Widget emoteWidget : emoteContainer.getDynamicChildren()) {
                     if (emoteWidget.getSpriteId() == emoteStep.getEmote().getSpriteId()) {
                         var id = emoteWidget.getOriginalX() / 42 + ((emoteWidget.getOriginalY() - 6) / 49) * 4;
 
