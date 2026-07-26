@@ -49,7 +49,7 @@ public class Rs2DoorProbeTest {
     public void genuineTransportIsNotDoorLike() {
         // A ladder with a Climb action is a real transport, not a door.
         assertFalse(Rs2DoorProbe.isDoorLikeCatalogTransport(
-                transport(TransportType.TRANSPORT, "Ladder", "Ladder", "Examine")));
+                transport(TransportType.TRANSPORT, "Ladder", "Ladder", "Climb")));
     }
 
     @Test

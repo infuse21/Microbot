@@ -672,7 +672,10 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
         final boolean enabled = config.useLiveCollision();
         if (enabled != overlay.isEnabled()) {
             overlay.setEnabled(enabled);
+            // Invalidate both base-axis values (as resetLearnedCollision does) so the next capture is
+            // forced regardless of which axis the base-change check reads first.
             lastLiveCaptureBaseX = Integer.MIN_VALUE; // force a capture on enable, drop snapshot on disable
+            lastLiveCaptureBaseY = Integer.MIN_VALUE;
             liveCollisionDirty = enabled;
             liveRouteValidationPending = false;
             if (enabled) {

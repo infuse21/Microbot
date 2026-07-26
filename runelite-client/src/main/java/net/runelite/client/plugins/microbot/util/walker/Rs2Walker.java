@@ -5722,6 +5722,10 @@ public class Rs2Walker {
                                 Rs2PathApi.getPathfinderConfig().refresh();
                             }
                             recalculatePath();
+                            // Resolved by rerouting; return before the wrong-traversal branch so a
+                            // quest/skill-locked door is never learned as a blocked edge (it unlocks when the
+                            // requirement is met). Matches the tryHandleDoorObject quest-locked path.
+                            return true;
                         }
                         if (!traversed) {
                             if (shouldBlacklistDoorAfterWrongTraversal(posBefore, posAfter, fromWp, toWp)) {

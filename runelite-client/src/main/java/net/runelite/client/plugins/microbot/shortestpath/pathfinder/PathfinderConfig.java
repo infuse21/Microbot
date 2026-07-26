@@ -1879,6 +1879,13 @@ public class PathfinderConfig {
                 quests = 31 * quests + questId;
                 quests = 31 * quests + questStateHashCode(questStateProvider.apply(questId));
             }
+            // Mirror computeTransportRefreshVerificationHash's explicit CLIENT_OF_KOUREND fallback so this
+            // component stays aligned with the full verification hash when the quest is absent from the list.
+            int clientOfKourendId = Quest.CLIENT_OF_KOUREND.getId();
+            if (Arrays.binarySearch(sortedQuestIds, clientOfKourendId) < 0) {
+                quests = 31 * quests + clientOfKourendId;
+                quests = 31 * quests + questStateHashCode(questStateProvider.apply(clientOfKourendId));
+            }
         }
         return new int[]{skills, varbits, varplayers, quests};
     }

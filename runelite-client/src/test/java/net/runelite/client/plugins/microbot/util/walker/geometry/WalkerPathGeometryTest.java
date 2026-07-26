@@ -54,11 +54,14 @@ public class WalkerPathGeometryTest {
         List<WorldPoint> path = new ArrayList<>();
         for (int i = 0; i < 20; i++) path.add(wp(3200 + i, 3200)); // outbound east, idx 0..19
         for (int i = 0; i < 20; i++) path.add(wp(3219 - i, 3201)); // return west one row north, idx 20..39
-        WorldPoint player = wp(3205, 3201); // near outbound idx 5 (row 3200) but actually on return leg
+        // Player sits on outbound idx 5's tile (Euclidean-near the early outbound leg) but offset from the
+        // return-leg anchor tile path.get(34)=(3205,3201), so this exercises the forward-only guard rather
+        // than a trivial exact-anchor (dist 0) match.
+        WorldPoint player = wp(3205, 3200);
         int anchor = 34; // on the return leg
         int idx = WalkerPathGeometry.rawPathForwardAnchorIndex(path, player, anchor, FORWARD_SEARCH_TILES, failFallback());
         // Must stay at or ahead of the anchor, never snap back to the Euclidean-near outbound tile ~idx 5.
-        org.junit.Assert.assertEquals("stays forward of the switch-back anchor", true, idx >= anchor);
+        assertTrue("stays forward of the switch-back anchor", idx >= anchor);
     }
 
     @Test

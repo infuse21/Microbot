@@ -29,7 +29,7 @@ public final class RouteRecovery {
     /**
      * Picks the furthest forward path tile (from {@code startIdx}, within {@code FORWARD_SCAN_TILES}) that
      * is on the player's plane, within {@code maxEuclidean} of the player, reachable (when a reachable set
-     * is supplied), and clickable per {@code isClickable}; ties break toward the tile nearer the player.
+     * is supplied), and clickable per {@code isClickable}.
      *
      * @return the chosen path index, or {@code -1} when none qualifies.
      */
@@ -44,8 +44,9 @@ public final class RouteRecovery {
         }
         int maxSq = maxEuclidean * maxEuclidean;
         int endExclusive = Math.min(path.size(), startIdx + FORWARD_SCAN_TILES + 1);
+        // idx increases monotonically and every qualifying candidate is strictly ahead of the last one
+        // recorded, so the last qualifying index always wins — no distance tie-break is needed.
         int bestIdx = -1;
-        int bestDistFromPlayer = Integer.MAX_VALUE;
         for (int idx = startIdx; idx < endExclusive; idx++) {
             WorldPoint candidate = path.get(idx);
             if (candidate == null || candidate.getPlane() != playerLoc.getPlane()) {
@@ -60,11 +61,7 @@ public final class RouteRecovery {
             if (isClickable != null && !isClickable.test(candidate)) {
                 continue;
             }
-            int distFromPlayer = euclideanSq(candidate, playerLoc);
-            if (bestIdx < 0 || idx > bestIdx || (idx == bestIdx && distFromPlayer > bestDistFromPlayer)) {
-                bestIdx = idx;
-                bestDistFromPlayer = distFromPlayer;
-            }
+            bestIdx = idx;
         }
         return bestIdx;
     }
