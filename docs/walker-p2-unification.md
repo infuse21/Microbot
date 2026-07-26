@@ -4,6 +4,36 @@ _Plan date: 2026-07-26. Depends on P1 (docs/walker-audit.md): `state/WalkerRoute
 `recovery/RouteRecovery` + harness, `geometry/WalkerPathGeometry`, and the pre-existing
 `door/` + `obstacle/` packages are in place._
 
+## Status / outcome (2026-07-26)
+
+The plan below was executed **partially and deliberately** — the parts that pay off were taken, the parts
+that would trade a working system for architectural tidiness were **not**. What shipped:
+
+- ✅ **Abstractions + registry** (`obstacle/`: `PlannedEdge`, `ObstacleResolution`, `ObstacleResolver`,
+  `ObstacleRegistry`, `LiveScene`, `WalkerActions`) — headless-tested.
+- ✅ **`MineableResolver` + `TransportResolver`** — decision logic pure, headless-tested.
+- ✅ **Dispatch cutover in the recovery block** (`Rs2Walker.resolveRecoveryObstacle`) — one
+  `ObstacleResolution` switch replacing the inline rockfall mine + the stepping-stone override.
+  **Live-verified** (user walked door route + MLM rockfall + River Lum stones, "works fine").
+- ✅ **Rockfall fully migrated + legacy deleted** — all three rockfall sites route through
+  `MineableResolver` (`resolveRockfallOnSegment`/`resolveRockfallOnEdge`); `applyRockfall` and
+  `handleRockfallInRawSegment` are gone. The complete adapter→cutover→delete lifecycle on one obstacle type.
+- ✅ **Door decision cores harnessed** (`Rs2DoorClassifierTest`, `Rs2DoorGeometryTest`) — the "tests first"
+  net, without touching the cascade.
+
+**Deliberately NOT done (and why):** the **door cascade** and the **transport interaction** (`handleTransports`,
+charter ships / stairs / precomputed continuations) were left on their existing paths. Unlike rockfall (an
+isolated, per-edge obstacle that fit the model cleanly), these are **stateful, order-dependent cascades**
+whose complexity is largely *essential* (real scenario diversity), not the accidental sprawl this plan
+assumed. Forcing them into per-edge `resolve()` would **reorder** working recovery logic for limited gain —
+a poor risk/reward on the walker's subtlest, working subsystem. The `door/` package is already well-
+decomposed and now tested at the decision level, which is the right end state for it. Revisit only if a
+specific symptom demands it — targeted, harness-pinned — not as a wholesale rewrite. `Rs2LiveScene` (the
+live read adapter) is retained for a future per-edge dispatch model but is currently unused in production
+(the shipped dispatch never needed the scene view).
+
+The plan as originally written follows, for context.
+
 ## Problem being solved
 
 The walker plans on a static/overlay collision map, then discovers at runtime that a planned edge is
