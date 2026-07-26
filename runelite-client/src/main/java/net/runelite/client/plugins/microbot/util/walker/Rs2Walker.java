@@ -64,6 +64,11 @@ import net.runelite.client.plugins.microbot.util.walker.door.Rs2DoorProbe;
 import net.runelite.client.plugins.microbot.util.walker.door.Rs2DoorAheadResolver;
 import net.runelite.client.plugins.microbot.util.walker.door.Rs2DoorGeometry;
 import net.runelite.client.plugins.microbot.util.walker.geometry.WalkerPathGeometry;
+import net.runelite.client.plugins.microbot.util.walker.obstacle.LiveScene;
+import net.runelite.client.plugins.microbot.util.walker.obstacle.MineableResolver;
+import net.runelite.client.plugins.microbot.util.walker.obstacle.ObstacleResolution;
+import net.runelite.client.plugins.microbot.util.walker.obstacle.PlannedEdge;
+import net.runelite.client.plugins.microbot.util.walker.obstacle.Rs2LiveScene;
 import net.runelite.client.plugins.microbot.util.walker.obstacle.Rs2ObstacleHandler;
 import net.runelite.client.plugins.microbot.util.walker.recovery.RouteRecovery;
 import net.runelite.client.plugins.microbot.util.walker.state.WalkerRouteState;
@@ -2020,16 +2025,23 @@ public class Rs2Walker {
                             WorldPoint edgeFrom = rawEdgeStart >= 0 && rawEdgeStart < rawPath.size() ? rawPath.get(rawEdgeStart) : null;
                             WorldPoint edgeTo = rawEdgeEnd - 1 >= 0 && rawEdgeEnd - 1 < rawPath.size() ? rawPath.get(rawEdgeEnd - 1) : null;
 
-                            // A Motherlode rockfall sitting on the blocked frontier is mined here. The
-                            // static map (and the live overlay's rockfall exemption) mark the rockfall tile
-                            // passable so the route plans through it, which means the smoother walks the
-                            // player straight up to it and the earlier segment handler can miss it — the
-                            // player then ends up stuck against the rockfall with no obstacle handler having
-                            // fired. This is the same recovery point doors use, and handleRockfall is
-                            // MLM-region- and object-id-gated, so it is a no-op everywhere else.
-                            if (applyRockfall(Rs2ObstacleHandler.handleRockfallInRawSegment(rawPath, rawEdgeStart, rawEdgeEnd, reachableTilesCache))) {
+                            // Unified obstacle dispatch for the blocked frontier (P2). One call resolves both
+                            // a rockfall to mine here and a reachable transport/agility-shortcut origin to step
+                            // onto below, replacing the former inline rockfall mine and the separate
+                            // findReachableTransportOriginAhead override. A mined rockfall ends recovery this
+                            // tick; a no-pickaxe rockfall clears the target (as applyRockfall did) and falls
+                            // through; a transport origin is applied as the recovery target further down. The
+                            // scan is MLM-/proximity-gated inside the resolver, so it is a no-op elsewhere.
+                            ObstacleResolution frontierObstacle = resolveRecoveryObstacle(rawPath, rawEdgeStart,
+                                    rawEdgeEnd, playerLoc, STALL_RECOVERY_MINIMAP_REACH_EUCLIDEAN, reachableTilesCache);
+                            if (frontierObstacle.kind() == ObstacleResolution.Kind.INTERACTED) {
                                 exitReason = "rockfall-handled-local-reachability";
                                 break;
+                            }
+                            if (frontierObstacle.kind() == ObstacleResolution.Kind.ABORT) {
+                                // e.g. rockfall with no pickaxe: clear the target so we stop hammering it, then
+                                // fall through to normal recovery — identical to applyRockfall's NO_PICKAXE path.
+                                setTarget(null, "rs2walker:" + frontierObstacle.reason());
                             }
 
                             if (hasRecentDoorAttemptOnEdge(edgeFrom, edgeTo)) {
@@ -2211,17 +2223,15 @@ public class Rs2Walker {
                                     || !dangerCfg.isDangerousAdjacentTile(WorldPointUtil.packWorldPoint(rawRecoveryTarget)))) {
                                 recoverTarget = rawRecoveryTarget;
                             }
-                            // Prefer walking onto a reachable transport / agility-shortcut origin just ahead
-                            // (e.g. a stepping stone) over the furthest-walkable target chosen above. The
-                            // transport only dispatches while the player stands on its origin, so clicking
-                            // the far side of the shortcut just loops on the near bank; stepping onto the
-                            // origin lets the normal transport handler cross next tick.
-                            WorldPoint shortcutOrigin = RouteRecovery.findReachableTransportOriginAhead(
-                                    rawPath, getClosestTileIndex(rawPath, playerLoc), playerLoc,
-                                    reachableTilesCache.keySet(), Rs2PathApi.getTransports(),
-                                    recoveryMinimapReach - 1, ROUTE_PROGRESS_FORWARD_SEARCH_TILES);
-                            if (shortcutOrigin != null && !shortcutOrigin.equals(playerLoc)) {
-                                recoverTarget = shortcutOrigin;
+                            // Prefer walking onto the reachable transport / agility-shortcut origin the unified
+                            // dispatch resolved above (e.g. a stepping stone) over the furthest-walkable target.
+                            // The transport only dispatches while the player stands on its origin, so clicking
+                            // the far side of the shortcut just loops on the near bank; stepping onto the origin
+                            // lets the normal transport handler cross next tick.
+                            if (frontierObstacle.kind() == ObstacleResolution.Kind.WALK_TO_ORIGIN
+                                    && frontierObstacle.walkTarget() != null
+                                    && !frontierObstacle.walkTarget().equals(playerLoc)) {
+                                recoverTarget = frontierObstacle.walkTarget();
                             }
                             WorldPoint clickedRecoveryTarget = null;
                             if (recoverTarget != null && !recoverTarget.equals(playerLoc)) {
@@ -4199,6 +4209,66 @@ public class Rs2Walker {
             setTarget(null, "rs2walker:motherlode-rockfall-no-pickaxe");
         }
         return result == Rs2ObstacleHandler.RockfallResult.MINED;
+    }
+
+    /** Stateless obstacle resolver for the P2 unified dispatch (rockfall mining on the blocked frontier). */
+    private static final MineableResolver MINEABLE_RESOLVER = new MineableResolver();
+
+    /**
+     * Unified obstacle resolution for a blocked route frontier (P2 dispatch cutover;
+     * docs/walker-p2-unification.md). Replaces the recovery block's two special cases — the inline
+     * {@code handleRockfallInRawSegment} mine and the {@code findReachableTransportOriginAhead} override —
+     * with a single call returning one {@link ObstacleResolution}:
+     * <ul>
+     *   <li>{@link ObstacleResolution.Kind#INTERACTED} / {@link ObstacleResolution.Kind#ABORT}: a rockfall on
+     *       the blocked segment was mined (or couldn't be, for lack of a pickaxe). The narrow segment scan,
+     *       skipping already-reachable steps, is behaviourally identical to the former
+     *       {@code handleRockfallInRawSegment} (same per-edge {@code handleRockfall}, same skip rule) — it
+     *       just routes through {@link MineableResolver}.</li>
+     *   <li>{@link ObstacleResolution.Kind#WALK_TO_ORIGIN}: a reachable transport / agility-shortcut origin
+     *       sits ahead within minimap reach; the caller should step onto it so the normal transport handler
+     *       crosses next tick. This reuses the pure, tested {@link RouteRecovery#findReachableTransportOriginAhead}
+     *       scan and lifts its result into the unified model.</li>
+     *   <li>{@link ObstacleResolution.Kind#NOT_APPLICABLE}: no obstacle here; fall through to door/minimap
+     *       recovery.</li>
+     * </ul>
+     * Reads live game state (mines, scene/transport lookups) so it must run on the client thread.
+     */
+    private static ObstacleResolution resolveRecoveryObstacle(List<WorldPoint> rawPath, int rawEdgeStart,
+                                                              int rawEdgeEnd, WorldPoint playerLoc,
+                                                              int recoveryMinimapReach,
+                                                              Map<WorldPoint, Integer> reachableTilesCache) {
+        if (rawPath == null || rawPath.isEmpty() || playerLoc == null) {
+            return ObstacleResolution.notApplicable();
+        }
+        LiveScene scene = new Rs2LiveScene(playerLoc, reachableTilesCache);
+
+        // (1) Rockfall on the blocked frontier: narrow segment scan, skipping steps whose both ends are
+        //     already reachable (no blocker there). First non-NOT_APPLICABLE result wins.
+        int scanTo = Math.min(rawEdgeEnd, rawPath.size() - 1);
+        for (int ri = Math.max(0, rawEdgeStart); ri < scanTo; ri++) {
+            WorldPoint a = rawPath.get(ri);
+            WorldPoint b = rawPath.get(ri + 1);
+            if (reachableTilesCache != null && reachableTilesCache.containsKey(a)
+                    && reachableTilesCache.containsKey(b)) {
+                continue;
+            }
+            ObstacleResolution mineable = MINEABLE_RESOLVER.resolve(new PlannedEdge(a, b), scene, null);
+            if (mineable.kind() != ObstacleResolution.Kind.NOT_APPLICABLE) {
+                return mineable;
+            }
+        }
+
+        // (2) Reachable transport / agility-shortcut origin ahead: wide forward-window scan.
+        WorldPoint shortcutOrigin = RouteRecovery.findReachableTransportOriginAhead(
+                rawPath, getClosestTileIndex(rawPath, playerLoc), playerLoc,
+                reachableTilesCache.keySet(), Rs2PathApi.getTransports(),
+                recoveryMinimapReach - 1, ROUTE_PROGRESS_FORWARD_SEARCH_TILES);
+        if (shortcutOrigin != null && !shortcutOrigin.equals(playerLoc)) {
+            return ObstacleResolution.walkToOrigin(shortcutOrigin);
+        }
+
+        return ObstacleResolution.notApplicable();
     }
 
     private static WalkerState tryDirectShortWalk(WorldPoint target,
