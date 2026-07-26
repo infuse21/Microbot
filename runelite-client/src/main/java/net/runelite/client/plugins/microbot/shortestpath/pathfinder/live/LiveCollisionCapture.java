@@ -47,6 +47,16 @@ public final class LiveCollisionCapture {
      * runtime door subsystem keeps owning it — otherwise a closed door's live-blocked edge would make the
      * pathfinder route around an openable door.
      */
+    /**
+     * Version of the capture <em>semantics</em> — the flag→edge translation, the border margin, and the
+     * exempted-obstacle set. Bump this whenever a change here would make previously persisted regions
+     * disagree with what a fresh capture would now produce, so {@link LiveCollisionPersistence} rejects the
+     * stale data on load instead of trusting it. This is what removes the manual "Reset learned collision"
+     * step: e.g. adding the rockfall exemption changed what a rockfall tile records, so that data must not
+     * survive the change. History: v1 = original translation; v2 = rockfall (26679/26680) exemption.
+     */
+    public static final int CAPTURE_VERSION = 2;
+
     private static final Set<String> DOOR_ACTIONS = new HashSet<>(Arrays.asList(
             "open", "go-through", "walk-through", "pass", "pick-lock", "pay-toll"));
 

@@ -178,6 +178,7 @@ public final class LiveCollisionPersistence {
         try (DataOutputStream out = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(tmp)))) {
             out.writeInt(MAGIC);
             out.writeInt(VERSION);
+            out.writeInt(LiveCollisionCapture.CAPTURE_VERSION);
             out.writeInt(region.getPlaneCount());
             writeWords(out, region.northKnownWords());
             writeWords(out, region.northValueWords());
@@ -213,6 +214,12 @@ public final class LiveCollisionPersistence {
     private static LiveCollisionRegion readRegion(File f) {
         try (DataInputStream in = new DataInputStream(new BufferedInputStream(new FileInputStream(f)))) {
             if (in.readInt() != MAGIC || in.readInt() != VERSION) {
+                return null;
+            }
+            // Reject data produced by an older capture semantics version; a fresh capture would now record
+            // these regions differently, so trusting the old bytes reintroduces exactly the stale-data bug
+            // that previously required a manual "Reset learned collision".
+            if (in.readInt() != LiveCollisionCapture.CAPTURE_VERSION) {
                 return null;
             }
             final int planeCount = in.readInt();

@@ -496,6 +496,33 @@ public class LiveCollisionTest {
     }
 
     @Test
+    public void staleCaptureVersionIsRejectedOnLoad() throws Exception {
+        final java.io.File tmp = java.nio.file.Files.createTempDirectory("lcr-ver").toFile();
+        tmp.deleteOnExit();
+
+        // Hand-write a region file stamped with a capture-semantics version that does not match the
+        // current one (as if produced by older capture logic). It must be ignored on load so the store
+        // re-learns instead of trusting stale bytes -- the auto-invalidation that replaces manual reset.
+        try (java.io.DataOutputStream out = new java.io.DataOutputStream(
+                new java.io.FileOutputStream(new java.io.File(tmp, "123.lcr")))) {
+            out.writeInt(0x4C435231);                                        // MAGIC
+            out.writeInt(1);                                                 // file-format VERSION
+            out.writeInt(LiveCollisionCapture.CAPTURE_VERSION + 1);          // stale capture version
+            out.writeInt(1);                                                 // planeCount
+            for (int i = 0; i < 4; i++) {
+                out.writeInt(0);                                             // four empty BitSet word arrays
+            }
+        }
+
+        LiveCollisionOverlay overlay = new LiveCollisionOverlay();
+        overlay.setEnabled(true);
+        LiveCollisionPersistence reader = new LiveCollisionPersistence(tmp);
+        reader.loadIntoAsync(overlay);
+        reader.shutdown();
+        assertNull("a region written by an older capture version must be ignored", overlay.current());
+    }
+
+    @Test
     public void disabledOverlaySnapshot_isIgnored() {
         int[][][] flags = openScene();
         LiveCollisionOverlay overlay = new LiveCollisionOverlay();
