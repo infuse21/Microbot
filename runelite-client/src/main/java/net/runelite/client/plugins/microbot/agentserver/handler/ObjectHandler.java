@@ -2,6 +2,7 @@ package net.runelite.client.plugins.microbot.agentserver.handler;
 
 import com.google.gson.Gson;
 import com.sun.net.httpserver.HttpExchange;
+import net.runelite.api.ObjectComposition;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.api.tileobject.models.Rs2TileObjectModel;
@@ -284,6 +285,14 @@ public class ObjectHandler extends AgentHandler {
 		map.put("name", obj.getName());
 		map.put("type", obj.getTileObjectType().name());
 		map.put("reachable", obj.isReachable());
+		ObjectComposition composition = obj.getObjectComposition();
+		if (composition != null) {
+			map.put("transformedId", composition.getId());
+			map.put("actions", Arrays.stream(composition.getActions())
+					.filter(Objects::nonNull)
+					.filter(action -> !action.isBlank())
+					.collect(Collectors.toList()));
+		}
 
 		WorldPoint loc = obj.getWorldLocation();
 		if (loc != null) {

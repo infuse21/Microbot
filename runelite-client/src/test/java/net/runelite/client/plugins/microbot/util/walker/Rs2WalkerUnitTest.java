@@ -1,4 +1,6 @@
 package net.runelite.client.plugins.microbot.util.walker;
+import net.runelite.client.plugins.microbot.util.walker.obstacle.Rs2ObstacleHandler;
+import net.runelite.client.plugins.microbot.util.walker.door.Rs2DoorGeometry;
 
 import net.runelite.api.WallObject;
 import net.runelite.api.coords.WorldPoint;
@@ -639,14 +641,14 @@ public class Rs2WalkerUnitTest {
         WorldPoint dwarvenMineGoal = new WorldPoint(3040, 9810, 0);
 
         assertEquals("precondition: this tile is the Motherlode Mine region",
-                Rs2Walker.MOTHERLODE_MINE_REGION, insideMlm.getRegionID());
+                Rs2ObstacleHandler.MOTHERLODE_MINE_REGION, insideMlm.getRegionID());
         assertNotEquals("precondition: the outbound goal is in a different region — this is exactly "
                         + "what the old target-based gate rejected",
-                Rs2Walker.MOTHERLODE_MINE_REGION, dwarvenMineGoal.getRegionID());
+                Rs2ObstacleHandler.MOTHERLODE_MINE_REGION, dwarvenMineGoal.getRegionID());
 
         List<WorldPoint> path = Arrays.asList(insideMlm, new WorldPoint(3750, 5672, 0), dwarvenMineGoal);
         assertTrue("standing in the mine must qualify regardless of where the walk ends",
-                Rs2Walker.isMotherlodeRockfallCandidate(insideMlm, path, 0));
+                Rs2ObstacleHandler.isMotherlodeRockfallCandidate(insideMlm, path, 0));
     }
 
     /** A rockfall ahead on the path qualifies even when the player has not entered the mine yet. */
@@ -656,9 +658,9 @@ public class Rs2WalkerUnitTest {
         List<WorldPoint> path = Arrays.asList(outside, new WorldPoint(3728, 5692, 0));
 
         assertNotEquals("precondition: the player is not in the mine yet",
-                Rs2Walker.MOTHERLODE_MINE_REGION, outside.getRegionID());
+                Rs2ObstacleHandler.MOTHERLODE_MINE_REGION, outside.getRegionID());
         assertTrue("a path tile inside the mine must still arm the handler",
-                Rs2Walker.isMotherlodeRockfallCandidate(outside, path, 0));
+                Rs2ObstacleHandler.isMotherlodeRockfallCandidate(outside, path, 0));
     }
 
     /** The gate must stay closed everywhere else — rockfalls exist only in the Motherlode Mine. */
@@ -668,9 +670,9 @@ public class Rs2WalkerUnitTest {
         List<WorldPoint> path = Arrays.asList(varrock, new WorldPoint(3211, 3424, 0));
 
         assertFalse("an unrelated surface walk must not pay for the scene lookup",
-                Rs2Walker.isMotherlodeRockfallCandidate(varrock, path, 0));
+                Rs2ObstacleHandler.isMotherlodeRockfallCandidate(varrock, path, 0));
         assertFalse("a null or empty path must never arm the handler",
-                Rs2Walker.isMotherlodeRockfallCandidate(varrock, null, 0));
+                Rs2ObstacleHandler.isMotherlodeRockfallCandidate(varrock, null, 0));
     }
 
     /**
@@ -1166,10 +1168,10 @@ public class Rs2WalkerUnitTest {
         when(door.getWorldLocation()).thenReturn(new WorldPoint(3123, 3361, 0));
         when(door.getOrientationA()).thenReturn(8); // south-facing door edge
 
-        assertTrue(Rs2Walker.wallDoorTouchesSegment(door,
+        assertTrue(Rs2DoorGeometry.wallDoorTouchesSegment(door,
                 new WorldPoint(3123, 3361, 0),
                 new WorldPoint(3123, 3360, 0)));
-        assertTrue(Rs2Walker.wallDoorTouchesSegment(door,
+        assertTrue(Rs2DoorGeometry.wallDoorTouchesSegment(door,
                 new WorldPoint(3123, 3360, 0),
                 new WorldPoint(3123, 3361, 0)));
     }
@@ -1180,10 +1182,10 @@ public class Rs2WalkerUnitTest {
         when(gate.getWorldLocation()).thenReturn(new WorldPoint(3240, 3302, 0));
         when(gate.getOrientationA()).thenReturn(4); // gate blocks 3240,3302 <-> 3241,3302
 
-        assertTrue(Rs2Walker.wallDoorTouchesSegment(gate,
+        assertTrue(Rs2DoorGeometry.wallDoorTouchesSegment(gate,
                 new WorldPoint(3240, 3301, 0),
                 new WorldPoint(3241, 3302, 0)));
-        assertTrue(Rs2Walker.wallDoorTouchesSegment(gate,
+        assertTrue(Rs2DoorGeometry.wallDoorTouchesSegment(gate,
                 new WorldPoint(3241, 3302, 0),
                 new WorldPoint(3240, 3301, 0)));
     }
@@ -1195,7 +1197,7 @@ public class Rs2WalkerUnitTest {
         when(door.getOrientationA()).thenReturn(8); // door blocks 3123,3361 <-> 3123,3360
 
         assertFalse("standing on the door's south neighbor and walking southwest must not re-open the door",
-                Rs2Walker.wallDoorTouchesSegment(door,
+                Rs2DoorGeometry.wallDoorTouchesSegment(door,
                         new WorldPoint(3123, 3360, 0),
                         new WorldPoint(3122, 3359, 0)));
     }

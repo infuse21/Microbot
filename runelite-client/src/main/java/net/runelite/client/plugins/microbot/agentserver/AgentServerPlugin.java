@@ -146,6 +146,7 @@ public class AgentServerPlugin extends Plugin {
 				new ScreenshotHandler(gson, client, drawManager),
 				new VarbitHandler(gson),
 				new VarpHandler(gson),
+				new GraphicsHandler(gson),
 				new WidgetInvokeHandler(gson),
 				new SettingsHandler(gson),
 				new KeyboardHandler(gson),

@@ -35,6 +35,14 @@ import java.util.concurrent.TimeUnit;
 public final class LiveCollisionPersistence {
     private static final int MAGIC = 0x4C435231; // "LCR1"
     private static final int VERSION = 1;
+    /**
+     * Capture/merge semantics version. Distinct from {@link #VERSION} (the byte format): bump this
+     * whenever what we *record* changes (e.g. the rockfall-exemption capture rules), even if the file
+     * layout is identical. It is part of the on-disk store key, so a bump auto-invalidates every
+     * previously-learned region — no manual "Reset learned collision" needed. History:
+     * 1 = original; 2 = runtime-handled-obstacle (rockfall) exemption in LiveCollisionCapture.
+     */
+    private static final int CAPTURE_VERSION = 2;
 
     private final File dir;
     /** Root removed by {@link #deleteAllNow()} — the whole {@code live-collision} tree (all revisions). */
@@ -47,7 +55,9 @@ public final class LiveCollisionPersistence {
 
     public LiveCollisionPersistence(int cacheRevision) {
         final File liveCollisionBase = new File(new File(RuneLite.RUNELITE_DIR, "microbot"), "live-collision");
-        this.dir = new File(liveCollisionBase, Integer.toString(cacheRevision));
+        // Store key = game cache revision + capture-semantics version. A change to either sends the
+        // store to a fresh directory; the old ones are inert and pruned by pruneStaleStores().
+        this.dir = new File(liveCollisionBase, cacheRevision + "-c" + CAPTURE_VERSION);
         this.deleteRoot = liveCollisionBase;
     }
 
@@ -63,6 +73,7 @@ public final class LiveCollisionPersistence {
      */
     public void loadIntoAsync(LiveCollisionOverlay overlay) {
         io.execute(() -> {
+            pruneStaleStores();
             final File[] files = dir.listFiles((d, name) -> name.endsWith(".lcr"));
             if (files == null) {
                 return;
@@ -114,6 +125,26 @@ public final class LiveCollisionPersistence {
     /** Synchronously deletes this store's entire on-disk tree. */
     public void deleteAllNow() {
         deleteRecursively(deleteRoot);
+    }
+
+    /**
+     * Removes every sibling store directory except the current key ({@code <rev>-c<captureVersion>}),
+     * so data from an old game-cache revision or an old capture-semantics version is dropped rather
+     * than lingering. No-op for the explicit-dir (test) constructor, where {@code dir == deleteRoot}.
+     */
+    private void pruneStaleStores() {
+        if (dir.equals(deleteRoot)) {
+            return;
+        }
+        final File[] siblings = deleteRoot.listFiles();
+        if (siblings == null) {
+            return;
+        }
+        for (File sibling : siblings) {
+            if (sibling.isDirectory() && !sibling.getName().equals(dir.getName())) {
+                deleteRecursively(sibling);
+            }
+        }
     }
 
     private static void deleteRecursively(File f) {

@@ -54,6 +54,17 @@ public class WalkHandler extends AgentHandler {
 			return;
 		}
 
+		if (exchange.getRequestURI().getPath().endsWith("/cancel")) {
+			Map<String, Object> response = new LinkedHashMap<>();
+			response.put("success", true);
+			response.put("wasWalking", cancelActiveWalk());
+			response.put("walking", false);
+			response.put("message", "Active walk cancelled");
+			addPlayerPosition(response);
+			sendJson(exchange, 200, response);
+			return;
+		}
+
 		Map<String, Object> body;
 		try {
 			body = readJsonBody(exchange);
@@ -201,6 +212,18 @@ public class WalkHandler extends AgentHandler {
 			activeWalkTarget = null;
 			activeWalkReachedDistance = DEFAULT_REACHED_DISTANCE;
 		}
+	}
+
+	private static synchronized boolean cancelActiveWalk() {
+		boolean wasWalking = activeWalk != null && !activeWalk.isDone();
+		if (wasWalking) {
+			activeWalk.cancel(true);
+		}
+		Rs2Walker.clearWalkingRoute("agentserver:cancel");
+		activeWalk = null;
+		activeWalkTarget = null;
+		activeWalkReachedDistance = DEFAULT_REACHED_DISTANCE;
+		return wasWalking;
 	}
 
 	private static int distanceTo(WorldPoint destination) {
