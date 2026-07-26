@@ -268,7 +268,7 @@ Body: `{"name": "Banker", "action": "Bank"}` or `{"id": 3010, "action": "Attack"
   "count": 2,
   "total": 2,
   "objects": [
-    {"id": 10820, "name": "Oak tree", "type": "GAME", "reachable": true, "position": {"x": 3205, "y": 3210, "plane": 0}}
+    {"id": 10820, "transformedId": 10820, "name": "Oak tree", "actions": ["Chop down"], "type": "GAME", "reachable": true, "position": {"x": 3205, "y": 3210, "plane": 0}}
   ]
 }
 ```
@@ -414,6 +414,23 @@ Blocking timeout response:
   "timedOut": true,
   "message": "Walk did not complete within 30s; still in progress",
   "playerPosition": {"x": 3150, "y": 3450, "plane": 0}
+}
+```
+
+#### POST /walk/cancel
+
+Safely cancels the active Agent Server walk and clears the walker's current route.
+
+```bash
+curl -X POST -H "X-Agent-Token: $TOKEN" http://127.0.0.1:8081/walk/cancel
+```
+
+```json
+{
+  "success": true,
+  "wasWalking": true,
+  "walking": false,
+  "message": "Active walk cancelled"
 }
 ```
 

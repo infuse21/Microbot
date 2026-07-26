@@ -10,7 +10,7 @@ net.runelite.api.Actor	getLocalLocation(): LocalPoint	LAMBDA,SUBSCRIBE	2
 net.runelite.api.Actor	getModel(): Model	LAMBDA	1
 net.runelite.api.Actor	getName(): String	LAMBDA,SUBSCRIBE	5
 net.runelite.api.Actor	getWorldArea(): WorldArea	LAMBDA	1
-net.runelite.api.Actor	getWorldLocation(): WorldPoint	LAMBDA	3
+net.runelite.api.Actor	getWorldLocation(): WorldPoint	LAMBDA	4
 net.runelite.api.Actor	getWorldView(): WorldView	LAMBDA	2
 net.runelite.api.Actor	setDead(boolean): void	SUBSCRIBE	1
 net.runelite.api.Actor	setOverheadText(String): void	SUBSCRIBE	3
@@ -35,7 +35,7 @@ net.runelite.api.Client	getAmbientSoundEffects(): Deque	SUBSCRIBE	2
 net.runelite.api.Client	getArray(int): int[]	SUBSCRIBE	1
 net.runelite.api.Client	getBaseX(): int	SUBSCRIBE	1
 net.runelite.api.Client	getBaseY(): int	SUBSCRIBE	1
-net.runelite.api.Client	getBoostedSkillLevel(Skill): int	LAMBDA,SUBSCRIBE	11
+net.runelite.api.Client	getBoostedSkillLevel(Skill): int	LAMBDA,SUBSCRIBE	13
 net.runelite.api.Client	getBoostedSkillLevels(): int[]	SUBSCRIBE	1
 net.runelite.api.Client	getCameraX(): int	SUBSCRIBE	1
 net.runelite.api.Client	getCameraY(): int	SUBSCRIBE	1
@@ -47,13 +47,14 @@ net.runelite.api.Client	getDBTableField(int, int, int): Object[]	LAMBDA,SUBSCRIB
 net.runelite.api.Client	getDBTableRows(int): List	LAMBDA	2
 net.runelite.api.Client	getDraggedOnWidget(): Widget	SUBSCRIBE	3
 net.runelite.api.Client	getDraggedWidget(): Widget	SUBSCRIBE	3
+net.runelite.api.Client	getEnergy(): int	LAMBDA	2
 net.runelite.api.Client	getEnum(int): EnumComposition	LAMBDA,SUBSCRIBE	4
 net.runelite.api.Client	getFriendContainer(): FriendContainer	SUBSCRIBE	1
 net.runelite.api.Client	getFriendsChatManager(): FriendsChatManager	SUBSCRIBE	2
 net.runelite.api.Client	getGameCycle(): int	LAMBDA,SUBSCRIBE	5
-net.runelite.api.Client	getGameState(): GameState	ASSERT,LAMBDA,SUBSCRIBE	51
+net.runelite.api.Client	getGameState(): GameState	ASSERT,LAMBDA,SUBSCRIBE	52
 net.runelite.api.Client	getGuestClanChannel(): ClanChannel	SUBSCRIBE	1
-net.runelite.api.Client	getHintArrowNpc(): NPC	SUBSCRIBE	1
+net.runelite.api.Client	getHintArrowNpc(): NPC	LAMBDA,SUBSCRIBE	2
 net.runelite.api.Client	getHintArrowPoint(): WorldPoint	SUBSCRIBE	1
 net.runelite.api.Client	getIgnoreContainer(): NameableContainer	SUBSCRIBE	1
 net.runelite.api.Client	getIndexConfig(): IndexDataBase	LAMBDA	1
@@ -62,15 +63,16 @@ net.runelite.api.Client	getIndexSprites(): IndexDataBase	ASSERT	1
 net.runelite.api.Client	getIntStack(): int[]	SUBSCRIBE	25
 net.runelite.api.Client	getIntStackSize(): int	SUBSCRIBE	24
 net.runelite.api.Client	getItemContainer(InventoryID): ItemContainer	SUBSCRIBE	1
-net.runelite.api.Client	getItemContainer(int): ItemContainer	ASSERT,LAMBDA,SUBSCRIBE	24
+net.runelite.api.Client	getItemContainer(int): ItemContainer	ASSERT,LAMBDA,SUBSCRIBE	27
 net.runelite.api.Client	getItemContainers(): HashTable	LAMBDA	1
 net.runelite.api.Client	getItemCount(): int	ASSERT,SUBSCRIBE	2
-net.runelite.api.Client	getItemDefinition(int): ItemComposition	ASSERT,LAMBDA,SUBSCRIBE	27
+net.runelite.api.Client	getItemDefinition(int): ItemComposition	ASSERT,LAMBDA,SUBSCRIBE	33
 net.runelite.api.Client	getKeyboardIdleTicks(): int	SUBSCRIBE	1
 net.runelite.api.Client	getLocalDestinationLocation(): LocalPoint	SUBSCRIBE	2
-net.runelite.api.Client	getLocalPlayer(): Player	LAMBDA,SUBSCRIBE	96
+net.runelite.api.Client	getLocalPlayer(): Player	LAMBDA,SUBSCRIBE	102
+net.runelite.api.Client	getLoginIndex(): int	LAMBDA	1
 net.runelite.api.Client	getMapElementConfig(int): MapElementConfig	SUBSCRIBE	1
-net.runelite.api.Client	getMenu(): Menu	SUBSCRIBE	6
+net.runelite.api.Client	getMenu(): Menu	LAMBDA,SUBSCRIBE	8
 net.runelite.api.Client	getMenuEntries(): MenuEntry[]	SUBSCRIBE	13
 net.runelite.api.Client	getMessages(): IterableHashTable	SUBSCRIBE	3
 net.runelite.api.Client	getModIcons(): IndexedSprite[]	ASSERT,LAMBDA,SUBSCRIBE	3
@@ -90,42 +92,41 @@ net.runelite.api.Client	getPlayers(): List	LAMBDA	1
 net.runelite.api.Client	getPreferences(): Preferences	SUBSCRIBE	2
 net.runelite.api.Client	getRealSkillLevel(Skill): int	LAMBDA,SUBSCRIBE	9
 net.runelite.api.Client	getRealSkillLevels(): int[]	SUBSCRIBE	1
-net.runelite.api.Client	getRevision(): int	SUBSCRIBE	1
 net.runelite.api.Client	getScene(): Scene	LAMBDA,SUBSCRIBE	4
 net.runelite.api.Client	getScriptActiveWidget(): Widget	SUBSCRIBE	2
 net.runelite.api.Client	getSelectedSceneTile(): Tile	SUBSCRIBE	1
 net.runelite.api.Client	getSelectedWidget(): Widget	SUBSCRIBE	2
-net.runelite.api.Client	getSkillExperience(Skill): int	LAMBDA,SUBSCRIBE	5
+net.runelite.api.Client	getSkillExperience(Skill): int	LAMBDA,SUBSCRIBE	6
 net.runelite.api.Client	getSkillExperiences(): int[]	SUBSCRIBE	1
 net.runelite.api.Client	getSpriteOverrides(): Map	LAMBDA	4
 net.runelite.api.Client	getSprites(IndexDataBase, int, int): SpritePixels[]	ASSERT	1
 net.runelite.api.Client	getStructComposition(int): StructComposition	LAMBDA	1
 net.runelite.api.Client	getTextureProvider(): TextureProvider	SUBSCRIBE	1
-net.runelite.api.Client	getTickCount(): int	LAMBDA,SUBSCRIBE	36
-net.runelite.api.Client	getTopLevelWorldView(): WorldView	LAMBDA,SUBSCRIBE	17
+net.runelite.api.Client	getTickCount(): int	LAMBDA,SUBSCRIBE	37
+net.runelite.api.Client	getTopLevelWorldView(): WorldView	LAMBDA,SUBSCRIBE	27
 net.runelite.api.Client	getUsername(): String	SUBSCRIBE	1
-net.runelite.api.Client	getVarbit(int): VarbitComposition	LAMBDA,SUBSCRIBE	2
+net.runelite.api.Client	getVarbit(int): VarbitComposition	LAMBDA,SUBSCRIBE	3
 net.runelite.api.Client	getVarbitValue(int): int	ASSERT,LAMBDA,SUBSCRIBE	36
 net.runelite.api.Client	getVarbitValue(int[], int): int	SUBSCRIBE	2
 net.runelite.api.Client	getVarcIntValue(int): int	SUBSCRIBE	1
 net.runelite.api.Client	getVarcMap(): Map	SUBSCRIBE	2
 net.runelite.api.Client	getVarcStrValue(int): String	LAMBDA,SUBSCRIBE	10
-net.runelite.api.Client	getVarpValue(int): int	LAMBDA,SUBSCRIBE	14
-net.runelite.api.Client	getVarps(): int[]	SUBSCRIBE	2
+net.runelite.api.Client	getVarpValue(int): int	LAMBDA,SUBSCRIBE	16
+net.runelite.api.Client	getVarps(): int[]	LAMBDA,SUBSCRIBE	3
 net.runelite.api.Client	getWidget(WidgetInfo): Widget	LAMBDA	1
-net.runelite.api.Client	getWidget(int): Widget	LAMBDA,SUBSCRIBE	98
-net.runelite.api.Client	getWidget(int, int): Widget	ASSERT,LAMBDA,SUBSCRIBE	10
+net.runelite.api.Client	getWidget(int): Widget	LAMBDA,SUBSCRIBE	103
+net.runelite.api.Client	getWidget(int, int): Widget	ASSERT,LAMBDA,SUBSCRIBE	12
 net.runelite.api.Client	getWidgetRoots(): Widget[]	LAMBDA,SUBSCRIBE	8
 net.runelite.api.Client	getWidgetSpriteCache(): NodeCache	LAMBDA	2
-net.runelite.api.Client	getWorld(): int	LAMBDA,SUBSCRIBE	14
+net.runelite.api.Client	getWorld(): int	LAMBDA,SUBSCRIBE	15
 net.runelite.api.Client	getWorldMap(): WorldMap	SUBSCRIBE	1
-net.runelite.api.Client	getWorldType(): EnumSet	LAMBDA,SUBSCRIBE	5
+net.runelite.api.Client	getWorldType(): EnumSet	LAMBDA,SUBSCRIBE	9
 net.runelite.api.Client	getWorldView(int): WorldView	SUBSCRIBE	3
 net.runelite.api.Client	hopToWorld(World): void	LAMBDA,SUBSCRIBE	2
 net.runelite.api.Client	invalidateStretching(boolean): void	SUBSCRIBE	1
-net.runelite.api.Client	isClientThread(): boolean	ASSERT	12
+net.runelite.api.Client	isClientThread(): boolean	ASSERT,LAMBDA	14
 net.runelite.api.Client	isInInstancedRegion(): boolean	LAMBDA,SUBSCRIBE	5
-net.runelite.api.Client	isKeyPressed(int): boolean	SUBSCRIBE	9
+net.runelite.api.Client	isKeyPressed(int): boolean	SUBSCRIBE	10
 net.runelite.api.Client	isMenuOpen(): boolean	SUBSCRIBE	8
 net.runelite.api.Client	isPrayerActive(Prayer): boolean	SUBSCRIBE	1
 net.runelite.api.Client	isResized(): boolean	LAMBDA,SUBSCRIBE	3
@@ -137,11 +138,13 @@ net.runelite.api.Client	openWorldHopper(): void	LAMBDA,SUBSCRIBE	2
 net.runelite.api.Client	playSoundEffect(int): void	LAMBDA,SUBSCRIBE	2
 net.runelite.api.Client	playSoundEffect(int, int): void	SUBSCRIBE	1
 net.runelite.api.Client	queueChangedSkill(Skill): void	LAMBDA,SUBSCRIBE	2
-net.runelite.api.Client	queueChangedVarp(int): void	SUBSCRIBE	1
+net.runelite.api.Client	queueChangedVarp(int): void	LAMBDA,SUBSCRIBE	2
 net.runelite.api.Client	refreshChat(): void	LAMBDA,SUBSCRIBE	3
 net.runelite.api.Client	resetHealthBarCaches(): void	LAMBDA	1
 net.runelite.api.Client	resizeCanvas(): void	LAMBDA	2
-net.runelite.api.Client	runScript(Object[]): void	LAMBDA,SUBSCRIBE	27
+net.runelite.api.Client	runScript(Object[]): void	LAMBDA,SUBSCRIBE	29
+net.runelite.api.Client	setCameraPitchTarget(int): void	LAMBDA	1
+net.runelite.api.Client	setCameraYawTarget(int): void	LAMBDA	2
 net.runelite.api.Client	setDraggedOnWidget(Widget): void	SUBSCRIBE	2
 net.runelite.api.Client	setDrawCallbacks(DrawCallbacks): void	LAMBDA	2
 net.runelite.api.Client	setExpandedMapLoading(int): void	LAMBDA	3
@@ -155,23 +158,24 @@ net.runelite.api.Client	setHintArrow(WorldPoint): void	SUBSCRIBE	6
 net.runelite.api.Client	setIdleTimeout(int): void	SUBSCRIBE	1
 net.runelite.api.Client	setInventoryDragDelay(int): void	LAMBDA	2
 net.runelite.api.Client	setLoginScreen(SpritePixels): void	LAMBDA	2
-net.runelite.api.Client	setMenuEntries(MenuEntry[]): void	SUBSCRIBE	3
+net.runelite.api.Client	setMenuEntries(MenuEntry[]): void	LAMBDA,SUBSCRIBE	5
 net.runelite.api.Client	setMinimapZoom(boolean): void	SUBSCRIBE	1
 net.runelite.api.Client	setModIcons(IndexedSprite[]): void	ASSERT,LAMBDA	2
 net.runelite.api.Client	setShouldRenderLoginScreenFire(boolean): void	LAMBDA	2
 net.runelite.api.Client	setSkyboxColor(int): void	SUBSCRIBE	2
 net.runelite.api.Client	setUnlockedFps(boolean): void	LAMBDA	2
 net.runelite.api.Client	setUnlockedFpsTarget(int): void	LAMBDA	1
-net.runelite.api.Client	setVarbitValue(int[], int, int): void	SUBSCRIBE	2
+net.runelite.api.Client	setVarbitValue(int[], int, int): void	LAMBDA,SUBSCRIBE	3
 net.runelite.api.Client	setVarcIntValue(int, int): void	LAMBDA	3
 net.runelite.api.Client	setVarcStrValue(int, String): void	LAMBDA	7
 net.runelite.api.Client	setWidgetSelected(boolean): void	SUBSCRIBE	2
-net.runelite.api.CollisionData	getFlags(): int[][]	LAMBDA	1
+net.runelite.api.CollisionData	getFlags(): int[][]	LAMBDA	3
 net.runelite.api.DecorativeObject	getId(): int	SUBSCRIBE	3
 net.runelite.api.Deque	clear(): void	SUBSCRIBE	2
+net.runelite.api.Deque	iterator(): Iterator	LAMBDA	1
 net.runelite.api.EnumComposition	getIntValue(int): int	SUBSCRIBE	2
 net.runelite.api.EquipmentInventorySlot	getSlotIdx(): int	LAMBDA,SUBSCRIBE	3
-net.runelite.api.EquipmentInventorySlot	values(): EquipmentInventorySlot[]	ASSERT,LAMBDA	2
+net.runelite.api.EquipmentInventorySlot	values(): EquipmentInventorySlot[]	LAMBDA	1
 net.runelite.api.Experience	getCombatLevelPrecise(int, int, int, int, int, int, int): double	SUBSCRIBE	2
 net.runelite.api.Experience	getLevelForXp(int): int	SUBSCRIBE	4
 net.runelite.api.Experience	getXpForLevel(int): int	SUBSCRIBE	1
@@ -181,9 +185,9 @@ net.runelite.api.FriendsChatMember	getName(): String	SUBSCRIBE	2
 net.runelite.api.FriendsChatMember	getRank(): FriendsChatRank	SUBSCRIBE	2
 net.runelite.api.FriendsChatMember	getWorld(): int	SUBSCRIBE	2
 net.runelite.api.FriendsChatRank	getValue(): int	SUBSCRIBE	2
-net.runelite.api.GameObject	getId(): int	SUBSCRIBE	15
+net.runelite.api.GameObject	getId(): int	LAMBDA,SUBSCRIBE	19
 net.runelite.api.GameObject	getOrientation(): int	SUBSCRIBE	1
-net.runelite.api.GameObject	getWorldLocation(): WorldPoint	SUBSCRIBE	5
+net.runelite.api.GameObject	getWorldLocation(): WorldPoint	SUBSCRIBE	6
 net.runelite.api.GameObject	sizeX(): int	SUBSCRIBE	1
 net.runelite.api.GameObject	sizeY(): int	SUBSCRIBE	1
 net.runelite.api.GameState	getState(): int	ASSERT,LAMBDA,SUBSCRIBE	13
@@ -191,8 +195,11 @@ net.runelite.api.GameState	ordinal(): int	ASSERT,LAMBDA,SUBSCRIBE	22
 net.runelite.api.GrandExchangeOffer	getItemId(): int	SUBSCRIBE	1
 net.runelite.api.GrandExchangeOffer	getQuantitySold(): int	SUBSCRIBE	1
 net.runelite.api.GrandExchangeOffer	getState(): GrandExchangeOfferState	SUBSCRIBE	1
-net.runelite.api.GraphicsObject	getId(): int	SUBSCRIBE	3
-net.runelite.api.GraphicsObject	getLocation(): LocalPoint	LAMBDA,SUBSCRIBE	2
+net.runelite.api.GraphicsObject	finished(): boolean	LAMBDA	1
+net.runelite.api.GraphicsObject	getId(): int	LAMBDA,SUBSCRIBE	4
+net.runelite.api.GraphicsObject	getLevel(): int	LAMBDA	1
+net.runelite.api.GraphicsObject	getLocation(): LocalPoint	LAMBDA,SUBSCRIBE	3
+net.runelite.api.GraphicsObject	getStartCycle(): int	LAMBDA	1
 net.runelite.api.GroundObject	getId(): int	SUBSCRIBE	1
 net.runelite.api.GroundObject	getWorldLocation(): WorldPoint	SUBSCRIBE	1
 net.runelite.api.HashTable	get(long): Node	SUBSCRIBE	1
@@ -209,30 +216,30 @@ net.runelite.api.IndexedObjectSet	byIndex(int): Object	LAMBDA	3
 net.runelite.api.IndexedObjectSet	iterator(): Iterator	LAMBDA,SUBSCRIBE	2
 net.runelite.api.IndexedObjectSet	stream(): Stream	LAMBDA	1
 net.runelite.api.Item	<init>(int, int): void	LAMBDA,SUBSCRIBE	2
-net.runelite.api.Item	getId(): int	ASSERT,LAMBDA,SUBSCRIBE	13
+net.runelite.api.Item	getId(): int	ASSERT,LAMBDA,SUBSCRIBE	14
 net.runelite.api.Item	getQuantity(): int	ASSERT,LAMBDA,SUBSCRIBE	4
 net.runelite.api.ItemComposition	getId(): int	LAMBDA,SUBSCRIBE	9
 net.runelite.api.ItemComposition	getIntValue(int): int	SUBSCRIBE	1
-net.runelite.api.ItemComposition	getLinkedNoteId(): int	LAMBDA	1
-net.runelite.api.ItemComposition	getMembersName(): String	ASSERT,SUBSCRIBE	3
-net.runelite.api.ItemComposition	getName(): String	ASSERT,LAMBDA,SUBSCRIBE	11
-net.runelite.api.ItemComposition	getNote(): int	LAMBDA	1
-net.runelite.api.ItemComposition	getPlaceholderTemplateId(): int	ASSERT	1
+net.runelite.api.ItemComposition	getLinkedNoteId(): int	LAMBDA	2
+net.runelite.api.ItemComposition	getMembersName(): String	ASSERT,SUBSCRIBE	4
+net.runelite.api.ItemComposition	getName(): String	ASSERT,LAMBDA,SUBSCRIBE	13
+net.runelite.api.ItemComposition	getNote(): int	LAMBDA	2
+net.runelite.api.ItemComposition	getPlaceholderTemplateId(): int	ASSERT,LAMBDA	2
 net.runelite.api.ItemComposition	getPrice(): int	LAMBDA	2
 net.runelite.api.ItemComposition	getStringValue(int): String	SUBSCRIBE	1
 net.runelite.api.ItemComposition	getSubops(): String[][]	LAMBDA	1
 net.runelite.api.ItemComposition	isMembers(): boolean	LAMBDA	1
 net.runelite.api.ItemComposition	isStackable(): boolean	LAMBDA	2
-net.runelite.api.ItemComposition	isTradeable(): boolean	LAMBDA	1
+net.runelite.api.ItemComposition	isTradeable(): boolean	LAMBDA	3
 net.runelite.api.ItemContainer	contains(int): boolean	SUBSCRIBE	5
 net.runelite.api.ItemContainer	count(): int	SUBSCRIBE	2
 net.runelite.api.ItemContainer	find(int): int	SUBSCRIBE	1
 net.runelite.api.ItemContainer	getId(): int	LAMBDA	1
 net.runelite.api.ItemContainer	getItem(int): Item	LAMBDA,SUBSCRIBE	2
-net.runelite.api.ItemContainer	getItems(): Item[]	ASSERT,LAMBDA,SUBSCRIBE	20
+net.runelite.api.ItemContainer	getItems(): Item[]	ASSERT,LAMBDA,SUBSCRIBE	21
 net.runelite.api.ItemLayer	getHeight(): int	SUBSCRIBE	1
 net.runelite.api.IterableHashTable	get(long): Node	SUBSCRIBE	3
-net.runelite.api.Menu	createMenuEntry(int): MenuEntry	SUBSCRIBE	7
+net.runelite.api.Menu	createMenuEntry(int): MenuEntry	LAMBDA,SUBSCRIBE	9
 net.runelite.api.Menu	getMenuEntries(): MenuEntry[]	SUBSCRIBE	4
 net.runelite.api.Menu	removeMenuEntry(MenuEntry): void	SUBSCRIBE	1
 net.runelite.api.Menu	setMenuEntries(MenuEntry[]): void	SUBSCRIBE	2
@@ -254,14 +261,14 @@ net.runelite.api.MenuEntry	getWorldViewId(): int	SUBSCRIBE	6
 net.runelite.api.MenuEntry	onClick(Consumer): MenuEntry	SUBSCRIBE	18
 net.runelite.api.MenuEntry	setDeprioritized(boolean): MenuEntry	SUBSCRIBE	3
 net.runelite.api.MenuEntry	setForceLeftClick(boolean): MenuEntry	SUBSCRIBE	1
-net.runelite.api.MenuEntry	setIdentifier(int): MenuEntry	SUBSCRIBE	7
-net.runelite.api.MenuEntry	setItemId(int): MenuEntry	SUBSCRIBE	3
-net.runelite.api.MenuEntry	setOption(String): MenuEntry	SUBSCRIBE	21
-net.runelite.api.MenuEntry	setParam0(int): MenuEntry	SUBSCRIBE	6
-net.runelite.api.MenuEntry	setParam1(int): MenuEntry	SUBSCRIBE	8
-net.runelite.api.MenuEntry	setTarget(String): MenuEntry	SUBSCRIBE	25
-net.runelite.api.MenuEntry	setType(MenuAction): MenuEntry	SUBSCRIBE	20
-net.runelite.api.MenuEntry	setWorldViewId(int): MenuEntry	SUBSCRIBE	3
+net.runelite.api.MenuEntry	setIdentifier(int): MenuEntry	LAMBDA,SUBSCRIBE	9
+net.runelite.api.MenuEntry	setItemId(int): MenuEntry	LAMBDA,SUBSCRIBE	5
+net.runelite.api.MenuEntry	setOption(String): MenuEntry	LAMBDA,SUBSCRIBE	23
+net.runelite.api.MenuEntry	setParam0(int): MenuEntry	LAMBDA,SUBSCRIBE	8
+net.runelite.api.MenuEntry	setParam1(int): MenuEntry	LAMBDA,SUBSCRIBE	10
+net.runelite.api.MenuEntry	setTarget(String): MenuEntry	LAMBDA,SUBSCRIBE	27
+net.runelite.api.MenuEntry	setType(MenuAction): MenuEntry	LAMBDA,SUBSCRIBE	22
+net.runelite.api.MenuEntry	setWorldViewId(int): MenuEntry	LAMBDA,SUBSCRIBE	5
 net.runelite.api.MessageNode	getId(): int	SUBSCRIBE	1
 net.runelite.api.MessageNode	getName(): String	SUBSCRIBE	3
 net.runelite.api.MessageNode	getRuneLiteFormatMessage(): String	SUBSCRIBE	1
@@ -275,7 +282,7 @@ net.runelite.api.MessageNode	setTimestamp(int): void	SUBSCRIBE	1
 net.runelite.api.MessageNode	setValue(String): void	SUBSCRIBE	4
 net.runelite.api.NPC	getAnimation(): int	SUBSCRIBE	1
 net.runelite.api.NPC	getComposition(): NPCComposition	LAMBDA	1
-net.runelite.api.NPC	getId(): int	LAMBDA,SUBSCRIBE	39
+net.runelite.api.NPC	getId(): int	LAMBDA,SUBSCRIBE	40
 net.runelite.api.NPC	getIdlePoseAnimation(): int	LAMBDA	1
 net.runelite.api.NPC	getIndex(): int	LAMBDA,SUBSCRIBE	8
 net.runelite.api.NPC	getInteracting(): Actor	SUBSCRIBE	1
@@ -287,15 +294,15 @@ net.runelite.api.NPC	isDead(): boolean	SUBSCRIBE	4
 net.runelite.api.NPC	setDead(boolean): void	SUBSCRIBE	1
 net.runelite.api.NPCComposition	getActions(): String[]	LAMBDA	1
 net.runelite.api.NPCComposition	getCombatLevel(): int	SUBSCRIBE	1
-net.runelite.api.NPCComposition	getId(): int	SUBSCRIBE	2
+net.runelite.api.NPCComposition	getId(): int	SUBSCRIBE	3
 net.runelite.api.NPCComposition	getName(): String	LAMBDA,SUBSCRIBE	4
 net.runelite.api.Nameable	getName(): String	SUBSCRIBE	2
 net.runelite.api.Nameable	getPrevName(): String	SUBSCRIBE	1
 net.runelite.api.NameableContainer	getCount(): int	SUBSCRIBE	1
 net.runelite.api.NodeCache	reset(): void	LAMBDA	2
 net.runelite.api.ObjectComposition	getId(): int	SUBSCRIBE	2
-net.runelite.api.ObjectComposition	getImpostor(): ObjectComposition	LAMBDA,SUBSCRIBE	8
-net.runelite.api.ObjectComposition	getImpostorIds(): int[]	LAMBDA,SUBSCRIBE	7
+net.runelite.api.ObjectComposition	getImpostor(): ObjectComposition	LAMBDA,SUBSCRIBE	9
+net.runelite.api.ObjectComposition	getImpostorIds(): int[]	LAMBDA,SUBSCRIBE	8
 net.runelite.api.ObjectComposition	getName(): String	LAMBDA,SUBSCRIBE	3
 net.runelite.api.Perspective	getClickbox(Client, WorldView, Model, int, int, int, int): Shape	LAMBDA	1
 net.runelite.api.Perspective	getTileHeight(Client, LocalPoint, int): int	LAMBDA	1
@@ -308,19 +315,21 @@ net.runelite.api.Player	getHealthRatio(): int	LAMBDA,SUBSCRIBE	2
 net.runelite.api.Player	getHealthScale(): int	LAMBDA	1
 net.runelite.api.Player	getId(): int	SUBSCRIBE	1
 net.runelite.api.Player	getIdlePoseAnimation(): int	LAMBDA	2
-net.runelite.api.Player	getInteracting(): Actor	LAMBDA,SUBSCRIBE	7
+net.runelite.api.Player	getInteracting(): Actor	LAMBDA,SUBSCRIBE	8
 net.runelite.api.Player	getLocalLocation(): LocalPoint	LAMBDA,SUBSCRIBE	11
 net.runelite.api.Player	getName(): String	LAMBDA,SUBSCRIBE	18
 net.runelite.api.Player	getOverheadIcon(): HeadIcon	LAMBDA	1
 net.runelite.api.Player	getPlayerComposition(): PlayerComposition	SUBSCRIBE	1
 net.runelite.api.Player	getPoseAnimation(): int	LAMBDA	3
 net.runelite.api.Player	getSkullIcon(): int	LAMBDA	1
-net.runelite.api.Player	getWorldLocation(): WorldPoint	LAMBDA,SUBSCRIBE	25
+net.runelite.api.Player	getWorldArea(): WorldArea	LAMBDA	2
+net.runelite.api.Player	getWorldLocation(): WorldPoint	LAMBDA,SUBSCRIBE	29
 net.runelite.api.Player	getWorldView(): WorldView	LAMBDA	8
 net.runelite.api.Player	isClanMember(): boolean	LAMBDA,SUBSCRIBE	4
+net.runelite.api.Player	isDead(): boolean	LAMBDA	1
 net.runelite.api.Player	isFriend(): boolean	LAMBDA,SUBSCRIBE	2
 net.runelite.api.Player	isFriendsChatMember(): boolean	LAMBDA,SUBSCRIBE	4
-net.runelite.api.Player	isInteracting(): boolean	LAMBDA	3
+net.runelite.api.Player	isInteracting(): boolean	LAMBDA	2
 net.runelite.api.Player	setAnimation(int): void	SUBSCRIBE	1
 net.runelite.api.Player	setAnimationFrame(int): void	SUBSCRIBE	1
 net.runelite.api.Player	setGraphic(int): void	SUBSCRIBE	1
@@ -342,10 +351,11 @@ net.runelite.api.Projection	project(float, float, float): float[]	LAMBDA	1
 net.runelite.api.Quest	getId(): int	LAMBDA	1
 net.runelite.api.Quest	getState(Client): QuestState	LAMBDA,SUBSCRIBE	2
 net.runelite.api.Quest	values(): Quest[]	LAMBDA,SUBSCRIBE	2
+net.runelite.api.QuestState	name(): String	LAMBDA	1
 net.runelite.api.RuneLiteObject	setAnimation(Animation): void	LAMBDA	3
 net.runelite.api.RuneLiteObject	setModel(Model): void	LAMBDA	3
 net.runelite.api.RuneLiteObject	setShouldLoop(boolean): void	LAMBDA	1
-net.runelite.api.Scene	getTiles(): Tile[][][]	LAMBDA,SUBSCRIBE	2
+net.runelite.api.Scene	getTiles(): Tile[][][]	LAMBDA,SUBSCRIBE	3
 net.runelite.api.Scene	isInstance(): boolean	LAMBDA	1
 net.runelite.api.Scene	setMinLevel(int): void	SUBSCRIBE	1
 net.runelite.api.Scene	setRoofRemovalMode(int): void	LAMBDA,SUBSCRIBE	3
@@ -363,7 +373,7 @@ net.runelite.api.Skill	values(): Skill[]	LAMBDA,SUBSCRIBE	5
 net.runelite.api.SpritePixels	toBufferedImage(): BufferedImage	ASSERT	1
 net.runelite.api.SpritePixels	toBufferedImage(BufferedImage): void	LAMBDA	1
 net.runelite.api.TextureProvider	getBrightness(): double	SUBSCRIBE	1
-net.runelite.api.Tile	getGameObjects(): GameObject[]	SUBSCRIBE	1
+net.runelite.api.Tile	getGameObjects(): GameObject[]	LAMBDA,SUBSCRIBE	2
 net.runelite.api.Tile	getGroundItems(): List	LAMBDA	1
 net.runelite.api.Tile	getItemLayer(): ItemLayer	SUBSCRIBE	1
 net.runelite.api.Tile	getLocalLocation(): LocalPoint	SUBSCRIBE	4
@@ -372,7 +382,8 @@ net.runelite.api.TileItem	getId(): int	LAMBDA,SUBSCRIBE	20
 net.runelite.api.TileItem	getQuantity(): int	LAMBDA,SUBSCRIBE	8
 net.runelite.api.TileObject	getClickbox(): Shape	LAMBDA	1
 net.runelite.api.TileObject	getId(): int	LAMBDA	5
-net.runelite.api.VarbitComposition	getIndex(): int	LAMBDA,SUBSCRIBE	2
+net.runelite.api.TileObject	getWorldLocation(): WorldPoint	LAMBDA	2
+net.runelite.api.VarbitComposition	getIndex(): int	LAMBDA,SUBSCRIBE	3
 net.runelite.api.WallObject	getId(): int	SUBSCRIBE	3
 net.runelite.api.World	getId(): int	SUBSCRIBE	1
 net.runelite.api.World	getPlayerCount(): int	SUBSCRIBE	1
@@ -391,16 +402,18 @@ net.runelite.api.WorldEntity	getTargetOrientation(): int	LAMBDA	1
 net.runelite.api.WorldEntity	getWorldView(): WorldView	LAMBDA,SUBSCRIBE	3
 net.runelite.api.WorldEntity	isHiddenForOverlap(): boolean	LAMBDA	1
 net.runelite.api.WorldEntity	transformToMainWorld(LocalPoint): LocalPoint	LAMBDA	1
-net.runelite.api.WorldView	getBaseX(): int	LAMBDA	1
-net.runelite.api.WorldView	getBaseY(): int	LAMBDA	1
-net.runelite.api.WorldView	getCollisionMaps(): CollisionData[]	LAMBDA	1
-net.runelite.api.WorldView	getId(): int	SUBSCRIBE	3
+net.runelite.api.WorldView	getBaseX(): int	LAMBDA	2
+net.runelite.api.WorldView	getBaseY(): int	LAMBDA	2
+net.runelite.api.WorldView	getCollisionMaps(): CollisionData[]	LAMBDA	3
+net.runelite.api.WorldView	getGraphicsObjects(): Deque	LAMBDA	1
+net.runelite.api.WorldView	getId(): int	SUBSCRIBE	2
+net.runelite.api.WorldView	getInstanceTemplateChunks(): int[][][]	LAMBDA	1
 net.runelite.api.WorldView	getMainWorldProjection(): Projection	LAMBDA	1
-net.runelite.api.WorldView	getMapRegions(): int[]	SUBSCRIBE	3
-net.runelite.api.WorldView	getPlane(): int	LAMBDA,SUBSCRIBE	6
-net.runelite.api.WorldView	getScene(): Scene	LAMBDA,SUBSCRIBE	3
+net.runelite.api.WorldView	getMapRegions(): int[]	SUBSCRIBE	2
+net.runelite.api.WorldView	getPlane(): int	LAMBDA,SUBSCRIBE	8
+net.runelite.api.WorldView	getScene(): Scene	LAMBDA,SUBSCRIBE	4
 net.runelite.api.WorldView	getSelectedSceneTile(): Tile	SUBSCRIBE	1
-net.runelite.api.WorldView	getXteaKeys(): int[][]	SUBSCRIBE	1
+net.runelite.api.WorldView	isInstance(): boolean	LAMBDA	2
 net.runelite.api.WorldView	isTopLevel(): boolean	LAMBDA,SUBSCRIBE	4
 net.runelite.api.WorldView	npcs(): IndexedObjectSet	LAMBDA,SUBSCRIBE	4
 net.runelite.api.WorldView	worldEntities(): IndexedObjectSet	LAMBDA,SUBSCRIBE	3
@@ -411,32 +424,37 @@ net.runelite.api.coords.Angle	<init>(int): void	SUBSCRIBE	1
 net.runelite.api.coords.Angle	getNearestDirection(): Direction	SUBSCRIBE	1
 net.runelite.api.coords.Direction	ordinal(): int	SUBSCRIBE	1
 net.runelite.api.coords.LocalPoint	distanceTo(LocalPoint): int	LAMBDA	4
+net.runelite.api.coords.LocalPoint	fromScene(int, int, WorldView): LocalPoint	LAMBDA	1
 net.runelite.api.coords.LocalPoint	fromWorld(Client, WorldPoint): LocalPoint	LAMBDA,SUBSCRIBE	3
 net.runelite.api.coords.LocalPoint	fromWorld(WorldView, WorldPoint): LocalPoint	LAMBDA	2
 net.runelite.api.coords.LocalPoint	getSceneX(): int	SUBSCRIBE	4
 net.runelite.api.coords.LocalPoint	getSceneY(): int	SUBSCRIBE	4
 net.runelite.api.coords.LocalPoint	getWorldView(): int	LAMBDA	2
-net.runelite.api.coords.LocalPoint	getX(): int	LAMBDA,SUBSCRIBE	4
-net.runelite.api.coords.LocalPoint	getY(): int	LAMBDA,SUBSCRIBE	4
-net.runelite.api.coords.WorldPoint	<init>(int, int, int): void	SUBSCRIBE	3
-net.runelite.api.coords.WorldPoint	distanceTo(WorldPoint): int	LAMBDA,SUBSCRIBE	7
+net.runelite.api.coords.LocalPoint	getX(): int	LAMBDA,SUBSCRIBE	5
+net.runelite.api.coords.LocalPoint	getY(): int	LAMBDA,SUBSCRIBE	5
+net.runelite.api.coords.WorldArea	hasLineOfSightTo(WorldView, WorldArea): boolean	LAMBDA	2
+net.runelite.api.coords.WorldArea	hasLineOfSightTo(WorldView, WorldPoint): boolean	LAMBDA	2
+net.runelite.api.coords.WorldPoint	<init>(int, int, int): void	LAMBDA,SUBSCRIBE	5
+net.runelite.api.coords.WorldPoint	distanceTo(WorldPoint): int	LAMBDA,SUBSCRIBE	9
 net.runelite.api.coords.WorldPoint	distanceTo2D(WorldPoint): int	SUBSCRIBE	1
 net.runelite.api.coords.WorldPoint	dx(int): WorldPoint	SUBSCRIBE	1
 net.runelite.api.coords.WorldPoint	dy(int): WorldPoint	SUBSCRIBE	1
-net.runelite.api.coords.WorldPoint	equals(Object): boolean	LAMBDA,SUBSCRIBE	7
+net.runelite.api.coords.WorldPoint	equals(Object): boolean	LAMBDA,SUBSCRIBE	8
 net.runelite.api.coords.WorldPoint	fromCoord(int): WorldPoint	SUBSCRIBE	3
 net.runelite.api.coords.WorldPoint	fromLocal(Client, LocalPoint): WorldPoint	LAMBDA,SUBSCRIBE	4
 net.runelite.api.coords.WorldPoint	fromLocal(WorldView, int, int, int): WorldPoint	LAMBDA	2
-net.runelite.api.coords.WorldPoint	fromLocalInstance(Client, LocalPoint): WorldPoint	LAMBDA,SUBSCRIBE	5
+net.runelite.api.coords.WorldPoint	fromLocalInstance(Client, LocalPoint): WorldPoint	LAMBDA,SUBSCRIBE	6
+net.runelite.api.coords.WorldPoint	fromLocalInstance(Client, LocalPoint, int): WorldPoint	LAMBDA	1
 net.runelite.api.coords.WorldPoint	fromScene(Client, int, int, int): WorldPoint	SUBSCRIBE	6
 net.runelite.api.coords.WorldPoint	fromScene(WorldView, int, int, int): WorldPoint	SUBSCRIBE	1
 net.runelite.api.coords.WorldPoint	getMirrorPoint(WorldPoint, boolean): WorldPoint	SUBSCRIBE	1
-net.runelite.api.coords.WorldPoint	getPlane(): int	LAMBDA,SUBSCRIBE	7
+net.runelite.api.coords.WorldPoint	getPlane(): int	LAMBDA,SUBSCRIBE	10
 net.runelite.api.coords.WorldPoint	getRegionID(): int	SUBSCRIBE	11
-net.runelite.api.coords.WorldPoint	getX(): int	LAMBDA,SUBSCRIBE	8
-net.runelite.api.coords.WorldPoint	getY(): int	LAMBDA,SUBSCRIBE	9
+net.runelite.api.coords.WorldPoint	getX(): int	LAMBDA,SUBSCRIBE	15
+net.runelite.api.coords.WorldPoint	getY(): int	LAMBDA,SUBSCRIBE	16
 net.runelite.api.coords.WorldPoint	isInScene(Client): boolean	SUBSCRIBE	2
 net.runelite.api.coords.WorldPoint	isInScene(Client, int, int): boolean	SUBSCRIBE	2
+net.runelite.api.coords.WorldPoint	toWorldArea(): WorldArea	LAMBDA	3
 net.runelite.api.events.ActorDeath	getActor(): Actor	SUBSCRIBE	2
 net.runelite.api.events.AnimationChanged	getActor(): Actor	SUBSCRIBE	9
 net.runelite.api.events.AreaSoundEffectPlayed	consume(): void	SUBSCRIBE	1
@@ -472,11 +490,11 @@ net.runelite.api.events.FocusChanged	isFocused(): boolean	SUBSCRIBE	7
 net.runelite.api.events.FriendsChatChanged	isJoined(): boolean	SUBSCRIBE	2
 net.runelite.api.events.FriendsChatMemberJoined	getMember(): FriendsChatMember	SUBSCRIBE	2
 net.runelite.api.events.FriendsChatMemberLeft	getMember(): FriendsChatMember	SUBSCRIBE	2
-net.runelite.api.events.GameObjectDespawned	getGameObject(): GameObject	SUBSCRIBE	10
+net.runelite.api.events.GameObjectDespawned	getGameObject(): GameObject	SUBSCRIBE	11
 net.runelite.api.events.GameObjectDespawned	getTile(): Tile	SUBSCRIBE	2
-net.runelite.api.events.GameObjectSpawned	getGameObject(): GameObject	SUBSCRIBE	16
+net.runelite.api.events.GameObjectSpawned	getGameObject(): GameObject	SUBSCRIBE	18
 net.runelite.api.events.GameObjectSpawned	getTile(): Tile	SUBSCRIBE	3
-net.runelite.api.events.GameStateChanged	getGameState(): GameState	SUBSCRIBE	73
+net.runelite.api.events.GameStateChanged	getGameState(): GameState	SUBSCRIBE	74
 net.runelite.api.events.GrandExchangeOfferChanged	getOffer(): GrandExchangeOffer	SUBSCRIBE	1
 net.runelite.api.events.GrandExchangeOfferChanged	getSlot(): int	SUBSCRIBE	1
 net.runelite.api.events.GrandExchangeSearched	consume(): void	SUBSCRIBE	3
@@ -492,8 +510,8 @@ net.runelite.api.events.HitsplatApplied	getHitsplat(): Hitsplat	SUBSCRIBE	6
 net.runelite.api.events.InteractingChanged	getSource(): Actor	SUBSCRIBE	8
 net.runelite.api.events.InteractingChanged	getTarget(): Actor	SUBSCRIBE	8
 net.runelite.api.events.ItemContainerChanged	<init>(int, ItemContainer): void	LAMBDA	1
-net.runelite.api.events.ItemContainerChanged	getContainerId(): int	ASSERT,SUBSCRIBE	18
-net.runelite.api.events.ItemContainerChanged	getItemContainer(): ItemContainer	ASSERT,SUBSCRIBE	21
+net.runelite.api.events.ItemContainerChanged	getContainerId(): int	ASSERT,SUBSCRIBE	19
+net.runelite.api.events.ItemContainerChanged	getItemContainer(): ItemContainer	ASSERT,SUBSCRIBE	22
 net.runelite.api.events.ItemDespawned	getItem(): TileItem	SUBSCRIBE	6
 net.runelite.api.events.ItemDespawned	getTile(): Tile	SUBSCRIBE	5
 net.runelite.api.events.ItemQuantityChanged	getItem(): TileItem	SUBSCRIBE	1
@@ -513,10 +531,10 @@ net.runelite.api.events.MenuEntryAdded	getType(): int	SUBSCRIBE	11
 net.runelite.api.events.MenuOpened	getMenuEntries(): MenuEntry[]	SUBSCRIBE	2
 net.runelite.api.events.MenuOptionClicked	consume(): void	SUBSCRIBE	4
 net.runelite.api.events.MenuOptionClicked	getId(): int	SUBSCRIBE	10
-net.runelite.api.events.MenuOptionClicked	getItemId(): int	SUBSCRIBE	2
+net.runelite.api.events.MenuOptionClicked	getItemId(): int	SUBSCRIBE	3
 net.runelite.api.events.MenuOptionClicked	getMenuAction(): MenuAction	SUBSCRIBE	16
 net.runelite.api.events.MenuOptionClicked	getMenuEntry(): MenuEntry	SUBSCRIBE	8
-net.runelite.api.events.MenuOptionClicked	getMenuOption(): String	SUBSCRIBE	11
+net.runelite.api.events.MenuOptionClicked	getMenuOption(): String	SUBSCRIBE	12
 net.runelite.api.events.MenuOptionClicked	getMenuTarget(): String	SUBSCRIBE	3
 net.runelite.api.events.MenuOptionClicked	getParam0(): int	SUBSCRIBE	9
 net.runelite.api.events.MenuOptionClicked	getParam1(): int	SUBSCRIBE	13
@@ -525,8 +543,8 @@ net.runelite.api.events.MenuOptionClicked	isItemOp(): boolean	SUBSCRIBE	3
 net.runelite.api.events.MenuShouldLeftClick	setForceRightClick(boolean): void	SUBSCRIBE	1
 net.runelite.api.events.NameableNameChanged	getNameable(): Nameable	SUBSCRIBE	1
 net.runelite.api.events.NpcChanged	getNpc(): NPC	SUBSCRIBE	11
-net.runelite.api.events.NpcDespawned	getNpc(): NPC	SUBSCRIBE	20
-net.runelite.api.events.NpcSpawned	getNpc(): NPC	SUBSCRIBE	16
+net.runelite.api.events.NpcDespawned	getNpc(): NPC	SUBSCRIBE	21
+net.runelite.api.events.NpcSpawned	getNpc(): NPC	SUBSCRIBE	17
 net.runelite.api.events.OverheadTextChanged	getActor(): Actor	SUBSCRIBE	3
 net.runelite.api.events.OverheadTextChanged	getOverheadText(): String	SUBSCRIBE	3
 net.runelite.api.events.PlayerChanged	getPlayer(): Player	SUBSCRIBE	2
@@ -548,28 +566,28 @@ net.runelite.api.events.SoundEffectPlayed	getSoundId(): int	SUBSCRIBE	2
 net.runelite.api.events.StatChanged	<init>(Skill, int, int, int): void	SUBSCRIBE	1
 net.runelite.api.events.StatChanged	getBoostedLevel(): int	SUBSCRIBE	2
 net.runelite.api.events.StatChanged	getLevel(): int	SUBSCRIBE	3
-net.runelite.api.events.StatChanged	getSkill(): Skill	SUBSCRIBE	10
-net.runelite.api.events.StatChanged	getXp(): int	SUBSCRIBE	8
+net.runelite.api.events.StatChanged	getSkill(): Skill	SUBSCRIBE	13
+net.runelite.api.events.StatChanged	getXp(): int	SUBSCRIBE	9
 net.runelite.api.events.VarClientIntChanged	getIndex(): int	SUBSCRIBE	2
 net.runelite.api.events.VarClientStrChanged	getIndex(): int	SUBSCRIBE	2
-net.runelite.api.events.VarbitChanged	<init>(): void	SUBSCRIBE	1
+net.runelite.api.events.VarbitChanged	<init>(): void	LAMBDA,SUBSCRIBE	2
 net.runelite.api.events.VarbitChanged	getIndex(): int	SUBSCRIBE	1
 net.runelite.api.events.VarbitChanged	getValue(): int	ASSERT,SUBSCRIBE	19
 net.runelite.api.events.VarbitChanged	getVarbitId(): int	ASSERT,SUBSCRIBE	22
 net.runelite.api.events.VarbitChanged	getVarpId(): int	SUBSCRIBE	19
-net.runelite.api.events.VarbitChanged	setValue(int): void	SUBSCRIBE	1
-net.runelite.api.events.VarbitChanged	setVarbitId(int): void	SUBSCRIBE	1
+net.runelite.api.events.VarbitChanged	setValue(int): void	LAMBDA,SUBSCRIBE	2
+net.runelite.api.events.VarbitChanged	setVarbitId(int): void	LAMBDA,SUBSCRIBE	2
 net.runelite.api.events.VarbitChanged	setVarpId(int): void	SUBSCRIBE	1
 net.runelite.api.events.WallObjectDespawned	getTile(): Tile	SUBSCRIBE	1
 net.runelite.api.events.WallObjectDespawned	getWallObject(): WallObject	SUBSCRIBE	4
 net.runelite.api.events.WallObjectSpawned	getTile(): Tile	SUBSCRIBE	2
 net.runelite.api.events.WallObjectSpawned	getWallObject(): WallObject	SUBSCRIBE	7
-net.runelite.api.events.WidgetClosed	getGroupId(): int	SUBSCRIBE	5
+net.runelite.api.events.WidgetClosed	getGroupId(): int	SUBSCRIBE	6
 net.runelite.api.events.WidgetClosed	getModalMode(): int	SUBSCRIBE	1
 net.runelite.api.events.WidgetClosed	isUnload(): boolean	SUBSCRIBE	2
 net.runelite.api.events.WidgetLoaded	getGroupId(): int	ASSERT,SUBSCRIBE	27
 net.runelite.api.events.WorldListLoad	getWorlds(): World[]	SUBSCRIBE	1
-net.runelite.api.events.WorldViewLoaded	getWorldView(): WorldView	SUBSCRIBE	4
+net.runelite.api.events.WorldViewLoaded	getWorldView(): WorldView	SUBSCRIBE	3
 net.runelite.api.events.WorldViewUnloaded	getWorldView(): WorldView	SUBSCRIBE	4
 net.runelite.api.kit.KitType	getIndex(): int	SUBSCRIBE	1
 net.runelite.api.kit.KitType	values(): KitType[]	LAMBDA	1
@@ -577,53 +595,54 @@ net.runelite.api.vars.InputType	getType(): int	LAMBDA	2
 net.runelite.api.widgets.Widget	createChild(int, int): Widget	LAMBDA	5
 net.runelite.api.widgets.Widget	deleteAllChildren(): void	LAMBDA	5
 net.runelite.api.widgets.Widget	getActions(): String[]	LAMBDA,SUBSCRIBE	3
-net.runelite.api.widgets.Widget	getBounds(): Rectangle	LAMBDA,SUBSCRIBE	2
-net.runelite.api.widgets.Widget	getChild(int): Widget	LAMBDA,SUBSCRIBE	15
-net.runelite.api.widgets.Widget	getChildren(): Widget[]	LAMBDA,SUBSCRIBE	7
+net.runelite.api.widgets.Widget	getBounds(): Rectangle	LAMBDA,SUBSCRIBE	3
+net.runelite.api.widgets.Widget	getChild(int): Widget	LAMBDA,SUBSCRIBE	16
+net.runelite.api.widgets.Widget	getChildren(): Widget[]	LAMBDA,SUBSCRIBE	8
 net.runelite.api.widgets.Widget	getClickMask(): int	SUBSCRIBE	1
-net.runelite.api.widgets.Widget	getDynamicChildren(): Widget[]	ASSERT,LAMBDA,SUBSCRIBE	9
+net.runelite.api.widgets.Widget	getDynamicChildren(): Widget[]	ASSERT,LAMBDA,SUBSCRIBE	10
 net.runelite.api.widgets.Widget	getHeight(): int	SUBSCRIBE	1
 net.runelite.api.widgets.Widget	getId(): int	LAMBDA,SUBSCRIBE	14
-net.runelite.api.widgets.Widget	getIndex(): int	ASSERT,LAMBDA,SUBSCRIBE	7
+net.runelite.api.widgets.Widget	getIndex(): int	ASSERT,LAMBDA,SUBSCRIBE	8
 net.runelite.api.widgets.Widget	getItemId(): int	ASSERT,LAMBDA,SUBSCRIBE	14
 net.runelite.api.widgets.Widget	getItemQuantity(): int	ASSERT	1
 net.runelite.api.widgets.Widget	getModelId(): int	LAMBDA,SUBSCRIBE	5
 net.runelite.api.widgets.Widget	getModelType(): int	SUBSCRIBE	1
-net.runelite.api.widgets.Widget	getName(): String	SUBSCRIBE	2
+net.runelite.api.widgets.Widget	getName(): String	LAMBDA,SUBSCRIBE	4
 net.runelite.api.widgets.Widget	getOnInvTransmitListener(): Object[]	LAMBDA	4
 net.runelite.api.widgets.Widget	getOnLoadListener(): Object[]	LAMBDA	4
-net.runelite.api.widgets.Widget	getOnOpListener(): Object[]	LAMBDA,SUBSCRIBE	4
+net.runelite.api.widgets.Widget	getOnOpListener(): Object[]	LAMBDA,SUBSCRIBE	5
 net.runelite.api.widgets.Widget	getOnVarTransmitListener(): Object[]	LAMBDA	3
 net.runelite.api.widgets.Widget	getOpacity(): int	SUBSCRIBE	1
 net.runelite.api.widgets.Widget	getParent(): Widget	LAMBDA,SUBSCRIBE	7
 net.runelite.api.widgets.Widget	getParentId(): int	SUBSCRIBE	2
-net.runelite.api.widgets.Widget	getSpriteId(): int	LAMBDA	1
+net.runelite.api.widgets.Widget	getSpriteId(): int	LAMBDA	2
 net.runelite.api.widgets.Widget	getStaticChildren(): Widget[]	SUBSCRIBE	3
-net.runelite.api.widgets.Widget	getText(): String	LAMBDA,SUBSCRIBE	37
+net.runelite.api.widgets.Widget	getText(): String	LAMBDA,SUBSCRIBE	39
 net.runelite.api.widgets.Widget	getType(): int	SUBSCRIBE	2
 net.runelite.api.widgets.Widget	getVarTransmitTrigger(): int[]	SUBSCRIBE	1
 net.runelite.api.widgets.Widget	getWidth(): int	LAMBDA,SUBSCRIBE	4
-net.runelite.api.widgets.Widget	isHidden(): boolean	LAMBDA,SUBSCRIBE	26
-net.runelite.api.widgets.Widget	revalidate(): void	LAMBDA	8
+net.runelite.api.widgets.Widget	isHidden(): boolean	LAMBDA,SUBSCRIBE	32
+net.runelite.api.widgets.Widget	revalidate(): void	LAMBDA	9
 net.runelite.api.widgets.Widget	setAction(int, String): void	LAMBDA,SUBSCRIBE	6
 net.runelite.api.widgets.Widget	setBorderType(int): void	LAMBDA	1
 net.runelite.api.widgets.Widget	setChildren(Widget[]): void	LAMBDA	1
 net.runelite.api.widgets.Widget	setClickMask(int): Widget	LAMBDA,SUBSCRIBE	3
 net.runelite.api.widgets.Widget	setDragDeadTime(int): void	SUBSCRIBE	1
 net.runelite.api.widgets.Widget	setFontId(int): Widget	LAMBDA	2
-net.runelite.api.widgets.Widget	setHasListener(boolean): Widget	LAMBDA	2
-net.runelite.api.widgets.Widget	setHidden(boolean): Widget	LAMBDA,SUBSCRIBE	9
+net.runelite.api.widgets.Widget	setHasListener(boolean): Widget	LAMBDA	3
+net.runelite.api.widgets.Widget	setHidden(boolean): Widget	LAMBDA,SUBSCRIBE	10
 net.runelite.api.widgets.Widget	setItemId(int): Widget	LAMBDA	1
 net.runelite.api.widgets.Widget	setItemQuantity(int): Widget	LAMBDA	1
 net.runelite.api.widgets.Widget	setItemQuantityMode(int): Widget	LAMBDA	1
 net.runelite.api.widgets.Widget	setModelId(int): Widget	LAMBDA	1
 net.runelite.api.widgets.Widget	setName(String): Widget	LAMBDA	4
 net.runelite.api.widgets.Widget	setNoClickThrough(boolean): void	LAMBDA	2
-net.runelite.api.widgets.Widget	setOnKeyListener(Object[]): void	SUBSCRIBE	1
+net.runelite.api.widgets.Widget	setOnClickListener(Object[]): void	LAMBDA	2
+net.runelite.api.widgets.Widget	setOnKeyListener(Object[]): void	LAMBDA,SUBSCRIBE	2
 net.runelite.api.widgets.Widget	setOnMouseLeaveListener(Object[]): void	LAMBDA	1
 net.runelite.api.widgets.Widget	setOnMouseOverListener(Object[]): void	LAMBDA	1
 net.runelite.api.widgets.Widget	setOnMouseRepeatListener(Object[]): void	LAMBDA,SUBSCRIBE	2
-net.runelite.api.widgets.Widget	setOnOpListener(Object[]): void	LAMBDA	5
+net.runelite.api.widgets.Widget	setOnOpListener(Object[]): void	LAMBDA	6
 net.runelite.api.widgets.Widget	setOnTargetEnterListener(Object[]): void	LAMBDA	2
 net.runelite.api.widgets.Widget	setOnTargetLeaveListener(Object[]): void	LAMBDA	2
 net.runelite.api.widgets.Widget	setOpacity(int): Widget	LAMBDA,SUBSCRIBE	3
@@ -640,6 +659,7 @@ net.runelite.api.widgets.Widget	setXPositionMode(int): Widget	LAMBDA	4
 net.runelite.api.widgets.Widget	setXTextAlignment(int): Widget	LAMBDA	2
 net.runelite.api.widgets.Widget	setYPositionMode(int): Widget	LAMBDA	3
 net.runelite.api.widgets.Widget	setYTextAlignment(int): Widget	LAMBDA	2
+net.runelite.api.widgets.WidgetInfo	getId(): int	LAMBDA	1
 net.runelite.api.widgets.WidgetUtil	componentToId(int): int	LAMBDA,SUBSCRIBE	4
 net.runelite.api.widgets.WidgetUtil	componentToInterface(int): int	LAMBDA,SUBSCRIBE	20
 net.runelite.api.worldmap.MapElementConfig	getCategory(): int	SUBSCRIBE	1

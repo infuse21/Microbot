@@ -1,6 +1,6 @@
 # Microbot Client-Thread Manifest
 
-Generated: 2026-04-09  
+Generated: 2026-07-26  
 Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/threadsafety/ClientThreadScannerTest.java`
 
 > Manually regenerate with `./gradlew :client:runClientThreadScanner`. Commit the diff to track how RuneLite's client-thread surface evolves between revisions.
@@ -9,14 +9,14 @@ Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/thre
 
 | Category | Count |
 |---|---:|
-| Classes scanned | 5445 |
-| Methods scanned | 35573 |
-| `REQUIRES_CLIENT_THREAD` (asserts) | 12 |
-| `CHECKS_THREAD_GUARD` (branches) | 26 |
-| `SELF_MARSHALLING` (wraps invoke) | 474 |
-| `EVENT_HANDLER` (`@Subscribe`) | 937 |
-| `CONFIRMED_LAMBDA` (passed to invoke) | 457 |
-| RuneLite API methods inferred client-thread-only | 650 |
+| Classes scanned | 5805 |
+| Methods scanned | 38814 |
+| `REQUIRES_CLIENT_THREAD` (asserts) | 13 |
+| `CHECKS_THREAD_GUARD` (branches) | 40 |
+| `SELF_MARSHALLING` (wraps invoke) | 536 |
+| `EVENT_HANDLER` (`@Subscribe`) | 961 |
+| `CONFIRMED_LAMBDA` (passed to invoke) | 521 |
+| RuneLite API methods inferred client-thread-only | 670 |
 
 ## Legend
 
@@ -28,7 +28,7 @@ Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/thre
 
 ## Methods that ASSERT client thread
 
-<details><summary>12 method(s) across 10 class(es)</summary>
+<details><summary>13 method(s) across 10 class(es)</summary>
 
 **`net.runelite.client.callback.ClientThread`**
 
@@ -57,6 +57,7 @@ Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/thre
 
 **`net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment`**
 
+- `equipment(): ItemContainer`
 - `storeEquipmentItemsInMemory(ItemContainerChanged): void`
 
 **`net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory`**
@@ -76,12 +77,13 @@ Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/thre
 
 ## Methods that GUARD on client thread
 
-<details><summary>26 method(s) across 10 class(es)</summary>
+<details><summary>40 method(s) across 17 class(es)</summary>
 
 **`net.runelite.client.callback.ClientThread`**
 
 - `invoke(BooleanSupplier): void`
 - `invoke(Supplier): Object`
+- `isClientThread(): boolean`
 - `runOnClientThreadOptional(Callable): Optional`
 
 **`net.runelite.client.plugins.microbot.Microbot`**
@@ -101,13 +103,42 @@ Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/thre
 **`net.runelite.client.plugins.microbot.util.Global`**
 
 - `sleep(int): void`
+- `sleepTicks(int): boolean`
 - `sleepUntil(BooleanSupplier, Runnable, long, int): boolean`
 - `sleepUntil(BooleanSupplier, int): boolean`
+- `sleepUntilNextTick(): boolean`
+- `sleepUntilNextTick(long): boolean`
 - `sleepUntilNotNull(Callable, int, int): Object`
 - `sleepUntilOnClientThread(BooleanSupplier, int): void`
 - `sleepUntilTrue(BooleanSupplier): boolean`
 - `sleepUntilTrue(BooleanSupplier, BooleanSupplier, int, int): boolean`
 - `sleepUntilTrue(BooleanSupplier, int, int): boolean`
+
+**`net.runelite.client.plugins.microbot.util.Rs2InventorySetup`**
+
+- `getItemDefinitionThreadSafe(int): ItemComposition`
+
+**`net.runelite.client.plugins.microbot.util.bank.Rs2Bank`**
+
+- `getItemDefinitionThreadSafe(int): ItemComposition`
+
+**`net.runelite.client.plugins.microbot.util.camera.Rs2Camera`**
+
+- `smoothTo(int, boolean): void`
+
+**`net.runelite.client.plugins.microbot.util.huntkit.Rs2HuntKit`**
+
+- `rebuildKitFromCurrentClient(): void`
+- `updateLocalKit(ItemContainerChanged): void`
+
+**`net.runelite.client.plugins.microbot.util.leaguetransport.LeaguesTransportChat`**
+
+- `handleLeaguesLockedRegionMatch(String, String): void`
+
+**`net.runelite.client.plugins.microbot.util.leaguetransport.LeaguesTransportTeleport`**
+
+- `isClientReadyForCalibration(Client): boolean`
+- `leaguesTeleport(LeaguesRegion, int): LeaguesTeleportResult`
 
 **`net.runelite.client.plugins.microbot.util.mouse.VirtualMouse`**
 
@@ -118,13 +149,18 @@ Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/thre
 
 - `moveTo(int, int): void`
 
+**`net.runelite.client.plugins.microbot.util.tile.Rs2Tile`**
+
+- `runClientRead(Supplier, Object): Object`
+
 **`net.runelite.client.plugins.microbot.util.walker.Rs2Walker`**
 
-- `restartPathfinding(WorldPoint, Set): boolean`
+- `isClientThread(): boolean`
 - `setStart(WorldPoint): void`
-- `setTarget(WorldPoint): void`
 - `walkWithBankedTransportsAndState(WorldPoint, int, boolean): WalkerState`
+- `walkWithState(WorldPoint, int): WalkerState`
 - `walkWithStateInternal(WorldPoint, int): WalkerState`
+- `walkWithStateTry(WorldPoint, int, long): WalkerState`
 
 **`net.runelite.client.ui.overlay.WidgetOverlay`**
 
@@ -138,7 +174,7 @@ Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/thre
 
 ## Self-marshalling helpers
 
-<details><summary>474 method(s) across 171 class(es)</summary>
+<details><summary>536 method(s) across 201 class(es)</summary>
 
 **`net.runelite.client.callback.ClientThread`**
 
@@ -438,12 +474,29 @@ Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/thre
 - `getEnum(int): EnumComposition`
 - `getStructComposition(int): StructComposition`
 - `hopToWorld(int): boolean`
-- `lambda$openPopUp$16(String, String): void`
+- `lambda$openPopUp$18(String, String): void`
 - `openPopUp(String, String): void`
 
 **`net.runelite.client.plugins.microbot.MicrobotPlugin`**
 
 - `hasWidgetOverlapWithBounds(Rectangle): boolean`
+
+**`net.runelite.client.plugins.microbot.Script`**
+
+- `run(): boolean`
+
+**`net.runelite.client.plugins.microbot.agentserver.handler.GraphicsHandler`**
+
+- `handleRequest(HttpExchange): void`
+
+**`net.runelite.client.plugins.microbot.agentserver.handler.ObjectHandler`**
+
+- `handleNeighbours(HttpExchange): void`
+
+**`net.runelite.client.plugins.microbot.agentserver.handler.QuestHelperHandler`**
+
+- `handleStates(HttpExchange): void`
+- `handleStatus(HttpExchange): void`
 
 **`net.runelite.client.plugins.microbot.agentserver.handler.SkillsHandler`**
 
@@ -456,6 +509,23 @@ Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/thre
 **`net.runelite.client.plugins.microbot.agentserver.handler.WidgetInvokeHandler`**
 
 - `handleRequest(HttpExchange): void`
+
+**`net.runelite.client.plugins.microbot.aiofishing.AIOFishingPlugin`**
+
+- `resetSessionCounters(): void`
+
+**`net.runelite.client.plugins.microbot.aiofishing.AIOFishingScript`**
+
+- `getRuneLitePrice(int): int`
+- `isInRange(Rs2NpcModel): boolean`
+
+**`net.runelite.client.plugins.microbot.aiohunting.AIOHuntingPlugin`**
+
+- `resetSession(): void`
+
+**`net.runelite.client.plugins.microbot.aiohunting.FalconryActivity`**
+
+- `preCatch(): boolean`
 
 **`net.runelite.client.plugins.microbot.api.AbstractEntityQueryable`**
 
@@ -538,6 +608,11 @@ Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/thre
 - `getObjectComposition(): ObjectComposition`
 - `isReachable(): boolean`
 
+**`net.runelite.client.plugins.microbot.breakhandler.BreakHandlerScript`**
+
+- `checkForBan(): void`
+- `handleInitiatingBreakState(): void`
+
 **`net.runelite.client.plugins.microbot.example.ExampleScript`**
 
 - `lambda$checkEquipment$31(): void`
@@ -610,9 +685,13 @@ Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/thre
 
 **`net.runelite.client.plugins.microbot.questhelper.QuestScript`**
 
+- `canonicalItemName(int): String`
 - `chooseCorrectNPCOption(QuestStep, Rs2NpcModel): String`
 - `chooseCorrectObjectOption(QuestStep, Rs2TileObjectModel): String`
+- `isItemRequirementTradable(ItemRequirement): boolean`
 - `lambda$run$8(QuestHelperConfig, QuestHelperPlugin): void`
+- `notedVariantId(int): int`
+- `tradablePrimaryId(ItemRequirement): int`
 
 **`net.runelite.client.plugins.microbot.questhelper.bank.banktab.QuestBankTab`**
 
@@ -630,6 +709,10 @@ Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/thre
 - `activateTab(): void`
 - `closeOptions(): void`
 - `onceOffActivateTab(Widget): void`
+
+**`net.runelite.client.plugins.microbot.questhelper.helpers.miniquests.themagearenaii.MageArenaBossStep`**
+
+- `onWidgetLoaded(WidgetLoaded): void`
 
 **`net.runelite.client.plugins.microbot.questhelper.helpers.mischelpers.farmruns.TreeRun`**
 
@@ -662,6 +745,14 @@ Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/thre
 - `startUpQuest(QuestHelper, boolean): void`
 - `updateAllItemsHelper(): void`
 
+**`net.runelite.client.plugins.microbot.questhelper.panel.QuestHelperPanel`**
+
+- `lambda$new$8(QuestHelperPlugin, QuestManager, JButton): void`
+
+**`net.runelite.client.plugins.microbot.questhelper.panel.QuestHelperPanel$11`**
+
+- `actionPerformed(ActionEvent): void`
+
 **`net.runelite.client.plugins.microbot.questhelper.questhelpers.BasicQuestHelper`**
 
 - `setSelectedStateOverride(Integer): void`
@@ -681,6 +772,10 @@ Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/thre
 - `replaceWidgetsForReplacedNpcs(ReplacedNpc, WidgetLoaded): void`
 - `shutDown(): void`
 
+**`net.runelite.client.plugins.microbot.questhelper.steps.ConditionalStep`**
+
+- `onWidgetClosed(WidgetClosed): void`
+
 **`net.runelite.client.plugins.microbot.questhelper.steps.QuestStep`**
 
 - `onWidgetLoaded(WidgetLoaded): void`
@@ -693,6 +788,24 @@ Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/thre
 **`net.runelite.client.plugins.microbot.shortestpath.ShortestPathPlugin`**
 
 - `restartPathfinding(WorldPoint, Set, boolean): void`
+
+**`net.runelite.client.plugins.microbot.shortestpath.ShortestPathScript`**
+
+- `isLocalPlayerDead(): boolean`
+
+**`net.runelite.client.plugins.microbot.shortestpath.pathfinder.PathfinderConfig`**
+
+- `getLiveVarplayerValue(int): int`
+- `refreshTransports(WorldPoint): void`
+
+**`net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveCollisionCapture`**
+
+- `capture(): LiveCollisionSnapshot`
+
+**`net.runelite.client.plugins.microbot.simplewoodcutting.SimpleWoodcuttingScript`**
+
+- `isInRange(Rs2TileObjectModel): boolean`
+- `itemPrice(int): int`
 
 **`net.runelite.client.plugins.microbot.util.ActorModel`**
 
@@ -710,8 +823,13 @@ Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/thre
 
 - `sleepUntilOnClientThread(BooleanSupplier, int): void`
 
+**`net.runelite.client.plugins.microbot.util.Rs2InventorySetup`**
+
+- `getItemDefinitionThreadSafe(int): ItemComposition`
+
 **`net.runelite.client.plugins.microbot.util.bank.Rs2Bank`**
 
+- `getItemDefinitionThreadSafe(int): ItemComposition`
 - `getItems(): List`
 - `getTabs(): List`
 - `scrollBankToSlot(int): boolean`
@@ -721,20 +839,48 @@ Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/thre
 
 - `rebuildBankItemsList(): void`
 
+**`net.runelite.client.plugins.microbot.util.camera.NpcTracker`**
+
+- `trackNpc(int): void`
+
 **`net.runelite.client.plugins.microbot.util.camera.Rs2Camera`**
 
+- `angleToTile(Actor): int`
+- `angleToTile(LocalPoint): int`
+- `angleToTile(TileObject): int`
+- `angleToTile(WorldPoint): int`
+- `setCameraTargetOnClientThread(int, boolean): void`
 - `setZoom(int): void`
 
 **`net.runelite.client.plugins.microbot.util.combat.Rs2Combat`**
 
+- `getSpecState(): boolean`
 - `inCombat(): boolean`
+- `setSpecState(boolean, int): boolean`
 
 **`net.runelite.client.plugins.microbot.util.combat.models.Rs2DropSource`**
 
 - `getItemComposition(): ItemComposition`
 
+**`net.runelite.client.plugins.microbot.util.coords.Rs2LocalPoint`**
+
+- `fromWorldInstance(WorldPoint): LocalPoint`
+
+**`net.runelite.client.plugins.microbot.util.depositbox.DepositBoxLocation`**
+
+- `hasRequirements(): boolean`
+
+**`net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue`**
+
+- `hasSpellFilterContinue(): boolean`
+
+**`net.runelite.client.plugins.microbot.util.events.WelcomeScreenEvent`**
+
+- `execute(): boolean`
+
 **`net.runelite.client.plugins.microbot.util.farming.Rs2Farming`**
 
+- `batchPredictAll(List): Map`
 - `getPatchByRegionAndVarbit(String, int): Optional`
 - `getPatchesByTab(Tab): List`
 - `isFarmingSystemReady(): boolean`
@@ -768,13 +914,20 @@ Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/thre
 - `getAllAt(int, int): RS2Item[]`
 - `getAllFromWorldPoint(int, WorldPoint): RS2Item[]`
 - `interact(InteractModel, String): boolean`
-- `lambda$isItemBasedOnValueOnGround$25(int, RS2Item): boolean`
-- `lambda$lootItemBasedOnValue$10(int, RS2Item): boolean`
+- `isItemBasedOnValueOnGround(int, int): boolean`
 - `lootAllItemBasedOnValue(int, int): boolean`
+- `lootItemBasedOnValue(int, int): boolean`
 
 **`net.runelite.client.plugins.microbot.util.grounditem.models.Rs2SpawnLocation`**
 
 - `getItemComposition(): ItemComposition`
+
+**`net.runelite.client.plugins.microbot.util.huntkit.Rs2HuntKit`**
+
+- `getItemWidgets(): List`
+- `scrollKitToSlot(int): boolean`
+- `stream(): Stream`
+- `updateLocalKit(ItemContainerChanged): void`
 
 **`net.runelite.client.plugins.microbot.util.inventory.Rs2FuzzyItem`**
 
@@ -786,10 +939,10 @@ Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/thre
 
 **`net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory`**
 
+- `dropAllExcept(int, String[]): boolean`
 - `getInventory(): Widget`
 - `invokeMenu(Rs2ItemModel, String): void`
 - `items(): Stream`
-- `lambda$dropAllExcept$24(int, Rs2ItemModel): boolean`
 
 **`net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel`**
 
@@ -809,6 +962,22 @@ Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/thre
 
 - `getItemComposition(int): ItemComposition`
 - `searchItem(String): List`
+
+**`net.runelite.client.plugins.microbot.util.leaguetransport.LeaguesTransportChat`**
+
+- `handleLeaguesLockedRegionMatch(String, String): void`
+
+**`net.runelite.client.plugins.microbot.util.leaguetransport.LeaguesTransportTeleport`**
+
+- `dismissOpenMenusAfterCalibrationCancel(): void`
+- `evaluateTeleportGates(LeaguesRegion): Optional`
+- `invokeCcOp(int, String, String): void`
+- `isClientReadyForCalibration(Client): boolean`
+- `isFixedTeleportRowReady(LeaguesRegion): boolean`
+- `isTargetRowVisible(LeaguesRegion, int): boolean`
+- `scheduleDebugCheckTeleportRowNameMatches(LeaguesRegion): void`
+- `unlockedRegions(): EnumSet`
+- `verifyLeaguesContextOrNull(): String`
 
 **`net.runelite.client.plugins.microbot.util.magic.Rs2Magic`**
 
@@ -845,11 +1014,16 @@ Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/thre
 - `getPlayerEquipmentNames(Rs2PlayerModel): Map`
 - `getPoseAnimation(): int`
 - `getRealSkillLevel(Skill): int`
+- `getRunEnergy(): int`
 - `getWorldLocation_Internal(): WorldPoint`
 - `getWorldView_Internal(): WorldView`
 - `isMoving(): boolean`
 - `isMoving(Rs2PlayerModel): boolean`
 - `updateCombatTime(): void`
+
+**`net.runelite.client.plugins.microbot.util.poh.PohTeleports`**
+
+- `findPohObjectAnywhere(Integer[]): GameObject`
 
 **`net.runelite.client.plugins.microbot.util.reachable.Rs2Reachable`**
 
@@ -863,10 +1037,6 @@ Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/thre
 
 - `findSettingsSearchClickable(String[]): Widget`
 
-**`net.runelite.client.plugins.microbot.util.shop.Rs2Shop`**
-
-- `invokeMenu(Rs2ItemModel, String): void`
-
 **`net.runelite.client.plugins.microbot.util.shop.models.Rs2ShopItem`**
 
 - `getItemComposition(): ItemComposition`
@@ -874,6 +1044,14 @@ Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/thre
 **`net.runelite.client.plugins.microbot.util.skills.slayer.Rs2Slayer`**
 
 - `getSlayerTaskWeaknessName(): String`
+
+**`net.runelite.client.plugins.microbot.util.tabs.Rs2Tab`**
+
+- `switchTo(InterfaceTab): boolean`
+
+**`net.runelite.client.plugins.microbot.util.tile.Rs2Tile`**
+
+- `runClientRead(Supplier, Object): Object`
 
 **`net.runelite.client.plugins.microbot.util.tileobject.Rs2TileObjectModel`**
 
@@ -888,7 +1066,17 @@ Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/thre
 
 **`net.runelite.client.plugins.microbot.util.walker.Rs2Walker`**
 
-- `handleCharterShip(Transport): boolean`
+- `findCharterDestinationWidget(String): Widget`
+- `handleNearbyRawPathSceneObjects(List, int, WorldPoint, boolean): boolean`
+- `resolveCompositionForDoorProbe(TileObject): ObjectComposition`
+
+**`net.runelite.client.plugins.microbot.util.walker.door.Rs2DoorAheadResolver`**
+
+- `hasLineOfSightBetween(WorldPoint, WorldPoint): boolean`
+
+**`net.runelite.client.plugins.microbot.util.walker.lifecycle.Rs2WalkerLifecycleRuntime`**
+
+- `applyWalkerDestination(WorldPoint): void`
 
 **`net.runelite.client.plugins.microbot.util.widget.Rs2Widget`**
 
@@ -907,7 +1095,7 @@ Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/thre
 - `isHidden(int, int): boolean`
 - `isWidgetVisible(int): boolean`
 - `isWidgetVisible(int, int): boolean`
-- `lambda$waitForWidget$27(String): boolean`
+- `lambda$waitForWidget$25(String): boolean`
 
 **`net.runelite.client.plugins.microbot.util.widget.Rs2WidgetInspector`**
 
@@ -1131,7 +1319,7 @@ Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/thre
 
 ## Event handlers (@Subscribe)
 
-<details><summary>937 method(s) across 278 class(es)</summary>
+<details><summary>961 method(s) across 283 class(es)</summary>
 
 **`net.runelite.client.ClientSessionManager`**
 
@@ -1848,11 +2036,28 @@ Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/thre
 - `onOverlayMenuClicked(OverlayMenuClicked): void`
 - `onRuneScapeProfileChanged(RuneScapeProfileChanged): void`
 - `onStatChanged(StatChanged): void`
+- `onVarClientIntChanged(VarClientIntChanged): void`
 - `onVarbitChanged(VarbitChanged): void`
 - `onWidgetClosed(WidgetClosed): void`
 - `onWidgetLoaded(WidgetLoaded): void`
 - `onWorldViewLoaded(WorldViewLoaded): void`
 - `onWorldViewUnloaded(WorldViewUnloaded): void`
+
+**`net.runelite.client.plugins.microbot.agentserver.AgentServerPlugin`**
+
+- `onConfigChanged(ConfigChanged): void`
+
+**`net.runelite.client.plugins.microbot.aiofishing.AIOFishingPlugin`**
+
+- `onConfigChanged(ConfigChanged): void`
+- `onItemContainerChanged(ItemContainerChanged): void`
+- `onStatChanged(StatChanged): void`
+
+**`net.runelite.client.plugins.microbot.aiohunting.AIOHuntingPlugin`**
+
+- `onConfigChanged(ConfigChanged): void`
+- `onGameObjectSpawned(GameObjectSpawned): void`
+- `onStatChanged(StatChanged): void`
 
 **`net.runelite.client.plugins.microbot.api.playerstate.Rs2PlayerStateCache`**
 
@@ -1948,7 +2153,7 @@ Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/thre
 
 **`net.runelite.client.plugins.microbot.questhelper.helpers.miniquests.themagearenaii.MageArenaBossStep`**
 
-- `onChatMessage(ChatMessage): void`
+- `onMenuOptionClicked(MenuOptionClicked): void`
 
 **`net.runelite.client.plugins.microbot.questhelper.helpers.mischelpers.farmruns.HerbRun`**
 
@@ -2125,10 +2330,6 @@ Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/thre
 
 - `onMenuOptionClicked(MenuOptionClicked): void`
 
-**`net.runelite.client.plugins.microbot.questhelper.helpers.quests.shadowofthestorm.SearchKilns`**
-
-- `onGameTick(GameTick): void`
-
 **`net.runelite.client.plugins.microbot.questhelper.helpers.quests.sheepshearer.SheepShearer`**
 
 - `onItemContainerChanged(ItemContainerChanged): void`
@@ -2273,12 +2474,13 @@ Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/thre
 
 **`net.runelite.client.plugins.microbot.questhelper.statemanagement.AchievementDiaryStepManager`**
 
-- `onNpcLootReceived(NpcLootReceived): void`
+- `onServerNpcLoot(ServerNpcLoot): void`
 
 **`net.runelite.client.plugins.microbot.questhelper.statemanagement.PlayerStateManager`**
 
 - `onChatMessage(ChatMessage): void`
 - `onGameTick(GameTick): void`
+- `onServerNpcLoot(ServerNpcLoot): void`
 - `onVarbitChanged(VarbitChanged): void`
 
 **`net.runelite.client.plugins.microbot.questhelper.steps.ConditionalStep`**
@@ -2289,6 +2491,7 @@ Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/thre
 - `onNpcChanged(NpcChanged): void`
 - `onNpcDespawned(NpcDespawned): void`
 - `onNpcSpawned(NpcSpawned): void`
+- `onWidgetClosed(WidgetClosed): void`
 
 **`net.runelite.client.plugins.microbot.questhelper.steps.DetailedQuestStep`**
 
@@ -2338,14 +2541,37 @@ Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/thre
 **`net.runelite.client.plugins.microbot.shortestpath.ShortestPathPlugin`**
 
 - `onConfigChanged(ConfigChanged): void`
+- `onGameObjectDespawned(GameObjectDespawned): void`
+- `onGameObjectSpawned(GameObjectSpawned): void`
+- `onGameStateChanged(GameStateChanged): void`
 - `onGameTick(GameTick): void`
 - `onMenuEntryAdded(MenuEntryAdded): void`
 - `onMenuOpened(MenuOpened): void`
 - `onPluginMessage(PluginMessage): void`
+- `onWallObjectDespawned(WallObjectDespawned): void`
+- `onWallObjectSpawned(WallObjectSpawned): void`
+
+**`net.runelite.client.plugins.microbot.simplewoodcutting.SimpleWoodcuttingPlugin`**
+
+- `onChatMessage(ChatMessage): void`
+- `onConfigChanged(ConfigChanged): void`
+- `onGameObjectDespawned(GameObjectDespawned): void`
+- `onGameObjectSpawned(GameObjectSpawned): void`
+- `onNpcDespawned(NpcDespawned): void`
+- `onNpcSpawned(NpcSpawned): void`
+- `onStatChanged(StatChanged): void`
 
 **`net.runelite.client.plugins.microbot.testing.TestRunnerPlugin`**
 
 - `onGameStateChanged(GameStateChanged): void`
+
+**`net.runelite.client.plugins.microbot.testing.webwalker.F2PWebWalkerHarnessPlugin`**
+
+- `onGameTick(GameTick): void`
+
+**`net.runelite.client.plugins.microbot.testing.webwalker.GeLumbridgeTeleportHarnessPlugin`**
+
+- `onGameTick(GameTick): void`
 
 **`net.runelite.client.plugins.microbot.ui.MicrobotConfigPanel`**
 
@@ -2369,6 +2595,10 @@ Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/thre
 - `onRuneScapeProfileChanged(RuneScapeProfileChanged): void`
 - `onSessionClose(SessionClose): void`
 - `onSessionOpen(SessionOpen): void`
+
+**`net.runelite.client.plugins.microbot.util.GameTickBroadcaster`**
+
+- `onGameTick(GameTick): void`
 
 **`net.runelite.client.plugins.microbot.util.antiban.AntibanPlugin`**
 
@@ -2862,10 +3092,6 @@ Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/thre
 - `onGameStateChanged(GameStateChanged): void`
 - `onGameTick(GameTick): void`
 
-**`net.runelite.client.plugins.xtea.XteaPlugin`**
-
-- `onWorldViewLoaded(WorldViewLoaded): void`
-
 **`net.runelite.client.plugins.zalcano.ZalcanoPlugin`**
 
 - `onGameObjectSpawned(GameObjectSpawned): void`
@@ -2891,8 +3117,9 @@ Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/thre
 **`net.runelite.client.ui.overlay.OverlayRenderer`**
 
 - `onBeforeRender(BeforeRender): void`
-- `onClientTick(ClientTick): void`
 - `onFocusChanged(FocusChanged): void`
+- `onMenuOpened(MenuOpened): void`
+- `onPostMenuSort(PostMenuSort): void`
 
 **`net.runelite.client.ui.overlay.infobox.InfoBoxManager`**
 
@@ -2908,7 +3135,7 @@ Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/thre
 
 ## Confirmed lambda bodies (reached via invoke)
 
-<details><summary>457 method(s) across 171 class(es)</summary>
+<details><summary>521 method(s) across 199 class(es)</summary>
 
 **`net.runelite.api.Actor`**
 
@@ -3241,13 +3468,29 @@ Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/thre
 - `lambda$getDBTableRows$2(int): List`
 - `lambda$getEnum$0(int): EnumComposition`
 - `lambda$getStructComposition$1(int): StructComposition`
-- `lambda$hopToWorld$7(int): Boolean`
-- `lambda$openPopUp$15(WidgetNode): boolean`
-- `lambda$openPopUp$16(String, String): void`
+- `lambda$hopToWorld$6(int): Boolean`
+- `lambda$openPopUp$17(WidgetNode): boolean`
+- `lambda$openPopUp$18(String, String): void`
 
 **`net.runelite.client.plugins.microbot.MicrobotPlugin`**
 
 - `lambda$hasWidgetOverlapWithBounds$4(Rectangle, int, int): Boolean`
+
+**`net.runelite.client.plugins.microbot.Script`**
+
+- `lambda$run$0(): Integer`
+
+**`net.runelite.client.plugins.microbot.agentserver.handler.GraphicsHandler`**
+
+- `lambda$handleRequest$1(int, int): List`
+
+**`net.runelite.client.plugins.microbot.agentserver.handler.ObjectHandler`**
+
+- `lambda$handleNeighbours$0(List, int): List`
+
+**`net.runelite.client.plugins.microbot.agentserver.handler.QuestHelperHandler`**
+
+- `lambda$handleStates$0(Client): List`
 
 **`net.runelite.client.plugins.microbot.agentserver.handler.SkillsHandler`**
 
@@ -3260,6 +3503,22 @@ Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/thre
 **`net.runelite.client.plugins.microbot.agentserver.handler.WidgetInvokeHandler`**
 
 - `lambda$handleRequest$0(int, int): Rectangle`
+
+**`net.runelite.client.plugins.microbot.aiofishing.AIOFishingPlugin`**
+
+- `lambda$resetSessionCounters$4(): Map`
+
+**`net.runelite.client.plugins.microbot.aiofishing.AIOFishingScript`**
+
+- `lambda$getRuneLitePrice$11(int): Integer`
+
+**`net.runelite.client.plugins.microbot.aiohunting.AIOHuntingPlugin`**
+
+- `lambda$resetSession$4(): Integer`
+
+**`net.runelite.client.plugins.microbot.aiohunting.FalconryActivity`**
+
+- `lambda$preCatch$0(): NPC`
 
 **`net.runelite.client.plugins.microbot.api.AbstractEntityQueryable`**
 
@@ -3288,6 +3547,7 @@ Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/thre
 
 **`net.runelite.client.plugins.microbot.api.npc.models.Rs2NpcModel`**
 
+- `hasLineOfSight(): boolean`
 - `lambda$click$6(): NPCComposition`
 - `lambda$getDistanceFromPlayer$1(): Integer`
 - `lambda$isInteractingWithPlayer$2(): Boolean`
@@ -3303,6 +3563,7 @@ Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/thre
 **`net.runelite.client.plugins.microbot.api.tileitem.models.Rs2TileItemModel`**
 
 - `lambda$click$8(): ItemComposition`
+- `lambda$click$9(String, String, int, MenuAction, int, int, int): Boolean`
 - `lambda$getName$0(): String`
 - `lambda$getTotalGeValue$4(): Integer`
 - `lambda$getTotalValue$7(): Integer`
@@ -3317,6 +3578,11 @@ Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/thre
 - `lambda$getName$0(): String`
 - `lambda$getObjectComposition$1(): ObjectComposition`
 - `lambda$isReachable$2(): WorldView`
+
+**`net.runelite.client.plugins.microbot.breakhandler.BreakHandlerScript`**
+
+- `lambda$checkForBan$7(): Integer`
+- `lambda$handleInitiatingBreakState$1(): Integer`
 
 **`net.runelite.client.plugins.microbot.example.ExampleScript`**
 
@@ -3385,15 +3651,19 @@ Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/thre
 
 **`net.runelite.client.plugins.microbot.questhelper.QuestHelperPlugin`**
 
-- `lambda$onGameStateChanged$4(): void`
-- `lambda$refreshBank$5(): void`
+- `lambda$onGameStateChanged$5(): void`
+- `lambda$refreshBank$7(): void`
 - `lambda$startUp$2(): void`
 
 **`net.runelite.client.plugins.microbot.questhelper.QuestScript`**
 
-- `lambda$chooseCorrectNPCOption$31(Rs2NpcModel): NPCComposition`
-- `lambda$chooseCorrectObjectOption$29(Rs2TileObjectModel): ObjectComposition`
+- `lambda$canonicalItemName$27(int): String`
+- `lambda$chooseCorrectNPCOption$49(Rs2NpcModel): NPCComposition`
+- `lambda$chooseCorrectObjectOption$47(Rs2TileObjectModel): ObjectComposition`
+- `lambda$isItemRequirementTradable$23(ItemRequirement): Boolean`
+- `lambda$notedVariantId$28(int): Integer`
 - `lambda$run$3(): Boolean`
+- `lambda$tradablePrimaryId$24(ItemRequirement): List`
 
 **`net.runelite.client.plugins.microbot.questhelper.bank.banktab.QuestBankTab`**
 
@@ -3414,6 +3684,10 @@ Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/thre
 - `lambda$activateTab$1(): void`
 - `lambda$closeOptions$0(): void`
 - `lambda$onceOffActivateTab$2(): void`
+
+**`net.runelite.client.plugins.microbot.questhelper.helpers.miniquests.themagearenaii.MageArenaBossStep`**
+
+- `addListeners(): void`
 
 **`net.runelite.client.plugins.microbot.questhelper.helpers.mischelpers.farmruns.TreeRun`**
 
@@ -3448,9 +3722,17 @@ Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/thre
 - `lambda$updateAllItemsHelper$11(): void`
 - `updateQuestList(): void`
 
+**`net.runelite.client.plugins.microbot.questhelper.panel.QuestHelperPanel$11`**
+
+- `lambda$actionPerformed$0(QuestHelperPlugin): void`
+
 **`net.runelite.client.plugins.microbot.questhelper.questhelpers.BasicQuestHelper`**
 
 - `updateQuest(): boolean`
+
+**`net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper`**
+
+- `isCompleted(): boolean`
 
 **`net.runelite.client.plugins.microbot.questhelper.runeliteobjects.extendedruneliteobjects.ExtendedRuneliteObject`**
 
@@ -3467,6 +3749,10 @@ Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/thre
 - `lambda$replaceWidgetsForReplacedNpcs$27(Widget, Widget, ReplacedNpc): void`
 - `removeRuneliteObjects(): void`
 
+**`net.runelite.client.plugins.microbot.questhelper.steps.ConditionalStep`**
+
+- `lambda$onWidgetClosed$7(): void`
+
 **`net.runelite.client.plugins.microbot.questhelper.steps.QuestStep`**
 
 - `highlightChoice(): void`
@@ -3478,37 +3764,89 @@ Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/thre
 
 **`net.runelite.client.plugins.microbot.shortestpath.ShortestPathPlugin`**
 
-- `lambda$restartPathfinding$0(Set, boolean, WorldPoint, ExecutorService): void`
+- `lambda$restartPathfinding$0(long, Set, boolean, WorldPoint, ExecutorService): void`
+
+**`net.runelite.client.plugins.microbot.shortestpath.ShortestPathScript`**
+
+- `lambda$isLocalPlayerDead$2(): Boolean`
+
+**`net.runelite.client.plugins.microbot.shortestpath.pathfinder.PathfinderConfig`**
+
+- `lambda$getLiveVarplayerValue$25(int): Integer`
+- `lambda$refreshTransports$2(int[], int[]): Boolean`
+- `lambda$refreshTransports$8(Set, Set): Boolean`
+
+**`net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveCollisionCapture`**
+
+- `captureOnClientThread(): LiveCollisionSnapshot`
+
+**`net.runelite.client.plugins.microbot.simplewoodcutting.SimpleWoodcuttingScript`**
+
+- `lambda$isInRange$37(WorldPoint): Boolean`
+- `lambda$itemPrice$25(int): Integer`
+
+**`net.runelite.client.plugins.microbot.util.Rs2InventorySetup`**
+
+- `lambda$getItemDefinitionThreadSafe$0(Client, int): ItemComposition`
 
 **`net.runelite.client.plugins.microbot.util.bank.Rs2Bank`**
 
-- `lambda$getItems$54(): List`
-- `lambda$getTabs$53(): List`
-- `lambda$scrollBankToSlot$55(int): void`
-- `lambda$withdrawLootItems$48(LootTrackerItem): ItemComposition`
-- `lambda$withdrawLootItems$50(int): ItemComposition`
+- `lambda$getItemDefinitionThreadSafe$1(Client, int): ItemComposition`
+- `lambda$getItems$57(): List`
+- `lambda$getTabs$56(): List`
+- `lambda$scrollBankToSlot$58(int): void`
+- `lambda$withdrawLootItems$51(LootTrackerItem): ItemComposition`
+- `lambda$withdrawLootItems$53(int): ItemComposition`
 
 **`net.runelite.client.plugins.microbot.util.bank.Rs2BankData`**
 
 - `lambda$rebuildBankItemsList$0(): Boolean`
 
+**`net.runelite.client.plugins.microbot.util.camera.NpcTracker`**
+
+- `lambda$trackNpc$0(int): void`
+
 **`net.runelite.client.plugins.microbot.util.camera.Rs2Camera`**
 
-- `lambda$setZoom$4(int): void`
+- `lambda$angleToTile$0(Actor): Integer`
+- `lambda$angleToTile$1(TileObject): Integer`
+- `lambda$angleToTile$2(LocalPoint): Integer`
+- `lambda$angleToTile$3(WorldPoint): Integer`
+- `lambda$setCameraTargetOnClientThread$9(boolean, int): void`
+- `lambda$setZoom$8(int): void`
 
 **`net.runelite.client.plugins.microbot.util.combat.Rs2Combat`**
 
-- `lambda$inCombat$5(Actor, Player): Boolean`
+- `lambda$getSpecState$6(): Boolean`
+- `lambda$inCombat$7(Player): Boolean`
+- `lambda$setSpecState$5(): Integer`
 
 **`net.runelite.client.plugins.microbot.util.combat.models.Rs2DropSource`**
 
 - `lambda$getItemComposition$0(): ItemComposition`
 
+**`net.runelite.client.plugins.microbot.util.coords.Rs2LocalPoint`**
+
+- `lambda$fromWorldInstance$0(WorldPoint): LocalPoint`
+
+**`net.runelite.client.plugins.microbot.util.depositbox.DepositBoxLocation`**
+
+- `lambda$hasRequirements$0(): Boolean`
+
+**`net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue`**
+
+- `lambda$hasSpellFilterContinue$0(): Boolean`
+
+**`net.runelite.client.plugins.microbot.util.events.WelcomeScreenEvent`**
+
+- `lambda$execute$0(): Boolean`
+
 **`net.runelite.client.plugins.microbot.util.farming.Rs2Farming`**
 
-- `lambda$getPatchByRegionAndVarbit$12(int, String): Optional`
+- `lambda$batchPredictAll$5(List): Map`
+- `lambda$getPatchByRegionAndVarbit$13(int, String): Optional`
 - `lambda$getPatchesByTab$0(Tab): List`
-- `lambda$isFarmingSystemReady$14(): Boolean`
+- `lambda$isFarmingSystemReady$15(): Boolean`
 - `lambda$predictPatchState$4(FarmingPatch): CropState`
 
 **`net.runelite.client.plugins.microbot.util.gameobject.Rs2Cannon`**
@@ -3518,10 +3856,10 @@ Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/thre
 
 **`net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject`**
 
-- `lambda$clickObject$92(): WorldView`
-- `lambda$convertToObjectCompositionInternal$90(int, boolean): ObjectComposition`
-- `lambda$getObjectComposition$93(int): ObjectComposition`
-- `lambda$getSceneObjects$84(): Triple`
+- `lambda$clickObject$89(): WorldView`
+- `lambda$convertToObjectCompositionInternal$87(int, boolean): ObjectComposition`
+- `lambda$getObjectComposition$91(int): ObjectComposition`
+- `lambda$getSceneObjects$81(): Triple`
 
 **`net.runelite.client.plugins.microbot.util.gameobject.Rs2ObjectModel`**
 
@@ -3532,21 +3870,29 @@ Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/thre
 **`net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange`**
 
 - `lambda$getSearchResultWidget$21(): Widget`
-- `lambda$setChatboxValue$32(int): Object`
+- `lambda$setChatboxValue$31(int): Object`
 
 **`net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem`**
 
-- `lambda$getAllAt$3(int, int): RS2Item[]`
-- `lambda$getAllFromWorldPoint$6(WorldPoint, int): RS2Item[]`
+- `lambda$getAllAt$4(int, int): RS2Item[]`
+- `lambda$getAllFromWorldPoint$7(WorldPoint, int): RS2Item[]`
 - `lambda$interact$0(InteractModel): ItemComposition`
-- `lambda$isItemBasedOnValueOnGround$24(RS2Item): Integer`
-- `lambda$lootAllItemBasedOnValue$26(int): RS2Item[]`
-- `lambda$lootAllItemBasedOnValue$27(RS2Item): Integer`
-- `lambda$lootItemBasedOnValue$9(RS2Item): Integer`
+- `lambda$interact$1(String, String, int, MenuAction, int, int, int): Boolean`
+- `lambda$isItemBasedOnValueOnGround$23(RS2Item[]): long[]`
+- `lambda$lootAllItemBasedOnValue$24(int): RS2Item[]`
+- `lambda$lootAllItemBasedOnValue$25(RS2Item): Integer`
+- `lambda$lootItemBasedOnValue$9(RS2Item[]): long[]`
 
 **`net.runelite.client.plugins.microbot.util.grounditem.models.Rs2SpawnLocation`**
 
 - `lambda$getItemComposition$0(): ItemComposition`
+
+**`net.runelite.client.plugins.microbot.util.huntkit.Rs2HuntKit`**
+
+- `lambda$getItemWidgets$2(): List`
+- `lambda$scrollKitToSlot$14(Client, int): void`
+- `lambda$stream$3(): Object`
+- `rebuildKitFromCurrentClient(): void`
 
 **`net.runelite.client.plugins.microbot.util.inventory.Rs2FuzzyItem`**
 
@@ -3558,9 +3904,9 @@ Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/thre
 
 **`net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory`**
 
-- `lambda$dropAllExcept$23(Rs2ItemModel): Integer`
-- `lambda$getInventory$69(): Widget`
-- `lambda$invokeMenu$66(): Boolean`
+- `lambda$dropAllExcept$22(List): Map`
+- `lambda$getInventory$70(): Widget`
+- `lambda$invokeMenu$67(): Boolean`
 - `lambda$items$0(): Object`
 
 **`net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel`**
@@ -3583,6 +3929,18 @@ Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/thre
 - `lambda$getItemComposition$1(int): ItemComposition`
 - `lambda$searchItem$0(String): List`
 
+**`net.runelite.client.plugins.microbot.util.leaguetransport.LeaguesTransportTeleport`**
+
+- `lambda$dismissOpenMenusAfterCalibrationCancel$20(): void`
+- `lambda$evaluateTeleportGates$21(): LeaguesTransportTeleport$TeleportGateSnapshot`
+- `lambda$invokeCcOp$22(int): Rectangle`
+- `lambda$isClientReadyForCalibration$0(Client): Boolean`
+- `lambda$isFixedTeleportRowReady$17(int, LeaguesRegion): Boolean`
+- `lambda$isTargetRowVisible$18(int, LeaguesRegion): Boolean`
+- `lambda$scheduleDebugCheckTeleportRowNameMatches$19(LeaguesRegion): void`
+- `lambda$unlockedRegions$6(): EnumSet`
+- `leaguesContextRejectOrEmptySuccess(): String`
+
 **`net.runelite.client.plugins.microbot.util.magic.Rs2Magic`**
 
 - `lambda$alch$7(): Boolean`
@@ -3595,10 +3953,10 @@ Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/thre
 
 **`net.runelite.client.plugins.microbot.util.npc.Rs2Npc`**
 
-- `lambda$getAvailableAction$43(Rs2NpcModel): NPCComposition`
-- `lambda$getNpcs$13(Predicate): Rs2NpcModel[]`
-- `lambda$hasAction$32(int): NPCComposition`
-- `lambda$interact$34(Rs2NpcModel): NPCComposition`
+- `lambda$getAvailableAction$40(Rs2NpcModel): NPCComposition`
+- `lambda$getNpcs$12(Predicate): Rs2NpcModel[]`
+- `lambda$hasAction$29(int): NPCComposition`
+- `lambda$interact$31(Rs2NpcModel): NPCComposition`
 - `lambda$isMoving$1(NPC): Boolean`
 
 **`net.runelite.client.plugins.microbot.util.npc.Rs2NpcModel`**
@@ -3610,18 +3968,23 @@ Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/thre
 
 **`net.runelite.client.plugins.microbot.util.player.Rs2Player`**
 
-- `lambda$getAnimation$41(): Integer`
-- `lambda$getBoostedSkillLevel$44(Skill): Integer`
+- `lambda$getAnimation$44(): Integer`
+- `lambda$getBoostedSkillLevel$47(Skill): Integer`
 - `lambda$getCombatLevel$25(): Integer`
-- `lambda$getInteracting$45(): Actor`
+- `lambda$getInteracting$49(): Actor`
 - `lambda$getPlayerEquipmentNames$19(Rs2PlayerModel): Map`
-- `lambda$getPoseAnimation$42(): Integer`
-- `lambda$getRealSkillLevel$43(Skill): Integer`
+- `lambda$getPoseAnimation$45(): Integer`
+- `lambda$getRealSkillLevel$46(Skill): Integer`
+- `lambda$getRunEnergy$48(): Integer`
 - `lambda$getWorldLocation_Internal$29(): WorldPoint`
 - `lambda$getWorldView_Internal$30(): WorldView`
 - `lambda$isMoving$6(): Boolean`
 - `lambda$isMoving$7(Rs2PlayerModel): Boolean`
 - `lambda$updateCombatTime$26(): Object`
+
+**`net.runelite.client.plugins.microbot.util.poh.PohTeleports`**
+
+- `lambda$findPohObjectAnywhere$3(Set): GameObject`
 
 **`net.runelite.client.plugins.microbot.util.reachable.Rs2Reachable`**
 
@@ -3629,16 +3992,12 @@ Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/thre
 
 **`net.runelite.client.plugins.microbot.util.reflection.Rs2Reflection`**
 
-- `lambda$invokeMenu$2(int, int, int, int, int, String, String): void`
-- `lambda$invokeMenu$3(int, int, int, int, int, int, String, String, int, int): Object`
+- `lambda$invokeMenu$0(int, int, int, int, int, String, String): void`
+- `lambda$invokeMenu$1(int, int, int, int, int, int, String, String, int, int): Object`
 
 **`net.runelite.client.plugins.microbot.util.settings.Rs2Settings`**
 
 - `lambda$findSettingsSearchClickable$6(String[]): Widget`
-
-**`net.runelite.client.plugins.microbot.util.shop.Rs2Shop`**
-
-- `lambda$invokeMenu$8(Rs2ItemModel): ItemComposition`
 
 **`net.runelite.client.plugins.microbot.util.shop.models.Rs2ShopItem`**
 
@@ -3647,6 +4006,10 @@ Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/thre
 **`net.runelite.client.plugins.microbot.util.skills.slayer.Rs2Slayer`**
 
 - `lambda$getSlayerTaskWeaknessName$1(int): String`
+
+**`net.runelite.client.plugins.microbot.util.tabs.Rs2Tab`**
+
+- `lambda$switchTo$0(int): Boolean`
 
 **`net.runelite.client.plugins.microbot.util.tileobject.Rs2TileObjectModel`**
 
@@ -3661,16 +4024,28 @@ Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/thre
 
 **`net.runelite.client.plugins.microbot.util.walker.Rs2Walker`**
 
-- `lambda$handleCharterShip$103(Widget): Boolean`
+- `captureRawScanDoorLocationsOnClientThread(): Map`
+- `lambda$findCharterDestinationWidget$184(String): Widget`
+- `lambda$resolveCompositionForDoorProbe$41(ObjectComposition): ObjectComposition`
+- `recalculatePath(): void`
+
+**`net.runelite.client.plugins.microbot.util.walker.door.Rs2DoorAheadResolver`**
+
+- `lambda$hasLineOfSightBetween$0(WorldPoint, WorldPoint): Boolean`
+
+**`net.runelite.client.plugins.microbot.util.walker.lifecycle.Rs2WalkerLifecycleRuntime`**
+
+- `lambda$applyWalkerDestination$0(Client): Player`
+- `lambda$applyWalkerDestination$2(Client, WorldPoint): WorldPoint`
 
 **`net.runelite.client.plugins.microbot.util.widget.Rs2Widget`**
 
 - `lambda$clickChildWidget$12(int): Widget`
 - `lambda$clickWidget$11(int): Widget`
 - `lambda$clickWidget$3(Optional, String, boolean, int): Boolean`
-- `lambda$enableQuantityOption$24(String): Boolean`
+- `lambda$enableQuantityOption$22(String): Boolean`
 - `lambda$findWidget$16(List, String, boolean): Widget`
-- `lambda$findWidget$19(List, int): Widget`
+- `lambda$findWidget$18(List, int): Widget`
 - `lambda$getChildWidgetSpriteID$10(int, int): Integer`
 - `lambda$getWidget$6(int): Widget`
 - `lambda$getWidget$9(int, int): Widget`
@@ -3680,7 +4055,7 @@ Source: `runelite-client/src/test/java/net/runelite/client/plugins/microbot/thre
 - `lambda$isHidden$8(int): Boolean`
 - `lambda$isWidgetVisible$4(int): Boolean`
 - `lambda$isWidgetVisible$5(int, int): Boolean`
-- `lambda$waitForWidget$26(String): Boolean`
+- `lambda$waitForWidget$24(String): Boolean`
 
 **`net.runelite.client.plugins.microbot.util.widget.Rs2WidgetInspector`**
 
@@ -3907,7 +4282,7 @@ These `net.runelite.api.*` methods are invoked from inside methods that are guar
 | `getModel(): Model` | LAMBDA | 1 |
 | `getName(): String` | LAMBDA, SUBSCRIBE | 5 |
 | `getWorldArea(): WorldArea` | LAMBDA | 1 |
-| `getWorldLocation(): WorldPoint` | LAMBDA | 3 |
+| `getWorldLocation(): WorldPoint` | LAMBDA | 4 |
 | `getWorldView(): WorldView` | LAMBDA | 2 |
 | `setDead(boolean): void` | SUBSCRIBE | 1 |
 | `setOverheadText(String): void` | SUBSCRIBE | 3 |
@@ -3952,7 +4327,7 @@ These `net.runelite.api.*` methods are invoked from inside methods that are guar
 | `getArray(int): int[]` | SUBSCRIBE | 1 |
 | `getBaseX(): int` | SUBSCRIBE | 1 |
 | `getBaseY(): int` | SUBSCRIBE | 1 |
-| `getBoostedSkillLevel(Skill): int` | LAMBDA, SUBSCRIBE | 11 |
+| `getBoostedSkillLevel(Skill): int` | LAMBDA, SUBSCRIBE | 13 |
 | `getBoostedSkillLevels(): int[]` | SUBSCRIBE | 1 |
 | `getCameraX(): int` | SUBSCRIBE | 1 |
 | `getCameraY(): int` | SUBSCRIBE | 1 |
@@ -3964,13 +4339,14 @@ These `net.runelite.api.*` methods are invoked from inside methods that are guar
 | `getDBTableRows(int): List` | LAMBDA | 2 |
 | `getDraggedOnWidget(): Widget` | SUBSCRIBE | 3 |
 | `getDraggedWidget(): Widget` | SUBSCRIBE | 3 |
+| `getEnergy(): int` | LAMBDA | 2 |
 | `getEnum(int): EnumComposition` | LAMBDA, SUBSCRIBE | 4 |
 | `getFriendContainer(): FriendContainer` | SUBSCRIBE | 1 |
 | `getFriendsChatManager(): FriendsChatManager` | SUBSCRIBE | 2 |
 | `getGameCycle(): int` | LAMBDA, SUBSCRIBE | 5 |
-| `getGameState(): GameState` | ASSERT, LAMBDA, SUBSCRIBE | 51 |
+| `getGameState(): GameState` | ASSERT, LAMBDA, SUBSCRIBE | 52 |
 | `getGuestClanChannel(): ClanChannel` | SUBSCRIBE | 1 |
-| `getHintArrowNpc(): NPC` | SUBSCRIBE | 1 |
+| `getHintArrowNpc(): NPC` | LAMBDA, SUBSCRIBE | 2 |
 | `getHintArrowPoint(): WorldPoint` | SUBSCRIBE | 1 |
 | `getIgnoreContainer(): NameableContainer` | SUBSCRIBE | 1 |
 | `getIndexConfig(): IndexDataBase` | LAMBDA | 1 |
@@ -3979,15 +4355,16 @@ These `net.runelite.api.*` methods are invoked from inside methods that are guar
 | `getIntStack(): int[]` | SUBSCRIBE | 25 |
 | `getIntStackSize(): int` | SUBSCRIBE | 24 |
 | `getItemContainer(InventoryID): ItemContainer` | SUBSCRIBE | 1 |
-| `getItemContainer(int): ItemContainer` | ASSERT, LAMBDA, SUBSCRIBE | 24 |
+| `getItemContainer(int): ItemContainer` | ASSERT, LAMBDA, SUBSCRIBE | 27 |
 | `getItemContainers(): HashTable` | LAMBDA | 1 |
 | `getItemCount(): int` | ASSERT, SUBSCRIBE | 2 |
-| `getItemDefinition(int): ItemComposition` | ASSERT, LAMBDA, SUBSCRIBE | 27 |
+| `getItemDefinition(int): ItemComposition` | ASSERT, LAMBDA, SUBSCRIBE | 33 |
 | `getKeyboardIdleTicks(): int` | SUBSCRIBE | 1 |
 | `getLocalDestinationLocation(): LocalPoint` | SUBSCRIBE | 2 |
-| `getLocalPlayer(): Player` | LAMBDA, SUBSCRIBE | 96 |
+| `getLocalPlayer(): Player` | LAMBDA, SUBSCRIBE | 102 |
+| `getLoginIndex(): int` | LAMBDA | 1 |
 | `getMapElementConfig(int): MapElementConfig` | SUBSCRIBE | 1 |
-| `getMenu(): Menu` | SUBSCRIBE | 6 |
+| `getMenu(): Menu` | LAMBDA, SUBSCRIBE | 8 |
 | `getMenuEntries(): MenuEntry[]` | SUBSCRIBE | 13 |
 | `getMessages(): IterableHashTable` | SUBSCRIBE | 3 |
 | `getModIcons(): IndexedSprite[]` | ASSERT, LAMBDA, SUBSCRIBE | 3 |
@@ -4007,42 +4384,41 @@ These `net.runelite.api.*` methods are invoked from inside methods that are guar
 | `getPreferences(): Preferences` | SUBSCRIBE | 2 |
 | `getRealSkillLevel(Skill): int` | LAMBDA, SUBSCRIBE | 9 |
 | `getRealSkillLevels(): int[]` | SUBSCRIBE | 1 |
-| `getRevision(): int` | SUBSCRIBE | 1 |
 | `getScene(): Scene` | LAMBDA, SUBSCRIBE | 4 |
 | `getScriptActiveWidget(): Widget` | SUBSCRIBE | 2 |
 | `getSelectedSceneTile(): Tile` | SUBSCRIBE | 1 |
 | `getSelectedWidget(): Widget` | SUBSCRIBE | 2 |
-| `getSkillExperience(Skill): int` | LAMBDA, SUBSCRIBE | 5 |
+| `getSkillExperience(Skill): int` | LAMBDA, SUBSCRIBE | 6 |
 | `getSkillExperiences(): int[]` | SUBSCRIBE | 1 |
 | `getSpriteOverrides(): Map` | LAMBDA | 4 |
 | `getSprites(IndexDataBase, int, int): SpritePixels[]` | ASSERT | 1 |
 | `getStructComposition(int): StructComposition` | LAMBDA | 1 |
 | `getTextureProvider(): TextureProvider` | SUBSCRIBE | 1 |
-| `getTickCount(): int` | LAMBDA, SUBSCRIBE | 36 |
-| `getTopLevelWorldView(): WorldView` | LAMBDA, SUBSCRIBE | 17 |
+| `getTickCount(): int` | LAMBDA, SUBSCRIBE | 37 |
+| `getTopLevelWorldView(): WorldView` | LAMBDA, SUBSCRIBE | 27 |
 | `getUsername(): String` | SUBSCRIBE | 1 |
-| `getVarbit(int): VarbitComposition` | LAMBDA, SUBSCRIBE | 2 |
+| `getVarbit(int): VarbitComposition` | LAMBDA, SUBSCRIBE | 3 |
 | `getVarbitValue(int): int` | ASSERT, LAMBDA, SUBSCRIBE | 36 |
 | `getVarbitValue(int[], int): int` | SUBSCRIBE | 2 |
 | `getVarcIntValue(int): int` | SUBSCRIBE | 1 |
 | `getVarcMap(): Map` | SUBSCRIBE | 2 |
 | `getVarcStrValue(int): String` | LAMBDA, SUBSCRIBE | 10 |
-| `getVarpValue(int): int` | LAMBDA, SUBSCRIBE | 14 |
-| `getVarps(): int[]` | SUBSCRIBE | 2 |
+| `getVarpValue(int): int` | LAMBDA, SUBSCRIBE | 16 |
+| `getVarps(): int[]` | LAMBDA, SUBSCRIBE | 3 |
 | `getWidget(WidgetInfo): Widget` | LAMBDA | 1 |
-| `getWidget(int): Widget` | LAMBDA, SUBSCRIBE | 98 |
-| `getWidget(int, int): Widget` | ASSERT, LAMBDA, SUBSCRIBE | 10 |
+| `getWidget(int): Widget` | LAMBDA, SUBSCRIBE | 103 |
+| `getWidget(int, int): Widget` | ASSERT, LAMBDA, SUBSCRIBE | 12 |
 | `getWidgetRoots(): Widget[]` | LAMBDA, SUBSCRIBE | 8 |
 | `getWidgetSpriteCache(): NodeCache` | LAMBDA | 2 |
-| `getWorld(): int` | LAMBDA, SUBSCRIBE | 14 |
+| `getWorld(): int` | LAMBDA, SUBSCRIBE | 15 |
 | `getWorldMap(): WorldMap` | SUBSCRIBE | 1 |
-| `getWorldType(): EnumSet` | LAMBDA, SUBSCRIBE | 5 |
+| `getWorldType(): EnumSet` | LAMBDA, SUBSCRIBE | 9 |
 | `getWorldView(int): WorldView` | SUBSCRIBE | 3 |
 | `hopToWorld(World): void` | LAMBDA, SUBSCRIBE | 2 |
 | `invalidateStretching(boolean): void` | SUBSCRIBE | 1 |
-| `isClientThread(): boolean` | ASSERT | 12 |
+| `isClientThread(): boolean` | ASSERT, LAMBDA | 14 |
 | `isInInstancedRegion(): boolean` | LAMBDA, SUBSCRIBE | 5 |
-| `isKeyPressed(int): boolean` | SUBSCRIBE | 9 |
+| `isKeyPressed(int): boolean` | SUBSCRIBE | 10 |
 | `isMenuOpen(): boolean` | SUBSCRIBE | 8 |
 | `isPrayerActive(Prayer): boolean` | SUBSCRIBE | 1 |
 | `isResized(): boolean` | LAMBDA, SUBSCRIBE | 3 |
@@ -4054,11 +4430,13 @@ These `net.runelite.api.*` methods are invoked from inside methods that are guar
 | `playSoundEffect(int): void` | LAMBDA, SUBSCRIBE | 2 |
 | `playSoundEffect(int, int): void` | SUBSCRIBE | 1 |
 | `queueChangedSkill(Skill): void` | LAMBDA, SUBSCRIBE | 2 |
-| `queueChangedVarp(int): void` | SUBSCRIBE | 1 |
+| `queueChangedVarp(int): void` | LAMBDA, SUBSCRIBE | 2 |
 | `refreshChat(): void` | LAMBDA, SUBSCRIBE | 3 |
 | `resetHealthBarCaches(): void` | LAMBDA | 1 |
 | `resizeCanvas(): void` | LAMBDA | 2 |
-| `runScript(Object[]): void` | LAMBDA, SUBSCRIBE | 27 |
+| `runScript(Object[]): void` | LAMBDA, SUBSCRIBE | 29 |
+| `setCameraPitchTarget(int): void` | LAMBDA | 1 |
+| `setCameraYawTarget(int): void` | LAMBDA | 2 |
 | `setDraggedOnWidget(Widget): void` | SUBSCRIBE | 2 |
 | `setDrawCallbacks(DrawCallbacks): void` | LAMBDA | 2 |
 | `setExpandedMapLoading(int): void` | LAMBDA | 3 |
@@ -4072,14 +4450,14 @@ These `net.runelite.api.*` methods are invoked from inside methods that are guar
 | `setIdleTimeout(int): void` | SUBSCRIBE | 1 |
 | `setInventoryDragDelay(int): void` | LAMBDA | 2 |
 | `setLoginScreen(SpritePixels): void` | LAMBDA | 2 |
-| `setMenuEntries(MenuEntry[]): void` | SUBSCRIBE | 3 |
+| `setMenuEntries(MenuEntry[]): void` | LAMBDA, SUBSCRIBE | 5 |
 | `setMinimapZoom(boolean): void` | SUBSCRIBE | 1 |
 | `setModIcons(IndexedSprite[]): void` | ASSERT, LAMBDA | 2 |
 | `setShouldRenderLoginScreenFire(boolean): void` | LAMBDA | 2 |
 | `setSkyboxColor(int): void` | SUBSCRIBE | 2 |
 | `setUnlockedFps(boolean): void` | LAMBDA | 2 |
 | `setUnlockedFpsTarget(int): void` | LAMBDA | 1 |
-| `setVarbitValue(int[], int, int): void` | SUBSCRIBE | 2 |
+| `setVarbitValue(int[], int, int): void` | LAMBDA, SUBSCRIBE | 3 |
 | `setVarcIntValue(int, int): void` | LAMBDA | 3 |
 | `setVarcStrValue(int, String): void` | LAMBDA | 7 |
 | `setWidgetSelected(boolean): void` | SUBSCRIBE | 2 |
@@ -4088,7 +4466,7 @@ These `net.runelite.api.*` methods are invoked from inside methods that are guar
 
 | Method | Evidence | Caller count |
 |---|---|---:|
-| `getFlags(): int[][]` | LAMBDA | 1 |
+| `getFlags(): int[][]` | LAMBDA | 3 |
 
 ### `net.runelite.api.DecorativeObject`
 
@@ -4101,6 +4479,7 @@ These `net.runelite.api.*` methods are invoked from inside methods that are guar
 | Method | Evidence | Caller count |
 |---|---|---:|
 | `clear(): void` | SUBSCRIBE | 2 |
+| `iterator(): Iterator` | LAMBDA | 1 |
 
 ### `net.runelite.api.EnumComposition`
 
@@ -4113,7 +4492,7 @@ These `net.runelite.api.*` methods are invoked from inside methods that are guar
 | Method | Evidence | Caller count |
 |---|---|---:|
 | `getSlotIdx(): int` | LAMBDA, SUBSCRIBE | 3 |
-| `values(): EquipmentInventorySlot[]` | ASSERT, LAMBDA | 2 |
+| `values(): EquipmentInventorySlot[]` | LAMBDA | 1 |
 
 ### `net.runelite.api.Experience`
 
@@ -4148,9 +4527,9 @@ These `net.runelite.api.*` methods are invoked from inside methods that are guar
 
 | Method | Evidence | Caller count |
 |---|---|---:|
-| `getId(): int` | SUBSCRIBE | 15 |
+| `getId(): int` | LAMBDA, SUBSCRIBE | 19 |
 | `getOrientation(): int` | SUBSCRIBE | 1 |
-| `getWorldLocation(): WorldPoint` | SUBSCRIBE | 5 |
+| `getWorldLocation(): WorldPoint` | SUBSCRIBE | 6 |
 | `sizeX(): int` | SUBSCRIBE | 1 |
 | `sizeY(): int` | SUBSCRIBE | 1 |
 
@@ -4173,8 +4552,11 @@ These `net.runelite.api.*` methods are invoked from inside methods that are guar
 
 | Method | Evidence | Caller count |
 |---|---|---:|
-| `getId(): int` | SUBSCRIBE | 3 |
-| `getLocation(): LocalPoint` | LAMBDA, SUBSCRIBE | 2 |
+| `finished(): boolean` | LAMBDA | 1 |
+| `getId(): int` | LAMBDA, SUBSCRIBE | 4 |
+| `getLevel(): int` | LAMBDA | 1 |
+| `getLocation(): LocalPoint` | LAMBDA, SUBSCRIBE | 3 |
+| `getStartCycle(): int` | LAMBDA | 1 |
 
 ### `net.runelite.api.GroundObject`
 
@@ -4226,7 +4608,7 @@ These `net.runelite.api.*` methods are invoked from inside methods that are guar
 | Method | Evidence | Caller count |
 |---|---|---:|
 | `<init>(int, int): void` | LAMBDA, SUBSCRIBE | 2 |
-| `getId(): int` | ASSERT, LAMBDA, SUBSCRIBE | 13 |
+| `getId(): int` | ASSERT, LAMBDA, SUBSCRIBE | 14 |
 | `getQuantity(): int` | ASSERT, LAMBDA, SUBSCRIBE | 4 |
 
 ### `net.runelite.api.ItemComposition`
@@ -4235,17 +4617,17 @@ These `net.runelite.api.*` methods are invoked from inside methods that are guar
 |---|---|---:|
 | `getId(): int` | LAMBDA, SUBSCRIBE | 9 |
 | `getIntValue(int): int` | SUBSCRIBE | 1 |
-| `getLinkedNoteId(): int` | LAMBDA | 1 |
-| `getMembersName(): String` | ASSERT, SUBSCRIBE | 3 |
-| `getName(): String` | ASSERT, LAMBDA, SUBSCRIBE | 11 |
-| `getNote(): int` | LAMBDA | 1 |
-| `getPlaceholderTemplateId(): int` | ASSERT | 1 |
+| `getLinkedNoteId(): int` | LAMBDA | 2 |
+| `getMembersName(): String` | ASSERT, SUBSCRIBE | 4 |
+| `getName(): String` | ASSERT, LAMBDA, SUBSCRIBE | 13 |
+| `getNote(): int` | LAMBDA | 2 |
+| `getPlaceholderTemplateId(): int` | ASSERT, LAMBDA | 2 |
 | `getPrice(): int` | LAMBDA | 2 |
 | `getStringValue(int): String` | SUBSCRIBE | 1 |
 | `getSubops(): String[][]` | LAMBDA | 1 |
 | `isMembers(): boolean` | LAMBDA | 1 |
 | `isStackable(): boolean` | LAMBDA | 2 |
-| `isTradeable(): boolean` | LAMBDA | 1 |
+| `isTradeable(): boolean` | LAMBDA | 3 |
 
 ### `net.runelite.api.ItemContainer`
 
@@ -4256,7 +4638,7 @@ These `net.runelite.api.*` methods are invoked from inside methods that are guar
 | `find(int): int` | SUBSCRIBE | 1 |
 | `getId(): int` | LAMBDA | 1 |
 | `getItem(int): Item` | LAMBDA, SUBSCRIBE | 2 |
-| `getItems(): Item[]` | ASSERT, LAMBDA, SUBSCRIBE | 20 |
+| `getItems(): Item[]` | ASSERT, LAMBDA, SUBSCRIBE | 21 |
 
 ### `net.runelite.api.ItemLayer`
 
@@ -4274,7 +4656,7 @@ These `net.runelite.api.*` methods are invoked from inside methods that are guar
 
 | Method | Evidence | Caller count |
 |---|---|---:|
-| `createMenuEntry(int): MenuEntry` | SUBSCRIBE | 7 |
+| `createMenuEntry(int): MenuEntry` | LAMBDA, SUBSCRIBE | 9 |
 | `getMenuEntries(): MenuEntry[]` | SUBSCRIBE | 4 |
 | `removeMenuEntry(MenuEntry): void` | SUBSCRIBE | 1 |
 | `setMenuEntries(MenuEntry[]): void` | SUBSCRIBE | 2 |
@@ -4306,14 +4688,14 @@ These `net.runelite.api.*` methods are invoked from inside methods that are guar
 | `onClick(Consumer): MenuEntry` | SUBSCRIBE | 18 |
 | `setDeprioritized(boolean): MenuEntry` | SUBSCRIBE | 3 |
 | `setForceLeftClick(boolean): MenuEntry` | SUBSCRIBE | 1 |
-| `setIdentifier(int): MenuEntry` | SUBSCRIBE | 7 |
-| `setItemId(int): MenuEntry` | SUBSCRIBE | 3 |
-| `setOption(String): MenuEntry` | SUBSCRIBE | 21 |
-| `setParam0(int): MenuEntry` | SUBSCRIBE | 6 |
-| `setParam1(int): MenuEntry` | SUBSCRIBE | 8 |
-| `setTarget(String): MenuEntry` | SUBSCRIBE | 25 |
-| `setType(MenuAction): MenuEntry` | SUBSCRIBE | 20 |
-| `setWorldViewId(int): MenuEntry` | SUBSCRIBE | 3 |
+| `setIdentifier(int): MenuEntry` | LAMBDA, SUBSCRIBE | 9 |
+| `setItemId(int): MenuEntry` | LAMBDA, SUBSCRIBE | 5 |
+| `setOption(String): MenuEntry` | LAMBDA, SUBSCRIBE | 23 |
+| `setParam0(int): MenuEntry` | LAMBDA, SUBSCRIBE | 8 |
+| `setParam1(int): MenuEntry` | LAMBDA, SUBSCRIBE | 10 |
+| `setTarget(String): MenuEntry` | LAMBDA, SUBSCRIBE | 27 |
+| `setType(MenuAction): MenuEntry` | LAMBDA, SUBSCRIBE | 22 |
+| `setWorldViewId(int): MenuEntry` | LAMBDA, SUBSCRIBE | 5 |
 
 ### `net.runelite.api.MessageNode`
 
@@ -4337,7 +4719,7 @@ These `net.runelite.api.*` methods are invoked from inside methods that are guar
 |---|---|---:|
 | `getAnimation(): int` | SUBSCRIBE | 1 |
 | `getComposition(): NPCComposition` | LAMBDA | 1 |
-| `getId(): int` | LAMBDA, SUBSCRIBE | 39 |
+| `getId(): int` | LAMBDA, SUBSCRIBE | 40 |
 | `getIdlePoseAnimation(): int` | LAMBDA | 1 |
 | `getIndex(): int` | LAMBDA, SUBSCRIBE | 8 |
 | `getInteracting(): Actor` | SUBSCRIBE | 1 |
@@ -4354,7 +4736,7 @@ These `net.runelite.api.*` methods are invoked from inside methods that are guar
 |---|---|---:|
 | `getActions(): String[]` | LAMBDA | 1 |
 | `getCombatLevel(): int` | SUBSCRIBE | 1 |
-| `getId(): int` | SUBSCRIBE | 2 |
+| `getId(): int` | SUBSCRIBE | 3 |
 | `getName(): String` | LAMBDA, SUBSCRIBE | 4 |
 
 ### `net.runelite.api.Nameable`
@@ -4381,8 +4763,8 @@ These `net.runelite.api.*` methods are invoked from inside methods that are guar
 | Method | Evidence | Caller count |
 |---|---|---:|
 | `getId(): int` | SUBSCRIBE | 2 |
-| `getImpostor(): ObjectComposition` | LAMBDA, SUBSCRIBE | 8 |
-| `getImpostorIds(): int[]` | LAMBDA, SUBSCRIBE | 7 |
+| `getImpostor(): ObjectComposition` | LAMBDA, SUBSCRIBE | 9 |
+| `getImpostorIds(): int[]` | LAMBDA, SUBSCRIBE | 8 |
 | `getName(): String` | LAMBDA, SUBSCRIBE | 3 |
 
 ### `net.runelite.api.Perspective`
@@ -4405,19 +4787,21 @@ These `net.runelite.api.*` methods are invoked from inside methods that are guar
 | `getHealthScale(): int` | LAMBDA | 1 |
 | `getId(): int` | SUBSCRIBE | 1 |
 | `getIdlePoseAnimation(): int` | LAMBDA | 2 |
-| `getInteracting(): Actor` | LAMBDA, SUBSCRIBE | 7 |
+| `getInteracting(): Actor` | LAMBDA, SUBSCRIBE | 8 |
 | `getLocalLocation(): LocalPoint` | LAMBDA, SUBSCRIBE | 11 |
 | `getName(): String` | LAMBDA, SUBSCRIBE | 18 |
 | `getOverheadIcon(): HeadIcon` | LAMBDA | 1 |
 | `getPlayerComposition(): PlayerComposition` | SUBSCRIBE | 1 |
 | `getPoseAnimation(): int` | LAMBDA | 3 |
 | `getSkullIcon(): int` | LAMBDA | 1 |
-| `getWorldLocation(): WorldPoint` | LAMBDA, SUBSCRIBE | 25 |
+| `getWorldArea(): WorldArea` | LAMBDA | 2 |
+| `getWorldLocation(): WorldPoint` | LAMBDA, SUBSCRIBE | 29 |
 | `getWorldView(): WorldView` | LAMBDA | 8 |
 | `isClanMember(): boolean` | LAMBDA, SUBSCRIBE | 4 |
+| `isDead(): boolean` | LAMBDA | 1 |
 | `isFriend(): boolean` | LAMBDA, SUBSCRIBE | 2 |
 | `isFriendsChatMember(): boolean` | LAMBDA, SUBSCRIBE | 4 |
-| `isInteracting(): boolean` | LAMBDA | 3 |
+| `isInteracting(): boolean` | LAMBDA | 2 |
 | `setAnimation(int): void` | SUBSCRIBE | 1 |
 | `setAnimationFrame(int): void` | SUBSCRIBE | 1 |
 | `setGraphic(int): void` | SUBSCRIBE | 1 |
@@ -4470,6 +4854,12 @@ These `net.runelite.api.*` methods are invoked from inside methods that are guar
 | `getState(Client): QuestState` | LAMBDA, SUBSCRIBE | 2 |
 | `values(): Quest[]` | LAMBDA, SUBSCRIBE | 2 |
 
+### `net.runelite.api.QuestState`
+
+| Method | Evidence | Caller count |
+|---|---|---:|
+| `name(): String` | LAMBDA | 1 |
+
 ### `net.runelite.api.RuneLiteObject`
 
 | Method | Evidence | Caller count |
@@ -4482,7 +4872,7 @@ These `net.runelite.api.*` methods are invoked from inside methods that are guar
 
 | Method | Evidence | Caller count |
 |---|---|---:|
-| `getTiles(): Tile[][][]` | LAMBDA, SUBSCRIBE | 2 |
+| `getTiles(): Tile[][][]` | LAMBDA, SUBSCRIBE | 3 |
 | `isInstance(): boolean` | LAMBDA | 1 |
 | `setMinLevel(int): void` | SUBSCRIBE | 1 |
 | `setRoofRemovalMode(int): void` | LAMBDA, SUBSCRIBE | 3 |
@@ -4530,7 +4920,7 @@ These `net.runelite.api.*` methods are invoked from inside methods that are guar
 
 | Method | Evidence | Caller count |
 |---|---|---:|
-| `getGameObjects(): GameObject[]` | SUBSCRIBE | 1 |
+| `getGameObjects(): GameObject[]` | LAMBDA, SUBSCRIBE | 2 |
 | `getGroundItems(): List` | LAMBDA | 1 |
 | `getItemLayer(): ItemLayer` | SUBSCRIBE | 1 |
 | `getLocalLocation(): LocalPoint` | SUBSCRIBE | 4 |
@@ -4549,12 +4939,13 @@ These `net.runelite.api.*` methods are invoked from inside methods that are guar
 |---|---|---:|
 | `getClickbox(): Shape` | LAMBDA | 1 |
 | `getId(): int` | LAMBDA | 5 |
+| `getWorldLocation(): WorldPoint` | LAMBDA | 2 |
 
 ### `net.runelite.api.VarbitComposition`
 
 | Method | Evidence | Caller count |
 |---|---|---:|
-| `getIndex(): int` | LAMBDA, SUBSCRIBE | 2 |
+| `getIndex(): int` | LAMBDA, SUBSCRIBE | 3 |
 
 ### `net.runelite.api.WallObject`
 
@@ -4593,16 +4984,18 @@ These `net.runelite.api.*` methods are invoked from inside methods that are guar
 
 | Method | Evidence | Caller count |
 |---|---|---:|
-| `getBaseX(): int` | LAMBDA | 1 |
-| `getBaseY(): int` | LAMBDA | 1 |
-| `getCollisionMaps(): CollisionData[]` | LAMBDA | 1 |
-| `getId(): int` | SUBSCRIBE | 3 |
+| `getBaseX(): int` | LAMBDA | 2 |
+| `getBaseY(): int` | LAMBDA | 2 |
+| `getCollisionMaps(): CollisionData[]` | LAMBDA | 3 |
+| `getGraphicsObjects(): Deque` | LAMBDA | 1 |
+| `getId(): int` | SUBSCRIBE | 2 |
+| `getInstanceTemplateChunks(): int[][][]` | LAMBDA | 1 |
 | `getMainWorldProjection(): Projection` | LAMBDA | 1 |
-| `getMapRegions(): int[]` | SUBSCRIBE | 3 |
-| `getPlane(): int` | LAMBDA, SUBSCRIBE | 6 |
-| `getScene(): Scene` | LAMBDA, SUBSCRIBE | 3 |
+| `getMapRegions(): int[]` | SUBSCRIBE | 2 |
+| `getPlane(): int` | LAMBDA, SUBSCRIBE | 8 |
+| `getScene(): Scene` | LAMBDA, SUBSCRIBE | 4 |
 | `getSelectedSceneTile(): Tile` | SUBSCRIBE | 1 |
-| `getXteaKeys(): int[][]` | SUBSCRIBE | 1 |
+| `isInstance(): boolean` | LAMBDA | 2 |
 | `isTopLevel(): boolean` | LAMBDA, SUBSCRIBE | 4 |
 | `npcs(): IndexedObjectSet` | LAMBDA, SUBSCRIBE | 4 |
 | `worldEntities(): IndexedObjectSet` | LAMBDA, SUBSCRIBE | 3 |
@@ -4638,37 +5031,47 @@ These `net.runelite.api.*` methods are invoked from inside methods that are guar
 | Method | Evidence | Caller count |
 |---|---|---:|
 | `distanceTo(LocalPoint): int` | LAMBDA | 4 |
+| `fromScene(int, int, WorldView): LocalPoint` | LAMBDA | 1 |
 | `fromWorld(Client, WorldPoint): LocalPoint` | LAMBDA, SUBSCRIBE | 3 |
 | `fromWorld(WorldView, WorldPoint): LocalPoint` | LAMBDA | 2 |
 | `getSceneX(): int` | SUBSCRIBE | 4 |
 | `getSceneY(): int` | SUBSCRIBE | 4 |
 | `getWorldView(): int` | LAMBDA | 2 |
-| `getX(): int` | LAMBDA, SUBSCRIBE | 4 |
-| `getY(): int` | LAMBDA, SUBSCRIBE | 4 |
+| `getX(): int` | LAMBDA, SUBSCRIBE | 5 |
+| `getY(): int` | LAMBDA, SUBSCRIBE | 5 |
+
+### `net.runelite.api.coords.WorldArea`
+
+| Method | Evidence | Caller count |
+|---|---|---:|
+| `hasLineOfSightTo(WorldView, WorldArea): boolean` | LAMBDA | 2 |
+| `hasLineOfSightTo(WorldView, WorldPoint): boolean` | LAMBDA | 2 |
 
 ### `net.runelite.api.coords.WorldPoint`
 
 | Method | Evidence | Caller count |
 |---|---|---:|
-| `<init>(int, int, int): void` | SUBSCRIBE | 3 |
-| `distanceTo(WorldPoint): int` | LAMBDA, SUBSCRIBE | 7 |
+| `<init>(int, int, int): void` | LAMBDA, SUBSCRIBE | 5 |
+| `distanceTo(WorldPoint): int` | LAMBDA, SUBSCRIBE | 9 |
 | `distanceTo2D(WorldPoint): int` | SUBSCRIBE | 1 |
 | `dx(int): WorldPoint` | SUBSCRIBE | 1 |
 | `dy(int): WorldPoint` | SUBSCRIBE | 1 |
-| `equals(Object): boolean` | LAMBDA, SUBSCRIBE | 7 |
+| `equals(Object): boolean` | LAMBDA, SUBSCRIBE | 8 |
 | `fromCoord(int): WorldPoint` | SUBSCRIBE | 3 |
 | `fromLocal(Client, LocalPoint): WorldPoint` | LAMBDA, SUBSCRIBE | 4 |
 | `fromLocal(WorldView, int, int, int): WorldPoint` | LAMBDA | 2 |
-| `fromLocalInstance(Client, LocalPoint): WorldPoint` | LAMBDA, SUBSCRIBE | 5 |
+| `fromLocalInstance(Client, LocalPoint): WorldPoint` | LAMBDA, SUBSCRIBE | 6 |
+| `fromLocalInstance(Client, LocalPoint, int): WorldPoint` | LAMBDA | 1 |
 | `fromScene(Client, int, int, int): WorldPoint` | SUBSCRIBE | 6 |
 | `fromScene(WorldView, int, int, int): WorldPoint` | SUBSCRIBE | 1 |
 | `getMirrorPoint(WorldPoint, boolean): WorldPoint` | SUBSCRIBE | 1 |
-| `getPlane(): int` | LAMBDA, SUBSCRIBE | 7 |
+| `getPlane(): int` | LAMBDA, SUBSCRIBE | 10 |
 | `getRegionID(): int` | SUBSCRIBE | 11 |
-| `getX(): int` | LAMBDA, SUBSCRIBE | 8 |
-| `getY(): int` | LAMBDA, SUBSCRIBE | 9 |
+| `getX(): int` | LAMBDA, SUBSCRIBE | 15 |
+| `getY(): int` | LAMBDA, SUBSCRIBE | 16 |
 | `isInScene(Client): boolean` | SUBSCRIBE | 2 |
 | `isInScene(Client, int, int): boolean` | SUBSCRIBE | 2 |
+| `toWorldArea(): WorldArea` | LAMBDA | 3 |
 
 ### `net.runelite.api.events.ActorDeath`
 
@@ -4789,21 +5192,21 @@ These `net.runelite.api.*` methods are invoked from inside methods that are guar
 
 | Method | Evidence | Caller count |
 |---|---|---:|
-| `getGameObject(): GameObject` | SUBSCRIBE | 10 |
+| `getGameObject(): GameObject` | SUBSCRIBE | 11 |
 | `getTile(): Tile` | SUBSCRIBE | 2 |
 
 ### `net.runelite.api.events.GameObjectSpawned`
 
 | Method | Evidence | Caller count |
 |---|---|---:|
-| `getGameObject(): GameObject` | SUBSCRIBE | 16 |
+| `getGameObject(): GameObject` | SUBSCRIBE | 18 |
 | `getTile(): Tile` | SUBSCRIBE | 3 |
 
 ### `net.runelite.api.events.GameStateChanged`
 
 | Method | Evidence | Caller count |
 |---|---|---:|
-| `getGameState(): GameState` | SUBSCRIBE | 73 |
+| `getGameState(): GameState` | SUBSCRIBE | 74 |
 
 ### `net.runelite.api.events.GrandExchangeOfferChanged`
 
@@ -4864,8 +5267,8 @@ These `net.runelite.api.*` methods are invoked from inside methods that are guar
 | Method | Evidence | Caller count |
 |---|---|---:|
 | `<init>(int, ItemContainer): void` | LAMBDA | 1 |
-| `getContainerId(): int` | ASSERT, SUBSCRIBE | 18 |
-| `getItemContainer(): ItemContainer` | ASSERT, SUBSCRIBE | 21 |
+| `getContainerId(): int` | ASSERT, SUBSCRIBE | 19 |
+| `getItemContainer(): ItemContainer` | ASSERT, SUBSCRIBE | 22 |
 
 ### `net.runelite.api.events.ItemDespawned`
 
@@ -4915,10 +5318,10 @@ These `net.runelite.api.*` methods are invoked from inside methods that are guar
 |---|---|---:|
 | `consume(): void` | SUBSCRIBE | 4 |
 | `getId(): int` | SUBSCRIBE | 10 |
-| `getItemId(): int` | SUBSCRIBE | 2 |
+| `getItemId(): int` | SUBSCRIBE | 3 |
 | `getMenuAction(): MenuAction` | SUBSCRIBE | 16 |
 | `getMenuEntry(): MenuEntry` | SUBSCRIBE | 8 |
-| `getMenuOption(): String` | SUBSCRIBE | 11 |
+| `getMenuOption(): String` | SUBSCRIBE | 12 |
 | `getMenuTarget(): String` | SUBSCRIBE | 3 |
 | `getParam0(): int` | SUBSCRIBE | 9 |
 | `getParam1(): int` | SUBSCRIBE | 13 |
@@ -4947,13 +5350,13 @@ These `net.runelite.api.*` methods are invoked from inside methods that are guar
 
 | Method | Evidence | Caller count |
 |---|---|---:|
-| `getNpc(): NPC` | SUBSCRIBE | 20 |
+| `getNpc(): NPC` | SUBSCRIBE | 21 |
 
 ### `net.runelite.api.events.NpcSpawned`
 
 | Method | Evidence | Caller count |
 |---|---|---:|
-| `getNpc(): NPC` | SUBSCRIBE | 16 |
+| `getNpc(): NPC` | SUBSCRIBE | 17 |
 
 ### `net.runelite.api.events.OverheadTextChanged`
 
@@ -5045,8 +5448,8 @@ These `net.runelite.api.*` methods are invoked from inside methods that are guar
 | `<init>(Skill, int, int, int): void` | SUBSCRIBE | 1 |
 | `getBoostedLevel(): int` | SUBSCRIBE | 2 |
 | `getLevel(): int` | SUBSCRIBE | 3 |
-| `getSkill(): Skill` | SUBSCRIBE | 10 |
-| `getXp(): int` | SUBSCRIBE | 8 |
+| `getSkill(): Skill` | SUBSCRIBE | 13 |
+| `getXp(): int` | SUBSCRIBE | 9 |
 
 ### `net.runelite.api.events.VarClientIntChanged`
 
@@ -5064,13 +5467,13 @@ These `net.runelite.api.*` methods are invoked from inside methods that are guar
 
 | Method | Evidence | Caller count |
 |---|---|---:|
-| `<init>(): void` | SUBSCRIBE | 1 |
+| `<init>(): void` | LAMBDA, SUBSCRIBE | 2 |
 | `getIndex(): int` | SUBSCRIBE | 1 |
 | `getValue(): int` | ASSERT, SUBSCRIBE | 19 |
 | `getVarbitId(): int` | ASSERT, SUBSCRIBE | 22 |
 | `getVarpId(): int` | SUBSCRIBE | 19 |
-| `setValue(int): void` | SUBSCRIBE | 1 |
-| `setVarbitId(int): void` | SUBSCRIBE | 1 |
+| `setValue(int): void` | LAMBDA, SUBSCRIBE | 2 |
+| `setVarbitId(int): void` | LAMBDA, SUBSCRIBE | 2 |
 | `setVarpId(int): void` | SUBSCRIBE | 1 |
 
 ### `net.runelite.api.events.WallObjectDespawned`
@@ -5091,7 +5494,7 @@ These `net.runelite.api.*` methods are invoked from inside methods that are guar
 
 | Method | Evidence | Caller count |
 |---|---|---:|
-| `getGroupId(): int` | SUBSCRIBE | 5 |
+| `getGroupId(): int` | SUBSCRIBE | 6 |
 | `getModalMode(): int` | SUBSCRIBE | 1 |
 | `isUnload(): boolean` | SUBSCRIBE | 2 |
 
@@ -5111,7 +5514,7 @@ These `net.runelite.api.*` methods are invoked from inside methods that are guar
 
 | Method | Evidence | Caller count |
 |---|---|---:|
-| `getWorldView(): WorldView` | SUBSCRIBE | 4 |
+| `getWorldView(): WorldView` | SUBSCRIBE | 3 |
 
 ### `net.runelite.api.events.WorldViewUnloaded`
 
@@ -5139,53 +5542,54 @@ These `net.runelite.api.*` methods are invoked from inside methods that are guar
 | `createChild(int, int): Widget` | LAMBDA | 5 |
 | `deleteAllChildren(): void` | LAMBDA | 5 |
 | `getActions(): String[]` | LAMBDA, SUBSCRIBE | 3 |
-| `getBounds(): Rectangle` | LAMBDA, SUBSCRIBE | 2 |
-| `getChild(int): Widget` | LAMBDA, SUBSCRIBE | 15 |
-| `getChildren(): Widget[]` | LAMBDA, SUBSCRIBE | 7 |
+| `getBounds(): Rectangle` | LAMBDA, SUBSCRIBE | 3 |
+| `getChild(int): Widget` | LAMBDA, SUBSCRIBE | 16 |
+| `getChildren(): Widget[]` | LAMBDA, SUBSCRIBE | 8 |
 | `getClickMask(): int` | SUBSCRIBE | 1 |
-| `getDynamicChildren(): Widget[]` | ASSERT, LAMBDA, SUBSCRIBE | 9 |
+| `getDynamicChildren(): Widget[]` | ASSERT, LAMBDA, SUBSCRIBE | 10 |
 | `getHeight(): int` | SUBSCRIBE | 1 |
 | `getId(): int` | LAMBDA, SUBSCRIBE | 14 |
-| `getIndex(): int` | ASSERT, LAMBDA, SUBSCRIBE | 7 |
+| `getIndex(): int` | ASSERT, LAMBDA, SUBSCRIBE | 8 |
 | `getItemId(): int` | ASSERT, LAMBDA, SUBSCRIBE | 14 |
 | `getItemQuantity(): int` | ASSERT | 1 |
 | `getModelId(): int` | LAMBDA, SUBSCRIBE | 5 |
 | `getModelType(): int` | SUBSCRIBE | 1 |
-| `getName(): String` | SUBSCRIBE | 2 |
+| `getName(): String` | LAMBDA, SUBSCRIBE | 4 |
 | `getOnInvTransmitListener(): Object[]` | LAMBDA | 4 |
 | `getOnLoadListener(): Object[]` | LAMBDA | 4 |
-| `getOnOpListener(): Object[]` | LAMBDA, SUBSCRIBE | 4 |
+| `getOnOpListener(): Object[]` | LAMBDA, SUBSCRIBE | 5 |
 | `getOnVarTransmitListener(): Object[]` | LAMBDA | 3 |
 | `getOpacity(): int` | SUBSCRIBE | 1 |
 | `getParent(): Widget` | LAMBDA, SUBSCRIBE | 7 |
 | `getParentId(): int` | SUBSCRIBE | 2 |
-| `getSpriteId(): int` | LAMBDA | 1 |
+| `getSpriteId(): int` | LAMBDA | 2 |
 | `getStaticChildren(): Widget[]` | SUBSCRIBE | 3 |
-| `getText(): String` | LAMBDA, SUBSCRIBE | 37 |
+| `getText(): String` | LAMBDA, SUBSCRIBE | 39 |
 | `getType(): int` | SUBSCRIBE | 2 |
 | `getVarTransmitTrigger(): int[]` | SUBSCRIBE | 1 |
 | `getWidth(): int` | LAMBDA, SUBSCRIBE | 4 |
-| `isHidden(): boolean` | LAMBDA, SUBSCRIBE | 26 |
-| `revalidate(): void` | LAMBDA | 8 |
+| `isHidden(): boolean` | LAMBDA, SUBSCRIBE | 32 |
+| `revalidate(): void` | LAMBDA | 9 |
 | `setAction(int, String): void` | LAMBDA, SUBSCRIBE | 6 |
 | `setBorderType(int): void` | LAMBDA | 1 |
 | `setChildren(Widget[]): void` | LAMBDA | 1 |
 | `setClickMask(int): Widget` | LAMBDA, SUBSCRIBE | 3 |
 | `setDragDeadTime(int): void` | SUBSCRIBE | 1 |
 | `setFontId(int): Widget` | LAMBDA | 2 |
-| `setHasListener(boolean): Widget` | LAMBDA | 2 |
-| `setHidden(boolean): Widget` | LAMBDA, SUBSCRIBE | 9 |
+| `setHasListener(boolean): Widget` | LAMBDA | 3 |
+| `setHidden(boolean): Widget` | LAMBDA, SUBSCRIBE | 10 |
 | `setItemId(int): Widget` | LAMBDA | 1 |
 | `setItemQuantity(int): Widget` | LAMBDA | 1 |
 | `setItemQuantityMode(int): Widget` | LAMBDA | 1 |
 | `setModelId(int): Widget` | LAMBDA | 1 |
 | `setName(String): Widget` | LAMBDA | 4 |
 | `setNoClickThrough(boolean): void` | LAMBDA | 2 |
-| `setOnKeyListener(Object[]): void` | SUBSCRIBE | 1 |
+| `setOnClickListener(Object[]): void` | LAMBDA | 2 |
+| `setOnKeyListener(Object[]): void` | LAMBDA, SUBSCRIBE | 2 |
 | `setOnMouseLeaveListener(Object[]): void` | LAMBDA | 1 |
 | `setOnMouseOverListener(Object[]): void` | LAMBDA | 1 |
 | `setOnMouseRepeatListener(Object[]): void` | LAMBDA, SUBSCRIBE | 2 |
-| `setOnOpListener(Object[]): void` | LAMBDA | 5 |
+| `setOnOpListener(Object[]): void` | LAMBDA | 6 |
 | `setOnTargetEnterListener(Object[]): void` | LAMBDA | 2 |
 | `setOnTargetLeaveListener(Object[]): void` | LAMBDA | 2 |
 | `setOpacity(int): Widget` | LAMBDA, SUBSCRIBE | 3 |
@@ -5202,6 +5606,12 @@ These `net.runelite.api.*` methods are invoked from inside methods that are guar
 | `setXTextAlignment(int): Widget` | LAMBDA | 2 |
 | `setYPositionMode(int): Widget` | LAMBDA | 3 |
 | `setYTextAlignment(int): Widget` | LAMBDA | 2 |
+
+### `net.runelite.api.widgets.WidgetInfo`
+
+| Method | Evidence | Caller count |
+|---|---|---:|
+| `getId(): int` | LAMBDA | 1 |
 
 ### `net.runelite.api.widgets.WidgetUtil`
 
