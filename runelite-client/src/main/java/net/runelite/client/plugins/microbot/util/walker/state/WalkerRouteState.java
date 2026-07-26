@@ -44,4 +44,31 @@ public final class WalkerRouteState {
     public volatile int routeProgressPathSize = -1;
     /** Wall-clock ms when route progress last advanced. */
     public volatile long routeProgressAdvancedAtMs = 0L;
+
+    // ---- interim target: a reachable point clicked toward when the true next tile is off the minimap;
+    // held until the player gets close or progress stalls. ----
+
+    /** Currently held interim click target, or null. */
+    public volatile WorldPoint interimTargetWp = null;
+    /** Path index of the interim target; -1 when none. */
+    public volatile int interimTargetIdx = -1;
+    /** Wall-clock ms the interim target was set. */
+    public volatile long interimSetAtMs = 0L;
+    /** Wall-clock ms the interim target last showed progress. */
+    public volatile long interimLastProgressAtMs = 0L;
+    /** Best path index reached while holding the interim target; -1 when none. */
+    public volatile int interimLastBestPathIdx = -1;
+    /** Best (smallest) distance-to-target observed while holding the interim target. */
+    public volatile int interimLastDistanceToTarget = Integer.MAX_VALUE;
+    /** Wall-clock ms the interim target was last re-chosen. */
+    public volatile long interimLastRetargetAtMs = 0L;
+
+    // ---- idle nudge: detects a stationary player mid-route and re-clicks to un-stick. ----
+
+    /** Player tile last observed by the idle-nudge check. */
+    public volatile WorldPoint idleNudgeLastObservedLocation = null;
+    /** Wall-clock ms since the player has been stationary (for idle-nudge). */
+    public volatile long idleNudgeStationarySinceMs = 0L;
+    /** Wall-clock ms of the last active-route idle nudge. */
+    public volatile long lastActiveRouteIdleNudgeAtMs = 0L;
 }
