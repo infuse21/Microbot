@@ -2162,7 +2162,7 @@ public class Rs2Walker {
                             int recoverIdx = findForwardReachableRecoveryIndex(path, i, playerLoc,
                                     recoveryMinimapReach);
                             if (recoverIdx < 0) {
-                                recoverIdx = findFurthestClickableIndex(path, i, playerLoc,
+                                recoverIdx = RouteRecovery.findFurthestClickableIndex(path, i, playerLoc,
                                         wp -> {
                                             Set<Transport> ts = Rs2PathApi.getTransports().get(wp);
                                             return ts != null && !ts.isEmpty();
@@ -5235,32 +5235,7 @@ public class Rs2Walker {
      * progress can resume; without this, the walker would spam off-minimap clicks
      * against {@code path.get(startIdx)} until the 10-second stall-recalc fires.
      */
-    static int findFurthestClickableIndex(List<WorldPoint> path, int startIdx, WorldPoint playerLoc,
-                                          java.util.function.Predicate<WorldPoint> isTransportOrigin,
-                                          int maxEuclidean) {
-        if (path == null || startIdx < 0 || startIdx >= path.size()) return startIdx;
-        WorldPoint startWp = path.get(startIdx);
-        final int maxSq = maxEuclidean * maxEuclidean;
-        if (playerLoc != null && euclideanSq(startWp, playerLoc) > maxSq) {
-            for (int j = startIdx - 1; j >= 0; j--) {
-                WorldPoint candidate = path.get(j);
-                if (candidate.getPlane() != playerLoc.getPlane()) continue;
-                if (euclideanSq(candidate, playerLoc) <= maxSq) {
-                    return j;
-                }
-            }
-            return startIdx;
-        }
-        int bestIdx = startIdx;
-        for (int j = startIdx + 1; j < path.size(); j++) {
-            WorldPoint candidate = path.get(j);
-            if (candidate.getPlane() != startWp.getPlane()) break;
-            if (isTransportOrigin != null && isTransportOrigin.test(candidate)) break;
-            if (playerLoc != null && euclideanSq(candidate, playerLoc) > maxSq) break;
-            bestIdx = j;
-        }
-        return bestIdx;
-    }
+    // findFurthestClickableIndex extracted to recovery/RouteRecovery (P1)
 
     static int findFurthestForwardClickableIndex(List<WorldPoint> path, int startIdx, WorldPoint playerLoc,
                                                  java.util.function.Predicate<WorldPoint> isTransportOrigin,

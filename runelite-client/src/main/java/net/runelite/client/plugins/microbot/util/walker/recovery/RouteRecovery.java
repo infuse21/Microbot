@@ -191,6 +191,38 @@ public final class RouteRecovery {
         return null;
     }
 
+    /**
+     * From {@code startIdx}, returns the furthest path index still within {@code maxEuclidean} of the
+     * player, stopping at the first transport origin (per {@code isTransportOrigin}) or a plane change. If
+     * the start tile is already out of reach, walks backward to the nearest in-reach tile instead. Used by
+     * recovery to pick how far to click along the route.
+     */
+    public static int findFurthestClickableIndex(List<WorldPoint> path, int startIdx, WorldPoint playerLoc,
+                                                 Predicate<WorldPoint> isTransportOrigin, int maxEuclidean) {
+        if (path == null || startIdx < 0 || startIdx >= path.size()) return startIdx;
+        WorldPoint startWp = path.get(startIdx);
+        final int maxSq = maxEuclidean * maxEuclidean;
+        if (playerLoc != null && euclideanSq(startWp, playerLoc) > maxSq) {
+            for (int j = startIdx - 1; j >= 0; j--) {
+                WorldPoint candidate = path.get(j);
+                if (candidate.getPlane() != playerLoc.getPlane()) continue;
+                if (euclideanSq(candidate, playerLoc) <= maxSq) {
+                    return j;
+                }
+            }
+            return startIdx;
+        }
+        int bestIdx = startIdx;
+        for (int j = startIdx + 1; j < path.size(); j++) {
+            WorldPoint candidate = path.get(j);
+            if (candidate.getPlane() != startWp.getPlane()) break;
+            if (isTransportOrigin != null && isTransportOrigin.test(candidate)) break;
+            if (playerLoc != null && euclideanSq(candidate, playerLoc) > maxSq) break;
+            bestIdx = j;
+        }
+        return bestIdx;
+    }
+
     /** Squared Euclidean distance; local copy of the trivial helper to keep this class self-contained. */
     private static int euclideanSq(WorldPoint a, WorldPoint b) {
         int dx = a.getX() - b.getX();

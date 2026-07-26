@@ -472,7 +472,7 @@ public class Rs2WalkerUnitTest {
     @Test
     public void findFurthest_shortPath_returnsStart() {
         List<WorldPoint> path = Collections.singletonList(new WorldPoint(3200, 3200, 0));
-        int idx = Rs2Walker.findFurthestClickableIndex(path, 0, new WorldPoint(3200, 3200, 0),
+        int idx = RouteRecovery.findFurthestClickableIndex(path, 0, new WorldPoint(3200, 3200, 0),
                 wp -> false, 14);
         assertEquals(0, idx);
     }
@@ -481,9 +481,9 @@ public class Rs2WalkerUnitTest {
     public void findFurthest_outOfBoundsStart_returnsStartUnchanged() {
         List<WorldPoint> path = Arrays.asList(
                 new WorldPoint(3200, 3200, 0), new WorldPoint(3201, 3200, 0));
-        assertEquals(-1, Rs2Walker.findFurthestClickableIndex(path, -1, new WorldPoint(3200, 3200, 0),
+        assertEquals(-1, RouteRecovery.findFurthestClickableIndex(path, -1, new WorldPoint(3200, 3200, 0),
                 wp -> false, 14));
-        assertEquals(5, Rs2Walker.findFurthestClickableIndex(path, 5, new WorldPoint(3200, 3200, 0),
+        assertEquals(5, RouteRecovery.findFurthestClickableIndex(path, 5, new WorldPoint(3200, 3200, 0),
                 wp -> false, 14));
     }
 
@@ -501,7 +501,7 @@ public class Rs2WalkerUnitTest {
                 new WorldPoint(3203, 3200, 1),  // 3: plane change (stairs up)
                 new WorldPoint(3204, 3200, 1)); // 4: beyond plane change
 
-        int idx = Rs2Walker.findFurthestClickableIndex(path, 1, player, wp -> false, 14);
+        int idx = RouteRecovery.findFurthestClickableIndex(path, 1, player, wp -> false, 14);
 
         assertEquals("scan must stop at the tile BEFORE the plane change", 2, idx);
     }
@@ -522,7 +522,7 @@ public class Rs2WalkerUnitTest {
                 transportOrigin,                  // 3: transport — scan must stop HERE
                 new WorldPoint(3204, 3200, 0));
 
-        int idx = Rs2Walker.findFurthestClickableIndex(path, 1, player, isTransportOrigin, 14);
+        int idx = RouteRecovery.findFurthestClickableIndex(path, 1, player, isTransportOrigin, 14);
 
         assertEquals("scan must stop at the tile before a transport origin", 2, idx);
     }
@@ -539,7 +539,7 @@ public class Rs2WalkerUnitTest {
                 new WorldPoint(3215, 3200, 0),  // 3: 15 away (OVER limit)
                 new WorldPoint(3220, 3200, 0)); // 4: 20 away
 
-        int idx = Rs2Walker.findFurthestClickableIndex(path, 0, player, wp -> false, 14);
+        int idx = RouteRecovery.findFurthestClickableIndex(path, 0, player, wp -> false, 14);
 
         assertEquals("scan must include the tile at the limit and stop at the tile over it",
                 2, idx);
@@ -559,7 +559,7 @@ public class Rs2WalkerUnitTest {
                 new WorldPoint(3209, 3209, 0),  // Chebyshev 9, Euclidean ~12.73 — in
                 new WorldPoint(3210, 3210, 0)); // Chebyshev 10, Euclidean ~14.14 — out
 
-        int idx = Rs2Walker.findFurthestClickableIndex(diagonalPath, 0, player, wp -> false, 14);
+        int idx = RouteRecovery.findFurthestClickableIndex(diagonalPath, 0, player, wp -> false, 14);
 
         assertEquals("scan must stop at the last diagonal tile inside the Euclidean circle",
                 2, idx);
@@ -573,7 +573,7 @@ public class Rs2WalkerUnitTest {
                 new WorldPoint(3202, 3200, 0),
                 new WorldPoint(3203, 3200, 0));
 
-        int idx = Rs2Walker.findFurthestClickableIndex(path, 0, player, null, 14);
+        int idx = RouteRecovery.findFurthestClickableIndex(path, 0, player, null, 14);
 
         assertEquals("null predicate must not NPE and must allow full scan", 2, idx);
     }
@@ -876,7 +876,7 @@ public class Rs2WalkerUnitTest {
                 new WorldPoint(1015, 1000, 0),
                 new WorldPoint(1016, 1001, 0));
 
-        int idx = Rs2Walker.findFurthestClickableIndex(path, 3, player, wp -> false, 13);
+        int idx = RouteRecovery.findFurthestClickableIndex(path, 3, player, wp -> false, 13);
 
         assertEquals("generic fallback is allowed to backtrack; recovery clamps this at the call site", 2, idx);
     }
