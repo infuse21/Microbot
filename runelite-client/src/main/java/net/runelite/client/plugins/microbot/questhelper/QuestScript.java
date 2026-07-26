@@ -98,6 +98,21 @@ public class QuestScript extends Script {
      */
     private long dialogueCooldownEndsAt = 0;
 
+    /** Throttle for the in-dialogue diagnostic log (see the space-branch in the main tick). */
+    private long lastDialogueDiagLog = 0;
+
+    /**
+     * Safety valve against {@link Rs2Dialogue#isInDialogue()} false positives. If the tick loop sits in
+     * the in-dialogue space-branch on the same step, pressing space with no genuine dialogue present and
+     * no player progress for {@link #DIALOGUE_SPACE_STUCK_MS}, that step is flagged here as a phantom
+     * dialogue so the loop stops returning early and lets the step (and the walker) run. Cleared when the
+     * active step changes or a real interactive dialogue appears.
+     */
+    private QuestStep phantomDialogueStep = null;
+    private long dialogueSpaceStuckSince = 0;
+    private QuestStep dialogueSpaceStuckStep = null;
+    private static final long DIALOGUE_SPACE_STUCK_MS = 5000L;
+
 
 
     public boolean run(QuestHelperConfig config, QuestHelperPlugin mQuestPlugin) {
@@ -118,7 +133,11 @@ public class QuestScript extends Script {
 
                 QuestStep questStep = getQuestHelperPlugin().getSelectedQuest().getCurrentStep().getActiveStep();
 
-                if (Rs2Dialogue.isInDialogue() && dialogueStartedStep == null)
+                // Drop the phantom-dialogue flag once the quest moves on to a different step.
+                if (phantomDialogueStep != null && phantomDialogueStep != questStep)
+                    phantomDialogueStep = null;
+
+                if (Rs2Dialogue.isInDialogue() && dialogueStartedStep == null && questStep != phantomDialogueStep)
                     dialogueStartedStep = questStep;
 
                 if (questStep != null && Rs2Widget.isWidgetVisible(ComponentID.DIALOG_OPTION_OPTIONS)) {
@@ -231,10 +250,45 @@ public class QuestScript extends Script {
                     }
 
                     if (Rs2Dialogue.isInDialogue() && dialogueStartedStep == questStep) {
-                        Rs2Walker.clearWalkingRoute("quest-helper:dialogue-space-step");
-                        Rs2Keyboard.keyPress(KeyEvent.VK_SPACE);
-                        return;
+                        if (System.currentTimeMillis() - lastDialogueDiagLog > 1500) {
+                            lastDialogueDiagLog = System.currentTimeMillis();
+                            Microbot.log("[QuestHelper] in-dialogue space branch — " + Rs2Dialogue.describeState(), Level.WARN);
+                        }
+
+                        // A genuine NPC/player continue or an options list: advance it with space as before.
+                        if (Rs2Dialogue.hasInteractiveDialogue()) {
+                            dialogueSpaceStuckStep = null;
+                            Rs2Walker.clearWalkingRoute("quest-helper:dialogue-space-step");
+                            Rs2Keyboard.keyPress(KeyEvent.VK_SPACE);
+                            return;
+                        }
+
+                        // No real dialogue on screen — isInDialogue() is true only on a phantom widget.
+                        // Give space a few seconds to clear it (in case it's a slow sprite/item prompt);
+                        // if it's still stuck with the player idle, flag the step as a phantom dialogue and
+                        // fall through so the step and walker actually run instead of deadlocking here.
+                        if (dialogueSpaceStuckStep != questStep) {
+                            dialogueSpaceStuckStep = questStep;
+                            dialogueSpaceStuckSince = System.currentTimeMillis();
+                        }
+                        boolean stuckTooLong = System.currentTimeMillis() - dialogueSpaceStuckSince > DIALOGUE_SPACE_STUCK_MS;
+                        boolean idle = !Rs2Player.isMoving() && !Rs2Player.isAnimating();
+                        if (stuckTooLong && idle) {
+                            Microbot.log("[QuestHelper] isInDialogue() stuck true with no interactive dialogue for >"
+                                    + DIALOGUE_SPACE_STUCK_MS + "ms — treating step as phantom-dialogue and resuming. "
+                                    + Rs2Dialogue.describeState(), Level.WARN);
+                            phantomDialogueStep = questStep;
+                            dialogueSpaceStuckStep = null;
+                            dialogueStartedStep = null;
+                            dialogueCooldownEndsAt = 0; // don't let a stale post-dialogue cooldown re-block the step
+                            // fall through to the step/walker logic below (do NOT return here)
+                        } else {
+                            Rs2Walker.clearWalkingRoute("quest-helper:dialogue-space-step");
+                            Rs2Keyboard.keyPress(KeyEvent.VK_SPACE);
+                            return;
+                        }
                     } else {
+                        dialogueSpaceStuckStep = null;
                         if (dialogueStartedStep != null) {
                             dialogueCooldownEndsAt = System.currentTimeMillis() + Rs2Random.between(4000, 7000);
                         }

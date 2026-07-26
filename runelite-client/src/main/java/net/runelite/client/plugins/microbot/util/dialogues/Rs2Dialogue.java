@@ -31,6 +31,34 @@ public class Rs2Dialogue {
     }
 
     /**
+     * A genuinely interactive dialogue the player is expected to act on: an NPC/player "continue"
+     * prompt or a "select an option" list. Excludes the sprite/tutorial/barrows/spell-filter continue
+     * variants that are more prone to lingering as false positives. Callers use this to distinguish a
+     * real advanceable dialogue from a phantom {@link #isInDialogue()} reading.
+     */
+    public static boolean hasInteractiveDialogue() {
+        return hasNPCContinue() || hasPlayerContinue() || hasSelectAnOption();
+    }
+
+    /**
+     * Diagnostic breakdown of every sub-check behind {@link #isInDialogue()}, for tracking down
+     * false positives (a check reporting a dialogue when none is on screen). Cheap widget reads only.
+     */
+    public static String describeState() {
+        return String.format(
+                "guard(162,559)=%s | npc=%s player=%s death=%s sprite=%s tut=%s barrows=%s spellFilter=%s | options=%s",
+                Rs2Widget.isWidgetVisible(162, 559),
+                hasNPCContinue(),
+                hasPlayerContinue(),
+                hasDeathContinue(),
+                hasSpriteContinue(),
+                hasTutContinue(),
+                hasBarrowsContinue(),
+                hasSpellFilterContinue(),
+                hasSelectAnOption());
+    }
+
+    /**
      * Simulates pressing the space key to advance a dialogue that has a "Click here to continue" prompt.
      * This is used for dialogues that require a confirmation to proceed.
      */
