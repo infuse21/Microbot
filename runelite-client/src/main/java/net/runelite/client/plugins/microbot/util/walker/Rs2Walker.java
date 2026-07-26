@@ -2210,6 +2210,18 @@ public class Rs2Walker {
                                     || !dangerCfg.isDangerousAdjacentTile(WorldPointUtil.packWorldPoint(rawRecoveryTarget)))) {
                                 recoverTarget = rawRecoveryTarget;
                             }
+                            // Prefer walking onto a reachable transport / agility-shortcut origin just ahead
+                            // (e.g. a stepping stone) over the furthest-walkable target chosen above. The
+                            // transport only dispatches while the player stands on its origin, so clicking
+                            // the far side of the shortcut just loops on the near bank; stepping onto the
+                            // origin lets the normal transport handler cross next tick.
+                            WorldPoint shortcutOrigin = RouteRecovery.findReachableTransportOriginAhead(
+                                    rawPath, getClosestTileIndex(rawPath, playerLoc), playerLoc,
+                                    reachableTilesCache.keySet(), Rs2PathApi.getTransports(),
+                                    recoveryMinimapReach - 1, ROUTE_PROGRESS_FORWARD_SEARCH_TILES);
+                            if (shortcutOrigin != null && !shortcutOrigin.equals(playerLoc)) {
+                                recoverTarget = shortcutOrigin;
+                            }
                             WorldPoint clickedRecoveryTarget = null;
                             if (recoverTarget != null && !recoverTarget.equals(playerLoc)) {
                                 recoverTarget = clampToEuclideanRadius(playerLoc, recoverTarget,
@@ -5339,6 +5351,8 @@ public class Rs2Walker {
         int dy = a.getY() - b.getY();
         return dx * dx + dy * dy;
     }
+
+    // findReachableTransportOriginAhead extracted to recovery/RouteRecovery as a pure, unit-tested function (P1)
 
 
     private static boolean handleDoors(List<WorldPoint> path, int index) {
