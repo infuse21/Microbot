@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BooleanSupplier;
+import java.util.function.Predicate;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.NPCComposition;
@@ -28,6 +29,7 @@ import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.huntkit.Rs2HuntKit;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 
@@ -1007,14 +1009,22 @@ public class AIOHuntingScript extends StateMachineScript<AIOHuntingState>
 		}
 		Set<Integer> protectedIds = retainedItemIds();
 		List<String> keepList = parseItemList(config.keepItems());
-		return Rs2Inventory.dropAll(item -> {
+		Predicate<Rs2ItemModel> filter = item -> {
 			if (protectedIds.contains(item.getId()) || item.getName() == null)
 			{
 				return false;
 			}
 			String name = item.getName().toLowerCase();
 			return !matchesAny(name, keepList) && matchesAny(name, dropList);
-		});
+		};
+		// Rs2Inventory.dropAll(predicate) always returns true, so gate on there actually being a
+		// matching item - otherwise we would report a drop every tick and never run the rest of the loop.
+		if (!Rs2Inventory.contains(filter))
+		{
+			return false;
+		}
+		Rs2Inventory.dropAll(filter);
+		return true;
 	}
 
 	private static boolean matchesAny(String lowerName, List<String> terms)
