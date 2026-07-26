@@ -3270,43 +3270,16 @@ public class Rs2Walker {
                 .orElse(false);
     }
 
+    // findFurthestRawPathPointMatching (pure) moved to geometry/WalkerPathGeometry (P1); this game-coupled
+    // wrapper supplies the constant forward-search window and the lazy reachable-closest fallback.
     static WorldPoint findFurthestRawPathPointMatching(List<WorldPoint> rawPath,
                                                        WorldPoint playerLoc,
                                                        int maxEuclidean,
                                                        int rawAnchorIndex,
                                                        Predicate<WorldPoint> isCandidate) {
-        if (rawPath == null || rawPath.isEmpty() || playerLoc == null) {
-            return null;
-        }
-        int closestRawIndex = rawPathForwardAnchorIndex(rawPath, playerLoc, rawAnchorIndex);
-        if (closestRawIndex < 0) {
-            return null;
-        }
-
-        int maxSq = maxEuclidean * maxEuclidean;
-        int maxRouteSteps = maxEuclidean + 2;
-        int routeSteps = 0;
-        WorldPoint best = null;
-        for (int rawIndex = closestRawIndex; rawIndex < rawPath.size(); rawIndex++) {
-            WorldPoint candidate = rawPath.get(rawIndex);
-            if (candidate == null || candidate.getPlane() != playerLoc.getPlane()) {
-                break;
-            }
-            if (rawIndex > closestRawIndex) {
-                WorldPoint previous = rawPath.get(rawIndex - 1);
-                routeSteps += rawPathStepDistance(previous, candidate);
-                if (routeSteps > maxRouteSteps) {
-                    break;
-                }
-            }
-            if (euclideanSq(candidate, playerLoc) > maxSq) {
-                break;
-            }
-            if (!candidate.equals(playerLoc) && (isCandidate == null || isCandidate.test(candidate))) {
-                best = candidate;
-            }
-        }
-        return best;
+        return WalkerPathGeometry.findFurthestRawPathPointMatching(rawPath, playerLoc, maxEuclidean,
+                rawAnchorIndex, isCandidate, ROUTE_PROGRESS_FORWARD_SEARCH_TILES,
+                () -> getClosestTileIndex(rawPath, playerLoc));
     }
 
     /**
@@ -3491,45 +3464,16 @@ public class Rs2Walker {
                         && isMiniMapClickable(candidate, 5));
     }
 
-    private static int rawPathStepDistance(WorldPoint previous, WorldPoint current) {
-        if (previous == null || current == null || previous.getPlane() != current.getPlane()) {
-            return Integer.MAX_VALUE / 4;
-        }
-        return Math.max(1, previous.distanceTo2D(current));
-    }
+    // rawPathStepDistance (pure) moved to geometry/WalkerPathGeometry (P1) alongside its only caller,
+    // findFurthestRawPathPointMatching; no remaining Rs2Walker callers.
 
     // isLocalRecoveryCandidateOnForwardRoute extracted to recovery/RouteRecovery (P1)
 
+    // rawPathForwardAnchorIndex (pure) moved to geometry/WalkerPathGeometry (P1); this game-coupled wrapper
+    // supplies the forward-search window constant and the lazy reachable-closest fallback.
     static int rawPathForwardAnchorIndex(List<WorldPoint> rawPath, WorldPoint playerLoc, int rawAnchorIndex) {
-        if (rawPath == null || rawPath.isEmpty() || playerLoc == null) {
-            return -1;
-        }
-        if (rawAnchorIndex < 0) {
-            return getClosestTileIndex(rawPath, playerLoc);
-        }
-
-        int start = Math.max(0, Math.min(rawAnchorIndex, rawPath.size() - 1));
-        int endExclusive = Math.min(rawPath.size(), start + ROUTE_PROGRESS_FORWARD_SEARCH_TILES + 1);
-        int bestIdx = -1;
-        int bestDist = Integer.MAX_VALUE;
-        for (int i = start; i < endExclusive; i++) {
-            WorldPoint point = rawPath.get(i);
-            if (point == null) {
-                continue;
-            }
-            if (point.getPlane() != playerLoc.getPlane()) {
-                break;
-            }
-            int dist = point.distanceTo2D(playerLoc);
-            if (dist < bestDist) {
-                bestIdx = i;
-                bestDist = dist;
-                if (dist == 0) {
-                    break;
-                }
-            }
-        }
-        return bestIdx >= 0 ? bestIdx : start;
+        return WalkerPathGeometry.rawPathForwardAnchorIndex(rawPath, playerLoc, rawAnchorIndex,
+                ROUTE_PROGRESS_FORWARD_SEARCH_TILES, () -> getClosestTileIndex(rawPath, playerLoc));
     }
 
     private static boolean shouldIssueActiveRouteIdleNudge() {
