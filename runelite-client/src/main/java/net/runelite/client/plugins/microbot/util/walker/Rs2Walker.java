@@ -1993,7 +1993,7 @@ public class Rs2Walker {
                     if (playerLoc != null) {
                         int unreachableDist = currentWorldPoint.distanceTo2D(playerLoc);
                         if (unreachableDist <= HANDLER_RANGE + 2) {
-                            boolean candidateOnCurrentRouteFrontier = isLocalRecoveryCandidateOnForwardRoute(
+                            boolean candidateOnCurrentRouteFrontier = RouteRecovery.isLocalRecoveryCandidateOnForwardRoute(
                                     rawPath,
                                     smoothedToRaw,
                                     indexOfStartPoint,
@@ -2177,7 +2177,7 @@ public class Rs2Walker {
                                 // Furthest in-range path tile still beyond the minimap clip (e.g. a
                                 // diagonal segment). Interpolate a point near the minimap edge toward
                                 // path[i]; the server routes through whatever blocks line-of-sight.
-                                recoverTarget = interpolateClickableTarget(path, i, playerLoc,
+                                recoverTarget = RouteRecovery.interpolateClickableTarget(path, i, playerLoc,
                                         path.get(i), recoveryMinimapReach - 1,
                                         wp -> inInstance || isKnownWalkableOrUnloaded(wp));
                             }
@@ -2375,7 +2375,7 @@ public class Rs2Walker {
                     // visible point in that direction instead of falling back to an
                     // earlier path tile.
                     if (euclideanSq(targetWp, playerLoc) > MINIMAP_REACH_EUCLIDEAN * MINIMAP_REACH_EUCLIDEAN) {
-                        targetWp = interpolateClickableTarget(
+                        targetWp = RouteRecovery.interpolateClickableTarget(
                                 path,
                                 i,
                                 playerLoc,
@@ -3485,34 +3485,7 @@ public class Rs2Walker {
         return Math.max(1, previous.distanceTo2D(current));
     }
 
-    static boolean isLocalRecoveryCandidateOnForwardRoute(List<WorldPoint> rawPath,
-                                                          int[] smoothedToRaw,
-                                                          int routeStartIdx,
-                                                          int candidateIdx,
-                                                          int maxRawRouteSteps) {
-        if (rawPath == null || rawPath.isEmpty() || smoothedToRaw == null
-                || routeStartIdx < 0 || candidateIdx < routeStartIdx
-                || routeStartIdx >= smoothedToRaw.length || candidateIdx >= smoothedToRaw.length
-                || maxRawRouteSteps < 0) {
-            return false;
-        }
-        int rawStart = smoothedToRaw[routeStartIdx];
-        int rawCandidate = smoothedToRaw[candidateIdx];
-        if (rawStart < 0 || rawCandidate < rawStart
-                || rawStart >= rawPath.size() || rawCandidate >= rawPath.size()) {
-            return false;
-        }
-
-        int routeSteps = 0;
-        for (int i = rawStart; i < rawCandidate; i++) {
-            int step = rawPathStepDistance(rawPath.get(i), rawPath.get(i + 1));
-            if (step > maxRawRouteSteps - routeSteps) {
-                return false;
-            }
-            routeSteps += step;
-        }
-        return true;
-    }
+    // isLocalRecoveryCandidateOnForwardRoute extracted to recovery/RouteRecovery (P1)
 
     static int rawPathForwardAnchorIndex(List<WorldPoint> rawPath, WorldPoint playerLoc, int rawAnchorIndex) {
         if (rawPath == null || rawPath.isEmpty() || playerLoc == null) {
@@ -3643,7 +3616,7 @@ public class Rs2Walker {
             targetIdx = clickableIdx;
             if (euclideanSq(clickTarget, playerLoc)
                     > maxEuclidean * maxEuclidean) {
-                clickTarget = interpolateClickableTarget(
+                clickTarget = RouteRecovery.interpolateClickableTarget(
                         path,
                         startIdx,
                         playerLoc,
@@ -5318,42 +5291,7 @@ public class Rs2Walker {
         return isMiniMapClickable(worldPoint, 5);
     }
 
-    static WorldPoint interpolateClickableTarget(List<WorldPoint> path,
-                                                 int forwardIdx,
-                                                 WorldPoint playerLoc,
-                                                 WorldPoint fallbackWp,
-                                                 int targetEuclidean,
-                                                 java.util.function.Predicate<WorldPoint> isUsableClickTarget) {
-        if (path == null || playerLoc == null || fallbackWp == null
-                || forwardIdx < 0 || forwardIdx >= path.size()) {
-            return fallbackWp;
-        }
-
-        int fallbackDistSq = euclideanSq(fallbackWp, playerLoc);
-        if (fallbackDistSq == targetEuclidean * targetEuclidean) {
-            return fallbackWp;
-        }
-
-        WorldPoint beyond = path.get(forwardIdx);
-        int dxB = beyond.getX() - playerLoc.getX();
-        int dyB = beyond.getY() - playerLoc.getY();
-        double distB = Math.sqrt(dxB * dxB + dyB * dyB);
-        if (distB <= 1) {
-            return fallbackWp;
-        }
-
-        double scale = targetEuclidean / distB;
-        WorldPoint interpolated = new WorldPoint(
-                playerLoc.getX() + (int) Math.round(dxB * scale),
-                playerLoc.getY() + (int) Math.round(dyB * scale),
-                playerLoc.getPlane());
-
-        if (isUsableClickTarget == null || isUsableClickTarget.test(interpolated)) {
-            return interpolated;
-        }
-
-        return fallbackWp;
-    }
+    // interpolateClickableTarget extracted to recovery/RouteRecovery (P1)
 
     static WorldPoint clampToEuclideanRadius(WorldPoint playerLoc, WorldPoint target, int maxEuclidean) {
         if (playerLoc == null || target == null || target.getPlane() != playerLoc.getPlane() || maxEuclidean <= 0) {

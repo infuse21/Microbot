@@ -67,10 +67,95 @@ public final class RouteRecovery {
         return bestIdx;
     }
 
+    /**
+     * When the furthest in-range path tile is still beyond the minimap clip (e.g. a long diagonal
+     * segment), returns a point on the line from the player toward {@code path[forwardIdx]} at roughly
+     * {@code targetEuclidean} tiles out, provided it passes {@code isUsableClickTarget}; otherwise the
+     * {@code fallbackWp}. Lets the recovery click as far along the route as the minimap allows.
+     */
+    public static WorldPoint interpolateClickableTarget(List<WorldPoint> path,
+                                                        int forwardIdx,
+                                                        WorldPoint playerLoc,
+                                                        WorldPoint fallbackWp,
+                                                        int targetEuclidean,
+                                                        Predicate<WorldPoint> isUsableClickTarget) {
+        if (path == null || playerLoc == null || fallbackWp == null
+                || forwardIdx < 0 || forwardIdx >= path.size()) {
+            return fallbackWp;
+        }
+
+        int fallbackDistSq = euclideanSq(fallbackWp, playerLoc);
+        if (fallbackDistSq == targetEuclidean * targetEuclidean) {
+            return fallbackWp;
+        }
+
+        WorldPoint beyond = path.get(forwardIdx);
+        int dxB = beyond.getX() - playerLoc.getX();
+        int dyB = beyond.getY() - playerLoc.getY();
+        double distB = Math.sqrt(dxB * dxB + dyB * dyB);
+        if (distB <= 1) {
+            return fallbackWp;
+        }
+
+        double scale = targetEuclidean / distB;
+        WorldPoint interpolated = new WorldPoint(
+                playerLoc.getX() + (int) Math.round(dxB * scale),
+                playerLoc.getY() + (int) Math.round(dyB * scale),
+                playerLoc.getPlane());
+
+        if (isUsableClickTarget == null || isUsableClickTarget.test(interpolated)) {
+            return interpolated;
+        }
+
+        return fallbackWp;
+    }
+
+    /**
+     * Whether the raw-path tile at {@code candidateIdx} is on the forward route within
+     * {@code maxRawRouteSteps} raw steps of {@code routeStartIdx} — i.e. a spatially-near unreachable tile
+     * is genuinely ahead on the route rather than a fold-back branch, so local recovery should target it.
+     */
+    public static boolean isLocalRecoveryCandidateOnForwardRoute(List<WorldPoint> rawPath,
+                                                                 int[] smoothedToRaw,
+                                                                 int routeStartIdx,
+                                                                 int candidateIdx,
+                                                                 int maxRawRouteSteps) {
+        if (rawPath == null || rawPath.isEmpty() || smoothedToRaw == null
+                || routeStartIdx < 0 || candidateIdx < routeStartIdx
+                || routeStartIdx >= smoothedToRaw.length || candidateIdx >= smoothedToRaw.length
+                || maxRawRouteSteps < 0) {
+            return false;
+        }
+        int rawStart = smoothedToRaw[routeStartIdx];
+        int rawCandidate = smoothedToRaw[candidateIdx];
+        if (rawStart < 0 || rawCandidate < rawStart
+                || rawStart >= rawPath.size() || rawCandidate >= rawPath.size()) {
+            return false;
+        }
+
+        int routeSteps = 0;
+        for (int i = rawStart; i < rawCandidate; i++) {
+            int step = rawPathStepDistance(rawPath.get(i), rawPath.get(i + 1));
+            if (step > maxRawRouteSteps - routeSteps) {
+                return false;
+            }
+            routeSteps += step;
+        }
+        return true;
+    }
+
     /** Squared Euclidean distance; local copy of the trivial helper to keep this class self-contained. */
     private static int euclideanSq(WorldPoint a, WorldPoint b) {
         int dx = a.getX() - b.getX();
         int dy = a.getY() - b.getY();
         return dx * dx + dy * dy;
+    }
+
+    /** One-step raw-path distance (cross-plane treated as effectively infinite); local trivial copy. */
+    private static int rawPathStepDistance(WorldPoint previous, WorldPoint current) {
+        if (previous == null || current == null || previous.getPlane() != current.getPlane()) {
+            return Integer.MAX_VALUE / 4;
+        }
+        return Math.max(1, previous.distanceTo2D(current));
     }
 }

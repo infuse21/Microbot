@@ -1048,7 +1048,7 @@ public class Rs2WalkerUnitTest {
                 fallback,
                 new WorldPoint(3220, 3200, 0));
 
-        WorldPoint target = Rs2Walker.interpolateClickableTarget(path, 2, player, fallback, 12, wp -> true);
+        WorldPoint target = RouteRecovery.interpolateClickableTarget(path, 2, player, fallback, 12, wp -> true);
 
         assertEquals(new WorldPoint(3212, 3200, 0), target);
     }
@@ -1062,7 +1062,7 @@ public class Rs2WalkerUnitTest {
                 fallback,
                 new WorldPoint(3220, 3200, 0));
 
-        WorldPoint target = Rs2Walker.interpolateClickableTarget(path, 2, player, fallback, 12, wp -> false);
+        WorldPoint target = RouteRecovery.interpolateClickableTarget(path, 2, player, fallback, 12, wp -> false);
 
         assertEquals("unusable interpolated tiles must not replace the known path waypoint",
                 fallback, target);
@@ -1076,7 +1076,7 @@ public class Rs2WalkerUnitTest {
                 new WorldPoint(3200, 3200, 0),
                 forward);
 
-        WorldPoint target = Rs2Walker.interpolateClickableTarget(path, 1, player, forward, 12, wp -> true);
+        WorldPoint target = RouteRecovery.interpolateClickableTarget(path, 1, player, forward, 12, wp -> true);
 
         assertEquals("out-of-minimap forward waypoints should be shortened to a clickable tile",
                 new WorldPoint(3212, 3200, 0), target);
@@ -1139,9 +1139,9 @@ public class Rs2WalkerUnitTest {
         // ahead. Its proximity must not override the immediate route frontier.
         int[] smoothedToRaw = {0, 6, 60};
 
-        assertTrue(Rs2Walker.isLocalRecoveryCandidateOnForwardRoute(
+        assertTrue(RouteRecovery.isLocalRecoveryCandidateOnForwardRoute(
                 raw, smoothedToRaw, 0, 1, 48));
-        assertFalse(Rs2Walker.isLocalRecoveryCandidateOnForwardRoute(
+        assertFalse(RouteRecovery.isLocalRecoveryCandidateOnForwardRoute(
                 raw, smoothedToRaw, 0, 2, 48));
     }
 
@@ -1153,9 +1153,9 @@ public class Rs2WalkerUnitTest {
                 new WorldPoint(2900, 3400, 0));
         int[] smoothedToRaw = {0, 1, 2};
 
-        assertFalse(Rs2Walker.isLocalRecoveryCandidateOnForwardRoute(
+        assertFalse(RouteRecovery.isLocalRecoveryCandidateOnForwardRoute(
                 raw, smoothedToRaw, 0, 2, 48));
-        assertFalse(Rs2Walker.isLocalRecoveryCandidateOnForwardRoute(
+        assertFalse(RouteRecovery.isLocalRecoveryCandidateOnForwardRoute(
                 raw, smoothedToRaw, 1, 0, 48));
     }
 
