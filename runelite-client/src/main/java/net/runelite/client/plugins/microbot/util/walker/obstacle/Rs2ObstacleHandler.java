@@ -1,7 +1,6 @@
 package net.runelite.client.plugins.microbot.util.walker.obstacle;
 
 import java.util.List;
-import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.TileObject;
 import net.runelite.api.coords.WorldPoint;
@@ -111,20 +110,6 @@ public final class Rs2ObstacleHandler {
 
         return RockfallResult.NOT_APPLICABLE;
     }
-
-    /** Runs {@link #handleRockfall} across a raw-path segment, skipping already-reachable steps. */
-    public static RockfallResult handleRockfallInRawSegment(List<WorldPoint> rawPath, int rawFrom, int rawTo,
-                                                            Map<WorldPoint, Integer> reachableCache) {
-        for (int ri = rawFrom; ri < rawTo && ri < rawPath.size() - 1; ri++) {
-            if (reachableCache != null && reachableCache.containsKey(rawPath.get(ri))
-                    && reachableCache.containsKey(rawPath.get(ri + 1))) {
-                continue;
-            }
-            RockfallResult r = handleRockfall(rawPath, ri);
-            if (r != RockfallResult.NOT_APPLICABLE) {
-                return r;
-            }
-        }
-        return RockfallResult.NOT_APPLICABLE;
-    }
+    // handleRockfallInRawSegment removed (P2): the segment scan now lives in Rs2Walker.resolveRockfallOnSegment,
+    // which dispatches this per-edge handleRockfall through the unified MineableResolver.
 }

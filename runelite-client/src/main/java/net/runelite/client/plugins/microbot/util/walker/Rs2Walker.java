@@ -64,12 +64,9 @@ import net.runelite.client.plugins.microbot.util.walker.door.Rs2DoorProbe;
 import net.runelite.client.plugins.microbot.util.walker.door.Rs2DoorAheadResolver;
 import net.runelite.client.plugins.microbot.util.walker.door.Rs2DoorGeometry;
 import net.runelite.client.plugins.microbot.util.walker.geometry.WalkerPathGeometry;
-import net.runelite.client.plugins.microbot.util.walker.obstacle.LiveScene;
 import net.runelite.client.plugins.microbot.util.walker.obstacle.MineableResolver;
 import net.runelite.client.plugins.microbot.util.walker.obstacle.ObstacleResolution;
 import net.runelite.client.plugins.microbot.util.walker.obstacle.PlannedEdge;
-import net.runelite.client.plugins.microbot.util.walker.obstacle.Rs2LiveScene;
-import net.runelite.client.plugins.microbot.util.walker.obstacle.Rs2ObstacleHandler;
 import net.runelite.client.plugins.microbot.util.walker.recovery.RouteRecovery;
 import net.runelite.client.plugins.microbot.util.walker.state.WalkerRouteState;
 import net.runelite.client.plugins.microbot.util.walker.door.Rs2DoorHandler;
@@ -1951,8 +1948,14 @@ public class Rs2Walker {
                     }
 
                     if (!startupImmediateTransportOnly) {
-                        doorOrTransportResult = applyRockfall(Rs2ObstacleHandler.handleRockfallInRawSegment(rawPath, rawI, rawEnd,
-                                reachableTilesCache));
+                        // P2 unified rockfall dispatch (shared with recovery). INTERACTED (mined) breaks the
+                        // segment loop; ABORT (no pickaxe) clears the target and falls through, exactly as the
+                        // former applyRockfall(handleRockfallInRawSegment(...)) did.
+                        ObstacleResolution rockfall = resolveRockfallOnSegment(rawPath, rawI, rawEnd, reachableTilesCache);
+                        doorOrTransportResult = rockfall.kind() == ObstacleResolution.Kind.INTERACTED;
+                        if (rockfall.kind() == ObstacleResolution.Kind.ABORT) {
+                            setTarget(null, "rs2walker:" + rockfall.reason());
+                        }
                     }
                     if (doorOrTransportResult) {
                         tmarkPostTransport("post_transport_segment_handler", target,
@@ -4204,15 +4207,48 @@ public class Rs2Walker {
 
 
     /** Applies a rockfall handling outcome to walker route state (facade side of the extraction). */
-    private static boolean applyRockfall(Rs2ObstacleHandler.RockfallResult result) {
-        if (result == Rs2ObstacleHandler.RockfallResult.NO_PICKAXE) {
-            setTarget(null, "rs2walker:motherlode-rockfall-no-pickaxe");
+    /** Stateless obstacle resolver for the P2 unified dispatch (rockfall mining on a planned edge). */
+    private static final MineableResolver MINEABLE_RESOLVER = new MineableResolver();
+
+    /**
+     * Rockfall resolution over a raw-path segment via {@link MineableResolver}, skipping steps whose both
+     * ends are already reachable (no blocker there). First non-{@code NOT_APPLICABLE} result wins. This is
+     * the single home for the former {@code handleRockfallInRawSegment}: the same per-edge {@code handleRockfall}
+     * over the same tiles with the same skip rule, so behaviourally identical — now expressed in the P2
+     * unified model. Returns {@link ObstacleResolution.Kind#INTERACTED} (mined), {@code ABORT} (no pickaxe),
+     * or {@code NOT_APPLICABLE}.
+     */
+    private static ObstacleResolution resolveRockfallOnSegment(List<WorldPoint> rawPath, int rawFrom,
+                                                               int rawTo, Map<WorldPoint, Integer> reachableCache) {
+        if (rawPath == null || rawPath.isEmpty()) {
+            return ObstacleResolution.notApplicable();
         }
-        return result == Rs2ObstacleHandler.RockfallResult.MINED;
+        int scanTo = Math.min(rawTo, rawPath.size() - 1);
+        for (int ri = Math.max(0, rawFrom); ri < scanTo; ri++) {
+            WorldPoint a = rawPath.get(ri);
+            WorldPoint b = rawPath.get(ri + 1);
+            if (reachableCache != null && reachableCache.containsKey(a) && reachableCache.containsKey(b)) {
+                continue;
+            }
+            ObstacleResolution mineable = MINEABLE_RESOLVER.resolve(new PlannedEdge(a, b), null, null);
+            if (mineable.kind() != ObstacleResolution.Kind.NOT_APPLICABLE) {
+                return mineable;
+            }
+        }
+        return ObstacleResolution.notApplicable();
     }
 
-    /** Stateless obstacle resolver for the P2 unified dispatch (rockfall mining on the blocked frontier). */
-    private static final MineableResolver MINEABLE_RESOLVER = new MineableResolver();
+    /**
+     * Single-edge rockfall resolution for {@code rawPath[i] -> rawPath[i+1]} via {@link MineableResolver}
+     * (the former {@code handleRockfall(rawPath, i)} in the unified model). {@code NOT_APPLICABLE} when
+     * {@code i} is the last index, matching the old {@code index == size-1} guard.
+     */
+    private static ObstacleResolution resolveRockfallOnEdge(List<WorldPoint> rawPath, int i) {
+        if (rawPath == null || i < 0 || i + 1 >= rawPath.size()) {
+            return ObstacleResolution.notApplicable();
+        }
+        return MINEABLE_RESOLVER.resolve(new PlannedEdge(rawPath.get(i), rawPath.get(i + 1)), null, null);
+    }
 
     /**
      * Unified obstacle resolution for a blocked route frontier (P2 dispatch cutover;
@@ -4241,22 +4277,11 @@ public class Rs2Walker {
         if (rawPath == null || rawPath.isEmpty() || playerLoc == null) {
             return ObstacleResolution.notApplicable();
         }
-        LiveScene scene = new Rs2LiveScene(playerLoc, reachableTilesCache);
 
-        // (1) Rockfall on the blocked frontier: narrow segment scan, skipping steps whose both ends are
-        //     already reachable (no blocker there). First non-NOT_APPLICABLE result wins.
-        int scanTo = Math.min(rawEdgeEnd, rawPath.size() - 1);
-        for (int ri = Math.max(0, rawEdgeStart); ri < scanTo; ri++) {
-            WorldPoint a = rawPath.get(ri);
-            WorldPoint b = rawPath.get(ri + 1);
-            if (reachableTilesCache != null && reachableTilesCache.containsKey(a)
-                    && reachableTilesCache.containsKey(b)) {
-                continue;
-            }
-            ObstacleResolution mineable = MINEABLE_RESOLVER.resolve(new PlannedEdge(a, b), scene, null);
-            if (mineable.kind() != ObstacleResolution.Kind.NOT_APPLICABLE) {
-                return mineable;
-            }
+        // (1) Rockfall on the blocked frontier: narrow segment scan (shared with the forward walk loop).
+        ObstacleResolution rockfall = resolveRockfallOnSegment(rawPath, rawEdgeStart, rawEdgeEnd, reachableTilesCache);
+        if (rockfall.kind() != ObstacleResolution.Kind.NOT_APPLICABLE) {
+            return rockfall;
         }
 
         // (2) Reachable transport / agility-shortcut origin ahead: wide forward-window scan.
@@ -4835,7 +4860,13 @@ public class Rs2Walker {
                 }
 
                 long t2 = System.currentTimeMillis();
-                boolean handledRockfall = applyRockfall(Rs2ObstacleHandler.handleRockfall(rawPath, i));
+                // P2 unified rockfall dispatch (single edge). INTERACTED == the former MINED; ABORT
+                // (no pickaxe) clears the target and is not treated as handled, matching applyRockfall.
+                ObstacleResolution rockfall = resolveRockfallOnEdge(rawPath, i);
+                if (rockfall.kind() == ObstacleResolution.Kind.ABORT) {
+                    setTarget(null, "rs2walker:" + rockfall.reason());
+                }
+                boolean handledRockfall = rockfall.kind() == ObstacleResolution.Kind.INTERACTED;
                 rockfallMs += System.currentTimeMillis() - t2;
                 if (handledRockfall) {
                     log.info("[Walker] Raw path rockfall handler resolved obstacle near {}", playerLoc);
