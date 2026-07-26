@@ -63,6 +63,7 @@ import net.runelite.client.plugins.microbot.util.walker.door.Rs2DoorDetection;
 import net.runelite.client.plugins.microbot.util.walker.door.Rs2DoorProbe;
 import net.runelite.client.plugins.microbot.util.walker.door.Rs2DoorAheadResolver;
 import net.runelite.client.plugins.microbot.util.walker.door.Rs2DoorGeometry;
+import net.runelite.client.plugins.microbot.util.walker.geometry.WalkerPathGeometry;
 import net.runelite.client.plugins.microbot.util.walker.obstacle.Rs2ObstacleHandler;
 import net.runelite.client.plugins.microbot.util.walker.recovery.RouteRecovery;
 import net.runelite.client.plugins.microbot.util.walker.state.WalkerRouteState;
@@ -390,7 +391,7 @@ public class Rs2Walker {
         }
 
         private int closestTileIndex(List<WorldPoint> path) {
-            return getClosestTileIndex(path, playerLoc, closestReachableTiles);
+            return WalkerPathGeometry.getClosestTileIndex(path, playerLoc, closestReachableTiles);
         }
     }
 
@@ -7604,58 +7605,14 @@ public class Rs2Walker {
      */
     public static int getClosestTileIndex(List<WorldPoint> path) {
         WorldPoint playerLoc = Rs2Player.getWorldLocation();
-        return getClosestTileIndex(path, playerLoc, getClosestIndexReachableTiles(playerLoc));
+        return WalkerPathGeometry.getClosestTileIndex(path, playerLoc, getClosestIndexReachableTiles(playerLoc));
     }
 
     static int getClosestTileIndex(List<WorldPoint> path, WorldPoint playerLoc) {
-        return getClosestTileIndex(path, playerLoc, getClosestIndexReachableTiles(playerLoc));
+        return WalkerPathGeometry.getClosestTileIndex(path, playerLoc, getClosestIndexReachableTiles(playerLoc));
     }
 
-    static int getClosestTileIndex(List<WorldPoint> path,
-                                   WorldPoint playerLoc,
-                                   Map<WorldPoint, Integer> reachableTiles) {
-        if (path == null || path.isEmpty() || playerLoc == null) {
-            return -1;
-        }
-
-        int bestReachableIndex = -1;
-        int bestReachableDistance = Integer.MAX_VALUE;
-        if (reachableTiles != null && !reachableTiles.isEmpty()) {
-            for (int i = 0; i < path.size(); i++) {
-                WorldPoint point = path.get(i);
-                if (point == null) {
-                    continue;
-                }
-                int reachableDistance = reachableTiles.getOrDefault(point, Integer.MAX_VALUE);
-                if (reachableDistance < bestReachableDistance) {
-                    bestReachableDistance = reachableDistance;
-                    bestReachableIndex = i;
-                    if (reachableDistance == 0) {
-                        break;
-                    }
-                }
-            }
-        }
-
-        if (bestReachableIndex >= 0 && bestReachableDistance != Integer.MAX_VALUE) {
-            return bestReachableIndex;
-        }
-
-        int closestIndex = -1;
-        int closestDistance = Integer.MAX_VALUE;
-        for (int i = 0; i < path.size(); i++) {
-            WorldPoint point = path.get(i);
-            if (point == null) {
-                continue;
-            }
-            int distance = playerLoc.distanceTo(point);
-            if (distance < closestDistance) {
-                closestDistance = distance;
-                closestIndex = i;
-            }
-        }
-        return closestIndex;
-    }
+    // 3-arg getClosestTileIndex (pure) moved to geometry/WalkerPathGeometry (P1)
 
     private static HashMap<WorldPoint, Integer> getClosestIndexReachableTiles(WorldPoint playerLoc) {
         if (playerLoc == null) {

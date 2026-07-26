@@ -1,4 +1,5 @@
 package net.runelite.client.plugins.microbot.util.walker;
+import net.runelite.client.plugins.microbot.util.walker.geometry.WalkerPathGeometry;
 import net.runelite.client.plugins.microbot.util.walker.obstacle.Rs2ObstacleHandler;
 import net.runelite.client.plugins.microbot.util.walker.recovery.RouteRecovery;
 import net.runelite.client.plugins.microbot.util.walker.door.Rs2DoorGeometry;
@@ -447,7 +448,7 @@ public class Rs2WalkerUnitTest {
         reachable.put(farByWorldDistance, 8);
         reachable.put(nearReachable, 3);
 
-        assertEquals(1, Rs2Walker.getClosestTileIndex(path, player, reachable));
+        assertEquals(1, WalkerPathGeometry.getClosestTileIndex(path, player, reachable));
     }
 
     @Test
@@ -458,7 +459,7 @@ public class Rs2WalkerUnitTest {
                 new WorldPoint(3202, 3200, 0),
                 new WorldPoint(3220, 3200, 0));
 
-        assertEquals(1, Rs2Walker.getClosestTileIndex(path, player, Collections.emptyMap()));
+        assertEquals(1, WalkerPathGeometry.getClosestTileIndex(path, player, Collections.emptyMap()));
     }
 
     // ---------------------------------------------------------------------------
