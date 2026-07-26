@@ -64,6 +64,7 @@ import net.runelite.client.plugins.microbot.util.walker.door.Rs2DoorProbe;
 import net.runelite.client.plugins.microbot.util.walker.door.Rs2DoorAheadResolver;
 import net.runelite.client.plugins.microbot.util.walker.door.Rs2DoorGeometry;
 import net.runelite.client.plugins.microbot.util.walker.obstacle.Rs2ObstacleHandler;
+import net.runelite.client.plugins.microbot.util.walker.state.WalkerRouteState;
 import net.runelite.client.plugins.microbot.util.walker.door.Rs2DoorHandler;
 import net.runelite.client.plugins.microbot.util.walker.door.Rs2WalkerAwaits;
 import net.runelite.client.plugins.microbot.util.walker.door.model.AwaitTicket;
@@ -240,10 +241,11 @@ public class Rs2Walker {
     private static volatile long lastUnreachableRecoveryClickAtMs = 0L;
     private static volatile long walkSessionStartedAtMs = 0L;
     private static volatile boolean firstMovementClickMarked = false;
-    private static volatile long lastTransportHandledAtMs = 0L;
-    private static volatile WorldPoint lastTransportHandledAtLocation = null;
-    private static volatile WorldPoint lastTransportOriginLocation = null;
-    private static volatile WorldPoint lastTransportDestinationLocation = null;
+    /**
+     * Consolidated route state (P1 walker decomposition, enabling step). Fields are migrated here in
+     * cohesive clusters; first cluster: transport handoff. See {@link WalkerRouteState}.
+     */
+    private static final WalkerRouteState routeState = new WalkerRouteState();
     private static volatile WorldPoint idleNudgeLastObservedLocation = null;
     private static volatile long idleNudgeStationarySinceMs = 0L;
     private static volatile long lastActiveRouteIdleNudgeAtMs = 0L;
@@ -331,9 +333,9 @@ public class Rs2Walker {
         walkSessionStartedAtMs = System.currentTimeMillis();
         firstMovementClickMarked = false;
         startupPhasesLogged.clear();
-        lastTransportHandledAtLocation = null;
-        lastTransportOriginLocation = null;
-        lastTransportDestinationLocation = null;
+        routeState.lastTransportHandledAtLocation = null;
+        routeState.lastTransportOriginLocation = null;
+        routeState.lastTransportDestinationLocation = null;
         resetRouteProgress();
         synchronized (expectedTransportDestinations) {
             expectedTransportDestinations.clear();
@@ -342,10 +344,10 @@ public class Rs2Walker {
     }
 
     private static void clearRecentTransportContext() {
-        lastTransportHandledAtMs = 0L;
-        lastTransportHandledAtLocation = null;
-        lastTransportOriginLocation = null;
-        lastTransportDestinationLocation = null;
+        routeState.lastTransportHandledAtMs = 0L;
+        routeState.lastTransportHandledAtLocation = null;
+        routeState.lastTransportOriginLocation = null;
+        routeState.lastTransportDestinationLocation = null;
     }
 
     private static void markFirstMovementClick(String phase, WorldPoint target, WorldPoint at, String detail) {
@@ -372,7 +374,7 @@ public class Rs2Walker {
     }
 
     private static void tmarkPostTransport(String phase, WorldPoint target, String detail) {
-        long handledAt = lastTransportHandledAtMs;
+        long handledAt = routeState.lastTransportHandledAtMs;
         if (handledAt <= 0L) {
             return;
         }
@@ -1756,8 +1758,8 @@ public class Rs2Walker {
                 continue;
             }
 
-            boolean postTransportWindow = lastTransportHandledAtMs > 0
-                    && System.currentTimeMillis() - lastTransportHandledAtMs <= POST_TRANSPORT_PATH_TMARK_WINDOW_MS;
+            boolean postTransportWindow = routeState.lastTransportHandledAtMs > 0
+                    && System.currentTimeMillis() - routeState.lastTransportHandledAtMs <= POST_TRANSPORT_PATH_TMARK_WINDOW_MS;
             boolean allowRawSceneScan = startupPolicy.allowBroadRawHandlers() && rawPath != null && path != null;
             int rawScanTransportLookaheadStartIdx = postTransportWindow
                     ? Math.min(path.size() - 1, Math.max(0, indexOfStartPoint + 1))
@@ -1825,8 +1827,8 @@ public class Rs2Walker {
                 // on its presence; scripts can clear it mid-walk.
                 ObstaclePolicy obstaclePolicy = obstaclePolicyForCurrentPhase();
 
-                boolean recentTransportWindow = lastTransportHandledAtMs > 0
-                        && System.currentTimeMillis() - lastTransportHandledAtMs <= POST_TRANSPORT_PATH_TMARK_WINDOW_MS;
+                boolean recentTransportWindow = routeState.lastTransportHandledAtMs > 0
+                        && System.currentTimeMillis() - routeState.lastTransportHandledAtMs <= POST_TRANSPORT_PATH_TMARK_WINDOW_MS;
                 WorldPoint playerForPathCheck = Rs2Player.getWorldLocation();
                 if (isTransportInteractionSettling()) {
                     tmarkPostTransport("post_transport_settling_yield", target,
@@ -1838,7 +1840,7 @@ public class Rs2Walker {
                 boolean nearPathByVariance = !nearPath && isNearPathByVariance(path, playerForPathCheck);
                 if (recentTransportWindow && !nearPath) {
                     WebWalkLog.tmark("post_transport_nearpath_gate",
-                            System.currentTimeMillis() - lastTransportHandledAtMs,
+                            System.currentTimeMillis() - routeState.lastTransportHandledAtMs,
                             target,
                             playerForPathCheck,
                             "nearPath=false variance=" + nearPathByVariance);
@@ -1850,10 +1852,10 @@ public class Rs2Walker {
                     String deferReason = currentOffPathRecalcDeferralReason(lastAttemptedMinimapClickAtMs);
                     if (deferReason != null) {
                         Telemetry.recordOffPathRecalcDeferred(deferReason, playerForPathCheck, target, path.size());
-                        if (lastTransportHandledAtMs > 0
-                                && System.currentTimeMillis() - lastTransportHandledAtMs <= POST_TRANSPORT_PATH_TMARK_WINDOW_MS) {
+                        if (routeState.lastTransportHandledAtMs > 0
+                                && System.currentTimeMillis() - routeState.lastTransportHandledAtMs <= POST_TRANSPORT_PATH_TMARK_WINDOW_MS) {
                             WebWalkLog.tmark("post_transport_offpath_moving_yield",
-                                    System.currentTimeMillis() - lastTransportHandledAtMs,
+                                    System.currentTimeMillis() - routeState.lastTransportHandledAtMs,
                                     target,
                                     playerForPathCheck,
                                     "defer=" + deferReason);
@@ -2476,10 +2478,10 @@ public class Rs2Walker {
                     }
                     clickTarget = clampToEuclideanRadius(playerLoc, clickTarget, MINIMAP_REACH_EUCLIDEAN - 1);
                     long nowBeforeClick = System.currentTimeMillis();
-                    if (lastTransportHandledAtMs > 0
-                            && nowBeforeClick - lastTransportHandledAtMs <= POST_TRANSPORT_PATH_TMARK_WINDOW_MS) {
+                    if (routeState.lastTransportHandledAtMs > 0
+                            && nowBeforeClick - routeState.lastTransportHandledAtMs <= POST_TRANSPORT_PATH_TMARK_WINDOW_MS) {
                         WebWalkLog.tmark("post_transport_path_selected",
-                                nowBeforeClick - lastTransportHandledAtMs,
+                                nowBeforeClick - routeState.lastTransportHandledAtMs,
                                 target,
                                 posBefore,
                                 "to=" + compactWorldPoint(clickTarget));
@@ -2754,9 +2756,9 @@ public class Rs2Walker {
                             lastAttemptedMinimapClickAtMs,
                             interimLastProgressAtMs);
                     long now = System.currentTimeMillis();
-                    if (lastTransportHandledAtMs > 0
-                            && now - lastTransportHandledAtMs <= POST_TRANSPORT_PATH_TMARK_WINDOW_MS) {
-                        long elapsedSinceTransport = Math.max(0L, now - lastTransportHandledAtMs);
+                    if (routeState.lastTransportHandledAtMs > 0
+                            && now - routeState.lastTransportHandledAtMs <= POST_TRANSPORT_PATH_TMARK_WINDOW_MS) {
+                        long elapsedSinceTransport = Math.max(0L, now - routeState.lastTransportHandledAtMs);
                         long remainingBudget = POST_TRANSPORT_OFFPATH_WAIT_BUDGET_MS - elapsedSinceTransport;
                         if (remainingBudget <= 0) {
                             offPathWaitMs = 0L;
@@ -2766,10 +2768,10 @@ public class Rs2Walker {
                     }
                     if (offPathWaitMs > 0) {
                         final long deferredLastClickAtMs = lastAttemptedMinimapClickAtMs;
-                        if (lastTransportHandledAtMs > 0
-                                && System.currentTimeMillis() - lastTransportHandledAtMs <= POST_TRANSPORT_PATH_TMARK_WINDOW_MS) {
+                        if (routeState.lastTransportHandledAtMs > 0
+                                && System.currentTimeMillis() - routeState.lastTransportHandledAtMs <= POST_TRANSPORT_PATH_TMARK_WINDOW_MS) {
                             WebWalkLog.tmark("post_transport_offpath_sleep",
-                                    System.currentTimeMillis() - lastTransportHandledAtMs,
+                                    System.currentTimeMillis() - routeState.lastTransportHandledAtMs,
                                     target,
                                     Rs2Player.getWorldLocation(),
                                     "ms=" + offPathWaitMs);
@@ -5116,7 +5118,7 @@ public class Rs2Walker {
         addForwardPathIndices(forwardIndex, rawPath, playerLoc);
         addForwardPathIndices(forwardIndex, path, playerLoc);
 
-        WorldPoint priorOrigin = lastTransportOriginLocation;
+        WorldPoint priorOrigin = routeState.lastTransportOriginLocation;
         // Trust the pathfinder: only take a nearby transport whose destination is on the
         // planned forward route, ordered by route position (earliest forward transport first). The
         // old fallback admitted off-path transports whose destination was straight-line "closer" to
@@ -6319,7 +6321,7 @@ public class Rs2Walker {
     }
 
     private static boolean isTransportInteractionSettling() {
-        long handledAt = lastTransportHandledAtMs;
+        long handledAt = routeState.lastTransportHandledAtMs;
         if (handledAt <= 0L) {
             return false;
         }
@@ -6328,7 +6330,7 @@ public class Rs2Walker {
             return false;
         }
         WorldPoint now = Rs2Player.getWorldLocation();
-        WorldPoint landedAt = lastTransportHandledAtLocation;
+        WorldPoint landedAt = routeState.lastTransportHandledAtLocation;
         if (now == null || landedAt == null) {
             return ageMs <= TRANSPORT_POST_INTERACT_SETTLE_MS / 2;
         }
@@ -7248,8 +7250,8 @@ public class Rs2Walker {
                     compactWorldPoint(chosen.location),
                     compactWorldPoint(bestFrom),
                     compactWorldPoint(bestTo),
-                    compactWorldPoint(lastTransportOriginLocation),
-                    compactWorldPoint(lastTransportDestinationLocation));
+                    compactWorldPoint(routeState.lastTransportOriginLocation),
+                    compactWorldPoint(routeState.lastTransportDestinationLocation));
             return false;
         }
 		log.info("[Walker] path-adj blocker-scan: score={} action={} at {}", bestScore, (bestAction == null || bestAction.isEmpty()) ? "<default>" : bestAction, chosen.location);
@@ -7918,8 +7920,8 @@ public class Rs2Walker {
                 || !isRecentTransportEdgeWindow()) {
             return index;
         }
-        WorldPoint origin = lastTransportOriginLocation;
-        WorldPoint destination = lastTransportDestinationLocation;
+        WorldPoint origin = routeState.lastTransportOriginLocation;
+        WorldPoint destination = routeState.lastTransportDestinationLocation;
         if (origin == null || destination == null || playerLoc == null
                 || playerLoc.getPlane() != destination.getPlane()
                 || playerLoc.distanceTo2D(destination) > 3) {
@@ -7978,7 +7980,7 @@ public class Rs2Walker {
     }
 
     private static boolean isRecentTransportEdgeWindow() {
-        long handledAt = lastTransportHandledAtMs;
+        long handledAt = routeState.lastTransportHandledAtMs;
         if (handledAt <= 0L) {
             return false;
         }
@@ -7997,8 +7999,8 @@ public class Rs2Walker {
         if (!isRecentTransportEdgeWindow()) {
             return false;
         }
-        WorldPoint origin = lastTransportOriginLocation;
-        WorldPoint destination = lastTransportDestinationLocation;
+        WorldPoint origin = routeState.lastTransportOriginLocation;
+        WorldPoint destination = routeState.lastTransportDestinationLocation;
         if (origin == null || destination == null) {
             return false;
         }
@@ -8959,10 +8961,10 @@ public class Rs2Walker {
 
     private static boolean finishHandledTransport(Transport transport) {
         long handoffStartedAt = System.currentTimeMillis();
-        lastTransportHandledAtMs = handoffStartedAt;
-        lastTransportHandledAtLocation = Rs2Player.getWorldLocation();
-        lastTransportOriginLocation = transport != null ? transport.getOrigin() : null;
-        lastTransportDestinationLocation = transport != null ? transport.getDestination() : null;
+        routeState.lastTransportHandledAtMs = handoffStartedAt;
+        routeState.lastTransportHandledAtLocation = Rs2Player.getWorldLocation();
+        routeState.lastTransportOriginLocation = transport != null ? transport.getOrigin() : null;
+        routeState.lastTransportDestinationLocation = transport != null ? transport.getDestination() : null;
         WorldPoint goal = currentTarget;
         WorldPoint transportDest = transport != null ? transport.getDestination() : null;
         boolean expectedTransport = consumeExpectedTransportDestination(transportDest);
