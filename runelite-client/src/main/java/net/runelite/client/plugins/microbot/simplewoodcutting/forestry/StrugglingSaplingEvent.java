@@ -75,7 +75,7 @@ public class StrugglingSaplingEvent implements BlockingEvent {
 
             var ingredients = Microbot.getRs2TileObjectCache().query()
                     .where(gameObject -> ingredientIds.contains(gameObject.getId()))
-                    .toList()
+                    .toListOnClientThread()
                     .stream()
                     .filter(obj -> hasAction(obj.getObjectComposition(), "Collect"))
                     .collect(Collectors.toList());

@@ -75,7 +75,7 @@ import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
 )
 @Slf4j
 public class SimpleWoodcuttingPlugin extends Plugin {
-    public static final String version = "1.1.0";
+    public static final String version = "1.1.1";
 
     private static final Pattern SAPLING_MESSAGE =
             Pattern.compile("^The sapling seems to love the (first|second|third).*$");
