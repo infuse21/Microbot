@@ -249,12 +249,7 @@ public class Rs2Walker {
     private static volatile WorldPoint idleNudgeLastObservedLocation = null;
     private static volatile long idleNudgeStationarySinceMs = 0L;
     private static volatile long lastActiveRouteIdleNudgeAtMs = 0L;
-    private static volatile int routeProgressIdx = -1;
-    private static volatile WorldPoint routeProgressTarget = null;
-    private static volatile WorldPoint routeProgressPathStart = null;
-    private static volatile WorldPoint routeProgressPathEnd = null;
-    private static volatile int routeProgressPathSize = -1;
-    private static volatile long routeProgressAdvancedAtMs = 0L;
+    // route-progress state migrated to WalkerRouteState (see routeState)
     private static final java.util.Deque<WorldPoint> expectedTransportDestinations = new ArrayDeque<>();
     private static final Set<String> startupPhasesLogged = ConcurrentHashMap.newKeySet();
     private static final Set<Integer> AL_KHARID_TOLL_GATE_OBJECT_IDS = Set.of(
@@ -2703,7 +2698,7 @@ public class Rs2Walker {
                 // for the whole journey rather than three consecutive failures to advance.
                 //
                 // Standing somewhere new is required as well as the progress timestamp:
-                // routeProgressAdvancedAtMs is also bumped whenever the route is merely REPLACED, and
+                // routeState.routeProgressAdvancedAtMs is also bumped whenever the route is merely REPLACED, and
                 // each retry calls recalculatePath(), so the timestamp alone would let a retry refill
                 // the budget it just spent. When the target is genuinely unreachable the player stops
                 // moving, so requiring movement is what still lets the budget drain and terminate.
@@ -2712,9 +2707,9 @@ public class Rs2Walker {
                         || (retryLoc != null && !retryLoc.equals(lastPartialRetryAtLoc));
                 if (partialRetriesWorking > 0
                         && movedSinceLastRetry
-                        && routeProgressAdvancedAtMs > lastPartialRetryAtMs) {
+                        && routeState.routeProgressAdvancedAtMs > lastPartialRetryAtMs) {
                     walkerDiag("partial retry budget refilled progressAt=%d lastRetryAt=%d spent=%d at=%s",
-                            routeProgressAdvancedAtMs, lastPartialRetryAtMs, partialRetriesWorking, retryLoc);
+                            routeState.routeProgressAdvancedAtMs, lastPartialRetryAtMs, partialRetriesWorking, retryLoc);
                     partialRetriesWorking = 0;
                 }
                 // A handled door/transport/blocker ended the iteration because work was done, not
@@ -2752,7 +2747,7 @@ public class Rs2Walker {
                     long offPathWaitMs = offPathRecalcDeferredWaitMs(deferReason,
                             System.currentTimeMillis(),
                             lastMovedTimeMs,
-                            routeProgressAdvancedAtMs,
+                            routeState.routeProgressAdvancedAtMs,
                             lastAttemptedMinimapClickAtMs,
                             interimLastProgressAtMs);
                     long now = System.currentTimeMillis();
@@ -7851,39 +7846,39 @@ public class Rs2Walker {
 
         WorldPoint pathStart = path.get(0);
         WorldPoint pathEnd = path.get(path.size() - 1);
-        boolean routeChanged = routeProgressTarget == null
-                || !routeProgressTarget.equals(target)
-                || routeProgressPathSize != path.size()
-                || !Objects.equals(routeProgressPathStart, pathStart)
-                || !Objects.equals(routeProgressPathEnd, pathEnd)
-                || routeProgressIdx >= path.size();
+        boolean routeChanged = routeState.routeProgressTarget == null
+                || !routeState.routeProgressTarget.equals(target)
+                || routeState.routeProgressPathSize != path.size()
+                || !Objects.equals(routeState.routeProgressPathStart, pathStart)
+                || !Objects.equals(routeState.routeProgressPathEnd, pathEnd)
+                || routeState.routeProgressIdx >= path.size();
         if (routeChanged) {
-            routeProgressTarget = target;
-            routeProgressPathStart = pathStart;
-            routeProgressPathEnd = pathEnd;
-            routeProgressPathSize = path.size();
-            routeProgressIdx = closestIdx;
-            routeProgressAdvancedAtMs = System.currentTimeMillis();
+            routeState.routeProgressTarget = target;
+            routeState.routeProgressPathStart = pathStart;
+            routeState.routeProgressPathEnd = pathEnd;
+            routeState.routeProgressPathSize = path.size();
+            routeState.routeProgressIdx = closestIdx;
+            routeState.routeProgressAdvancedAtMs = System.currentTimeMillis();
             return closestIdx;
         }
 
-        if (routeProgressIdx < 0 || closestIdx >= routeProgressIdx) {
-            if (closestIdx > routeProgressIdx) {
+        if (routeState.routeProgressIdx < 0 || closestIdx >= routeState.routeProgressIdx) {
+            if (closestIdx > routeState.routeProgressIdx) {
                 recordRouteProgressAdvanced();
             }
-            routeProgressIdx = closestIdx;
+            routeState.routeProgressIdx = closestIdx;
             return closestIdx;
         }
 
-        int forwardIdx = closestForwardPathIndex(path, routeProgressIdx, playerLoc);
-        if (forwardIdx >= routeProgressIdx) {
-            if (forwardIdx > routeProgressIdx) {
-                routeProgressIdx = forwardIdx;
+        int forwardIdx = closestForwardPathIndex(path, routeState.routeProgressIdx, playerLoc);
+        if (forwardIdx >= routeState.routeProgressIdx) {
+            if (forwardIdx > routeState.routeProgressIdx) {
+                routeState.routeProgressIdx = forwardIdx;
                 recordRouteProgressAdvanced();
             }
-            return routeProgressIdx;
+            return routeState.routeProgressIdx;
         }
-        return routeProgressIdx;
+        return routeState.routeProgressIdx;
     }
 
     static void hintRouteProgressIndex(List<WorldPoint> path, int hintedIdx, WorldPoint target) {
@@ -7893,24 +7888,24 @@ public class Rs2Walker {
 
         WorldPoint pathStart = path.get(0);
         WorldPoint pathEnd = path.get(path.size() - 1);
-        boolean routeChanged = routeProgressTarget == null
-                || !routeProgressTarget.equals(target)
-                || routeProgressPathSize != path.size()
-                || !Objects.equals(routeProgressPathStart, pathStart)
-                || !Objects.equals(routeProgressPathEnd, pathEnd)
-                || routeProgressIdx >= path.size();
+        boolean routeChanged = routeState.routeProgressTarget == null
+                || !routeState.routeProgressTarget.equals(target)
+                || routeState.routeProgressPathSize != path.size()
+                || !Objects.equals(routeState.routeProgressPathStart, pathStart)
+                || !Objects.equals(routeState.routeProgressPathEnd, pathEnd)
+                || routeState.routeProgressIdx >= path.size();
         if (routeChanged) {
-            routeProgressTarget = target;
-            routeProgressPathStart = pathStart;
-            routeProgressPathEnd = pathEnd;
-            routeProgressPathSize = path.size();
-            routeProgressIdx = hintedIdx;
+            routeState.routeProgressTarget = target;
+            routeState.routeProgressPathStart = pathStart;
+            routeState.routeProgressPathEnd = pathEnd;
+            routeState.routeProgressPathSize = path.size();
+            routeState.routeProgressIdx = hintedIdx;
             recordRouteProgressAdvanced();
             return;
         }
 
-        if (hintedIdx > routeProgressIdx) {
-            routeProgressIdx = hintedIdx;
+        if (hintedIdx > routeState.routeProgressIdx) {
+            routeState.routeProgressIdx = hintedIdx;
             recordRouteProgressAdvanced();
         }
     }
@@ -7964,17 +7959,17 @@ public class Rs2Walker {
     }
 
     private static void resetRouteProgress() {
-        routeProgressIdx = -1;
-        routeProgressTarget = null;
-        routeProgressPathStart = null;
-        routeProgressPathEnd = null;
-        routeProgressPathSize = -1;
-        routeProgressAdvancedAtMs = 0L;
+        routeState.routeProgressIdx = -1;
+        routeState.routeProgressTarget = null;
+        routeState.routeProgressPathStart = null;
+        routeState.routeProgressPathEnd = null;
+        routeState.routeProgressPathSize = -1;
+        routeState.routeProgressAdvancedAtMs = 0L;
     }
 
     private static void recordRouteProgressAdvanced() {
         long now = System.currentTimeMillis();
-        routeProgressAdvancedAtMs = now;
+        routeState.routeProgressAdvancedAtMs = now;
         lastMovedTimeMs = now;
         stuckCount = 0;
     }
@@ -9730,7 +9725,7 @@ public class Rs2Walker {
                 interimTargetWp != null,
                 System.currentTimeMillis(),
                 lastMovedTimeMs,
-                routeProgressAdvancedAtMs,
+                routeState.routeProgressAdvancedAtMs,
                 minimapClickAtMs,
                 interimLastProgressAtMs);
     }
@@ -9896,7 +9891,7 @@ public class Rs2Walker {
             return false;
         }
 
-        long routeProgressAt = routeProgressAdvancedAtMs;
+        long routeProgressAt = routeState.routeProgressAdvancedAtMs;
         if (routeProgressAt > 0L && System.currentTimeMillis() - routeProgressAt < ROUTE_PROGRESS_STALL_GRACE_MS) {
             return false;
         }

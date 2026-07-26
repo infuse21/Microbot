@@ -28,4 +28,20 @@ public final class WalkerRouteState {
     public volatile WorldPoint lastTransportOriginLocation = null;
     /** Destination tile of the last handled transport. */
     public volatile WorldPoint lastTransportDestinationLocation = null;
+
+    // ---- route progress: tracks how far along the current route the player has advanced, used to detect
+    // real forward progress (vs thrashing) and to decide when to reset on a new/changed route. ----
+
+    /** Furthest path index reached on the current route; -1 when none. */
+    public volatile int routeProgressIdx = -1;
+    /** Target the current progress tracking is for. */
+    public volatile WorldPoint routeProgressTarget = null;
+    /** Start tile of the path the current progress tracking is for. */
+    public volatile WorldPoint routeProgressPathStart = null;
+    /** End tile of the path the current progress tracking is for. */
+    public volatile WorldPoint routeProgressPathEnd = null;
+    /** Size of the path the current progress tracking is for; -1 when none. */
+    public volatile int routeProgressPathSize = -1;
+    /** Wall-clock ms when route progress last advanced. */
+    public volatile long routeProgressAdvancedAtMs = 0L;
 }
