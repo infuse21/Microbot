@@ -26,6 +26,7 @@ import net.runelite.client.plugins.microbot.util.leaguetransport.Rs2LeaguesTrans
 import net.runelite.client.plugins.microbot.util.poh.PohTeleports;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.walker.WebWalkLog;
+import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
@@ -100,6 +101,16 @@ public class PathfinderConfig {
     private final PrimitiveIntHashMap<Set<Transport>> transportsPacked;
     @Getter
     private final Set<Long> blockedTransportEdgesPacked;
+
+    /**
+     * Runtime-learned blocked walking edges (packed keys), persisted to a human-editable TSV. Held
+     * separately from {@link #blockedTransportEdgesPacked} because {@link #refreshTransports} clears and
+     * rebuilds that set from static data on every refresh — learned edges are re-applied from here so
+     * they survive. Loaded once in the constructor; grown by {@link #learnBlockedEdge}.
+     */
+    private final Set<Long> learnedBlockedEdgeKeys = ConcurrentHashMap.newKeySet();
+    /** Backing file for {@link #learnedBlockedEdgeKeys}; redirectable for tests. */
+    private volatile File learnedBlockedEdgesFile;
 
     private final Client client;
     private final ShortestPathConfig config;
@@ -208,6 +219,8 @@ public class PathfinderConfig {
         this.transportsPacked = new PrimitiveIntHashMap<>(allTransports.size() / 2);
         this.blockedTransportEdgesPacked = ConcurrentHashMap.newKeySet();
         addStaticBlockedEdges();
+        this.learnedBlockedEdgesFile = LearnedBlockedEdges.defaultFile();
+        loadLearnedBlockedEdges();
         this.client = client;
         this.config = config;
         //START microbot variables
@@ -469,6 +482,8 @@ public class PathfinderConfig {
         transportsPacked.clear();
         blockedTransportEdgesPacked.clear();
         addStaticBlockedEdges();
+        // Re-apply runtime-learned edges: addStaticBlockedEdges only restores the shipped set.
+        blockedTransportEdgesPacked.addAll(learnedBlockedEdgeKeys);
         usableTeleports.clear();
 
         long mergeStart = System.currentTimeMillis();
@@ -690,6 +705,64 @@ public class PathfinderConfig {
 
     private void addStaticBlockedEdges() {
         blockedTransportEdgesPacked.addAll(STATIC_BLOCKED_EDGES_PACKED);
+    }
+
+    /**
+     * Loads the human-editable learned-blocked-edges TSV into {@link #learnedBlockedEdgeKeys} and applies
+     * it to the live block set. Idempotent — both sets de-duplicate — so a redirect-and-reload in tests
+     * is safe.
+     */
+    private void loadLearnedBlockedEdges() {
+        for (LearnedBlockedEdges.Edge edge : LearnedBlockedEdges.load(learnedBlockedEdgesFile)) {
+            long key = transportEdgeKey(
+                    WorldPointUtil.packWorldPoint(edge.origin),
+                    WorldPointUtil.packWorldPoint(edge.destination));
+            learnedBlockedEdgeKeys.add(key);
+            blockedTransportEdgesPacked.add(key);
+            if (edge.bidirectional) {
+                long reverse = transportEdgeKey(
+                        WorldPointUtil.packWorldPoint(edge.destination),
+                        WorldPointUtil.packWorldPoint(edge.origin));
+                learnedBlockedEdgeKeys.add(reverse);
+                blockedTransportEdgesPacked.add(reverse);
+            }
+        }
+    }
+
+    /**
+     * Records a walking edge the walker just failed to traverse (e.g. a door that moved the player the
+     * wrong way) as a permanent block: it is applied to the live pathfinder set immediately and appended
+     * to the human-editable learned-blocked-edges TSV so it survives restarts and transport refreshes.
+     *
+     * <p>Only the attempted direction is blocked — not bidirectionally — so a genuinely one-way door
+     * stays usable the other way. Callers must only pass <em>stable</em> map properties here; temporary,
+     * quest/skill-gated doors are handled by {@code restrictions.tsv} and must not be learned, or the
+     * bot would avoid them forever after the requirement is met.
+     *
+     * @return {@code true} if this edge was newly learned; {@code false} if it was already known.
+     */
+    public boolean learnBlockedEdge(WorldPoint origin, WorldPoint destination, String reason) {
+        if (origin == null || destination == null) {
+            return false;
+        }
+        long key = transportEdgeKey(
+                WorldPointUtil.packWorldPoint(origin),
+                WorldPointUtil.packWorldPoint(destination));
+        if (!learnedBlockedEdgeKeys.add(key)) {
+            return false;
+        }
+        blockedTransportEdgesPacked.add(key);
+        LearnedBlockedEdges.append(learnedBlockedEdgesFile,
+                new LearnedBlockedEdges.Edge(origin, destination, false, reason == null ? "" : reason));
+        log.info("[Walker] Learned blocked edge {} -> {} ({}); persisted to {}",
+                origin, destination, reason, learnedBlockedEdgesFile);
+        return true;
+    }
+
+    /** Test seam: redirect the learned-edge store to a temp file and (re)load it. */
+    void setLearnedBlockedEdgesFileForTest(File file) {
+        this.learnedBlockedEdgesFile = file;
+        loadLearnedBlockedEdges();
     }
 
     private void addBlockedEdge(WorldPoint origin, WorldPoint destination) {

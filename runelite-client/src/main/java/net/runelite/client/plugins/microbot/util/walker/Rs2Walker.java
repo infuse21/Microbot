@@ -5511,6 +5511,14 @@ public class Rs2Walker {
                                 sessionBlacklistedDoors.add(probe);
                                 log.warn("[Walker] Blacklisting door after wrong traversal: door={} from={} to={} before={} after={}",
                                         probe, fromWp, toWp, posBefore, posAfter);
+                                // Wrong-traversal is a stable map property (one-way / mis-encoded door geometry),
+                                // so persist it as a learned block that survives restarts and reroutes future paths.
+                                // (Quest/skill-locked doors take the isQuestLockedDoorDialogue() branch above and are
+                                // deliberately NOT learned — they unlock when the requirement is met.)
+                                if (Rs2PathApi.getPathfinderConfig() != null) {
+                                    Rs2PathApi.getPathfinderConfig().learnBlockedEdge(fromWp, toWp,
+                                            "wrong-traversal door @ " + compactWorldPoint(probe));
+                                }
                             }
                             if (doorStillHasAction(probe, fromWp, toWp, doorActions, action)) {
                                 log.debug("[Walker] Door interaction did not traverse; action still present at {} ({} -> {})",
