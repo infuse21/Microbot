@@ -1,5 +1,6 @@
 package net.runelite.client.plugins.microbot.util.walker;
 import net.runelite.client.plugins.microbot.util.walker.obstacle.Rs2ObstacleHandler;
+import net.runelite.client.plugins.microbot.util.walker.recovery.RouteRecovery;
 import net.runelite.client.plugins.microbot.util.walker.door.Rs2DoorGeometry;
 
 import net.runelite.api.WallObject;
@@ -860,7 +861,7 @@ public class Rs2WalkerUnitTest {
                 new WorldPoint(1002, 1002, 0),
                 new WorldPoint(1003, 1001, 0)));
 
-        int idx = Rs2Walker.findForwardRecoveryIndex(path, 3, player, 13, reachable, wp -> true);
+        int idx = RouteRecovery.findForwardRecoveryIndex(path, 3, player, 13, reachable, wp -> true);
 
         assertEquals("recovery should scan forward before falling back to an earlier branch", 6, idx);
     }

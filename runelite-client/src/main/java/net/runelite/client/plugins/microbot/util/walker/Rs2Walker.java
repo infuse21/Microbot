@@ -64,6 +64,7 @@ import net.runelite.client.plugins.microbot.util.walker.door.Rs2DoorProbe;
 import net.runelite.client.plugins.microbot.util.walker.door.Rs2DoorAheadResolver;
 import net.runelite.client.plugins.microbot.util.walker.door.Rs2DoorGeometry;
 import net.runelite.client.plugins.microbot.util.walker.obstacle.Rs2ObstacleHandler;
+import net.runelite.client.plugins.microbot.util.walker.recovery.RouteRecovery;
 import net.runelite.client.plugins.microbot.util.walker.state.WalkerRouteState;
 import net.runelite.client.plugins.microbot.util.walker.door.Rs2DoorHandler;
 import net.runelite.client.plugins.microbot.util.walker.door.Rs2WalkerAwaits;
@@ -191,7 +192,7 @@ public class Rs2Walker {
      */
     private static final int LOCAL_RECOVERY_RAW_ROUTE_LOOKAHEAD_STEPS = 48;
     private static final int NORMAL_MINIMAP_REACH_EUCLIDEAN = 11;
-    private static final int UNREACHABLE_RECOVERY_FORWARD_SCAN_TILES = 24;
+    // UNREACHABLE_RECOVERY_FORWARD_SCAN_TILES moved into recovery/RouteRecovery (P1)
     /**
      * Stationary window before an active route issues a recovery nudge.
      * <p>
@@ -5302,7 +5303,7 @@ public class Rs2Walker {
         Set<WorldPoint> reachable = playerLoc == null
                 ? Collections.emptySet()
                 : Rs2Tile.getReachableTilesFromTile(playerLoc, Math.max(2, maxEuclidean)).keySet();
-        return findForwardRecoveryIndex(
+        return RouteRecovery.findForwardRecoveryIndex(
                 path,
                 startIdx,
                 playerLoc,
@@ -5311,41 +5312,7 @@ public class Rs2Walker {
                 Rs2Walker::isMiniMapRecoveryClickable);
     }
 
-    static int findForwardRecoveryIndex(List<WorldPoint> path,
-                                        int startIdx,
-                                        WorldPoint playerLoc,
-                                        int maxEuclidean,
-                                        Set<WorldPoint> reachable,
-                                        java.util.function.Predicate<WorldPoint> isClickable) {
-        if (path == null || path.isEmpty() || playerLoc == null || startIdx < 0 || startIdx >= path.size()) {
-            return -1;
-        }
-        int maxSq = maxEuclidean * maxEuclidean;
-        int endExclusive = Math.min(path.size(), startIdx + UNREACHABLE_RECOVERY_FORWARD_SCAN_TILES + 1);
-        int bestIdx = -1;
-        int bestDistFromPlayer = Integer.MAX_VALUE;
-        for (int idx = startIdx; idx < endExclusive; idx++) {
-            WorldPoint candidate = path.get(idx);
-            if (candidate == null || candidate.getPlane() != playerLoc.getPlane()) {
-                continue;
-            }
-            if (candidate.equals(playerLoc) || euclideanSq(candidate, playerLoc) > maxSq) {
-                continue;
-            }
-            if (reachable != null && !reachable.isEmpty() && !reachable.contains(candidate)) {
-                continue;
-            }
-            if (isClickable != null && !isClickable.test(candidate)) {
-                continue;
-            }
-            int distFromPlayer = euclideanSq(candidate, playerLoc);
-            if (bestIdx < 0 || idx > bestIdx || (idx == bestIdx && distFromPlayer > bestDistFromPlayer)) {
-                bestIdx = idx;
-                bestDistFromPlayer = distFromPlayer;
-            }
-        }
-        return bestIdx;
-    }
+    // findForwardRecoveryIndex extracted to recovery/RouteRecovery (P1 walker decomposition)
 
     private static boolean isMiniMapRecoveryClickable(WorldPoint worldPoint) {
         return isMiniMapClickable(worldPoint, 5);
