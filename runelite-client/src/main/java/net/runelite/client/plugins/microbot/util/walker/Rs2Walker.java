@@ -2376,7 +2376,7 @@ public class Rs2Walker {
 						routeState.interimLastRetargetAtMs = 0L;
 					}
 
-                    int targetIdx = findFurthestForwardClickableIndex(path, i, playerLoc,
+                    int targetIdx = RouteRecovery.findFurthestForwardClickableIndex(path, i, playerLoc,
                             wp -> {
                                 Set<Transport> ts = Rs2PathApi.getTransports().get(wp);
                                 return ts != null && !ts.isEmpty();
@@ -3617,7 +3617,7 @@ public class Rs2Walker {
         // pathfinder makes the idle nudge issue the first click instead of the main loop).
         WorldPoint clickTarget = selectRouteClickTarget(rawPath, playerLoc, maxEuclidean, rawAnchorIndex);
         if (clickTarget == null) {
-            int clickableIdx = findFurthestForwardClickableIndex(path, startIdx, playerLoc,
+            int clickableIdx = RouteRecovery.findFurthestForwardClickableIndex(path, startIdx, playerLoc,
                     wp -> {
                         Set<Transport> ts = Rs2PathApi.getTransports().get(wp);
                         return ts != null && !ts.isEmpty();
@@ -5237,24 +5237,7 @@ public class Rs2Walker {
      */
     // findFurthestClickableIndex extracted to recovery/RouteRecovery (P1)
 
-    static int findFurthestForwardClickableIndex(List<WorldPoint> path, int startIdx, WorldPoint playerLoc,
-                                                 java.util.function.Predicate<WorldPoint> isTransportOrigin,
-                                                 int maxEuclidean) {
-        if (path == null || startIdx < 0 || startIdx >= path.size()) return startIdx;
-        WorldPoint startWp = path.get(startIdx);
-        if (startWp == null) return startIdx;
-        final int maxSq = maxEuclidean * maxEuclidean;
-
-        int bestIdx = startIdx;
-        for (int j = startIdx; j < path.size(); j++) {
-            WorldPoint candidate = path.get(j);
-            if (candidate == null || candidate.getPlane() != startWp.getPlane()) break;
-            if (j > startIdx && isTransportOrigin != null && isTransportOrigin.test(candidate)) break;
-            if (playerLoc != null && euclideanSq(candidate, playerLoc) > maxSq) break;
-            bestIdx = j;
-        }
-        return bestIdx;
-    }
+    // findFurthestForwardClickableIndex extracted to recovery/RouteRecovery (P1)
 
     private static int findForwardReachableRecoveryIndex(List<WorldPoint> path,
                                                          int startIdx,

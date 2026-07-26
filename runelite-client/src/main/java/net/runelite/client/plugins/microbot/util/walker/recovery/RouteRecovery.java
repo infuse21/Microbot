@@ -223,6 +223,29 @@ public final class RouteRecovery {
         return bestIdx;
     }
 
+    /**
+     * Like {@link #findFurthestClickableIndex} but always scanning forward from {@code startIdx} (never
+     * walking backward): the furthest same-plane path index within {@code maxEuclidean} of the player,
+     * stopping just before a transport origin.
+     */
+    public static int findFurthestForwardClickableIndex(List<WorldPoint> path, int startIdx, WorldPoint playerLoc,
+                                                        Predicate<WorldPoint> isTransportOrigin, int maxEuclidean) {
+        if (path == null || startIdx < 0 || startIdx >= path.size()) return startIdx;
+        WorldPoint startWp = path.get(startIdx);
+        if (startWp == null) return startIdx;
+        final int maxSq = maxEuclidean * maxEuclidean;
+
+        int bestIdx = startIdx;
+        for (int j = startIdx; j < path.size(); j++) {
+            WorldPoint candidate = path.get(j);
+            if (candidate == null || candidate.getPlane() != startWp.getPlane()) break;
+            if (j > startIdx && isTransportOrigin != null && isTransportOrigin.test(candidate)) break;
+            if (playerLoc != null && euclideanSq(candidate, playerLoc) > maxSq) break;
+            bestIdx = j;
+        }
+        return bestIdx;
+    }
+
     /** Squared Euclidean distance; local copy of the trivial helper to keep this class self-contained. */
     private static int euclideanSq(WorldPoint a, WorldPoint b) {
         int dx = a.getX() - b.getX();

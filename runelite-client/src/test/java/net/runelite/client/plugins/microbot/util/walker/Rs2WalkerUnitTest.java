@@ -891,7 +891,7 @@ public class Rs2WalkerUnitTest {
                 new WorldPoint(1015, 1000, 0),
                 new WorldPoint(1016, 1001, 0));
 
-        int idx = Rs2Walker.findFurthestForwardClickableIndex(path, 3, player, wp -> false, 13);
+        int idx = RouteRecovery.findFurthestForwardClickableIndex(path, 3, player, wp -> false, 13);
 
         assertEquals("normal route following should interpolate toward the forward tile, not backtrack", 3, idx);
     }
@@ -987,7 +987,7 @@ public class Rs2WalkerUnitTest {
                 transportOrigin,
                 new WorldPoint(3204, 3200, 0));
 
-        int idx = Rs2Walker.findFurthestForwardClickableIndex(path, 0, player, transportOrigin::equals, 13);
+        int idx = RouteRecovery.findFurthestForwardClickableIndex(path, 0, player, transportOrigin::equals, 13);
 
         assertEquals("route clicks must not skip a planned transport origin", 1, idx);
     }
