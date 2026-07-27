@@ -50,6 +50,9 @@ public class AgentServerPlugin extends Plugin {
 	private Client client;
 
 	@Inject
+	private net.runelite.client.callback.ClientThread clientThread;
+
+	@Inject
 	private DrawManager drawManager;
 
 	private HttpServer server;
@@ -62,8 +65,69 @@ public class AgentServerPlugin extends Plugin {
 	private volatile boolean stealthActive = false;
 	private static final long STEALTH_IDLE_GRACE_MS = 20_000;
 
+	/**
+	 * Client-thread watchdog: pings the client thread every 5s; if no ping lands for
+	 * {@link #CLIENT_STALL_DUMP_MS} the client thread is wedged (the whole game freezes and, in
+	 * practice, never recovers). We can't unwedge it, but we CAN capture the evidence: dump every
+	 * thread's stack to the log once per stall, so the culprit is identified from client.log
+	 * post-mortem instead of being lost when the process is killed.
+	 */
+	private java.util.concurrent.ScheduledExecutorService clientThreadWatchdog;
+	private volatile long lastClientPongMs;
+	private volatile boolean clientStallDumped;
+	private static final long CLIENT_STALL_DUMP_MS = 20_000;
+
 	private static Path defaultUdsSocketPath() {
 		return Paths.get(System.getProperty("user.home"), ".runelite", ".agent.sock");
+	}
+
+	private void startClientThreadWatchdog() {
+		stopClientThreadWatchdog();
+		lastClientPongMs = System.currentTimeMillis();
+		clientStallDumped = false;
+		clientThreadWatchdog = Executors.newSingleThreadScheduledExecutor(r -> {
+			Thread t = new Thread(r, "client-thread-watchdog");
+			t.setDaemon(true);
+			return t;
+		});
+		clientThreadWatchdog.scheduleWithFixedDelay(this::clientThreadWatchdogTick, 5, 5, java.util.concurrent.TimeUnit.SECONDS);
+	}
+
+	private void stopClientThreadWatchdog() {
+		if (clientThreadWatchdog != null) {
+			clientThreadWatchdog.shutdownNow();
+			clientThreadWatchdog = null;
+		}
+	}
+
+	private void clientThreadWatchdogTick() {
+		try {
+			clientThread.invokeLater(() -> {
+				lastClientPongMs = System.currentTimeMillis();
+				clientStallDumped = false;
+			});
+			long silentMs = System.currentTimeMillis() - lastClientPongMs;
+			if (silentMs > CLIENT_STALL_DUMP_MS && !clientStallDumped) {
+				clientStallDumped = true;
+				dumpAllThreadsForClientStall(silentMs);
+			}
+		} catch (Exception e) {
+			log.debug("client-thread watchdog tick failed", e);
+		}
+	}
+
+	private void dumpAllThreadsForClientStall(long silentMs) {
+		StringBuilder sb = new StringBuilder(16384);
+		sb.append("[ClientThreadWatchdog] client thread unresponsive for ").append(silentMs)
+				.append("ms — full thread dump (find the \"Client\" thread's stack for the culprit):\n");
+		for (java.util.Map.Entry<Thread, StackTraceElement[]> entry : Thread.getAllStackTraces().entrySet()) {
+			Thread t = entry.getKey();
+			sb.append('"').append(t.getName()).append("\" state=").append(t.getState()).append('\n');
+			for (StackTraceElement el : entry.getValue()) {
+				sb.append("    at ").append(el).append('\n');
+			}
+		}
+		log.error(sb.toString());
 	}
 
 	@Provides
@@ -73,6 +137,7 @@ public class AgentServerPlugin extends Plugin {
 
 	@Override
 	protected void startUp() throws Exception {
+		startClientThreadWatchdog();
 		if (config.bindOnlyWhileScriptsActive()) {
 			log.info("Agent server in stealth-bind mode; socket will open when a script begins running.");
 			startStealthScheduler();
@@ -294,6 +359,7 @@ public class AgentServerPlugin extends Plugin {
 
 	@Override
 	protected void shutDown() throws Exception {
+		stopClientThreadWatchdog();
 		stopStealthScheduler();
 		stopServer();
 		deleteTokenFile();

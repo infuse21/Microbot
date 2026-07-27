@@ -1384,11 +1384,13 @@ public class QuestScript extends Script {
         // the live NPC cache so we can still interact.
         boolean usedNpcFallback = false;
         if (resolvedNpcs.isEmpty()) {
+            // Non-hop cache reads: this tick can run during scene loads where a client-thread hop
+            // stalls 10s and throws (see resolveStepNpcFromCache).
             List<Rs2NpcModel> fromCache = new ArrayList<>(
-                    Microbot.getRs2NpcCache().query().withId(step.getNpcID()).toListOnClientThread());
+                    Microbot.getRs2NpcCache().query().withId(step.getNpcID()).toList());
             for (Integer altId : step.getAlternateNpcIDs()) {
                 if (altId != null) {
-                    fromCache.addAll(Microbot.getRs2NpcCache().query().withId(altId).toListOnClientThread());
+                    fromCache.addAll(Microbot.getRs2NpcCache().query().withId(altId).toList());
                 }
             }
             resolvedNpcs = fromCache;
@@ -1545,10 +1547,18 @@ public class QuestScript extends Script {
         return true;
     }
 
-    /** Nearest live-cache NPC matching the step's id or its alternates, or null if none is loaded. */
+    /**
+     * Nearest live-cache NPC matching the step's id or its alternates, or null if none is loaded.
+     *
+     * <p>Deliberately uses the non-client-thread query variants: this is called from inside
+     * {@link Rs2Walker#walkWithStateUntil} completion suppliers while the walker lock is held, and a
+     * client-thread hop there is deadlock-shaped (script holds walkerLock and waits on the client
+     * thread; anything on the client thread waiting on the walker wedges the whole client) — and at
+     * minimum stalls 10s during scene loads. The cache is event-driven and safe to read directly.
+     */
     private Rs2NpcModel resolveStepNpcFromCache(NpcStep step) {
         Rs2NpcModel n = Microbot.getRs2NpcCache().query().withId(step.getNpcID())
-                .toListOnClientThread().stream().findFirst().orElse(null);
+                .toList().stream().findFirst().orElse(null);
         if (n != null) {
             return n;
         }
@@ -1557,7 +1567,7 @@ public class QuestScript extends Script {
                 continue;
             }
             n = Microbot.getRs2NpcCache().query().withId(altId)
-                    .toListOnClientThread().stream().findFirst().orElse(null);
+                    .toList().stream().findFirst().orElse(null);
             if (n != null) {
                 return n;
             }
