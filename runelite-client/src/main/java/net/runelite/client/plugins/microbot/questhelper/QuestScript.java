@@ -34,6 +34,7 @@ import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.shop.Rs2Shop;
 import net.runelite.client.plugins.microbot.util.tile.Rs2Tile;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
+import net.runelite.client.plugins.microbot.util.walker.WalkerState;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 import net.runelite.client.plugins.microbot.api.npc.models.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.api.tileobject.Rs2TileObjectQueryable;
@@ -1466,16 +1467,28 @@ public class QuestScript extends Script {
                 sleepUntil(Rs2Dialogue::isInDialogue, 3000);
             }
         } else if (npc != null || step.getDefinedPoint() != null) {
-            // Not clickable yet — walk toward him, but let the walker CANCEL the instant he's clickable,
-            // even if his own tile is unreachable across a gap (walkUntil checks the completion inside its
-            // loop and returns early). Target the NPC when we have one, else his defined point; the
-            // completion re-resolves the NPC each check so it fires the moment he loads + comes into sight.
+            // Not clickable yet — walk toward him, letting the walker CANCEL the instant he's clickable,
+            // even if his own tile is unreachable across a gap (walkWithStateUntil checks the completion
+            // inside its loop and returns ARRIVED early). Then click him RIGHT THEN, in this same call —
+            // a wandering NPC (e.g. Nickolaus) can pace back out of the clickable window before the next
+            // tick, so deferring the interact loses the race.
             final NpcStep fStep = step;
             WorldPoint walkTarget = npc != null
                     ? npc.getWorldLocation()
                     : step.getDefinedPoint().getWorldPoint();
-            if (walkTarget != null) {
-                Rs2Walker.walkUntil(walkTarget, 2, () -> npcReadyToClick(fStep));
+            if (walkTarget != null
+                    && Rs2Walker.walkWithStateUntil(walkTarget, 2, () -> npcReadyToClick(fStep)) == WalkerState.ARRIVED) {
+                Rs2Walker.setTarget(null, "quest-helper:npc-arrived-interact");
+                Rs2NpcModel target = resolveStepNpcFromCache(fStep);
+                if (target != null) {
+                    var itemId = step.getIconItemID();
+                    if (itemId != -1) {
+                        Rs2Inventory.use(itemId);
+                        target.click("");
+                    } else {
+                        target.click(chooseCorrectNPCOption(step, target));
+                    }
+                }
             }
             return false;
         }
