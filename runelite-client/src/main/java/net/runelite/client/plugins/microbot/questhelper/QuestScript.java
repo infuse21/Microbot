@@ -1591,12 +1591,17 @@ public class QuestScript extends Script {
             final WorldPoint dp = step.getDefinedPoint().getWorldPoint();
             final Set<Integer> targetIds = new HashSet<>(step.getAlternateObjectIDs());
             targetIds.add(step.getObjectID());
+            // Inside an instance an object's getWorldLocation() is its TEMPLATE coord (hundreds of tiles
+            // off), so the near-the-defined-point distance filter rejects it. Match by id alone there and
+            // let the whole (small) instance scene be the search space; outside instances keep the tight
+            // distance filter so we don't grab a same-id object elsewhere on the map.
+            final boolean instanced = Microbot.getClient().isInInstancedRegion();
             object = new Rs2TileObjectQueryable()
-                    .where(o -> o.getWorldLocation() != null
-                            && o.getWorldLocation().distanceTo(dp) <= 3
-                            && objectMatchesIds(o, targetIds))
+                    .where(o -> objectMatchesIds(o, targetIds)
+                            && (instanced || (o.getWorldLocation() != null && o.getWorldLocation().distanceTo(dp) <= 3)))
                     .toList().stream()
-                    .min(Comparator.comparing(o -> o.getWorldLocation().distanceTo(Rs2Player.getWorldLocation())))
+                    .min(Comparator.comparing(o -> instanced ? 0
+                            : o.getWorldLocation().distanceTo(Rs2Player.getWorldLocation())))
                     .orElse(null);
         }
 
