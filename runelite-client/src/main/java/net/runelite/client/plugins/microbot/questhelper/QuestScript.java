@@ -100,6 +100,8 @@ public class QuestScript extends Script {
 
     /** Throttle for the in-dialogue diagnostic log (see the space-branch in the main tick). */
     private long lastDialogueDiagLog = 0;
+    /** Throttle for the tick-phase diagnostic (used to locate where the loop hangs). */
+    private long lastPhaseLog = 0;
 
     /**
      * Safety valve against {@link Rs2Dialogue#isInDialogue()} false positives. If the tick loop sits in
@@ -129,9 +131,13 @@ public class QuestScript extends Script {
                 if (getQuestHelperPlugin().getSelectedQuest().getCurrentStep() == null) return;
 
                 if (Rs2Player.isAnimating())
-                    Rs2Player.waitForAnimation();
+                    Rs2Player.waitForAnimation(3000); // bounded: waitForAnimation() has an unbounded inner sleepUntil
 
                 QuestStep questStep = getQuestHelperPlugin().getSelectedQuest().getCurrentStep().getActiveStep();
+                if (System.currentTimeMillis() - lastPhaseLog > 1500) {
+                    lastPhaseLog = System.currentTimeMillis();
+                    Microbot.log("[QuestHelper] tick phase=reached-step-eval step=" + (questStep == null ? "null" : questStep.getClass().getSimpleName()), Level.WARN);
+                }
 
                 // Drop the phantom-dialogue flag once the quest moves on to a different step.
                 if (phantomDialogueStep != null && phantomDialogueStep != questStep)
