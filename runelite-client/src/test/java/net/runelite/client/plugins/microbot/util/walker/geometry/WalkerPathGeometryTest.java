@@ -9,6 +9,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Headless tests for the pure {@link WalkerPathGeometry} route helpers extracted from {@code Rs2Walker}
@@ -112,6 +113,64 @@ public class WalkerPathGeometryTest {
     // The along-route step-budget cutoff (which excludes switch-back fold tiles that are Euclidean-near but
     // many route steps away) is exercised through the Rs2Walker wrapper in Rs2WalkerUnitTest, so it is not
     // re-asserted here — these tests focus on the pure method's radius/predicate/anchor behavior.
+
+    // --- route-blocked scan gate (closed door / wall ON the route) -----------------------------------
+
+    /** Player-origin BFS map over the given tiles, values = along-route step counts (contents irrelevant). */
+    private static java.util.Map<WorldPoint, Integer> bfs(List<WorldPoint> tiles) {
+        java.util.Map<WorldPoint, Integer> m = new java.util.HashMap<>();
+        for (int i = 0; i < tiles.size(); i++) {
+            m.put(tiles.get(i), i);
+        }
+        return m;
+    }
+
+    @Test
+    public void gateStopsScanAtClosedDoorAndReturnsNearSide() {
+        List<WorldPoint> path = straightRun(3200, 3200, 12);
+        WorldPoint player = wp(3200, 3200); // on the anchor
+        // Door between idx 3 and 4: BFS from the player only reaches tiles 0..3.
+        java.util.Map<WorldPoint, Integer> reachable = bfs(path.subList(0, 4));
+        WorldPoint got = WalkerPathGeometry.findFurthestRawPathPointMatching(path, player, 10, 0,
+                p -> true, FORWARD_SEARCH_TILES, failFallback(), reachable, 20);
+        assertEquals("selection must stop at the door's near side, not click the far side",
+                wp(3203, 3200), got);
+    }
+
+    @Test
+    public void gateIgnoresAbsenceBeyondTheBfsBudget() {
+        List<WorldPoint> path = straightRun(3200, 3200, 12);
+        WorldPoint player = wp(3200, 3200);
+        // Budget 5 -> the gate can only vouch for candidates within 3 route steps; farther tiles absent
+        // from the BFS are budget false-negatives and must NOT stop the scan (old trusting behavior).
+        java.util.Map<WorldPoint, Integer> reachable = bfs(path.subList(0, 4)); // tiles 0..3 present
+        WorldPoint got = WalkerPathGeometry.findFurthestRawPathPointMatching(path, player, 10, 0,
+                p -> true, FORWARD_SEARCH_TILES, failFallback(), reachable, 5);
+        assertEquals("beyond the budget the scan trusts the route again", wp(3210, 3200), got);
+    }
+
+    @Test
+    public void gateInactiveWhenAnchorNotAtPlayer() {
+        List<WorldPoint> path = straightRun(3200, 3200, 12);
+        WorldPoint player = wp(3200, 3205); // 5 tiles off the anchor tile -> BFS origin != anchor
+        java.util.Map<WorldPoint, Integer> reachable = bfs(path.subList(0, 2));
+        WorldPoint got = WalkerPathGeometry.findFurthestRawPathPointMatching(path, player, 10, 0,
+                p -> true, FORWARD_SEARCH_TILES, failFallback(), reachable, 20);
+        // Gate off -> plain radius-bounded selection (furthest within Euclidean 10 of the player).
+        org.junit.Assert.assertNotNull(got);
+        assertTrue("gate must not fire when the anchor is away from the BFS origin",
+                got.getX() > 3201);
+    }
+
+    @Test
+    public void gateInactiveOnEmptyOrNullCache() {
+        List<WorldPoint> path = straightRun(3200, 3200, 12);
+        WorldPoint player = wp(3200, 3200);
+        assertEquals(wp(3210, 3200), WalkerPathGeometry.findFurthestRawPathPointMatching(path, player, 10, 0,
+                p -> true, FORWARD_SEARCH_TILES, failFallback(), new java.util.HashMap<>(), 20));
+        assertEquals(wp(3210, 3200), WalkerPathGeometry.findFurthestRawPathPointMatching(path, player, 10, 0,
+                p -> true, FORWARD_SEARCH_TILES, failFallback(), null, 20));
+    }
 
     // --- findReachableRejoinRawPathPoint ------------------------------------------------------------
 

@@ -2359,6 +2359,23 @@ public class Rs2Walker {
                                     && !frontierObstacle.walkTarget().equals(playerLoc)) {
                                 recoverTarget = frontierObstacle.walkTarget();
                             }
+                            // End-snap guard: when the goal (or any recovery target) is Euclidean-NEAR but
+                            // absent from the local reachability BFS, a wall/door genuinely separates us —
+                            // within a ~4-tile radius an 18+-step BFS cannot miss a connected tile. The old
+                            // behavior clicked it anyway ("skip to the end point"), parking the player against
+                            // the wall forever. Replan from where we actually stand instead: the fresh route
+                            // starts from reality (through the doors), not from a stale anchor.
+                            if (recoverTarget != null && reachableTilesCache != null && !reachableTilesCache.isEmpty()
+                                    && !reachableTilesCache.containsKey(recoverTarget)
+                                    && playerLoc.distanceTo2D(recoverTarget) <= WALLED_RECOVERY_TARGET_EUCLIDEAN
+                                    && System.currentTimeMillis() - lastWalledRecoveryReplanAtMs > WALLED_RECOVERY_REPLAN_COOLDOWN_MS) {
+                                lastWalledRecoveryReplanAtMs = System.currentTimeMillis();
+                                WebWalkLog.spInfo("recovery_target_walled | to={} player={} replanning",
+                                        compactWorldPoint(recoverTarget), compactWorldPoint(playerLoc));
+                                recalculatePath();
+                                exitReason = "recovery-target-walled-replan";
+                                break;
+                            }
                             WorldPoint clickedRecoveryTarget = null;
                             if (recoverTarget != null && !recoverTarget.equals(playerLoc)) {
                                 recoverTarget = RouteRecovery.clampToEuclideanRadius(playerLoc, recoverTarget,
@@ -3190,6 +3207,15 @@ public class Rs2Walker {
 	private static long lastDoorFallbackAttemptAtMs = 0L;
 	private static long lastDoorLosAttemptAtMs = 0L;
 	private static long lastDoorPathAdjAttemptAtMs = 0L;
+    /**
+     * End-snap guard bounds: a recovery target within this Euclidean radius that is absent from the
+     * player-origin reachability BFS is provably walled/doored off (the BFS step budget comfortably covers
+     * this radius), so recovery replans instead of clicking through the wall; the cooldown stops replans
+     * looping while the fresh path computes.
+     */
+    private static final int WALLED_RECOVERY_TARGET_EUCLIDEAN = 4;
+    private static final long WALLED_RECOVERY_REPLAN_COOLDOWN_MS = 5_000L;
+    private static long lastWalledRecoveryReplanAtMs = 0L;
 
     static int computeStaminaThreshold(String playerName, long installSeed) {
         if (playerName == null || playerName.isEmpty()) {
@@ -3407,7 +3433,10 @@ public class Rs2Walker {
     }
 
     // findFurthestRawPathPointMatching (pure) moved to geometry/WalkerPathGeometry (P1); this game-coupled
-    // wrapper supplies the constant forward-search window and the lazy reachable-closest fallback.
+    // wrapper supplies the constant forward-search window, the lazy reachable-closest fallback, and the
+    // player-origin reachability BFS that powers the route-blocked scan gate: forward click selection stops
+    // at the near side of a closed door / wall ON the route instead of selecting statically-walkable tiles
+    // beyond it (which made the server path the player AROUND buildings — the Clock Tower off-route bug).
     static WorldPoint findFurthestRawPathPointMatching(List<WorldPoint> rawPath,
                                                        WorldPoint playerLoc,
                                                        int maxEuclidean,
@@ -3415,7 +3444,8 @@ public class Rs2Walker {
                                                        Predicate<WorldPoint> isCandidate) {
         return WalkerPathGeometry.findFurthestRawPathPointMatching(rawPath, playerLoc, maxEuclidean,
                 rawAnchorIndex, isCandidate, ROUTE_PROGRESS_FORWARD_SEARCH_TILES,
-                () -> getClosestTileIndex(rawPath, playerLoc));
+                () -> getClosestTileIndex(rawPath, playerLoc),
+                getClosestIndexReachableTiles(playerLoc), CLOSEST_INDEX_REACHABLE_STEP_BUDGET);
     }
 
     /**
@@ -7774,16 +7804,19 @@ public class Rs2Walker {
 
     // 3-arg getClosestTileIndex (pure) moved to geometry/WalkerPathGeometry (P1)
 
+    /** Step budget of {@link #getClosestIndexReachableTiles}'s BFS; also the route-blocked scan gate's bound. */
+    private static final int CLOSEST_INDEX_REACHABLE_STEP_BUDGET = 20;
+
     private static HashMap<WorldPoint, Integer> getClosestIndexReachableTiles(WorldPoint playerLoc) {
         if (playerLoc == null) {
             return new HashMap<>();
         }
-        HashMap<WorldPoint, Integer> tiles = Rs2Tile.getReachableTilesFromTile(playerLoc, 20);
+        HashMap<WorldPoint, Integer> tiles = Rs2Tile.getReachableTilesFromTile(playerLoc, CLOSEST_INDEX_REACHABLE_STEP_BUDGET);
 
         // If an animation/shortcut puts the player on a collision-odd tile, keep route progress
         // anchored by distance instead of repeatedly recalculating an empty reachable set.
         if (tiles.isEmpty()) {
-            tiles = Rs2Tile.getReachableTilesFromTileIgnoreCollision(playerLoc, 20);
+            tiles = Rs2Tile.getReachableTilesFromTileIgnoreCollision(playerLoc, CLOSEST_INDEX_REACHABLE_STEP_BUDGET);
         }
         return tiles;
     }
