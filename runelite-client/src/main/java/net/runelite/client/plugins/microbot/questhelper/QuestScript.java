@@ -1365,14 +1365,20 @@ public class QuestScript extends Script {
                             .orElse(null));
         }
 
-        // Interact directly when the NPC is on screen and either we have line of sight to it, or it is
-        // simply not walkable-reachable. The latter covers "interact across a gap" steps (e.g. shouting
-        // to an NPC across a chasm): canReach() is false because there is no path, but the click still
-        // works at range — the old canReach()-required gate looped forever on UNREACHABLE instead.
-        // When the NPC is on screen but blocked by a closed door (LOS false, canReach true through the
-        // door), we still fall through to walkTo() below so the walker opens the door en route.
-        if (npc != null && npc.getLocalLocation() != null && Rs2Camera.isTileOnScreen(npc.getLocalLocation())
-                && (Microbot.getClient().isInInstancedRegion() || npc.hasLineOfSight() || !Rs2Walker.canReach(npc.getWorldLocation()))) {
+        // Decide whether to interact now or walk closer first:
+        //  - instanced region: interact (canReach/LOS are unreliable there).
+        //  - on screen AND line of sight: interact (a direct click resolves).
+        //  - NOT walkable-reachable: interact regardless of on-screen — this covers "interact across a
+        //    gap" steps (e.g. shouting to Nickolaus across the chasm). canReach() is false because there
+        //    is no path, so walking loops forever on UNREACHABLE; the click works at range, and npc.click()
+        //    turns the camera itself if the target is off screen. Do NOT gate this on isTileOnScreen — the
+        //    closest reachable tile often leaves the target just off screen, which is what made it loop.
+        // Otherwise (reachable but off screen, or on screen but LOS-blocked by a closed door) fall through
+        // to walkTo() so the walker approaches / opens the door.
+        if (npc != null && npc.getLocalLocation() != null
+                && (Microbot.getClient().isInInstancedRegion()
+                    || (Rs2Camera.isTileOnScreen(npc.getLocalLocation()) && npc.hasLineOfSight())
+                    || !Rs2Walker.canReach(npc.getWorldLocation()))) {
             Rs2Walker.clearWalkingRoute("quest-helper:npc-step-visible-interact");
 
             if (step.getText().stream().anyMatch(x -> x.toLowerCase().contains("kill"))) {
