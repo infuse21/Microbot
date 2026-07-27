@@ -1672,6 +1672,7 @@ public class QuestScript extends Script {
         // canReach/LOS fail (e.g. a locked door: its own tile is never reachable, and walking "closer"
         // means routing THROUGH it — the walker's door pipeline then spams Open on a door the step wants
         // an item used on instead).
+        boolean approachArrived = false;
         WorldPoint objectStepDp = step.getDefinedPoint() != null ? step.getDefinedPoint().getWorldPoint() : null;
         // A target on another floor must ALWAYS be walked to (the walker takes the stairs/ladders):
         // distanceTo2D ignores plane, so a spindle one tile away on the floor above read as "already
@@ -1712,11 +1713,18 @@ public class QuestScript extends Script {
             // the walker's door pipeline then endlessly tries to Open the locked door to route through it,
             // instead of ending the walk so we can use the item on it from the adjacent tile.
             final WorldPoint stepDp = objectStepDp;
-            Rs2Walker.walkWithStateUntil(targetTile, 3, () -> {
+            WalkerState approachState = Rs2Walker.walkWithStateUntil(targetTile, 3, () -> {
                 WorldPoint p = Rs2Player.getWorldLocation();
                 return p != null && stepDp != null && p.distanceTo(stepDp) <= 2;
             });
-            return false;
+            // ARRIVED means we're as close as the approach can get — often INSTANTLY, with no log or
+            // movement, when we already stand within acceptance of the chosen tile (e.g. 2 tiles from a
+            // staircase whose own tile is canReach=false). Returning here re-ran this block forever in
+            // total silence; fall through and click instead.
+            if (approachState != WalkerState.ARRIVED) {
+                return false;
+            }
+            approachArrived = true;
         }
 
         // Once we're standing next to a reachable object, click it — don't gate on the on-screen/LOS
@@ -1732,7 +1740,8 @@ public class QuestScript extends Script {
                 && step.getDefinedPoint() != null && step.getDefinedPoint().getWorldPoint() != null
                 && Rs2Player.getWorldLocation().distanceTo(step.getDefinedPoint().getWorldPoint()) <= 2;
 
-        if ((object != null && Microbot.getClient().isInInstancedRegion())
+        if ((object != null && approachArrived)
+                || (object != null && Microbot.getClient().isInInstancedRegion())
                 || adjacentAndReachable
                 || nearDefinedPoint
                 || hasLineOfSightToObject(object)
