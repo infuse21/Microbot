@@ -1666,6 +1666,16 @@ public class QuestScript extends Script {
                 || object != null && (Rs2Camera.isTileOnScreen(object.getLocalLocation()) || object.getCanvasLocation() != null)) {
             Rs2Walker.clearWalkingRoute("quest-helper:object-step-interact");
 
+            // Re-resolve the object fresh from the live cache on the client thread right before clicking.
+            // The step-scan / background snapshot model can be stale, producing a menu action the game
+            // silently ignores (observed: repeatedly clicks "Enter" on the cave entrance but never enters).
+            // The fresh cache model is what actually works — the same path the agent-server interact uses.
+            Rs2TileObjectModel freshObject = Microbot.getRs2TileObjectCache().query()
+                    .withId(object.getId()).nearestOnClientThread();
+            if (freshObject != null) {
+                object = freshObject;
+            }
+
             if (itemId == -1)
                 object.click(chooseCorrectObjectOption(step, object));
             else {
