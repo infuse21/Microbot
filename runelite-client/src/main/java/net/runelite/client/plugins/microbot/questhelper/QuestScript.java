@@ -326,7 +326,7 @@ public class QuestScript extends Script {
                         boolean result = applyDetailedQuestStep((DetailedQuestStep) getQuestHelperPlugin().getSelectedQuest().getCurrentStep().getActiveStep());
                         if (result) {
                             sleepUntil(() -> Rs2Player.isInteracting() || Rs2Player.isMoving() || Rs2Player.isAnimating() || Rs2Dialogue.isInDialogue(), 500);
-                            sleepUntil(() -> !Rs2Player.isInteracting() && !Rs2Player.isMoving() && !Rs2Player.isAnimating());
+                            sleepUntil(() -> !Rs2Player.isInteracting() && !Rs2Player.isMoving() && !Rs2Player.isAnimating(), 5000);
                             return;
                         }
                     }
@@ -345,7 +345,7 @@ public class QuestScript extends Script {
                     }
 
                     sleepUntil(() -> Rs2Player.isInteracting() || Rs2Player.isMoving() || Rs2Player.isAnimating() || Rs2Dialogue.isInDialogue(), 500);
-                    sleepUntil(() -> !Rs2Player.isInteracting() && !Rs2Player.isMoving() && !Rs2Player.isAnimating());
+                    sleepUntil(() -> !Rs2Player.isInteracting() && !Rs2Player.isMoving() && !Rs2Player.isAnimating(), 5000);
                 }
 
             } catch (Exception ex) {
@@ -1457,7 +1457,7 @@ public class QuestScript extends Script {
 
             if (step.isAllowMultipleHighlights()) {
                 npcsHandled.add(npc.getIndex());
-                sleepUntil(Rs2Dialogue::isInDialogue);
+                sleepUntil(Rs2Dialogue::isInDialogue, 3000);
             }
         } else if (npc != null && npc.getLocalLocation() != null && !Rs2Camera.isTileOnScreen(npc.getLocalLocation())) {
             Rs2Walker.walkTo(npc.getWorldLocation(), 2);
@@ -1536,7 +1536,7 @@ public class QuestScript extends Script {
                     if (!Rs2Walker.walkTo(tile) && Rs2PathApi.getPathfinder() == null)
                         return false;
 
-                    sleepUntil(() -> Rs2PathApi.getPathfinder() == null || Rs2PathApi.getPathfinder().isDone());
+                    sleepUntil(() -> Rs2PathApi.getPathfinder() == null || Rs2PathApi.getPathfinder().isDone(), 10000);
                     if (Rs2PathApi.getPathfinder() == null || Rs2PathApi.getPathfinder().isDone()) {
                         unreachableTarget = false;
                         unreachableTargetCheckDist = 1;
@@ -1605,9 +1605,9 @@ public class QuestScript extends Script {
                 object.click("");
             }
 
-            sleepUntil(() -> Rs2Player.isMoving() || Rs2Player.isAnimating());
+            sleepUntil(() -> Rs2Player.isMoving() || Rs2Player.isAnimating(), 2000);
             sleep(100);
-            sleepUntil(() -> !Rs2Player.isMoving() && !Rs2Player.isAnimating());
+            sleepUntil(() -> !Rs2Player.isMoving() && !Rs2Player.isAnimating(), 5000);
             objectsHandeled.add(object.getHash());
         } else if (object != null) {
             Rs2Walker.walkTo(object.getWorldLocation(), 1);
