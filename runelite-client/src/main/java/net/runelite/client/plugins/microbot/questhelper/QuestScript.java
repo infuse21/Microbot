@@ -103,6 +103,7 @@ public class QuestScript extends Script {
     private long lastDialogueDiagLog = 0;
     /** Throttle for the tick-phase diagnostic (used to locate where the loop hangs). */
     private long lastPhaseLog = 0;
+    private long lastApplyStepMark = 0;
 
     /**
      * Safety valve against {@link Rs2Dialogue#isInDialogue()} false positives. If the tick loop sits in
@@ -336,6 +337,11 @@ public class QuestScript extends Script {
                             sleepUntil(() -> !Rs2Player.isInteracting() && !Rs2Player.isMoving() && !Rs2Player.isAnimating(), 5000);
                             return;
                         }
+                    }
+
+                    if (System.currentTimeMillis() - lastApplyStepMark > 1500) {
+                        lastApplyStepMark = System.currentTimeMillis();
+                        Microbot.log("[QuestHelper] tick phase=pre-apply-step", Level.WARN);
                     }
 
                     if (getQuestHelperPlugin().getSelectedQuest().getCurrentStep() instanceof ConditionalStep) {
