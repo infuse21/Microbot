@@ -1660,6 +1660,14 @@ public class QuestScript extends Script {
                 && (object == null || !Rs2Walker.canReach(object.getWorldLocation()) || !hasLineOfSightToObject(object))) {
             WorldPoint targetTile = null;
             WorldPoint stepLocation = object == null ? step.getDefinedPoint().getWorldPoint() : object.getWorldLocation();
+            // When we're already near the target, restrict approach candidates to tiles that are LOCALLY
+            // reachable (no door/wall crossing). Otherwise the search can pick a far-side tile (e.g.
+            // behind a locked quest door): the walker's arrival check requires local reachability, so
+            // that walk can never finish — its door pipeline just spams Open on the door forever.
+            final Map<WorldPoint, Integer> locallyReachable =
+                    Rs2Player.getWorldLocation().distanceTo(stepLocation) <= 15
+                            ? Rs2Tile.getReachableTilesFromTile(Rs2Player.getWorldLocation(), 15)
+                            : null;
             int radius = 0;
             while (targetTile == null) {
                 if (mainScheduledFuture.isCancelled())
@@ -1668,6 +1676,7 @@ public class QuestScript extends Script {
                 Rs2TileObjectModel finalObject = object;
                 targetTile = Rs2Tile.getWalkableTilesAroundTile(stepLocation, radius)
                         .stream().filter(x -> hasLineOfSightFrom(x, finalObject))
+                        .filter(x -> locallyReachable == null || locallyReachable.containsKey(x))
                         .sorted(Comparator.comparing(x -> x.distanceTo(Rs2Player.getWorldLocation()))).findFirst().orElse(null);
 
                 if (radius > 10 && targetTile == null)
