@@ -1670,8 +1670,13 @@ public class QuestScript extends Script {
         // means routing THROUGH it — the walker's door pipeline then spams Open on a door the step wants
         // an item used on instead).
         WorldPoint objectStepDp = step.getDefinedPoint() != null ? step.getDefinedPoint().getWorldPoint() : null;
+        // A target on another floor must ALWAYS be walked to (the walker takes the stairs/ladders):
+        // distanceTo2D ignores plane, so a spindle one tile away on the floor above read as "already
+        // there", skipped the walk, and every proximity/LOS check then correctly failed -> dead silence.
+        boolean differentPlane = objectStepDp != null
+                && objectStepDp.getPlane() != Rs2Player.getWorldLocation().getPlane();
         if (!Microbot.getClient().isInInstancedRegion()
-                && objectStepDp != null && Rs2Player.getWorldLocation().distanceTo2D(objectStepDp) > 2
+                && objectStepDp != null && (differentPlane || Rs2Player.getWorldLocation().distanceTo2D(objectStepDp) > 2)
                 && (object == null || !Rs2Walker.canReach(object.getWorldLocation()) || !hasLineOfSightToObject(object))) {
             WorldPoint targetTile = null;
             WorldPoint stepLocation = object == null ? objectStepDp : object.getWorldLocation();
