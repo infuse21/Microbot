@@ -86,6 +86,22 @@ public final class WalkerPathGeometry {
     public static int rawPathForwardAnchorIndex(List<WorldPoint> rawPath, WorldPoint playerLoc,
                                                 int rawAnchorIndex, int forwardSearchTiles,
                                                 IntSupplier closestIndexFallback) {
+        return rawPathForwardAnchorIndex(rawPath, playerLoc, rawAnchorIndex, forwardSearchTiles,
+                closestIndexFallback, null);
+    }
+
+    /**
+     * Variant with fold-jump protection. When a {@code reachable} player-origin BFS is supplied, window
+     * tiles that are walk-connected to the player are preferred over merely Euclidean-near ones — so on a
+     * route whose tail folds back beside the start (e.g. a loop around a building to a door on the far
+     * side), the anchor cannot leap the wall onto the Euclidean-closest fold tile. The wall-separated tail
+     * is absent from the BFS; the player's true on-route position is present. Only when NO window tile is
+     * in the BFS (player far off-route) does selection fall back to the unreachable-tolerant behavior.
+     */
+    public static int rawPathForwardAnchorIndex(List<WorldPoint> rawPath, WorldPoint playerLoc,
+                                                int rawAnchorIndex, int forwardSearchTiles,
+                                                IntSupplier closestIndexFallback,
+                                                Map<WorldPoint, Integer> reachable) {
         if (rawPath == null || rawPath.isEmpty() || playerLoc == null) {
             return -1;
         }
@@ -93,10 +109,13 @@ public final class WalkerPathGeometry {
             return closestIndexFallback.getAsInt();
         }
 
+        boolean preferReachable = reachable != null && !reachable.isEmpty();
         int start = Math.max(0, Math.min(rawAnchorIndex, rawPath.size() - 1));
         int endExclusive = Math.min(rawPath.size(), start + forwardSearchTiles + 1);
         int bestIdx = -1;
         int bestDist = Integer.MAX_VALUE;
+        int bestReachableIdx = -1;
+        int bestReachableDist = Integer.MAX_VALUE;
         for (int i = start; i < endExclusive; i++) {
             WorldPoint point = rawPath.get(i);
             if (point == null) {
@@ -109,10 +128,20 @@ public final class WalkerPathGeometry {
             if (dist < bestDist) {
                 bestIdx = i;
                 bestDist = dist;
+            }
+            if (preferReachable && dist < bestReachableDist && reachable.containsKey(point)) {
+                bestReachableIdx = i;
+                bestReachableDist = dist;
                 if (dist == 0) {
                     break;
                 }
             }
+            if (!preferReachable && dist == 0) {
+                break;
+            }
+        }
+        if (bestReachableIdx >= 0) {
+            return bestReachableIdx;
         }
         return bestIdx >= 0 ? bestIdx : start;
     }
@@ -159,8 +188,11 @@ public final class WalkerPathGeometry {
         if (rawPath == null || rawPath.isEmpty() || playerLoc == null) {
             return null;
         }
+        // Anchor with fold-jump protection: prefer the walk-connected window tile so a route tail that
+        // folds back Euclidean-near (but wall-separated) can't capture the anchor — the Clock Tower
+        // "start is 3 tiles from the goal, click the goal through the wall" bug.
         int closestRawIndex = rawPathForwardAnchorIndex(rawPath, playerLoc, rawAnchorIndex, forwardSearchTiles,
-                closestIndexFallback);
+                closestIndexFallback, reachable);
         if (closestRawIndex < 0) {
             return null;
         }

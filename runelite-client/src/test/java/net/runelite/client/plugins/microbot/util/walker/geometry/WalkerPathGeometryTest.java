@@ -224,6 +224,61 @@ public class WalkerPathGeometryTest {
         assertEquals(1, calls.get());
     }
 
+    // --- anchor fold-jump protection (Clock Tower: route tail folds back beside the start) ----------
+
+    /**
+     * The Clock Tower shape: the goal is 3 tiles from the start but wall-separated; the planned route loops
+     * away (east) and returns on the far side, so its TAIL tiles are Euclidean-closest to the player.
+     * Outward-leg tiles are walk-connected (in the BFS); tail tiles are not.
+     */
+    private static List<WorldPoint> foldedRoute() {
+        List<WorldPoint> path = new ArrayList<>();
+        for (int i = 0; i <= 12; i++) path.add(wp(3200 + i, 3200)); // outward east, idx 0..12
+        for (int i = 1; i <= 3; i++) path.add(wp(3212, 3200 + i));  // up, idx 13..15
+        for (int i = 1; i <= 12; i++) path.add(wp(3212 - i, 3203)); // tail folds back west, idx 16..27
+        return path;
+    }
+
+    @Test
+    public void anchorPrefersReachableWindowTileOverEuclideanNearFoldTail() {
+        List<WorldPoint> path = foldedRoute();
+        WorldPoint player = wp(3200, 3200); // at the route start; the tail's end is 3 tiles north, walled
+        // Only the outward leg is walk-connected; the tail (behind the wall) is not.
+        java.util.Map<WorldPoint, Integer> reachable = bfs(path.subList(0, 13));
+        // Anchor window starts ahead of the player (idx 6, as when the loop index has advanced): the
+        // fold-tail tiles (dist 3, through the wall) are Euclidean-closer than any outward window tile
+        // (dist >= 6) — the old snap would leap the wall. With the BFS, the anchor must stay outward.
+        int anchor = WalkerPathGeometry.rawPathForwardAnchorIndex(path, player, 6, FORWARD_SEARCH_TILES,
+                failFallback(), reachable);
+        assertTrue("anchor must stay on the walk-connected outward leg, not leap the wall to the tail",
+                anchor >= 6 && anchor <= 12);
+    }
+
+    @Test
+    public void anchorWithoutCacheStillSnapsEuclidean() {
+        List<WorldPoint> path = foldedRoute();
+        WorldPoint player = wp(3200, 3200);
+        // Old behavior preserved when no cache is supplied: the Euclidean-closest window tile wins,
+        // which from anchor 6 is a fold-tail tile right across the wall.
+        int anchor = WalkerPathGeometry.rawPathForwardAnchorIndex(path, player, 6, FORWARD_SEARCH_TILES,
+                failFallback(), null);
+        assertTrue("without a BFS the legacy Euclidean snap remains", anchor >= 16);
+    }
+
+    @Test
+    public void gatedSelectionStaysOnNearSideOfTheFold() {
+        List<WorldPoint> path = foldedRoute();
+        WorldPoint player = wp(3200, 3200);
+        java.util.Map<WorldPoint, Integer> reachable = bfs(path.subList(0, 13));
+        // End-to-end through the gated scan: even anchored past the player (idx 6), selection must come
+        // back with an outward-leg tile — never a tail tile like the old "click the goal through the wall".
+        WorldPoint got = WalkerPathGeometry.findFurthestRawPathPointMatching(path, player, 10, 6,
+                p -> true, FORWARD_SEARCH_TILES, failFallback(), reachable, 20);
+        org.junit.Assert.assertNotNull(got);
+        assertTrue("selected tile must be on the outward leg (y=3200), not the fold tail",
+                got.getY() == 3200);
+    }
+
     /** A fallback that fails the test if ever invoked — proves the lazy path stayed untouched. */
     private static java.util.function.IntSupplier failFallback() {
         return () -> {
