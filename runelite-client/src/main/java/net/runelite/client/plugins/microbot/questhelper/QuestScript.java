@@ -1670,9 +1670,16 @@ public class QuestScript extends Script {
                     targetTile = stepLocation;
             }
 
-            // Full walker to the approach tile (handles transports/doors on long legs). Blocks during
-            // travel, then the adjacent-click gate below fires once we're next to the object.
-            Rs2Walker.walkTo(targetTile, 3);
+            // Full walker to the approach tile (handles transports/doors on long legs), but CANCEL the
+            // moment we're adjacent to the step's target. Without the completion, a step whose target IS
+            // a gated door (e.g. "use the feathers on the stone door") walks onto the door tile itself:
+            // the walker's door pipeline then endlessly tries to Open the locked door to route through it,
+            // instead of ending the walk so we can use the item on it from the adjacent tile.
+            final WorldPoint stepDp = step.getDefinedPoint().getWorldPoint();
+            Rs2Walker.walkWithStateUntil(targetTile, 3, () -> {
+                WorldPoint p = Rs2Player.getWorldLocation();
+                return p != null && stepDp != null && p.distanceTo(stepDp) <= 1;
+            });
             return false;
         }
 
@@ -1729,7 +1736,12 @@ public class QuestScript extends Script {
             sleepUntil(() -> !Rs2Player.isMoving() && !Rs2Player.isAnimating(), 5000);
             objectsHandeled.add(object.getHash());
         } else if (object != null && !Microbot.getClient().isInInstancedRegion()) {
-            Rs2Walker.walkTo(object.getWorldLocation(), 1); // full walker; adjacent-click gate handles arrival
+            // Full walker, cancelling once adjacent — see the approach-walk comment above (door-target steps).
+            final WorldPoint objLoc = object.getWorldLocation();
+            Rs2Walker.walkWithStateUntil(objLoc, 1, () -> {
+                WorldPoint p = Rs2Player.getWorldLocation();
+                return p != null && p.distanceTo(objLoc) <= 1;
+            });
             return false;
         }
 
