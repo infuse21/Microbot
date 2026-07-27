@@ -1365,10 +1365,14 @@ public class QuestScript extends Script {
                             .orElse(null));
         }
 
-        // canReach() pathfinds through closed doors (the walker opens them en route), so canReach==true
-        // doesn't mean a direct click will succeed. Require line-of-sight too, or we walk instead.
+        // Interact directly when the NPC is on screen and either we have line of sight to it, or it is
+        // simply not walkable-reachable. The latter covers "interact across a gap" steps (e.g. shouting
+        // to an NPC across a chasm): canReach() is false because there is no path, but the click still
+        // works at range — the old canReach()-required gate looped forever on UNREACHABLE instead.
+        // When the NPC is on screen but blocked by a closed door (LOS false, canReach true through the
+        // door), we still fall through to walkTo() below so the walker opens the door en route.
         if (npc != null && npc.getLocalLocation() != null && Rs2Camera.isTileOnScreen(npc.getLocalLocation())
-                && (Microbot.getClient().isInInstancedRegion() || (Rs2Walker.canReach(npc.getWorldLocation()) && npc.hasLineOfSight()))) {
+                && (Microbot.getClient().isInInstancedRegion() || npc.hasLineOfSight() || !Rs2Walker.canReach(npc.getWorldLocation()))) {
             Rs2Walker.clearWalkingRoute("quest-helper:npc-step-visible-interact");
 
             if (step.getText().stream().anyMatch(x -> x.toLowerCase().contains("kill"))) {
