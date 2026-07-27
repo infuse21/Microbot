@@ -382,14 +382,18 @@ public class QuestScript extends Script {
 				var itemRequirement = (ItemRequirement) requirement;
 
 				if (itemRequirement.mustBeEquipped()) {
-					if (!hasItemRequirementOnPlayer(itemRequirement)) {
-						notifyMissingRequirement(itemRequirement);
-						continue;
-					}
-
 					if (itemRequirement.getAllIds().stream().noneMatch(Rs2Equipment::isWearing)) {
-						Rs2Inventory.wear(itemRequirement.getAllIds().stream().filter(Rs2Inventory::contains).findFirst().orElse(-1));
-						return true;
+						// Wear it if we hold one — checked directly against the inventory, NOT via
+						// hasItemRequirementOnPlayer: an equipped requirement with quantity > 1 (e.g.
+						// Eagles' Peak fake beak x2 — one worn, one for Nickolaus) can never show 2 in
+						// the equipped container, so the old have-it-first gate skipped equipping forever.
+						Integer invId = itemRequirement.getAllIds().stream()
+								.filter(Rs2Inventory::contains).findFirst().orElse(null);
+						if (invId != null) {
+							Rs2Inventory.wear(invId);
+							return true; // one equip per tick; re-evaluate next tick
+						}
+						notifyMissingRequirement(itemRequirement);
 					}
 				}
 			}
