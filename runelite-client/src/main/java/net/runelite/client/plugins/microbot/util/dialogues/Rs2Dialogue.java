@@ -126,7 +126,48 @@ public class Rs2Dialogue {
      * @return true if the "Continue" option is visible in the tutorial dialogue, false otherwise.
      */
     private static boolean hasTutContinue() {
-        return Rs2Widget.isWidgetVisible(229, 0) || Rs2Widget.isWidgetVisible(229, 2);
+        return messageBoxHasContent(229, 0) || messageBoxHasContent(229, 2);
+    }
+
+    /**
+     * Group 229 is the generic single-message interface. Its children can be present and non-hidden
+     * while completely empty (no text, no sprite) — a phantom that {@link Rs2Widget#isWidgetVisible}
+     * reports as visible, wrongly making {@link #isInDialogue()} true when nothing is on screen. Require
+     * real content (non-blank text or a sprite, on the child or any of its children) before treating it
+     * as a "click here to continue" prompt.
+     */
+    private static boolean messageBoxHasContent(int group, int child) {
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            Widget w = Microbot.getClient().getWidget(group, child);
+            if (w == null || w.isHidden()) {
+                return false;
+            }
+            if (widgetHasContent(w)) {
+                return true;
+            }
+            for (Widget nested : allChildren(w)) {
+                if (nested != null && !nested.isHidden() && widgetHasContent(nested)) {
+                    return true;
+                }
+            }
+            return false;
+        }).orElse(false);
+    }
+
+    private static boolean widgetHasContent(Widget w) {
+        boolean hasText = w.getText() != null && !w.getText().trim().isEmpty();
+        boolean hasSprite = w.getSpriteId() > 0;
+        return hasText || hasSprite;
+    }
+
+    private static List<Widget> allChildren(Widget w) {
+        List<Widget> out = new ArrayList<>();
+        for (Widget[] group : new Widget[][]{w.getDynamicChildren(), w.getStaticChildren(), w.getNestedChildren()}) {
+            if (group != null) {
+                out.addAll(Arrays.asList(group));
+            }
+        }
+        return out;
     }
 
     /**
@@ -135,7 +176,7 @@ public class Rs2Dialogue {
      * @return true if the "Continue" option is visible in the item dialogue, false otherwise.
      */
     private static boolean hasBarrowsContinue() {
-        return Rs2Widget.isWidgetVisible(229, 4);
+        return messageBoxHasContent(229, 4);
     }
 
     /**
