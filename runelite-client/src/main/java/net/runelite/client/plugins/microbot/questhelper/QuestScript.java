@@ -104,6 +104,7 @@ public class QuestScript extends Script {
     /** Throttle for the tick-phase diagnostic (used to locate where the loop hangs). */
     private long lastPhaseLog = 0;
     private long lastApplyStepMark = 0;
+    private long lastObjectDiagLog = 0;
 
     /**
      * Safety valve against {@link Rs2Dialogue#isInDialogue()} false positives. If the tick loop sits in
@@ -1621,15 +1622,17 @@ public class QuestScript extends Script {
                     .min(Comparator.comparing(o -> instanced ? 0
                             : o.getWorldLocation().distanceTo(Rs2Player.getWorldLocation())))
                     .orElse(null);
+        }
 
-            if (System.currentTimeMillis() - lastPhaseLog > 1500) {
-                lastPhaseLog = System.currentTimeMillis();
-                Microbot.log(String.format(
-                        "[QuestHelper] objectStep id=%d scan=%d cacheMatches=%d found=%s objPos=%s instanced=%s dp=%s player=%s",
-                        step.getObjectID(), stepObjects.size(), matches.size(), object != null,
-                        object == null ? "-" : object.getWorldLocation(),
-                        instanced, dp, Rs2Player.getWorldLocation()), Level.WARN);
-            }
+        if (System.currentTimeMillis() - lastObjectDiagLog > 1500) {
+            lastObjectDiagLog = System.currentTimeMillis();
+            WorldPoint diagDp = step.getDefinedPoint() != null ? step.getDefinedPoint().getWorldPoint() : null;
+            Microbot.log(String.format(
+                    "[QuestHelper] objectStep id=%d scan=%d found=%s objPos=%s dp=%s player=%s unreachableFlag=%s instanced=%s",
+                    step.getObjectID(), stepObjects.size(), object != null,
+                    object == null ? "-" : object.getWorldLocation(),
+                    diagDp, Rs2Player.getWorldLocation(), unreachableTarget,
+                    Microbot.getClient().isInInstancedRegion()), Level.WARN);
         }
 
         // Clear a stale "I can't reach that!" flag once the target is reachable, so the recovery below
