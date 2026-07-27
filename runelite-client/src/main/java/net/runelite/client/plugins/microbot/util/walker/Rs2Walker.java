@@ -1451,7 +1451,14 @@ public class Rs2Walker {
         }
 
         // One minimap click toward the target (falls back to the furthest visible path point off-clip).
-        clickMiniMapOrFallback(rawPath, target, playerLoc, NORMAL_MINIMAP_REACH_EUCLIDEAN - 1, true, -1);
+        // Click the target on the minimap, else fall back to the furthest visible planned-path point.
+        // The geometric directional fallback (a straight-line b-line toward the target) is gated to NEAR
+        // targets only: for a far target it's never right and produces off-route drift. When neither the
+        // target nor a planned-path point is clickable (e.g. the route needs a transport walkStep can't
+        // cross), no click is issued and we hold on the line rather than wander off it — walkStep is not
+        // built for transport routes; use the blocking walkTo/walkUntil for those.
+        boolean allowDirectionalFallback = playerLoc.distanceTo(target) <= NORMAL_MINIMAP_REACH_EUCLIDEAN;
+        clickMiniMapOrFallback(rawPath, target, playerLoc, NORMAL_MINIMAP_REACH_EUCLIDEAN - 1, allowDirectionalFallback, -1);
         return WalkerState.MOVING;
     }
 

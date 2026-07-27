@@ -1289,7 +1289,7 @@ public class QuestScript extends Script {
 					&& Rs2Camera.isTileOnScreen(LocalPoint.fromWorld(Microbot.getClient().getTopLevelWorldView(), worldPoint))) {
 				lootGroundItem(targetItemId, 10);
 			} else {
-				Rs2Walker.walkStep(worldPoint, 2); // non-blocking approach
+				Rs2Walker.walkTo(worldPoint, 2); // full walker (handles transports on long legs)
 			}
 		} else {
 			lootGroundItem(targetItemId, 20);
@@ -1614,8 +1614,8 @@ public class QuestScript extends Script {
 
             for (var tile : Rs2Tile.getWalkableTilesAroundTile(object.getWorldLocation(), unreachableTargetCheckDist)) {
                 if (tileObjects.stream().noneMatch(x -> x.getWorldLocation().equals(tile))) {
-                    // Non-blocking sidestep toward a reachable tile; clear the flag and re-evaluate next tick.
-                    Rs2Walker.walkStep(tile, 0);
+                    // Sidestep toward a reachable tile; clear the flag and re-evaluate next tick.
+                    Rs2Walker.walkTo(tile);
                     unreachableTarget = false;
                     unreachableTargetCheckDist = 1;
                     return false;
@@ -1647,10 +1647,9 @@ public class QuestScript extends Script {
                     targetTile = stepLocation;
             }
 
-            // Non-blocking: one step toward the approach tile, then return so the tick loop keeps
-            // re-evaluating. The adjacent-click gate below fires once we're next to a reachable object,
-            // so we don't block the loop inside walkTo (which froze it on long/awkward approaches).
-            Rs2Walker.walkStep(targetTile, 3);
+            // Full walker to the approach tile (handles transports/doors on long legs). Blocks during
+            // travel, then the adjacent-click gate below fires once we're next to the object.
+            Rs2Walker.walkTo(targetTile, 3);
             return false;
         }
 
@@ -1684,7 +1683,7 @@ public class QuestScript extends Script {
             sleepUntil(() -> !Rs2Player.isMoving() && !Rs2Player.isAnimating(), 5000);
             objectsHandeled.add(object.getHash());
         } else if (object != null) {
-            Rs2Walker.walkStep(object.getWorldLocation(), 1); // non-blocking approach; adjacent-click gate handles arrival
+            Rs2Walker.walkTo(object.getWorldLocation(), 1); // full walker; adjacent-click gate handles arrival
             return false;
         }
 
@@ -1692,17 +1691,13 @@ public class QuestScript extends Script {
     }
 
     private boolean applyDigStep(DigStep step) {
-        WorldPoint dp = step.getDefinedPoint().getWorldPoint();
-        WorldPoint player = Rs2Player.getWorldLocation();
-        if (player != null && player.equals(dp)) {
+        if (!Rs2Walker.walkTo(step.getDefinedPoint().getWorldPoint()))
+            return false;
+        else if (!Rs2Player.getWorldLocation().equals(step.getDefinedPoint().getWorldPoint()))
+            Rs2Walker.walkFastCanvas(step.getDefinedPoint().getWorldPoint());
+        else {
             Rs2Inventory.interact(ItemID.SPADE, "Dig");
             return true;
-        }
-        // Non-blocking: step toward the dig tile; once adjacent, canvas-walk onto the exact tile.
-        if (player != null && player.distanceTo(dp) <= 1) {
-            Rs2Walker.walkFastCanvas(dp);
-        } else {
-            Rs2Walker.walkStep(dp, 0);
         }
 
         return false;
@@ -1839,8 +1834,7 @@ public class QuestScript extends Script {
             if (Rs2Tile.areSurroundingTilesWalkable(conditionalStep.getDefinedPoint().getWorldPoint(), 1, 1)) {
                 WorldPoint nearestUnreachableWalkableTile = Rs2Tile.getNearestWalkableTileWithLineOfSight(conditionalStep.getDefinedPoint().getWorldPoint());
                 if (nearestUnreachableWalkableTile != null) {
-                    Rs2Walker.walkStep(nearestUnreachableWalkableTile, 0); // non-blocking
-                    return true;
+                    return Rs2Walker.walkTo(nearestUnreachableWalkableTile, 0);
                 }
             }
         }
@@ -1865,8 +1859,7 @@ public class QuestScript extends Script {
 			}
 		}
 
-        if (!usingItems && conditionalStep.getDefinedPoint().getWorldPoint() != null
-                && Rs2Walker.walkStep(conditionalStep.getDefinedPoint().getWorldPoint(), 2) != WalkerState.ARRIVED)
+        if (!usingItems && conditionalStep.getDefinedPoint().getWorldPoint() != null && !Rs2Walker.walkTo(conditionalStep.getDefinedPoint().getWorldPoint()))
             return true;
 
 		if (conditionalStep.getIconItemID() != -1 && conditionalStep.getDefinedPoint().getWorldPoint() != null
