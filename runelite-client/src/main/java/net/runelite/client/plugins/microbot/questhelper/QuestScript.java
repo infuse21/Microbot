@@ -1651,8 +1651,12 @@ public class QuestScript extends Script {
         // returns its TEMPLATE coordinate (hundreds of tiles from the player's instance position), so
         // walking to it targets a non-walkable tile and loops on UNREACHABLE. In an instance the object is
         // in the loaded scene, so we fall straight through to the on-screen click gate below.
+        // Walk only when more than 2 tiles from the target. Within 2, the object is click range even if
+        // canReach/LOS fail (e.g. a locked door: its own tile is never reachable, and walking "closer"
+        // means routing THROUGH it — the walker's door pipeline then spams Open on a door the step wants
+        // an item used on instead).
         if (!Microbot.getClient().isInInstancedRegion()
-                && step.getDefinedPoint().getWorldPoint() != null && Rs2Player.getWorldLocation().distanceTo2D(step.getDefinedPoint().getWorldPoint()) > 1
+                && step.getDefinedPoint().getWorldPoint() != null && Rs2Player.getWorldLocation().distanceTo2D(step.getDefinedPoint().getWorldPoint()) > 2
                 && (object == null || !Rs2Walker.canReach(object.getWorldLocation()) || !hasLineOfSightToObject(object))) {
             WorldPoint targetTile = null;
             WorldPoint stepLocation = object == null ? step.getDefinedPoint().getWorldPoint() : object.getWorldLocation();
@@ -1678,7 +1682,7 @@ public class QuestScript extends Script {
             final WorldPoint stepDp = step.getDefinedPoint().getWorldPoint();
             Rs2Walker.walkWithStateUntil(targetTile, 3, () -> {
                 WorldPoint p = Rs2Player.getWorldLocation();
-                return p != null && stepDp != null && p.distanceTo(stepDp) <= 1;
+                return p != null && stepDp != null && p.distanceTo(stepDp) <= 2;
             });
             return false;
         }
@@ -1691,8 +1695,14 @@ public class QuestScript extends Script {
                 && Rs2Walker.canReach(object.getWorldLocation())
                 && Rs2Player.getWorldLocation().distanceTo(object.getWorldLocation()) <= 2;
 
+        // Within click range of the step's own tile: interact even if canReach/LOS say no (locked doors).
+        boolean nearDefinedPoint = object != null
+                && step.getDefinedPoint() != null && step.getDefinedPoint().getWorldPoint() != null
+                && Rs2Player.getWorldLocation().distanceTo(step.getDefinedPoint().getWorldPoint()) <= 2;
+
         if ((object != null && Microbot.getClient().isInInstancedRegion())
                 || adjacentAndReachable
+                || nearDefinedPoint
                 || hasLineOfSightToObject(object)
                 || object != null && (Rs2Camera.isTileOnScreen(object.getLocalLocation()) || object.getCanvasLocation() != null)) {
             Rs2Walker.clearWalkingRoute("quest-helper:object-step-interact");
