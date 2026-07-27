@@ -1351,9 +1351,23 @@ public class QuestScript extends Script {
     }
 
     public boolean applyNpcStep(NpcStep step) {
-        List<Rs2NpcModel> npcs = step.getNpcs().stream()
+        List<Rs2NpcModel> resolvedNpcs = step.getNpcs().stream()
                 .map(Rs2NpcModel::new)
                 .collect(Collectors.toList());
+
+        // Fallback when the NpcStep's own scan found nothing: it can miss an NPC that is loaded but
+        // beyond its roam/render range (e.g. Nickolaus across the Eagles' Peak chasm), leaving us to
+        // blindly walk to the defined point and loop on UNREACHABLE. Pull the target id(s) straight from
+        // the live NPC cache so we can still interact.
+        if (resolvedNpcs.isEmpty()) {
+            Set<Integer> targetIds = new HashSet<>(step.getAlternateNpcIDs());
+            targetIds.add(step.getNpcID());
+            resolvedNpcs = Microbot.getRs2NpcCache().query()
+                    .where(n -> targetIds.contains(n.getId()))
+                    .toListOnClientThread();
+        }
+
+        final List<Rs2NpcModel> npcs = resolvedNpcs;
         Rs2NpcModel npc = npcs.stream().findFirst().orElse(null);
 
         if (step.isAllowMultipleHighlights()) {
