@@ -2359,12 +2359,23 @@ public class Rs2Walker {
                                     && !frontierObstacle.walkTarget().equals(playerLoc)) {
                                 recoverTarget = frontierObstacle.walkTarget();
                             }
+                            // The recovery pass is LONG (door scans inside it interact and can walk the
+                            // player to a door). The recoverTarget above was computed from the state at pass
+                            // START — by click time the world may have moved on. Re-check the cheap guards
+                            // NOW: if a door interaction is settling or the player is mid-walk (e.g. walking
+                            // to the door the segment scan just clicked), a stale minimap click would CANCEL
+                            // that action and drag the player away ("gets to the door then backtracks").
+                            if (isDoorInteractionSettling() || Rs2Player.isMoving()) {
+                                exitReason = "recovery-click-preempted-by-action";
+                                break;
+                            }
                             // End-snap guard: when the goal (or any recovery target) is Euclidean-NEAR but
                             // absent from the local reachability BFS, a wall/door genuinely separates us —
-                            // within a ~4-tile radius an 18+-step BFS cannot miss a connected tile. The old
-                            // behavior clicked it anyway ("skip to the end point"), parking the player against
-                            // the wall forever. Replan from where we actually stand instead: the fresh route
-                            // starts from reality (through the doors), not from a stale anchor.
+                            // within the recovery click radius an 18+-step BFS cannot miss a normally
+                            // connected tile. The old behavior clicked it anyway ("skip to the end point"),
+                            // parking the player against the wall. Replan from where we actually stand
+                            // instead: the fresh route starts from reality (through the doors), not from a
+                            // stale anchor.
                             if (recoverTarget != null && reachableTilesCache != null && !reachableTilesCache.isEmpty()
                                     && !reachableTilesCache.containsKey(recoverTarget)
                                     && playerLoc.distanceTo2D(recoverTarget) <= WALLED_RECOVERY_TARGET_EUCLIDEAN
@@ -3209,11 +3220,13 @@ public class Rs2Walker {
 	private static long lastDoorPathAdjAttemptAtMs = 0L;
     /**
      * End-snap guard bounds: a recovery target within this Euclidean radius that is absent from the
-     * player-origin reachability BFS is provably walled/doored off (the BFS step budget comfortably covers
-     * this radius), so recovery replans instead of clicking through the wall; the cooldown stops replans
-     * looping while the fresh path computes.
+     * player-origin reachability BFS is walled/doored off (the recovery BFS's 18-step budget comfortably
+     * covers the full ~9-tile recovery click radius; a connected tile needing more steps than that inside
+     * this radius is a pathological fold where replanning is also the right answer), so recovery replans
+     * instead of clicking through the wall; the cooldown stops replans looping while the fresh path
+     * computes. Covers the whole recovery click range — Clock Tower showed goal-clicks from 9 tiles out.
      */
-    private static final int WALLED_RECOVERY_TARGET_EUCLIDEAN = 4;
+    private static final int WALLED_RECOVERY_TARGET_EUCLIDEAN = 9;
     private static final long WALLED_RECOVERY_REPLAN_COOLDOWN_MS = 5_000L;
     private static long lastWalledRecoveryReplanAtMs = 0L;
 
