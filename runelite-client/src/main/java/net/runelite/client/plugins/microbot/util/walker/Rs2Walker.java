@@ -209,6 +209,13 @@ public class Rs2Walker {
      */
     private static final long ACTIVE_ROUTE_IDLE_NUDGE_MS = 1_200L;
 	private static final long ACTIVE_ROUTE_IDLE_NUDGE_COOLDOWN_MS = 2_000L;
+    /**
+     * How long after a door-recovery-suppressed tick the idle nudge stays disabled. Rolling — the suppress
+     * branch re-stamps it every tick the door stays unresolved, so the nudge is held off for the whole
+     * suppression episode plus this tail. Long enough to cover the door cooldowns that cause suppression;
+     * short enough that a genuinely abandoned door (player walked away, route replanned) frees the nudge.
+     */
+    private static final long DOOR_SUPPRESS_NUDGE_HOLDOFF_MS = 6_000L;
 	private static final long POST_TRANSPORT_PATH_TMARK_WINDOW_MS = 15_000L;
 	private static final int ROUTE_PROGRESS_FORWARD_SEARCH_TILES = 40;
 
@@ -2232,6 +2239,36 @@ public class Rs2Walker {
                                 }
                             }
                             if (unresolvedDoorNearRawPath) {
+                                // An unresolved door sits on/near the blocked edge but every door handler above
+                                // declined (settling / recent-attempt cooldowns). Do NOT fall through to the
+                                // generic recovery click: it selects statically-walkable tiles PAST the closed
+                                // door (they are walkable on the map — the door is the only blocker), and the
+                                // server then paths the player AROUND the building, pulling the walk off-route
+                                // (Clock Tower: nudge past the door -> player circles outside -> recovery clicks
+                                // the unreachable end tile). Instead, close the distance to the door: walk to the
+                                // furthest REACHABLE route tile at/before the blocked edge — the reachability
+                                // gate means the target can never be beyond the closed door — so the player is
+                                // standing at the door when the cooldown expires and the handlers engage.
+                                routeState.doorRecoverySuppressedAtMs = System.currentTimeMillis();
+                                WorldPoint doorApproach = null;
+                                if (rawPath != null && !rawPath.isEmpty() && reachableTilesCache != null) {
+                                    int hi = Math.min(rawEdgeEnd, rawPath.size()) - 1;
+                                    for (int ri = hi; ri >= Math.max(0, rawEdgeStart); ri--) {
+                                        WorldPoint rt = rawPath.get(ri);
+                                        if (rt != null && reachableTilesCache.containsKey(rt)
+                                                && !rt.equals(playerLoc) && playerLoc.distanceTo2D(rt) > 1) {
+                                            doorApproach = rt;
+                                            break;
+                                        }
+                                    }
+                                }
+                                if (doorApproach != null && !Rs2Player.isMoving() && walkMiniMap(doorApproach)) {
+                                    routeState.lastUnreachableRecoveryClickAtMs = System.currentTimeMillis();
+                                    WebWalkLog.spInfo("door_suppressed_approach | to={} idx={} tile={}",
+                                            compactWorldPoint(doorApproach), rawEdgeStart, compactWorldPoint(currentWorldPoint));
+                                    exitReason = "door-suppressed-approach-click";
+                                    break;
+                                }
                                 WebWalkLog.spInfo("door_recovery_suppressed | reason=nearby-route-door idx={} tile={}",
                                         rawEdgeStart, compactWorldPoint(currentWorldPoint));
                                 exitReason = "door-recovery-suppressed";
@@ -3559,6 +3596,16 @@ public class Rs2Walker {
         if (playerLoc == null || Rs2Player.isMoving() || Rs2Player.isAnimating() || Rs2Player.isInteracting()
                 || Rs2LeaguesTransport.isTeleportInProgress()
                 || Rs2LeaguesTransport.isLeaguesAreaTeleportPending(LEAGUES_AREA_PENDING_STALL_MAX_AGE_MS)) {
+            routeState.idleNudgeLastObservedLocation = playerLoc;
+            routeState.idleNudgeStationarySinceMs = now;
+            return false;
+        }
+        // While door recovery is actively suppressed (unresolved door on the blocked edge, handlers cooling
+        // down), the nudge MUST NOT fire: its forward click is not door-aware and can select a tile on the
+        // far side of the closed door, which routes the player around the building and off the route. The
+        // suppress branch itself walks the player to the door's near side; standing there waiting for the
+        // cooldown is the correct behavior, not idleness to nudge out of.
+        if (now - routeState.doorRecoverySuppressedAtMs < DOOR_SUPPRESS_NUDGE_HOLDOFF_MS) {
             routeState.idleNudgeLastObservedLocation = playerLoc;
             routeState.idleNudgeStationarySinceMs = now;
             return false;

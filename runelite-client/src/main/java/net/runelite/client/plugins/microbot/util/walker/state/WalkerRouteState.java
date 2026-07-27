@@ -76,6 +76,16 @@ public final class WalkerRouteState {
 
     /** Wall-clock ms of the last unreachable-tile recovery click. */
     public volatile long lastUnreachableRecoveryClickAtMs = 0L;
+
+    /**
+     * Last time the recovery block hit the door-recovery-suppressed branch (an unresolved door sits on the
+     * blocked route edge but every door handler declined due to settling/cooldowns). While this is recent,
+     * the idle nudge must NOT fire: its forward click is not door-aware, so it can select a statically
+     * walkable tile on the far side of the closed door — the server then paths the player AROUND the
+     * building, pulling the walk off the route (seen at Clock Tower: nudge past the door, then recovery
+     * clicked the unreachable end tile).
+     */
+    public volatile long doorRecoverySuppressedAtMs = 0L;
     /** Wall-clock ms the current walk session started. */
     public volatile long walkSessionStartedAtMs = 0L;
     /** Whether the first movement click of this walk session has been marked. */
