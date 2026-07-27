@@ -1715,8 +1715,18 @@ public class QuestScript extends Script {
             // highlight-in-inventory (e.g. Eagles' Peak "Use the feathers on the door" — no icon, just
             // goldFeatherHighlighted etc.). Without this, we'd click the door's default action ("Open")
             // instead of using the feather on it.
-            if (itemId == -1) {
-                itemId = firstHighlightedInventoryItemId(step);
+            // Trust the icon only if that item is actually in the inventory. Steps can carry a stale or
+            // legacy icon id (observed: the feather-door step reported icon 2950 while the real golden
+            // feather is 10175) — using it selects nothing and the click degrades to the default action.
+            // The highlight-in-inventory requirement reflects what we really hold, so prefer it whenever
+            // the icon is unset or not present.
+            if (itemId == -1 || !Rs2Inventory.contains(itemId)) {
+                int highlighted = firstHighlightedInventoryItemId(step);
+                if (highlighted != -1) {
+                    itemId = highlighted;
+                } else if (itemId != -1 && !Rs2Inventory.contains(itemId)) {
+                    itemId = -1; // icon item not held and nothing highlighted — plain click
+                }
             }
 
             Microbot.log(String.format("[QuestHelper] objectClick id=%d itemId=%d reqs=%d obj=%s",
