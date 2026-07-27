@@ -1719,6 +1719,9 @@ public class QuestScript extends Script {
                 itemId = firstHighlightedInventoryItemId(step);
             }
 
+            Microbot.log(String.format("[QuestHelper] objectClick id=%d itemId=%d reqs=%d obj=%s",
+                    object.getId(), itemId, step.getRequirements().size(), object.getWorldLocation()), Level.WARN);
+
             if (itemId == -1)
                 object.click(chooseCorrectObjectOption(step, object));
             else {
