@@ -1704,6 +1704,14 @@ public class QuestScript extends Script {
                 object = freshObject;
             }
 
+            // Steps can convey "use item X on this object" without an icon: via an ItemRequirement marked
+            // highlight-in-inventory (e.g. Eagles' Peak "Use the feathers on the door" — no icon, just
+            // goldFeatherHighlighted etc.). Without this, we'd click the door's default action ("Open")
+            // instead of using the feather on it.
+            if (itemId == -1) {
+                itemId = firstHighlightedInventoryItemId(step);
+            }
+
             if (itemId == -1)
                 object.click(chooseCorrectObjectOption(step, object));
             else {
@@ -1751,6 +1759,28 @@ public class QuestScript extends Script {
         }
 
         return false;
+    }
+
+    /**
+     * First inventory item id from the step's highlight-in-inventory ItemRequirements, or -1. Mirrors
+     * applyDetailedQuestStep's highlighted-item handling for object steps that mean "use this item on
+     * the object" without setting an icon.
+     */
+    private int firstHighlightedInventoryItemId(DetailedQuestStep step) {
+        for (Requirement requirement : step.getRequirements()) {
+            if (!(requirement instanceof ItemRequirement)) {
+                continue;
+            }
+            ItemRequirement ir = (ItemRequirement) requirement;
+            if (!ir.shouldHighlightInInventory(Microbot.getClient())) {
+                continue;
+            }
+            Integer id = ir.getAllIds().stream().filter(Rs2Inventory::contains).findFirst().orElse(null);
+            if (id != null) {
+                return id;
+            }
+        }
+        return -1;
     }
 
     /** Nearest live-cache object matching the step's id or its alternates — the proven clickable model. */
