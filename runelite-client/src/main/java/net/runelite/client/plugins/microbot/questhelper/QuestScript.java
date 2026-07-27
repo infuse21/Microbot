@@ -250,17 +250,20 @@ public class QuestScript extends Script {
                     }
 
                     if (Rs2Dialogue.isInDialogue() && dialogueStartedStep == questStep) {
-                        if (System.currentTimeMillis() - lastDialogueDiagLog > 1500) {
-                            lastDialogueDiagLog = System.currentTimeMillis();
-                            Microbot.log("[QuestHelper] in-dialogue space branch — " + Rs2Dialogue.describeState(), Level.WARN);
-                        }
-
                         // A genuine NPC/player continue or an options list: advance it with space as before.
                         if (Rs2Dialogue.hasInteractiveDialogue()) {
                             dialogueSpaceStuckStep = null;
                             Rs2Walker.clearWalkingRoute("quest-helper:dialogue-space-step");
                             Rs2Keyboard.keyPress(KeyEvent.VK_SPACE);
                             return;
+                        }
+
+                        // Suspected phantom (isInDialogue() true with no interactive dialogue). Log the
+                        // widget breakdown, throttled, so a recurring false positive can be traced to its
+                        // exact source without spamming during real conversations.
+                        if (System.currentTimeMillis() - lastDialogueDiagLog > 1500) {
+                            lastDialogueDiagLog = System.currentTimeMillis();
+                            Microbot.log("[QuestHelper] phantom-dialogue suspected — " + Rs2Dialogue.describeState(), Level.WARN);
                         }
 
                         // No real dialogue on screen — isInDialogue() is true only on a phantom widget.
@@ -1451,6 +1454,30 @@ public class QuestScript extends Script {
                             .orElse(null));
         }
 
+        // Fallback when the questhelper's ObjectStep scan came up empty: it only inspects its exact defined
+        // tile, so it misses the target when the real object sits a tile or two away (a common quest-data
+        // quirk) or is a multiloc. Query the live object cache near the defined point for the step's target
+        // id (matching the multiloc impostor too) so we interact instead of standing idle.
+        if (object == null && step.getDefinedPoint() != null && step.getDefinedPoint().getWorldPoint() != null) {
+            final WorldPoint dp = step.getDefinedPoint().getWorldPoint();
+            final Set<Integer> targetIds = new HashSet<>(step.getAlternateObjectIDs());
+            targetIds.add(step.getObjectID());
+            object = new Rs2TileObjectQueryable()
+                    .where(o -> o.getWorldLocation() != null
+                            && o.getWorldLocation().distanceTo(dp) <= 3
+                            && objectMatchesIds(o, targetIds))
+                    .toList().stream()
+                    .min(Comparator.comparing(o -> o.getWorldLocation().distanceTo(Rs2Player.getWorldLocation())))
+                    .orElse(null);
+        }
+
+        // Clear a stale "I can't reach that!" flag once the target is reachable, so the recovery below
+        // (for genuinely unreachable objects) can't trap us in place next to an already-reachable target.
+        if (unreachableTarget && object != null && Rs2Walker.canReach(object.getWorldLocation())) {
+            unreachableTarget = false;
+            unreachableTargetCheckDist = 1;
+        }
+
         if (object != null && unreachableTarget) {
             var tileObjects = new Rs2TileObjectQueryable()
                     .where(x -> x.getTileObjectType() == TileObjectType.WALL)
@@ -1505,7 +1532,17 @@ public class QuestScript extends Script {
                 return false;
         }
 
-        if (hasLineOfSightToObject(object) || object != null && (Rs2Camera.isTileOnScreen(object.getLocalLocation()) || object.getCanvasLocation() != null)) {
+        // Once we're standing next to a reachable object, click it — don't gate on the on-screen/LOS
+        // heuristic. Full-tile objects (e.g. a searchable pile of books) block line-of-sight to their own
+        // tile, and the snapshot's local/canvas location can be unresolved, so that heuristic goes all-false
+        // and we fall through to walkTo() forever, nudging in place next to the target and never interacting.
+        boolean adjacentAndReachable = object != null
+                && Rs2Walker.canReach(object.getWorldLocation())
+                && Rs2Player.getWorldLocation().distanceTo(object.getWorldLocation()) <= 2;
+
+        if (adjacentAndReachable
+                || hasLineOfSightToObject(object)
+                || object != null && (Rs2Camera.isTileOnScreen(object.getLocalLocation()) || object.getCanvasLocation() != null)) {
             Rs2Walker.clearWalkingRoute("quest-helper:object-step-interact");
 
             if (itemId == -1)
@@ -1550,6 +1587,23 @@ public class QuestScript extends Script {
         }
 
         return false;
+    }
+
+    private boolean objectMatchesIds(Rs2TileObjectModel object, Set<Integer> ids) {
+        if (object == null) {
+            return false;
+        }
+        if (ids.contains(object.getId())) {
+            return true;
+        }
+        // The configured id may be the multiloc's impostor rather than the scene's base id.
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            ObjectComposition comp = Microbot.getClient().getObjectDefinition(object.getId());
+            if (comp != null && comp.getImpostorIds() != null && comp.getImpostor() != null) {
+                return ids.contains(comp.getImpostor().getId());
+            }
+            return false;
+        }).orElse(false);
     }
 
     private String chooseCorrectObjectOption(QuestStep step, Rs2TileObjectModel object) {

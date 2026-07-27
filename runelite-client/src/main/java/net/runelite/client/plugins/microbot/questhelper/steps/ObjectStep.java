@@ -54,7 +54,9 @@ import static net.runelite.client.plugins.microbot.questhelper.QuestHelperConfig
 
 public class ObjectStep extends DetailedQuestStep
 {
+	@Getter
 	protected final ArrayList<Integer> alternateObjectIDs = new ArrayList<>();
+	@Getter
 	private final int objectID;
 	@Getter
 	private final List<TileObject> objects = new ArrayList<>();
