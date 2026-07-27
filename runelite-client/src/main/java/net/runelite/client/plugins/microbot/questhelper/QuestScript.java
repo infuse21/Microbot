@@ -1465,23 +1465,57 @@ public class QuestScript extends Script {
                 npcsHandled.add(npc.getIndex());
                 sleepUntil(Rs2Dialogue::isInDialogue, 3000);
             }
-        } else if (npc != null && npc.getLocalLocation() != null && !Rs2Camera.isTileOnScreen(npc.getLocalLocation())) {
-            Rs2Walker.walkStep(npc.getWorldLocation(), 2); // non-blocking: keep re-evaluating so we click the instant he's in range
-        } else if (npc != null && (!npc.hasLineOfSight() || !Rs2Walker.canReach(npc.getWorldLocation()))) {
-            Rs2Walker.walkStep(npc.getWorldLocation(), 2); // non-blocking: keep re-evaluating so we click the instant he's in range
-        } else {
-            WorldPoint definedPoint = step.getDefinedPoint() != null ? step.getDefinedPoint().getWorldPoint() : null;
-            if (definedPoint != null && definedPoint.distanceTo(Rs2Player.getWorldLocation()) > 3) {
-                // No NPC in hand yet (often it is loaded only once we're close — e.g. across a chasm).
-                // Non-blocking approach walk: one step toward interaction/cache range and return, so the
-                // tick loop keeps re-running. Once we're close enough for the NPC to load, the cache
-                // fallback at the top of this method picks it up and the interact-at-range branch shouts.
-                int acceptRadius = Rs2Walker.canReach(definedPoint) ? 2 : 10;
-                Rs2Walker.walkStep(definedPoint, acceptRadius);
-                return false;
+        } else if (npc != null || step.getDefinedPoint() != null) {
+            // Not clickable yet — walk toward him, but let the walker CANCEL the instant he's clickable,
+            // even if his own tile is unreachable across a gap (walkUntil checks the completion inside its
+            // loop and returns early). Target the NPC when we have one, else his defined point; the
+            // completion re-resolves the NPC each check so it fires the moment he loads + comes into sight.
+            final NpcStep fStep = step;
+            WorldPoint walkTarget = npc != null
+                    ? npc.getWorldLocation()
+                    : step.getDefinedPoint().getWorldPoint();
+            if (walkTarget != null) {
+                Rs2Walker.walkUntil(walkTarget, 2, () -> npcReadyToClick(fStep));
             }
+            return false;
         }
         return true;
+    }
+
+    /**
+     * True when the step's NPC is loaded and can be clicked now — used as the {@link Rs2Walker#walkUntil}
+     * early-exit while approaching. "Clickable" means in an instance, or we have line of sight to it, or
+     * its own tile isn't walkable-reachable (interact-across-a-gap, e.g. shouting across a chasm). The
+     * click itself turns the camera, so on-screen is deliberately not required here.
+     */
+    private boolean npcReadyToClick(NpcStep step) {
+        Rs2NpcModel n = resolveStepNpcFromCache(step);
+        if (n == null || n.getLocalLocation() == null) {
+            return false;
+        }
+        return Microbot.getClient().isInInstancedRegion()
+                || n.hasLineOfSight()
+                || !Rs2Walker.canReach(n.getWorldLocation());
+    }
+
+    /** Nearest live-cache NPC matching the step's id or its alternates, or null if none is loaded. */
+    private Rs2NpcModel resolveStepNpcFromCache(NpcStep step) {
+        Rs2NpcModel n = Microbot.getRs2NpcCache().query().withId(step.getNpcID())
+                .toListOnClientThread().stream().findFirst().orElse(null);
+        if (n != null) {
+            return n;
+        }
+        for (Integer altId : step.getAlternateNpcIDs()) {
+            if (altId == null) {
+                continue;
+            }
+            n = Microbot.getRs2NpcCache().query().withId(altId)
+                    .toListOnClientThread().stream().findFirst().orElse(null);
+            if (n != null) {
+                return n;
+            }
+        }
+        return null;
     }
 
 
