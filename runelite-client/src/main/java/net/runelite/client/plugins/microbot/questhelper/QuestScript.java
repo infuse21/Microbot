@@ -1473,9 +1473,13 @@ public class QuestScript extends Script {
             // a wandering NPC (e.g. Nickolaus) can pace back out of the clickable window before the next
             // tick, so deferring the interact loses the race.
             final NpcStep fStep = step;
-            WorldPoint walkTarget = npc != null
-                    ? npc.getWorldLocation()
-                    : step.getDefinedPoint().getWorldPoint();
+            // Walk toward the step's DEFINED POINT (stable), not the wandering NPC. The completion only
+            // fires once we've reached the tight approach to it (npcReadyToClick checks distance to the
+            // defined point), so we click from the correct chasm-edge tile rather than an early
+            // line-of-sight tile from which the server routes the click the wrong way around.
+            WorldPoint walkTarget = step.getDefinedPoint() != null
+                    ? step.getDefinedPoint().getWorldPoint()
+                    : (npc != null ? npc.getWorldLocation() : null);
             if (walkTarget != null
                     && Rs2Walker.walkWithStateUntil(walkTarget, 2, () -> npcReadyToClick(fStep)) == WalkerState.ARRIVED) {
                 Rs2Walker.setTarget(null, "quest-helper:npc-arrived-interact");
@@ -1501,14 +1505,28 @@ public class QuestScript extends Script {
      * its own tile isn't walkable-reachable (interact-across-a-gap, e.g. shouting across a chasm). The
      * click itself turns the camera, so on-screen is deliberately not required here.
      */
+    private static final int NPC_APPROACH_MAX_DIST = 8;
+
     private boolean npcReadyToClick(NpcStep step) {
         Rs2NpcModel n = resolveStepNpcFromCache(step);
         if (n == null || n.getLocalLocation() == null) {
             return false;
         }
-        return Microbot.getClient().isInInstancedRegion()
+        boolean clickable = Microbot.getClient().isInInstancedRegion()
                 || n.hasLineOfSight()
                 || !Rs2Walker.canReach(n.getWorldLocation());
+        if (!clickable) {
+            return false;
+        }
+        // Only click once we've reached the tight approach to the step's target tile. Anchor to the
+        // stable defined point (not the wandering NPC) so a NPC that paces around can't trip the click
+        // from too far out — clicking from a far tile makes the server path the wrong way around.
+        WorldPoint dp = step.getDefinedPoint() != null ? step.getDefinedPoint().getWorldPoint() : null;
+        if (dp != null) {
+            WorldPoint player = Rs2Player.getWorldLocation();
+            return player != null && player.distanceTo(dp) <= NPC_APPROACH_MAX_DIST;
+        }
+        return true;
     }
 
     /** Nearest live-cache NPC matching the step's id or its alternates, or null if none is loaded. */
