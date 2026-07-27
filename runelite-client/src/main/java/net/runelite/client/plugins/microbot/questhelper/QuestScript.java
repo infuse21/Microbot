@@ -1729,8 +1729,19 @@ public class QuestScript extends Script {
                 // cursor before clicking the object. Otherwise object.click() races the selection, sees
                 // no widget selected, and performs the object's default action (e.g. Inspect) instead of
                 // "Use <item> -> object" — leaving the item unused.
-                Rs2Inventory.use(itemId);
-                sleepUntil(() -> Microbot.getClient().isWidgetSelected(), 2000);
+                boolean used = Rs2Inventory.use(itemId);
+                boolean selected = sleepUntil(() -> Microbot.getClient().isWidgetSelected(), 2000);
+                if (!selected) {
+                    // Selection didn't land (menu race) — retry once before clicking, else the click
+                    // degrades to the object's default action (e.g. "Open" on a locked door).
+                    used = Rs2Inventory.use(itemId);
+                    selected = sleepUntil(() -> Microbot.getClient().isWidgetSelected(), 2000);
+                }
+                Microbot.log(String.format("[QuestHelper] useItemOnObject item=%d used=%s selected=%s -> click %d",
+                        itemId, used, selected, object.getId()), Level.WARN);
+                if (!selected) {
+                    return false; // don't click without a selection; retry next tick
+                }
                 object.click("");
             }
 
