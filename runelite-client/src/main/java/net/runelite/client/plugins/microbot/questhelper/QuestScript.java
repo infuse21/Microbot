@@ -1589,17 +1589,21 @@ public class QuestScript extends Script {
         // id (matching the multiloc impostor too) so we interact instead of standing idle.
         if (object == null && step.getDefinedPoint() != null && step.getDefinedPoint().getWorldPoint() != null) {
             final WorldPoint dp = step.getDefinedPoint().getWorldPoint();
-            final Set<Integer> targetIds = new HashSet<>(step.getAlternateObjectIDs());
-            targetIds.add(step.getObjectID());
-            // Inside an instance an object's getWorldLocation() is its TEMPLATE coord (hundreds of tiles
-            // off), so the near-the-defined-point distance filter rejects it. Match by id alone there and
-            // let the whole (small) instance scene be the search space; outside instances keep the tight
-            // distance filter so we don't grab a same-id object elsewhere on the map.
             final boolean instanced = Microbot.getClient().isInInstancedRegion();
-            object = new Rs2TileObjectQueryable()
-                    .where(o -> objectMatchesIds(o, targetIds)
-                            && (instanced || (o.getWorldLocation() != null && o.getWorldLocation().distanceTo(dp) <= 3)))
-                    .toList().stream()
+            // Resolve via the live object cache by id (same query the agent server / NPC fallback use).
+            // Inside an instance an object's getWorldLocation() is its TEMPLATE coord (hundreds of tiles
+            // off), so any near-the-defined-point distance filter rejects it — so in instances we take the
+            // matching id anywhere in the (small) scene; outside instances we still require it near the
+            // defined point so we don't grab a same-id object elsewhere on the map.
+            List<Rs2TileObjectModel> matches = new ArrayList<>(
+                    Microbot.getRs2TileObjectCache().query().withId(step.getObjectID()).toListOnClientThread());
+            for (Integer altId : step.getAlternateObjectIDs()) {
+                if (altId != null) {
+                    matches.addAll(Microbot.getRs2TileObjectCache().query().withId(altId).toListOnClientThread());
+                }
+            }
+            object = matches.stream()
+                    .filter(o -> instanced || (o.getWorldLocation() != null && o.getWorldLocation().distanceTo(dp) <= 3))
                     .min(Comparator.comparing(o -> instanced ? 0
                             : o.getWorldLocation().distanceTo(Rs2Player.getWorldLocation())))
                     .orElse(null);
