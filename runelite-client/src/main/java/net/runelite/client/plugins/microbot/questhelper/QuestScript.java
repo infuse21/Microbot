@@ -1548,7 +1548,12 @@ public class QuestScript extends Script {
             if (itemId == -1)
                 object.click(chooseCorrectObjectOption(step, object));
             else {
+                // "Use item on object": select the item first, then wait until it is actually on the
+                // cursor before clicking the object. Otherwise object.click() races the selection, sees
+                // no widget selected, and performs the object's default action (e.g. Inspect) instead of
+                // "Use <item> -> object" — leaving the item unused.
                 Rs2Inventory.use(itemId);
+                sleepUntil(() -> Microbot.getClient().isWidgetSelected(), 2000);
                 object.click("");
             }
 
