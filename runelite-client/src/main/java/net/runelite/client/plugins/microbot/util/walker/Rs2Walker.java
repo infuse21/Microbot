@@ -1421,17 +1421,16 @@ public class Rs2Walker {
             return WalkerState.ARRIVED;
         }
 
-        // (Re)start pathfinding when the goal changes; the pathfinder runs async.
-        Pathfinder pathfinder = Rs2PathApi.getPathfinder();
-        boolean pathForTarget = pathfinder != null
-                && pathfinder.getTargets() != null
-                && pathfinder.getTargets().contains(target);
-        if (currentTarget == null || !currentTarget.equals(target) || !pathForTarget) {
+        // (Re)start pathfinding ONLY when the caller's goal changes. Do NOT re-target while the path is
+        // still computing — setTarget() restarts pathfinding, so re-calling it every tick would reset the
+        // pathfinder forever (path drawn, but never finished, so we never click).
+        if (currentTarget == null || !currentTarget.equals(target)) {
             setTarget(target);
             return WalkerState.MOVING;
         }
+        Pathfinder pathfinder = Rs2PathApi.getPathfinder();
         if (pathfinder == null || !pathfinder.isDone()) {
-            return WalkerState.MOVING; // still computing
+            return WalkerState.MOVING; // path still computing — wait, don't reset it
         }
 
         // Already in transit toward the last click — let it resolve instead of spamming clicks.
