@@ -1466,20 +1466,18 @@ public class QuestScript extends Script {
                 sleepUntil(Rs2Dialogue::isInDialogue, 3000);
             }
         } else if (npc != null && npc.getLocalLocation() != null && !Rs2Camera.isTileOnScreen(npc.getLocalLocation())) {
-            Rs2Walker.walkTo(npc.getWorldLocation(), 2);
+            Rs2Walker.walkStep(npc.getWorldLocation(), 2); // non-blocking: keep re-evaluating so we click the instant he's in range
         } else if (npc != null && (!npc.hasLineOfSight() || !Rs2Walker.canReach(npc.getWorldLocation()))) {
-            Rs2Walker.walkTo(npc.getWorldLocation(), 2);
+            Rs2Walker.walkStep(npc.getWorldLocation(), 2); // non-blocking: keep re-evaluating so we click the instant he's in range
         } else {
             WorldPoint definedPoint = step.getDefinedPoint() != null ? step.getDefinedPoint().getWorldPoint() : null;
             if (definedPoint != null && definedPoint.distanceTo(Rs2Player.getWorldLocation()) > 3) {
                 // No NPC in hand yet (often it is loaded only once we're close — e.g. across a chasm).
-                // If the defined point is not walkable-reachable, DON'T block the tick loop trying to path
-                // onto its exact tile (that spins on UNREACHABLE for seconds and stops applyNpcStep from
-                // re-running). Walk to within interaction/cache range instead, so we get close enough for
-                // the NPC to load, then the cache fallback at the top of this method picks it up next tick
-                // and the interact-at-range branch shouts.
+                // Non-blocking approach walk: one step toward interaction/cache range and return, so the
+                // tick loop keeps re-running. Once we're close enough for the NPC to load, the cache
+                // fallback at the top of this method picks it up and the interact-at-range branch shouts.
                 int acceptRadius = Rs2Walker.canReach(definedPoint) ? 2 : 10;
-                Rs2Walker.walkTo(definedPoint, acceptRadius);
+                Rs2Walker.walkStep(definedPoint, acceptRadius);
                 return false;
             }
         }

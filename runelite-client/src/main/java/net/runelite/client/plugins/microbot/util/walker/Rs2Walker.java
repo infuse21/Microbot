@@ -1377,6 +1377,86 @@ public class Rs2Walker {
     }
 
     /**
+     * Non-blocking single-step walk. Unlike {@link #walkWithState(WorldPoint, int)} — which owns the
+     * loop and blocks (via {@link #processWalk}) until it arrives or gives up — this advances the walk by
+     * at most one action and returns immediately. The caller owns the loop: call it every tick and it
+     * paths toward {@code target}, one minimap click at a time, so between calls the caller can re-check
+     * its own condition (e.g. "is the NPC in range yet?") and act the instant it is.
+     *
+     * <p>Return values: {@link WalkerState#ARRIVED} when within {@code distance} of {@code target};
+     * {@link WalkerState#MOVING} while still approaching (path computing, in transit, or a click issued);
+     * {@link WalkerState#UNREACHABLE} when no walkable path reaches within {@code distance};
+     * {@link WalkerState#EXIT} on a bad call (null target / client thread / no config).
+     *
+     * <p>Scope: plain approach-walking. It reuses the shared pathfinder + minimap machinery but NOT the
+     * full {@link #processWalk} transport/door/stuck-recovery pipeline, so a route that needs a transport
+     * or a door won't be driven here — use the blocking {@link #walkTo} for those. Clear the goal with
+     * {@link #setTarget(WorldPoint, String) setTarget(null, reason)} when you stop (e.g. once you interact).
+     */
+    public static WalkerState walkStep(WorldPoint target, int distance) {
+        if (config == null) {
+            return WalkerState.EXIT;
+        }
+        if (target == null) {
+            log.warn("[Walker] walkStep rejected: null target");
+            return WalkerState.EXIT;
+        }
+        if (isClientThread()) {
+            log.warn("Please do not call the walker from the main thread");
+            return WalkerState.EXIT;
+        }
+
+        WorldPoint playerLoc = Rs2Player.getWorldLocation();
+        if (playerLoc == null) {
+            return WalkerState.MOVING;
+        }
+
+        // Arrived? (mirrors walkWithStateInternal's arrival test)
+        int distToTarget = playerLoc.distanceTo(target);
+        LocalPoint localTarget = LocalPoint.fromWorld(Microbot.getClient().getTopLevelWorldView(), target);
+        boolean walkableCheck = localTarget != null && Rs2Tile.isWalkable(localTarget);
+        boolean reachableTileCheck = distToTarget <= distance
+                && Rs2Tile.getReachableTilesFromTile(playerLoc, distance).containsKey(target);
+        if (reachableTileCheck || (!walkableCheck && distToTarget <= distance)) {
+            return WalkerState.ARRIVED;
+        }
+
+        // (Re)start pathfinding when the goal changes; the pathfinder runs async.
+        Pathfinder pathfinder = Rs2PathApi.getPathfinder();
+        boolean pathForTarget = pathfinder != null
+                && pathfinder.getTargets() != null
+                && pathfinder.getTargets().contains(target);
+        if (currentTarget == null || !currentTarget.equals(target) || !pathForTarget) {
+            setTarget(target);
+            return WalkerState.MOVING;
+        }
+        if (pathfinder == null || !pathfinder.isDone()) {
+            return WalkerState.MOVING; // still computing
+        }
+
+        // Already in transit toward the last click — let it resolve instead of spamming clicks.
+        if (Rs2Player.isMoving()) {
+            return WalkerState.MOVING;
+        }
+
+        final List<WorldPoint> rawPath = pathfinder.getPath();
+        final List<WorldPoint> path = pathfinder.getWalkablePath();
+        if (path == null || path.isEmpty()) {
+            return WalkerState.MOVING;
+        }
+
+        WorldPoint dst = path.get(path.size() - 1);
+        if ((dst == null || dst.distanceTo(target) > distance) && path.size() <= 1) {
+            setTarget(null, "rs2walker:walkStep:no-walkable-path");
+            return WalkerState.UNREACHABLE;
+        }
+
+        // One minimap click toward the target (falls back to the furthest visible path point off-clip).
+        clickMiniMapOrFallback(rawPath, target, playerLoc, NORMAL_MINIMAP_REACH_EUCLIDEAN - 1, true, -1);
+        return WalkerState.MOVING;
+    }
+
+    /**
      * Core walk method contains all the logic to successfully walk to the destination
      * this contains doors, game objects, teleports, spells etc...
      *
