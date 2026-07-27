@@ -1359,16 +1359,32 @@ public class QuestScript extends Script {
         // beyond its roam/render range (e.g. Nickolaus across the Eagles' Peak chasm), leaving us to
         // blindly walk to the defined point and loop on UNREACHABLE. Pull the target id(s) straight from
         // the live NPC cache so we can still interact.
+        boolean usedNpcFallback = false;
         if (resolvedNpcs.isEmpty()) {
-            Set<Integer> targetIds = new HashSet<>(step.getAlternateNpcIDs());
-            targetIds.add(step.getNpcID());
-            resolvedNpcs = Microbot.getRs2NpcCache().query()
-                    .where(n -> targetIds.contains(n.getId()))
-                    .toListOnClientThread();
+            List<Rs2NpcModel> fromCache = new ArrayList<>(
+                    Microbot.getRs2NpcCache().query().withId(step.getNpcID()).toListOnClientThread());
+            for (Integer altId : step.getAlternateNpcIDs()) {
+                if (altId != null) {
+                    fromCache.addAll(Microbot.getRs2NpcCache().query().withId(altId).toListOnClientThread());
+                }
+            }
+            resolvedNpcs = fromCache;
+            usedNpcFallback = true;
         }
 
         final List<Rs2NpcModel> npcs = resolvedNpcs;
         Rs2NpcModel npc = npcs.stream().findFirst().orElse(null);
+
+        if (System.currentTimeMillis() - lastDialogueDiagLog > 1500) {
+            lastDialogueDiagLog = System.currentTimeMillis();
+            boolean cr = npc != null && Rs2Walker.canReach(npc.getWorldLocation());
+            boolean os = npc != null && npc.getLocalLocation() != null && Rs2Camera.isTileOnScreen(npc.getLocalLocation());
+            boolean los = npc != null && npc.hasLineOfSight();
+            Microbot.log(String.format(
+                    "[QuestHelper] npcStep id=%d fallback=%s found=%s canReach=%s onScreen=%s LOS=%s instanced=%s",
+                    step.getNpcID(), usedNpcFallback, npc != null, cr, os, los,
+                    Microbot.getClient().isInInstancedRegion()), Level.WARN);
+        }
 
         if (step.isAllowMultipleHighlights()) {
             npc = npcs.stream()
@@ -1448,8 +1464,16 @@ public class QuestScript extends Script {
         } else if (npc != null && (!npc.hasLineOfSight() || !Rs2Walker.canReach(npc.getWorldLocation()))) {
             Rs2Walker.walkTo(npc.getWorldLocation(), 2);
         } else {
-            if (step.getDefinedPoint().getWorldPoint().distanceTo(Rs2Player.getWorldLocation()) > 3) {
-                Rs2Walker.walkTo(step.getDefinedPoint().getWorldPoint(), 2);
+            WorldPoint definedPoint = step.getDefinedPoint() != null ? step.getDefinedPoint().getWorldPoint() : null;
+            if (definedPoint != null && definedPoint.distanceTo(Rs2Player.getWorldLocation()) > 3) {
+                // No NPC in hand yet (often it is loaded only once we're close — e.g. across a chasm).
+                // If the defined point is not walkable-reachable, DON'T block the tick loop trying to path
+                // onto its exact tile (that spins on UNREACHABLE for seconds and stops applyNpcStep from
+                // re-running). Walk to within interaction/cache range instead, so we get close enough for
+                // the NPC to load, then the cache fallback at the top of this method picks it up next tick
+                // and the interact-at-range branch shouts.
+                int acceptRadius = Rs2Walker.canReach(definedPoint) ? 2 : 10;
+                Rs2Walker.walkTo(definedPoint, acceptRadius);
                 return false;
             }
         }
