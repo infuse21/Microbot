@@ -322,7 +322,13 @@ public class QuestScript extends Script {
 						return;
 					}
 
-					if (questStep instanceof DetailedQuestStep && shouldObtainMissingItems() && handleMissingItemRequirements((DetailedQuestStep) questStep)) {
+					// Only pre-acquire items for pure item-gathering steps. Object/NPC/Dig steps handle their
+					// own interaction (and often PRODUCE the required item — e.g. picking feathers from a
+					// pile), so running the acquire flow there just chases later, unobtainable quest items
+					// (fakeBeak, disguise feathers) with a blocking walk and freezes the loop.
+					if (questStep instanceof DetailedQuestStep
+							&& !(questStep instanceof NpcStep || questStep instanceof ObjectStep || questStep instanceof DigStep)
+							&& shouldObtainMissingItems() && handleMissingItemRequirements((DetailedQuestStep) questStep)) {
 						return;
 					}
 
@@ -1283,7 +1289,7 @@ public class QuestScript extends Script {
 					&& Rs2Camera.isTileOnScreen(LocalPoint.fromWorld(Microbot.getClient().getTopLevelWorldView(), worldPoint))) {
 				lootGroundItem(targetItemId, 10);
 			} else {
-				Rs2Walker.walkTo(worldPoint, 2);
+				Rs2Walker.walkStep(worldPoint, 2); // non-blocking approach
 			}
 		} else {
 			lootGroundItem(targetItemId, 20);
@@ -1608,14 +1614,10 @@ public class QuestScript extends Script {
 
             for (var tile : Rs2Tile.getWalkableTilesAroundTile(object.getWorldLocation(), unreachableTargetCheckDist)) {
                 if (tileObjects.stream().noneMatch(x -> x.getWorldLocation().equals(tile))) {
-                    if (!Rs2Walker.walkTo(tile) && Rs2PathApi.getPathfinder() == null)
-                        return false;
-
-                    sleepUntil(() -> Rs2PathApi.getPathfinder() == null || Rs2PathApi.getPathfinder().isDone(), 10000);
-                    if (Rs2PathApi.getPathfinder() == null || Rs2PathApi.getPathfinder().isDone()) {
-                        unreachableTarget = false;
-                        unreachableTargetCheckDist = 1;
-                    }
+                    // Non-blocking sidestep toward a reachable tile; clear the flag and re-evaluate next tick.
+                    Rs2Walker.walkStep(tile, 0);
+                    unreachableTarget = false;
+                    unreachableTargetCheckDist = 1;
                     return false;
                 }
             }
@@ -1690,13 +1692,17 @@ public class QuestScript extends Script {
     }
 
     private boolean applyDigStep(DigStep step) {
-        if (!Rs2Walker.walkTo(step.getDefinedPoint().getWorldPoint()))
-            return false;
-        else if (!Rs2Player.getWorldLocation().equals(step.getDefinedPoint().getWorldPoint()))
-            Rs2Walker.walkFastCanvas(step.getDefinedPoint().getWorldPoint());
-        else {
+        WorldPoint dp = step.getDefinedPoint().getWorldPoint();
+        WorldPoint player = Rs2Player.getWorldLocation();
+        if (player != null && player.equals(dp)) {
             Rs2Inventory.interact(ItemID.SPADE, "Dig");
             return true;
+        }
+        // Non-blocking: step toward the dig tile; once adjacent, canvas-walk onto the exact tile.
+        if (player != null && player.distanceTo(dp) <= 1) {
+            Rs2Walker.walkFastCanvas(dp);
+        } else {
+            Rs2Walker.walkStep(dp, 0);
         }
 
         return false;
@@ -1833,7 +1839,8 @@ public class QuestScript extends Script {
             if (Rs2Tile.areSurroundingTilesWalkable(conditionalStep.getDefinedPoint().getWorldPoint(), 1, 1)) {
                 WorldPoint nearestUnreachableWalkableTile = Rs2Tile.getNearestWalkableTileWithLineOfSight(conditionalStep.getDefinedPoint().getWorldPoint());
                 if (nearestUnreachableWalkableTile != null) {
-                    return Rs2Walker.walkTo(nearestUnreachableWalkableTile, 0);
+                    Rs2Walker.walkStep(nearestUnreachableWalkableTile, 0); // non-blocking
+                    return true;
                 }
             }
         }
@@ -1858,7 +1865,8 @@ public class QuestScript extends Script {
 			}
 		}
 
-        if (!usingItems && conditionalStep.getDefinedPoint().getWorldPoint() != null && !Rs2Walker.walkTo(conditionalStep.getDefinedPoint().getWorldPoint()))
+        if (!usingItems && conditionalStep.getDefinedPoint().getWorldPoint() != null
+                && Rs2Walker.walkStep(conditionalStep.getDefinedPoint().getWorldPoint(), 2) != WalkerState.ARRIVED)
             return true;
 
 		if (conditionalStep.getIconItemID() != -1 && conditionalStep.getDefinedPoint().getWorldPoint() != null
