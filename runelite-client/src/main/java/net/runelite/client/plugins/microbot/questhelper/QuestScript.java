@@ -1669,11 +1669,12 @@ public class QuestScript extends Script {
         // canReach/LOS fail (e.g. a locked door: its own tile is never reachable, and walking "closer"
         // means routing THROUGH it — the walker's door pipeline then spams Open on a door the step wants
         // an item used on instead).
+        WorldPoint objectStepDp = step.getDefinedPoint() != null ? step.getDefinedPoint().getWorldPoint() : null;
         if (!Microbot.getClient().isInInstancedRegion()
-                && step.getDefinedPoint().getWorldPoint() != null && Rs2Player.getWorldLocation().distanceTo2D(step.getDefinedPoint().getWorldPoint()) > 2
+                && objectStepDp != null && Rs2Player.getWorldLocation().distanceTo2D(objectStepDp) > 2
                 && (object == null || !Rs2Walker.canReach(object.getWorldLocation()) || !hasLineOfSightToObject(object))) {
             WorldPoint targetTile = null;
-            WorldPoint stepLocation = object == null ? step.getDefinedPoint().getWorldPoint() : object.getWorldLocation();
+            WorldPoint stepLocation = object == null ? objectStepDp : object.getWorldLocation();
             // When we're already near the target, restrict approach candidates to tiles that are LOCALLY
             // reachable (no door/wall crossing). Otherwise the search can pick a far-side tile (e.g.
             // behind a locked quest door): the walker's arrival check requires local reachability, so
@@ -1702,7 +1703,7 @@ public class QuestScript extends Script {
             // a gated door (e.g. "use the feathers on the stone door") walks onto the door tile itself:
             // the walker's door pipeline then endlessly tries to Open the locked door to route through it,
             // instead of ending the walk so we can use the item on it from the adjacent tile.
-            final WorldPoint stepDp = step.getDefinedPoint().getWorldPoint();
+            final WorldPoint stepDp = objectStepDp;
             Rs2Walker.walkWithStateUntil(targetTile, 3, () -> {
                 WorldPoint p = Rs2Player.getWorldLocation();
                 return p != null && stepDp != null && p.distanceTo(stepDp) <= 2;
@@ -1806,10 +1807,13 @@ public class QuestScript extends Script {
     }
 
     private boolean applyDigStep(DigStep step) {
-        if (!Rs2Walker.walkTo(step.getDefinedPoint().getWorldPoint()))
+        WorldPoint digDp = step.getDefinedPoint() != null ? step.getDefinedPoint().getWorldPoint() : null;
+        if (digDp == null)
             return false;
-        else if (!Rs2Player.getWorldLocation().equals(step.getDefinedPoint().getWorldPoint()))
-            Rs2Walker.walkFastCanvas(step.getDefinedPoint().getWorldPoint());
+        if (!Rs2Walker.walkTo(digDp))
+            return false;
+        else if (!Rs2Player.getWorldLocation().equals(digDp))
+            Rs2Walker.walkFastCanvas(digDp);
         else {
             Rs2Inventory.interact(ItemID.SPADE, "Dig");
             return true;
@@ -1984,11 +1988,17 @@ public class QuestScript extends Script {
     private boolean applyDetailedQuestStep(DetailedQuestStep conditionalStep) {
         if (conditionalStep instanceof NpcStep) return false;
 
+        // Steps without a location (pure "use item / read item" steps, e.g. Clock Tower) have a null
+        // DefinedPoint — every .getDefinedPoint().getWorldPoint() chain below NPE'd each tick, which the
+        // outer catch swallowed, so the step silently never executed.
+        WorldPoint detailedDp = conditionalStep.getDefinedPoint() != null
+                ? conditionalStep.getDefinedPoint().getWorldPoint() : null;
+
         if (conditionalStep.getIconItemID() != -1
-                && conditionalStep.getDefinedPoint().getWorldPoint() != null
-                && !conditionalStep.getDefinedPoint().getWorldPoint().toWorldArea().hasLineOfSightTo(Microbot.getClient().getTopLevelWorldView(), Rs2Player.getWorldLocation())) {
-            if (Rs2Tile.areSurroundingTilesWalkable(conditionalStep.getDefinedPoint().getWorldPoint(), 1, 1)) {
-                WorldPoint nearestUnreachableWalkableTile = Rs2Tile.getNearestWalkableTileWithLineOfSight(conditionalStep.getDefinedPoint().getWorldPoint());
+                && detailedDp != null
+                && !detailedDp.toWorldArea().hasLineOfSightTo(Microbot.getClient().getTopLevelWorldView(), Rs2Player.getWorldLocation())) {
+            if (Rs2Tile.areSurroundingTilesWalkable(detailedDp, 1, 1)) {
+                WorldPoint nearestUnreachableWalkableTile = Rs2Tile.getNearestWalkableTileWithLineOfSight(detailedDp);
                 if (nearestUnreachableWalkableTile != null) {
                     return Rs2Walker.walkTo(nearestUnreachableWalkableTile, 0);
                 }
@@ -2015,11 +2025,11 @@ public class QuestScript extends Script {
 			}
 		}
 
-        if (!usingItems && conditionalStep.getDefinedPoint().getWorldPoint() != null && !Rs2Walker.walkTo(conditionalStep.getDefinedPoint().getWorldPoint()))
+        if (!usingItems && detailedDp != null && !Rs2Walker.walkTo(detailedDp))
             return true;
 
-		if (conditionalStep.getIconItemID() != -1 && conditionalStep.getDefinedPoint().getWorldPoint() != null
-				&& conditionalStep.getDefinedPoint().getWorldPoint().toWorldArea().hasLineOfSightTo(Microbot.getClient().getTopLevelWorldView(), Rs2Player.getWorldLocation())) {
+		if (conditionalStep.getIconItemID() != -1 && detailedDp != null
+				&& detailedDp.toWorldArea().hasLineOfSightTo(Microbot.getClient().getTopLevelWorldView(), Rs2Player.getWorldLocation())) {
 			if (conditionalStep.getQuestHelper().getQuest() == QuestHelperQuest.ZOGRE_FLESH_EATERS) {
 				if (conditionalStep.getIconItemID() == 4836) { // strange potion
 					lootGroundItem(ItemID.CUP_OF_TEA_4838, 20);
