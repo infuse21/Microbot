@@ -2336,7 +2336,7 @@ public class Rs2Walker {
                                 recoverTarget = path.get(safeIdx);
                             }
                             int rawAnchorIndex = rawIndexForSmoothedIndex(recoverIdx, smoothedToRaw, rawPath);
-                            WorldPoint rawRecoveryTarget = inInstance ? null : findFurthestRawPathPointMatching(
+                            WorldPoint rawRecoveryTarget = inInstance ? null : findFurthestRawPathPointMatchingGated(
                                     rawPath,
                                     playerLoc,
                                     recoveryMinimapReach - 1,
@@ -3433,15 +3433,31 @@ public class Rs2Walker {
     }
 
     // findFurthestRawPathPointMatching (pure) moved to geometry/WalkerPathGeometry (P1); this game-coupled
-    // wrapper supplies the constant forward-search window, the lazy reachable-closest fallback, and the
-    // player-origin reachability BFS that powers the route-blocked scan gate: forward click selection stops
-    // at the near side of a closed door / wall ON the route instead of selecting statically-walkable tiles
-    // beyond it (which made the server path the player AROUND buildings — the Clock Tower off-route bug).
+    // wrapper supplies the constant forward-search window and the lazy reachable-closest fallback. UNGATED —
+    // it is the pure-selection unit the tests exercise; live click paths use the gated variant below.
     static WorldPoint findFurthestRawPathPointMatching(List<WorldPoint> rawPath,
                                                        WorldPoint playerLoc,
                                                        int maxEuclidean,
                                                        int rawAnchorIndex,
                                                        Predicate<WorldPoint> isCandidate) {
+        return WalkerPathGeometry.findFurthestRawPathPointMatching(rawPath, playerLoc, maxEuclidean,
+                rawAnchorIndex, isCandidate, ROUTE_PROGRESS_FORWARD_SEARCH_TILES,
+                () -> getClosestTileIndex(rawPath, playerLoc));
+    }
+
+    /**
+     * Live-click variant of {@link #findFurthestRawPathPointMatching} with the route-blocked scan gate: it
+     * additionally supplies the player-origin reachability BFS so forward click selection stops at the near
+     * side of a closed door / wall ON the route instead of selecting statically-walkable tiles beyond it
+     * (which made the server path the player AROUND buildings — the Clock Tower off-route bug). Kept
+     * separate from the ungated wrapper because the gate reads live game state (the BFS), which the
+     * pure-selection unit tests must not depend on.
+     */
+    private static WorldPoint findFurthestRawPathPointMatchingGated(List<WorldPoint> rawPath,
+                                                                    WorldPoint playerLoc,
+                                                                    int maxEuclidean,
+                                                                    int rawAnchorIndex,
+                                                                    Predicate<WorldPoint> isCandidate) {
         return WalkerPathGeometry.findFurthestRawPathPointMatching(rawPath, playerLoc, maxEuclidean,
                 rawAnchorIndex, isCandidate, ROUTE_PROGRESS_FORWARD_SEARCH_TILES,
                 () -> getClosestTileIndex(rawPath, playerLoc),
@@ -3534,7 +3550,7 @@ public class Rs2Walker {
         // smoothed-waypoint Euclidean clamp after selection returned null on a stale anchor — not
         // from a lack of line of sight. Pending doors/gates are handled by
         // handlePendingDoorBeforeRouteClick, not by shortening the click.
-        WorldPoint forward = findFurthestRawPathPointMatching(rawPath, playerLoc, maxEuclidean,
+        WorldPoint forward = findFurthestRawPathPointMatchingGated(rawPath, playerLoc, maxEuclidean,
                 rawAnchorIndex, Rs2Walker::isKnownWalkableOrUnloaded);
         if (forward != null && !forward.equals(playerLoc)) {
             routeState.lastRouteClickTier = "route";
@@ -3602,7 +3618,7 @@ public class Rs2Walker {
             return null;
         }
 
-        return findFurthestRawPathPointMatching(rawPath, playerLoc, maxEuclidean, rawAnchorIndex,
+        return findFurthestRawPathPointMatchingGated(rawPath, playerLoc, maxEuclidean, rawAnchorIndex,
                 candidate -> !candidate.equals(playerLoc)
                         && isKnownWalkableOrUnloaded(candidate)
                         && isMiniMapClickable(candidate, 5));
