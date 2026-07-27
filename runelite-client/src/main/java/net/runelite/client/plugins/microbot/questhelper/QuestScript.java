@@ -1629,7 +1629,12 @@ public class QuestScript extends Script {
         // Walk first when more than one tile away AND the target is either unreachable or not in line of
         // sight. canReach() can still return true with a closed door between us; routing through the
         // walker lets it open the door before we try to interact.
-        if (step.getDefinedPoint().getWorldPoint() != null && Rs2Player.getWorldLocation().distanceTo2D(step.getDefinedPoint().getWorldPoint()) > 1
+        // Skip the walk-to-object approach inside instanced regions: an object's getWorldLocation() there
+        // returns its TEMPLATE coordinate (hundreds of tiles from the player's instance position), so
+        // walking to it targets a non-walkable tile and loops on UNREACHABLE. In an instance the object is
+        // in the loaded scene, so we fall straight through to the on-screen click gate below.
+        if (!Microbot.getClient().isInInstancedRegion()
+                && step.getDefinedPoint().getWorldPoint() != null && Rs2Player.getWorldLocation().distanceTo2D(step.getDefinedPoint().getWorldPoint()) > 1
                 && (object == null || !Rs2Walker.canReach(object.getWorldLocation()) || !hasLineOfSightToObject(object))) {
             WorldPoint targetTile = null;
             WorldPoint stepLocation = object == null ? step.getDefinedPoint().getWorldPoint() : object.getWorldLocation();
@@ -1661,7 +1666,8 @@ public class QuestScript extends Script {
                 && Rs2Walker.canReach(object.getWorldLocation())
                 && Rs2Player.getWorldLocation().distanceTo(object.getWorldLocation()) <= 2;
 
-        if (adjacentAndReachable
+        if ((object != null && Microbot.getClient().isInInstancedRegion())
+                || adjacentAndReachable
                 || hasLineOfSightToObject(object)
                 || object != null && (Rs2Camera.isTileOnScreen(object.getLocalLocation()) || object.getCanvasLocation() != null)) {
             Rs2Walker.clearWalkingRoute("quest-helper:object-step-interact");
@@ -1692,7 +1698,7 @@ public class QuestScript extends Script {
             sleep(100);
             sleepUntil(() -> !Rs2Player.isMoving() && !Rs2Player.isAnimating(), 5000);
             objectsHandeled.add(object.getHash());
-        } else if (object != null) {
+        } else if (object != null && !Microbot.getClient().isInInstancedRegion()) {
             Rs2Walker.walkTo(object.getWorldLocation(), 1); // full walker; adjacent-click gate handles arrival
             return false;
         }
