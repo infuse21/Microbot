@@ -332,6 +332,10 @@ public class Rs2Walker {
         routeState.lastTransportHandledAtLocation = null;
         routeState.lastTransportOriginLocation = null;
         routeState.lastTransportDestinationLocation = null;
+        // The interim target belongs to the PREVIOUS route's click; letting it survive into a fresh walk
+        // makes the new walk yield to (and report progress against) a stale objective — repeatedly seen as
+        // interim=<old goal> camping at Clock Tower when the script restarts walks every ~40s.
+        clearInterimTarget("walk-start");
         resetRouteProgress();
         synchronized (expectedTransportDestinations) {
             expectedTransportDestinations.clear();
@@ -2114,6 +2118,27 @@ public class Rs2Walker {
                             }
                             log.info("[Walker] local reachability miss near player; checking blockers/recovery: tile={} idx={}/{} player={} target={}",
                                     currentWorldPoint, i, path.size(), playerLoc, target);
+
+                            // Anti-end-camping frontier rewind. The near-player reachability check skips
+                            // far-away route tiles, so on a route whose tail folds back beside the player
+                            // (Clock Tower) the miss can fire on the GOAL (Euclidean-near, idx end) while the
+                            // REAL blocked frontier — the door tiles at mid-route — was silently skipped.
+                            // Recovery then camps on the end: door scans probe the wrong raw segment and the
+                            // recovery target anchors at the goal. Rewind to the EARLIEST unreachable route
+                            // tile: that is the first edge the walk actually cannot cross, which is where the
+                            // door (or other obstacle) really is. Every recovery path below exits the loop,
+                            // so rebinding i/currentWorldPoint here is contained.
+                            for (int fi = Math.max(0, indexOfStartPoint); fi < i; fi++) {
+                                WorldPoint ft = path.get(fi);
+                                if (ft != null && ft.getPlane() == currentPlayerPlane
+                                        && reachableTilesCache != null && !reachableTilesCache.containsKey(ft)) {
+                                    log.info("[Walker] frontier rewind: earliest blocked route tile idx={} tile={} (miss was idx={})",
+                                            fi, ft, i);
+                                    i = fi;
+                                    currentWorldPoint = ft;
+                                    break;
+                                }
+                            }
 
                             int edgeIdx = Math.max(indexOfStartPoint, i - 1);
                             int rawEdgeStart = (edgeIdx < smoothedToRaw.length) ? smoothedToRaw[edgeIdx] : 0;
