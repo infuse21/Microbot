@@ -1690,12 +1690,16 @@ public class QuestScript extends Script {
                 || object != null && (Rs2Camera.isTileOnScreen(object.getLocalLocation()) || object.getCanvasLocation() != null)) {
             Rs2Walker.clearWalkingRoute("quest-helper:object-step-interact");
 
-            // Re-resolve the object fresh from the live cache on the client thread right before clicking.
-            // The step-scan / background snapshot model can be stale, producing a menu action the game
-            // silently ignores (observed: repeatedly clicks "Enter" on the cave entrance but never enters).
-            // The fresh cache model is what actually works — the same path the agent-server interact uses.
-            Rs2TileObjectModel freshObject = Microbot.getRs2TileObjectCache().query()
-                    .withId(object.getId()).nearestOnClientThread();
+            // Re-resolve the object fresh from the live cache right before clicking, by the STEP's target
+            // ids — not the scanned model's getId(), which for a multiloc is the base id and can miss the
+            // cache entry. The step-scan model produces a menu action the game silently ignores (observed
+            // twice: cave entrance and the instance tunnel), while the cache model resolved by the step id
+            // is exactly what the working agent-server interact clicks.
+            Rs2TileObjectModel freshObject = resolveStepObjectFromCache(step);
+            if (freshObject == null) {
+                freshObject = Microbot.getRs2TileObjectCache().query()
+                        .withId(object.getId()).nearestOnClientThread();
+            }
             if (freshObject != null) {
                 object = freshObject;
             }
@@ -1747,6 +1751,25 @@ public class QuestScript extends Script {
         }
 
         return false;
+    }
+
+    /** Nearest live-cache object matching the step's id or its alternates — the proven clickable model. */
+    private Rs2TileObjectModel resolveStepObjectFromCache(ObjectStep step) {
+        Rs2TileObjectModel o = Microbot.getRs2TileObjectCache().query()
+                .withId(step.getObjectID()).nearestOnClientThread();
+        if (o != null) {
+            return o;
+        }
+        for (Integer altId : step.getAlternateObjectIDs()) {
+            if (altId == null) {
+                continue;
+            }
+            o = Microbot.getRs2TileObjectCache().query().withId(altId).nearestOnClientThread();
+            if (o != null) {
+                return o;
+            }
+        }
+        return null;
     }
 
     private boolean objectMatchesIds(Rs2TileObjectModel object, Set<Integer> ids) {
