@@ -1639,14 +1639,11 @@ public class QuestScript extends Script {
                     targetTile = stepLocation;
             }
 
-            Rs2Walker.walkTo(targetTile, 3);
-
-            if (Rs2PathApi.getPathfinder() != null) {
-                var path = Rs2PathApi.getPathfinder().getPath();
-                if (path.get(path.size() - 1).distanceTo(step.getDefinedPoint().getWorldPoint()) <= 1)
-                    return false;
-            } else
-                return false;
+            // Non-blocking: one step toward the approach tile, then return so the tick loop keeps
+            // re-evaluating. The adjacent-click gate below fires once we're next to a reachable object,
+            // so we don't block the loop inside walkTo (which froze it on long/awkward approaches).
+            Rs2Walker.walkStep(targetTile, 3);
+            return false;
         }
 
         // Once we're standing next to a reachable object, click it — don't gate on the on-screen/LOS
@@ -1679,7 +1676,7 @@ public class QuestScript extends Script {
             sleepUntil(() -> !Rs2Player.isMoving() && !Rs2Player.isAnimating(), 5000);
             objectsHandeled.add(object.getHash());
         } else if (object != null) {
-            Rs2Walker.walkTo(object.getWorldLocation(), 1);
+            Rs2Walker.walkStep(object.getWorldLocation(), 1); // non-blocking approach; adjacent-click gate handles arrival
             return false;
         }
 
