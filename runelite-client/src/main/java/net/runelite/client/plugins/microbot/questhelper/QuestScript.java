@@ -2182,9 +2182,12 @@ public class QuestScript extends Script {
 							return true;
 						}
 						// Several candidate objects can surround the spot (e.g. the seven monuments ring
-						// the room, only one takes the key) — rotate through them across attempts so a
-						// wrong first pick can't loop; the quest conditional flips the step on success.
-						List<Rs2TileObjectModel> candidates = actionableObjectsAt(detailedDp, 4);
+						// the room, only one takes the key). The quest's defined point stands the player
+						// directly IN FRONT of the correct one, so try nearest-to-player first; rotation
+						// only advances on repeat attempts as a safety net.
+						List<Rs2TileObjectModel> candidates = actionableObjectsAt(detailedDp, 4).stream()
+								.sorted(Comparator.comparing(o -> o.getWorldLocation().distanceTo(Rs2Player.getWorldLocation())))
+								.collect(Collectors.toList());
 						Rs2TileObjectModel targetObj = candidates.isEmpty() ? null
 								: candidates.get(detailedUseRotation++ % candidates.size());
 						if (targetObj != null) {
