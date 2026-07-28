@@ -109,6 +109,8 @@ public class QuestScript extends Script {
     private long emptyOptionsSinceMs = 0;
     /** Rotates which option gets picked when a populated menu matches no quest dialog step. */
     private int unmatchedOptionRotation = 0;
+    /** Rotates which candidate object a highlighted item gets used on at a detailed step's spot. */
+    private int detailedUseRotation = 0;
 
     /**
      * Safety valve against {@link Rs2Dialogue#isInDialogue()} false positives. If the tick loop sits in
@@ -1966,15 +1968,22 @@ public class QuestScript extends Script {
 
     /** Nearest object within 2 tiles of {@code dp} that exposes at least one menu action, or null. */
     private Rs2TileObjectModel nearestActionableObjectAt(WorldPoint dp) {
-        if (dp == null) {
-            return null;
-        }
-        return Microbot.getRs2TileObjectCache().query()
-                .where(o -> o.getWorldLocation() != null && o.getWorldLocation().distanceTo(dp) <= 2)
-                .toList().stream()
-                .filter(this::objectHasAnyAction)
+        return actionableObjectsAt(dp, 2).stream()
                 .min(Comparator.comparing(o -> o.getWorldLocation().distanceTo(dp)))
                 .orElse(null);
+    }
+
+    /** All actionable objects within {@code radius} of {@code dp}, sorted by distance from it. */
+    private List<Rs2TileObjectModel> actionableObjectsAt(WorldPoint dp, int radius) {
+        if (dp == null) {
+            return new ArrayList<>();
+        }
+        return Microbot.getRs2TileObjectCache().query()
+                .where(o -> o.getWorldLocation() != null && o.getWorldLocation().distanceTo(dp) <= radius)
+                .toList().stream()
+                .filter(this::objectHasAnyAction)
+                .sorted(Comparator.comparing(o -> o.getWorldLocation().distanceTo(dp)))
+                .collect(Collectors.toList());
     }
 
     /** Whether the object's composition (impostor-aware) exposes at least one menu action. */
@@ -2172,7 +2181,12 @@ public class QuestScript extends Script {
 							Rs2Walker.walkTo(detailedDp, 2);
 							return true;
 						}
-						Rs2TileObjectModel targetObj = nearestActionableObjectAt(detailedDp);
+						// Several candidate objects can surround the spot (e.g. the seven monuments ring
+						// the room, only one takes the key) — rotate through them across attempts so a
+						// wrong first pick can't loop; the quest conditional flips the step on success.
+						List<Rs2TileObjectModel> candidates = actionableObjectsAt(detailedDp, 4);
+						Rs2TileObjectModel targetObj = candidates.isEmpty() ? null
+								: candidates.get(detailedUseRotation++ % candidates.size());
 						if (targetObj != null) {
 							Rs2Inventory.use(itemId);
 							if (sleepUntil(() -> Microbot.getClient().isWidgetSelected(), 2000)) {
