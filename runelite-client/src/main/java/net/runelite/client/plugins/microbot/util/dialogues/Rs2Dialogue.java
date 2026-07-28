@@ -26,8 +26,41 @@ public class Rs2Dialogue {
      *
      * @return true if any dialogue-related widget is visible and the scroll bar is not visible, false otherwise.
      */
+    // Dialogue state is read many times per script tick, and each sub-check is a client-thread hop
+    // (a queued FutureTask that waits for the next client tick). Evaluating them individually cost
+    // dozens of hops per tick and made scripts visibly sluggish. Compute the whole state in ONE hop —
+    // nested runOnClientThreadOptional calls execute inline once we're on the client thread — and cache
+    // it briefly; a game tick is 600ms, so a short TTL cannot skip a state change.
+    private static final long DIALOGUE_STATE_CACHE_MS = 150;
+    private static volatile long dialogueStateAtMs = 0;
+    private static volatile boolean cachedGuardVisible;
+    private static volatile boolean cachedHasContinue;
+    private static volatile boolean cachedHasOptions;
+    private static volatile boolean cachedInteractive;
+
+    private static void refreshDialogueState() {
+        long now = System.currentTimeMillis();
+        if (now - dialogueStateAtMs < DIALOGUE_STATE_CACHE_MS) {
+            return;
+        }
+        Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            cachedGuardVisible = Rs2Widget.isWidgetVisible(162, 559);
+            cachedHasContinue = computeHasContinue();
+            cachedHasOptions = computeHasSelectAnOption();
+            cachedInteractive = hasNPCContinue() || hasPlayerContinue() || cachedHasOptions;
+            return true;
+        });
+        dialogueStateAtMs = now;
+    }
+
+    /** Forces the next dialogue-state read to re-evaluate (call after acting on a dialogue). */
+    public static void invalidateDialogueState() {
+        dialogueStateAtMs = 0;
+    }
+
     public static boolean isInDialogue() {
-        return !Rs2Widget.isWidgetVisible(162, 559) && (hasContinue() || hasSelectAnOption());
+        refreshDialogueState();
+        return !cachedGuardVisible && (cachedHasContinue || cachedHasOptions);
     }
 
     /**
@@ -37,7 +70,8 @@ public class Rs2Dialogue {
      * real advanceable dialogue from a phantom {@link #isInDialogue()} reading.
      */
     public static boolean hasInteractiveDialogue() {
-        return hasNPCContinue() || hasPlayerContinue() || hasSelectAnOption();
+        refreshDialogueState();
+        return cachedInteractive;
     }
 
     /**
@@ -73,6 +107,12 @@ public class Rs2Dialogue {
      * @return true if the "Click here to continue" widget is visible, false otherwise.
      */
     public static boolean hasContinue() {
+        refreshDialogueState();
+        return cachedHasContinue;
+    }
+
+    /** Uncached evaluation — call only from the client thread (see refreshDialogueState). */
+    private static boolean computeHasContinue() {
         return hasNPCContinue() || hasPlayerContinue() || hasDeathContinue() ||
                 hasSpriteContinue() || hasTutContinue() ||
                 hasBarrowsContinue() || hasSpellFilterContinue();
@@ -207,6 +247,12 @@ public class Rs2Dialogue {
      * @return true if has dialog options is visible
      */
     public static boolean hasSelectAnOption() {
+        refreshDialogueState();
+        return cachedHasOptions;
+    }
+
+    /** Uncached evaluation — call only from the client thread (see refreshDialogueState). */
+    private static boolean computeHasSelectAnOption() {
         boolean isWidgetVisible = Rs2Widget.isWidgetVisible(InterfaceID.DIALOG_OPTION, 1);
         if (!isWidgetVisible) return false;
 
