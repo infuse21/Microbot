@@ -1968,6 +1968,12 @@ public class Rs2Inventory {
             menuAction = MenuAction.WIDGET_TARGET_ON_WIDGET;
         } else if (action.equalsIgnoreCase("use")) {
             menuAction = MenuAction.WIDGET_TARGET;
+            if (identifier == -1) {
+                // The action lookup reads widget children (client-thread data) and can fail from a
+                // script thread; composition actions often omit "Use" entirely (quest keys). A -1
+                // identifier makes the invoke a silent no-op — "Use" is always slot action 1.
+                identifier = 1;
+            }
         } else if (action.equalsIgnoreCase("cast")) {
             menuAction = MenuAction.WIDGET_TARGET_ON_WIDGET;
         }
