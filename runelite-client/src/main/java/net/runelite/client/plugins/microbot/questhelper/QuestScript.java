@@ -1676,12 +1676,7 @@ public class QuestScript extends Script {
                 // Stale-id resilience: object ids drift when areas get graphical reworks (e.g. the
                 // Paterdomus staircases — quest data says 16671, the live stairs are 61189). The defined
                 // point still marks the right tile, so click the nearest actionable object there instead.
-                Rs2TileObjectModel atDp = Microbot.getRs2TileObjectCache().query()
-                        .where(o -> o.getWorldLocation() != null && o.getWorldLocation().distanceTo(dp) <= 2)
-                        .toList().stream()
-                        .filter(this::objectHasAnyAction)
-                        .min(Comparator.comparing(o -> o.getWorldLocation().distanceTo(dp)))
-                        .orElse(null);
+                Rs2TileObjectModel atDp = nearestActionableObjectAt(dp);
                 if (atDp != null) {
                     Microbot.log("[QuestHelper] stale-id fallback: step object id=" + step.getObjectID()
                             + " not present; using id=" + atDp.getId() + " at " + atDp.getWorldLocation(), Level.WARN);
@@ -1969,6 +1964,19 @@ public class QuestScript extends Script {
         return -1;
     }
 
+    /** Nearest object within 2 tiles of {@code dp} that exposes at least one menu action, or null. */
+    private Rs2TileObjectModel nearestActionableObjectAt(WorldPoint dp) {
+        if (dp == null) {
+            return null;
+        }
+        return Microbot.getRs2TileObjectCache().query()
+                .where(o -> o.getWorldLocation() != null && o.getWorldLocation().distanceTo(dp) <= 2)
+                .toList().stream()
+                .filter(this::objectHasAnyAction)
+                .min(Comparator.comparing(o -> o.getWorldLocation().distanceTo(dp)))
+                .orElse(null);
+    }
+
     /** Whether the object's composition (impostor-aware) exposes at least one menu action. */
     private boolean objectHasAnyAction(Rs2TileObjectModel object) {
         return Microbot.getClientThread().runOnClientThreadOptional(() -> {
@@ -2080,6 +2088,9 @@ public class QuestScript extends Script {
         return fallback != null ? fallback : "Talk-to";
     }
 
+	private static final Set<String> DESTRUCTIVE_ITEM_ACTIONS =
+			new HashSet<>(java.util.Arrays.asList("drop", "destroy", "empty", "release", "discard"));
+
 	private String chooseCorrectItemOption(QuestStep step, int itemId) {
 		var actions = Rs2Inventory.get(itemId).getInventoryActions();
 
@@ -2088,13 +2099,15 @@ public class QuestScript extends Script {
 				return action;
 		}
 
-		// Fallback: first non-empty inventory action (the item's default left-click).
+		// Fallback: first non-destructive inventory action. NEVER blindly Drop/Destroy — quest keys'
+		// only composition action is often "Drop", which discarded the Priest in Peril golden key.
 		for (var action : actions) {
-			if (action != null && !action.isEmpty())
+			if (action != null && !action.isEmpty()
+					&& !DESTRUCTIVE_ITEM_ACTIONS.contains(action.toLowerCase()))
 				return action;
 		}
 
-		return "use";
+		return "Use";
 	}
 
 	private boolean hasLineOfSightToObject(Rs2TileObjectModel object) {
@@ -2149,6 +2162,30 @@ public class QuestScript extends Script {
 				if (itemRequirement.shouldHighlightInInventory(Microbot.getClient())
 						&& Rs2Inventory.contains(itemRequirement.getAllIds().stream().mapToInt(i -> i).toArray())) {
 					var itemId = itemRequirement.getAllIds().stream().filter(Rs2Inventory::contains).findFirst().orElse(-1);
+
+					// A highlighted item with a defined point usually means "use this item on the thing
+					// AT that spot" (e.g. golden key on the monument). Walk there first, then select the
+					// item and click the object at the spot — interacting with the item alone either does
+					// nothing or, worse, fell back to a destructive action.
+					if (detailedDp != null) {
+						if (Rs2Player.getWorldLocation().distanceTo(detailedDp) > 2) {
+							Rs2Walker.walkTo(detailedDp, 2);
+							return true;
+						}
+						Rs2TileObjectModel targetObj = nearestActionableObjectAt(detailedDp);
+						if (targetObj != null) {
+							Rs2Inventory.use(itemId);
+							if (sleepUntil(() -> Microbot.getClient().isWidgetSelected(), 2000)) {
+								Microbot.log("[QuestHelper] using highlighted item " + itemId
+										+ " on object id=" + targetObj.getId() + " at " + targetObj.getWorldLocation(), Level.WARN);
+								targetObj.click("");
+								sleepUntil(() -> Rs2Player.isMoving() || Rs2Player.isAnimating() || Rs2Dialogue.isInDialogue(), 2000);
+								usingItems = true;
+								continue;
+							}
+						}
+					}
+
 					Rs2Inventory.interact(itemId, chooseCorrectItemOption(conditionalStep, itemId));
 					sleep(100, 200);
 					usingItems = true;
