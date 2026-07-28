@@ -162,6 +162,17 @@ public class QuestScript extends Script {
                 if (getQuestHelperPlugin().getSelectedQuest() == null) return;
                 if (getQuestHelperPlugin().getSelectedQuest().getCurrentStep() == null) return;
 
+                // Ask BEFORE doing anything else. The prompt is answered on the Swing thread, and if we
+                // carry on meanwhile we've already walked off and started a conversation by the time the
+                // answer lands — so the gathering it authorises arrives too late to be useful.
+                if (!Rs2Player.isIronman()
+                        && config.obtainMissingItems() == QuestHelperConfig.ObtainMissingItemsOption.ASK
+                        && obtainItemsSessionChoice == null) {
+                    promptObtainMissingItems();
+                    Microbot.status = "Quest helper: waiting for the 'obtain missing items' answer";
+                    return;
+                }
+
                 if (Rs2Player.isAnimating())
                     Rs2Player.waitForAnimation(1200); // bounded: waitForAnimation() has an unbounded inner sleepUntil
 
@@ -508,7 +519,7 @@ public class QuestScript extends Script {
 				continue;
 			}
 			if (!isItemRequirementTradable(ir) && !bankSnapshotHas(ir)
-					&& QuestShopCatalog.lookup(ir.getAllIds()) == null) {
+					&& !(config.buyFromShops() && QuestShopCatalog.lookup(ir.getAllIds()) != null)) {
 				continue; // no bank stock, not tradeable, no known shop — only the quest can supply it
 			}
 			missing.add(ir);
@@ -581,6 +592,9 @@ public class QuestScript extends Script {
 	 * @return true when the tick was consumed (travelling or buying).
 	 */
 	private boolean buyFromShop(ItemRequirement requirement) {
+		if (!config.buyFromShops()) {
+			return false;
+		}
 		QuestShopCatalog.ShopSource shop = QuestShopCatalog.lookup(requirement.getAllIds());
 		int itemId = QuestShopCatalog.buyableId(requirement.getAllIds());
 		if (shop == null || itemId == -1) {
@@ -695,7 +709,7 @@ public class QuestScript extends Script {
 		List<ItemRequirement> buyable = new ArrayList<>();
 		for (ItemRequirement req : needBuy) {
 			// A shop we know about beats the GE: it's local, cheap and always in stock.
-			if (QuestShopCatalog.lookup(req.getAllIds()) != null && buyFromShop(req)) {
+			if (config.buyFromShops() && QuestShopCatalog.lookup(req.getAllIds()) != null && buyFromShop(req)) {
 				return true;
 			}
 			if (isItemRequirementTradable(req)) {

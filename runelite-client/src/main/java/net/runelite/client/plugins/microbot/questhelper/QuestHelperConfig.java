@@ -269,6 +269,19 @@ public interface QuestHelperConfig extends Config
 		return ObtainMissingItemsOption.ASK;
 	}
 
+	@ConfigItem(
+		keyName = "questHelperBuyFromShops",
+		name = "Buy From Shops",
+		description = "When obtaining missing items, also buy from known shops (walks to the shop and spends gp). "
+			+ "Turn off to restrict acquisition to your bank and the Grand Exchange.",
+		section = microbotSection,
+		position = 2
+	)
+	default boolean buyFromShops()
+	{
+		return true;
+	}
+
 	@Getter
 	enum ObtainMissingItemsOption
 	{
