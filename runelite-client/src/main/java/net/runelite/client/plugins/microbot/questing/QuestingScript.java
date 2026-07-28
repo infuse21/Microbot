@@ -598,7 +598,7 @@ public class QuestingScript extends Script {
 	 * @return true when the tick was consumed (travelling or buying).
 	 */
 	private boolean buyFromShop(ItemRequirement requirement) {
-		if (!config.buyFromShops()) {
+		if (!config.buyFromShops() || paused()) {
 			return false;
 		}
 		QuestShopCatalog.ShopSource shop = QuestShopCatalog.lookup(requirement.getAllIds());
@@ -727,7 +727,7 @@ public class QuestingScript extends Script {
 	}
 
 	private boolean acquireFromBankThenGrandExchange(List<ItemRequirement> missing, Set<Integer> exhausted) {
-		if (missing.isEmpty()) {
+		if (missing.isEmpty() || paused()) {
 			return false;
 		}
 
@@ -848,6 +848,9 @@ public class QuestingScript extends Script {
 	}
 
 	private boolean acquireMissingTradableItems(List<ItemRequirement> missing) {
+		if (paused()) {
+			return false;
+		}
 		notifyMissingRequirement(missing.get(0));
 
 		List<ItemRequirement> actionable = new ArrayList<>();
@@ -1076,7 +1079,7 @@ public class QuestingScript extends Script {
 		final int maxBuyAttempts = 5;
 		final int perAttemptWaitMs = 15_000;
 
-		for (int attempt = 1; attempt <= maxBuyAttempts; attempt++) {
+		for (int attempt = 1; attempt <= maxBuyAttempts && !paused(); attempt++) {
 			Microbot.status = String.format(
 					"Waiting for Grand Exchange offers to fill (attempt %d/%d)",
 					attempt, maxBuyAttempts);
@@ -2534,6 +2537,16 @@ public class QuestingScript extends Script {
             }
         }
         return -1;
+    }
+
+    /**
+     * True when the user has switched the questing toggle off. Long-running work (bank trips, shop
+     * runs, Grand Exchange rounds) must check this at its yield points: the tick-level master pause
+     * can't help while we're still inside one of them, which is why "stop" appeared to do nothing
+     * during a shopping trip.
+     */
+    private boolean paused() {
+        return config == null || !config.startStopQuestHelper();
     }
 
     /** Nearest object within 2 tiles of {@code dp} that exposes at least one menu action, or null. */
