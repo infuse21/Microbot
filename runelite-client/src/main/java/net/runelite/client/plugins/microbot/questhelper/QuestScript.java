@@ -110,6 +110,9 @@ public class QuestScript extends Script {
     /** Step-scoped memory of requirements the bank turned out not to stock (prevents bank-trip loops). */
     private QuestStep bankAttemptStep = null;
     private final Set<Integer> bankWithdrawExhausted = new HashSet<>();
+    /** Quest whose supplies have already been gathered up front, and what couldn't be sourced. */
+    private Integer upfrontGatherQuestId = null;
+    private final Set<Integer> upfrontGatherExhausted = new HashSet<>();
     /** Since when the visible dialogue-options widget has had no readable option text (0 = n/a). */
     private long emptyOptionsSinceMs = 0;
     /** Rotates which option gets picked when a populated menu matches no quest dialog step. */
@@ -246,6 +249,13 @@ public class QuestScript extends Script {
                     ((PiratesTreasure) questLogic).setMQuestPlugin(mQuestPlugin);
                 }
                 if (!config.startStopQuestHelper()) return; // re-check: the toggle may have flipped mid-tick
+
+                // Buy the quest's shopping list before starting it, so a full-auto run isn't interrupted
+                // by a shopping trip at every step. No-op once gathered, mid-quest, or when disabled.
+                if (shouldObtainMissingItems()
+                        && gatherQuestItemsUpfront(getQuestHelperPlugin().getSelectedQuest())) {
+                    return;
+                }
 
                 if (questLogic != null) {
                     if (!questLogic.executeCustomLogic()) {
@@ -494,6 +504,68 @@ public class QuestScript extends Script {
 			}
 			missing.add(ir);
 		}
+		return acquireFromBankThenGrandExchange(missing, bankWithdrawExhausted);
+	}
+
+	/**
+	 * Buys the whole quest shopping list before the quest starts, so a full-auto run doesn't stop for a
+	 * shopping trip at every step. Only runs for quests that are NOT_STARTED (mid-quest, items may
+	 * already have been consumed and re-buying them would be wasteful) and only acquires what the bank
+	 * or the Grand Exchange can supply — untradeable quest-progress items (keys, disguises) are
+	 * obtained by playing the quest, which is exactly what the per-step path is for.
+	 *
+	 * @return true when the tick was consumed by gathering.
+	 */
+	private boolean gatherQuestItemsUpfront(QuestHelper quest) {
+		if (quest == null || quest.getQuest() == null) {
+			return false;
+		}
+		int questId = quest.getQuest().getId();
+		if (upfrontGatherQuestId != null && upfrontGatherQuestId == questId) {
+			return false; // already gathered (or nothing left to gather) for this quest
+		}
+
+		QuestState state = null;
+		try {
+			state = quest.getQuest().getState(Microbot.getClient());
+		} catch (Exception ignored) {
+		}
+		if (state != QuestState.NOT_STARTED) {
+			upfrontGatherQuestId = questId; // mid-quest: leave it to the per-step top-ups
+			return false;
+		}
+
+		List<ItemRequirement> wanted = quest.getItemRequirements();
+		if (wanted == null || wanted.isEmpty()) {
+			upfrontGatherQuestId = questId;
+			return false;
+		}
+
+		List<ItemRequirement> missing = new ArrayList<>();
+		for (ItemRequirement ir : wanted) {
+			if (ir == null || remainingQuantityNeeded(ir) <= 0 || upfrontGatherExhausted.contains(ir.getId())) {
+				continue;
+			}
+			missing.add(ir);
+		}
+		if (missing.isEmpty()) {
+			upfrontGatherQuestId = questId;
+			Microbot.log("Quest helper: quest supplies ready", Level.INFO);
+			return false;
+		}
+
+		Microbot.status = "Quest helper: gathering quest supplies";
+		return acquireFromBankThenGrandExchange(missing, upfrontGatherExhausted);
+	}
+
+	/**
+	 * Shared acquisition: withdraw what the bank stocks, buy the tradeable remainder on the Grand
+	 * Exchange. Requirements neither source can supply are added to {@code exhausted} so the caller
+	 * stops retrying them.
+	 *
+	 * @return true when the tick was consumed.
+	 */
+	private boolean acquireFromBankThenGrandExchange(List<ItemRequirement> missing, Set<Integer> exhausted) {
 		if (missing.isEmpty()) {
 			return false;
 		}
@@ -551,7 +623,7 @@ public class QuestScript extends Script {
 			} else {
 				Microbot.log("Quest helper: " + req.getName() + " is not in the bank and not tradeable; "
 						+ "letting the step handle it", Level.WARN);
-				bankWithdrawExhausted.add(req.getId());
+				exhausted.add(req.getId());
 			}
 		}
 		if (!buyable.isEmpty()) {
