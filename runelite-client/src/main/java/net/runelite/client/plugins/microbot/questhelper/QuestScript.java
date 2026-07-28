@@ -507,8 +507,9 @@ public class QuestScript extends Script {
 			if (remainingQuantityNeeded(ir) <= 0 || bankWithdrawExhausted.contains(ir.getId())) {
 				continue;
 			}
-			if (!isItemRequirementTradable(ir) && !bankSnapshotHas(ir)) {
-				continue; // only the quest itself can supply this one
+			if (!isItemRequirementTradable(ir) && !bankSnapshotHas(ir)
+					&& QuestShopCatalog.lookup(ir.getAllIds()) == null) {
+				continue; // no bank stock, not tradeable, no known shop — only the quest can supply it
 			}
 			missing.add(ir);
 		}
@@ -573,6 +574,58 @@ public class QuestScript extends Script {
 	 *
 	 * @return true when the tick was consumed.
 	 */
+	/**
+	 * Buys a requirement from a shop in {@link QuestShopCatalog}: walk to the shop, open it, buy the
+	 * outstanding quantity, close. Coins are withdrawn by the bank leg that runs before this.
+	 *
+	 * @return true when the tick was consumed (travelling or buying).
+	 */
+	private boolean buyFromShop(ItemRequirement requirement) {
+		QuestShopCatalog.ShopSource shop = QuestShopCatalog.lookup(requirement.getAllIds());
+		int itemId = QuestShopCatalog.buyableId(requirement.getAllIds());
+		if (shop == null || itemId == -1) {
+			return false;
+		}
+
+		int needed = remainingQuantityNeeded(requirement);
+		if (needed <= 0) {
+			return false;
+		}
+
+		if (!Rs2Shop.isOpen()) {
+			WorldPoint player = Rs2Player.getWorldLocation();
+			if (player == null || player.distanceTo(shop.getLocation()) > 8) {
+				Microbot.status = "Quest helper: walking to shop for " + requirement.getName();
+				Rs2Walker.walkTo(shop.getLocation(), 6);
+				return true; // still travelling; resume next tick
+			}
+			Microbot.status = "Buying " + requirement.getName() + " from " + shop.getNpcName();
+			if (!Rs2Shop.openShop(shop.getNpcName(), shop.isExactName())) {
+				Microbot.log("Quest helper: could not open shop " + shop.getNpcName()
+						+ " for " + requirement.getName(), Level.WARN);
+				return false;
+			}
+			sleepUntil(Rs2Shop::isOpen, 5_000);
+		}
+
+		if (!Rs2Shop.isOpen()) {
+			return false;
+		}
+
+		if (!Rs2Shop.hasStock(itemId)) {
+			Microbot.log("Quest helper: " + shop.getNpcName() + " has no " + requirement.getName() + " in stock",
+					Level.WARN);
+			Rs2Shop.closeShop();
+			return false;
+		}
+
+		Rs2Shop.buyItemOptimally(requirement.getName(), needed);
+		sleepUntil(() -> remainingQuantityNeeded(requirement) <= 0, 5_000);
+		Rs2Shop.closeShop();
+		sleepUntil(() -> !Rs2Shop.isOpen(), 2_000);
+		return true;
+	}
+
 	/** Whether the quest's bank snapshot shows any stock of this requirement. */
 	private boolean bankSnapshotHas(ItemRequirement ir) {
 		Item[] bankItems = QuestContainerManager.getBankData().getItems();
@@ -641,11 +694,15 @@ public class QuestScript extends Script {
 		// quest-level extras). Anything untradeable is marked exhausted so the step proceeds.
 		List<ItemRequirement> buyable = new ArrayList<>();
 		for (ItemRequirement req : needBuy) {
+			// A shop we know about beats the GE: it's local, cheap and always in stock.
+			if (QuestShopCatalog.lookup(req.getAllIds()) != null && buyFromShop(req)) {
+				return true;
+			}
 			if (isItemRequirementTradable(req)) {
 				buyable.add(req);
 			} else {
-				Microbot.log("Quest helper: " + req.getName() + " is not in the bank and not tradeable; "
-						+ "letting the step handle it", Level.WARN);
+				Microbot.log("Quest helper: " + req.getName() + " is not in the bank, not tradeable and not "
+						+ "in the shop catalog; letting the step handle it", Level.WARN);
 				exhausted.add(req.getId());
 			}
 		}
