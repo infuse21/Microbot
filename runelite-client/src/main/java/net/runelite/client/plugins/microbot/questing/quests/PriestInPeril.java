@@ -1,4 +1,4 @@
-package net.runelite.client.plugins.microbot.questhelper.logic;
+package net.runelite.client.plugins.microbot.questing.quests;
 
 import net.runelite.api.gameval.ItemID;
 import net.runelite.client.plugins.microbot.Microbot;

@@ -1,4 +1,4 @@
-package net.runelite.client.plugins.microbot.questhelper;
+package net.runelite.client.plugins.microbot.questing;
 
 import lombok.Value;
 import net.runelite.api.coords.WorldPoint;

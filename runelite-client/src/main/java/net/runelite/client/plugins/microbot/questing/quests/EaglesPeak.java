@@ -1,4 +1,4 @@
-package net.runelite.client.plugins.microbot.questhelper.logic;
+package net.runelite.client.plugins.microbot.questing.quests;
 
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.NpcID;

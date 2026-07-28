@@ -1,4 +1,4 @@
-package net.runelite.client.plugins.microbot.questhelper.logic;
+package net.runelite.client.plugins.microbot.questing.quests;
 
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.MenuAction;

@@ -174,9 +174,6 @@ public class QuestHelperPlugin extends Plugin
 
 	public boolean fullCrate;
 
-	@Inject
-	QuestScript questScript;
-
 	private QuestHelperPanel panel;
 
 	private NavigationButton navButton;
@@ -243,13 +240,11 @@ public class QuestHelperPlugin extends Plugin
 				GlobalFakeObjects.createNpcs(client, runeliteObjectManager, configManager, config);
 			}
 		});
-		questScript.run(config, this);
 	}
 
 	@Override
 	protected void shutDown()
 	{
-		questScript.shutdown();
 		runeliteObjectManager.shutDown();
 
 		eventBus.unregister(playerStateManager);
@@ -598,9 +593,6 @@ public class QuestHelperPlugin extends Plugin
 	@Subscribe
 	public void onChatMessage(ChatMessage chatMessage)
 	{
-		// Forward to the automation script so its "I can't reach that!" recovery can trigger.
-		questScript.onChatMessage(chatMessage);
-
 		if (chatMessage.getMessage().equals("The crate is full of bananas."))
 		{
 			fullCrate = true;

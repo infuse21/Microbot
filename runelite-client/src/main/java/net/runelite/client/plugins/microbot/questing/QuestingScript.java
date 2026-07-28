@@ -1,4 +1,4 @@
-package net.runelite.client.plugins.microbot.questhelper;
+package net.runelite.client.plugins.microbot.questing;
 
 import net.runelite.api.*;
 import net.runelite.api.coords.LocalPoint;
@@ -9,8 +9,10 @@ import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.api.tileobject.models.TileObjectType;
-import net.runelite.client.plugins.microbot.questhelper.logic.PiratesTreasure;
-import net.runelite.client.plugins.microbot.questhelper.logic.QuestRegistry;
+import net.runelite.client.plugins.microbot.questing.quests.PiratesTreasure;
+import net.runelite.client.plugins.microbot.questing.quests.QuestRegistry;
+import net.runelite.client.plugins.microbot.questhelper.QuestHelperConfig;
+import net.runelite.client.plugins.microbot.questhelper.QuestHelperPlugin;
 import net.runelite.client.plugins.microbot.questhelper.questinfo.QuestHelperQuest;
 import net.runelite.client.plugins.microbot.questhelper.managers.QuestContainerManager;
 import net.runelite.client.plugins.microbot.questhelper.panel.PanelDetails;
@@ -64,7 +66,7 @@ import javax.swing.SwingUtilities;
 import org.slf4j.event.Level;
 import net.runelite.api.coords.WorldArea;
 
-public class QuestScript extends Script {
+public class QuestingScript extends Script {
     public static double version = 0.3;
 
     private static final long MISSING_REQUIREMENT_NOTIFY_INTERVAL_MS = 10_000L;
