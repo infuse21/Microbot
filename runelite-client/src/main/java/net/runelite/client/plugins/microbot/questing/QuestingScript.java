@@ -37,8 +37,8 @@ import net.runelite.client.plugins.microbot.util.misc.Rs2UiHelper;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.shop.Rs2Shop;
 import net.runelite.client.plugins.microbot.util.tile.Rs2Tile;
-import net.runelite.client.plugins.microbot.shortestpath.pathfinder.CollisionMap;
-import net.runelite.client.plugins.microbot.shortestpath.pathfinder.PathfinderConfig;
+import net.runelite.api.WallObject;
+import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.walker.WalkerState;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
@@ -2702,7 +2702,11 @@ public class QuestingScript extends Script {
         }
         int distance = player.distanceTo(target);
         if (distance <= 1) {
-            return true;
+            // Adjacent, but a wall can still sit between the two tiles. The collision map can't answer
+            // this — its edge flags conflate a wall with the object's own blocking, so the tile inside
+            // the shop reads just as blocked as the one outside. The scene's WallObjects carry an
+            // orientation, which says exactly which side the wall is on.
+            return !wallBetween(player, target);
         }
         if (distance <= 2 && Rs2Walker.canReach(target)) {
             return true;
@@ -2711,34 +2715,42 @@ public class QuestingScript extends Script {
     }
 
     /**
-     * Whether two adjacent tiles have no wall between them, per the pathfinder's collision map.
-     * Returns true when the map is unavailable, so a missing map never blocks an interaction.
+     * Whether a wall stands between two adjacent tiles, per the scene's WallObjects and their
+     * orientation bits (1=W, 2=N, 4=E, 8=S, plus the diagonal corners). Checks the wall on our side
+     * facing the target and the one on the target's side facing back.
      */
-    private boolean noWallBetween(WorldPoint from, WorldPoint to) {
+    private boolean wallBetween(WorldPoint from, WorldPoint to) {
         try {
-            PathfinderConfig pathfinderConfig = Rs2PathApi.getPathfinderConfig();
-            CollisionMap map = pathfinderConfig == null ? null : pathfinderConfig.getMap();
-            if (map == null || from == null || to == null || from.getPlane() != to.getPlane()) {
-                return true;
-            }
             int dx = Integer.signum(to.getX() - from.getX());
             int dy = Integer.signum(to.getY() - from.getY());
-            int x = from.getX(), y = from.getY(), z = from.getPlane();
-            boolean ok = true;
-            if (dx > 0) {
-                ok = map.e(x, y, z);
-            } else if (dx < 0) {
-                ok = map.w(x, y, z);
+            if (dx == 0 && dy == 0) {
+                return false;
             }
-            if (ok && dy > 0) {
-                ok = map.n(x, y, z);
-            } else if (ok && dy < 0) {
-                ok = map.s(x, y, z);
+            for (WallObject wall : Rs2GameObject.getWallObjects(w -> true, 3)) {
+                WorldPoint loc = wall.getWorldLocation();
+                if (loc == null || loc.getPlane() != from.getPlane()) {
+                    continue;
+                }
+                if (loc.equals(from) && orientationFaces(wall, dx, dy)) {
+                    return true;
+                }
+                if (loc.equals(to) && orientationFaces(wall, -dx, -dy)) {
+                    return true;
+                }
             }
-            return ok;
+            return false;
         } catch (Exception e) {
-            return true;
+            return false; // never block an interaction because the check itself failed
         }
+    }
+
+    private boolean orientationFaces(WallObject wall, int dx, int dy) {
+        int mask = 0;
+        if (dx > 0) mask |= 4 | 32 | 64;    // east, north-east, south-east
+        if (dx < 0) mask |= 1 | 16 | 128;   // west, north-west, south-west
+        if (dy > 0) mask |= 2 | 16 | 32;    // north, north-west, north-east
+        if (dy < 0) mask |= 8 | 64 | 128;   // south, south-east, south-west
+        return (wall.getOrientationA() & mask) != 0 || (wall.getOrientationB() & mask) != 0;
     }
 
     /** Nearest object within 2 tiles of {@code dp} that exposes at least one menu action, or null. */
