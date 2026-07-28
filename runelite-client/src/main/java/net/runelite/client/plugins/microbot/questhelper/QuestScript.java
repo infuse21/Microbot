@@ -105,6 +105,8 @@ public class QuestScript extends Script {
     private long lastPhaseLog = 0;
     private long lastApplyStepMark = 0;
     private long lastObjectDiagLog = 0;
+    /** Tracks enable→disable transitions so the master pause cleans up exactly once. */
+    private boolean wasEnabled = false;
     /** Since when the visible dialogue-options widget has had no readable option text (0 = n/a). */
     private long emptyOptionsSinceMs = 0;
     /** Rotates which option gets picked when a populated menu matches no quest dialog step. */
@@ -134,14 +136,28 @@ public class QuestScript extends Script {
 
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
-                if (!config.startStopQuestHelper()) return;
+                if (!config.startStopQuestHelper()) {
+                    // Master pause: cancel any in-flight walk and drop transient state so nothing keeps
+                    // acting after the toggle. Quest progress itself is derived from the quest graph, so
+                    // re-enabling resumes exactly where it left off.
+                    if (wasEnabled) {
+                        wasEnabled = false;
+                        Rs2Walker.clearWalkingRoute("quest-helper:disabled");
+                        dialogueStartedStep = null;
+                        dialogueSpaceStuckStep = null;
+                        dialogueCooldownEndsAt = 0;
+                        Microbot.status = "Quest helper paused";
+                    }
+                    return;
+                }
+                wasEnabled = true;
                 if (!Microbot.isLoggedIn()) return;
                 if (!super.run()) return;
                 if (getQuestHelperPlugin().getSelectedQuest() == null) return;
                 if (getQuestHelperPlugin().getSelectedQuest().getCurrentStep() == null) return;
 
                 if (Rs2Player.isAnimating())
-                    Rs2Player.waitForAnimation(3000); // bounded: waitForAnimation() has an unbounded inner sleepUntil
+                    Rs2Player.waitForAnimation(1200); // bounded: waitForAnimation() has an unbounded inner sleepUntil
 
                 QuestStep questStep = getQuestHelperPlugin().getSelectedQuest().getCurrentStep().getActiveStep();
                 if (System.currentTimeMillis() - lastPhaseLog > 1500) {
@@ -226,6 +242,8 @@ public class QuestScript extends Script {
                 if (questLogic instanceof PiratesTreasure) {
                     ((PiratesTreasure) questLogic).setMQuestPlugin(mQuestPlugin);
                 }
+                if (!config.startStopQuestHelper()) return; // re-check: the toggle may have flipped mid-tick
+
                 if (questLogic != null) {
                     if (!questLogic.executeCustomLogic()) {
                         return;
@@ -370,10 +388,12 @@ public class QuestScript extends Script {
                         boolean result = applyDetailedQuestStep((DetailedQuestStep) getQuestHelperPlugin().getSelectedQuest().getCurrentStep().getActiveStep());
                         if (result) {
                             sleepUntil(() -> Rs2Player.isInteracting() || Rs2Player.isMoving() || Rs2Player.isAnimating() || Rs2Dialogue.isInDialogue(), 500);
-                            sleepUntil(() -> !Rs2Player.isInteracting() && !Rs2Player.isMoving() && !Rs2Player.isAnimating(), 5000);
+                            sleepUntil(() -> !Rs2Player.isInteracting() && !Rs2Player.isMoving() && !Rs2Player.isAnimating(), 2000);
                             return;
                         }
                     }
+
+                    if (!config.startStopQuestHelper()) return; // re-check before issuing step actions
 
                     if (System.currentTimeMillis() - lastApplyStepMark > 1500) {
                         lastApplyStepMark = System.currentTimeMillis();
@@ -394,7 +414,7 @@ public class QuestScript extends Script {
                     }
 
                     sleepUntil(() -> Rs2Player.isInteracting() || Rs2Player.isMoving() || Rs2Player.isAnimating() || Rs2Dialogue.isInDialogue(), 500);
-                    sleepUntil(() -> !Rs2Player.isInteracting() && !Rs2Player.isMoving() && !Rs2Player.isAnimating(), 5000);
+                    sleepUntil(() -> !Rs2Player.isInteracting() && !Rs2Player.isMoving() && !Rs2Player.isAnimating(), 2000);
                 }
 
             } catch (Exception ex) {
@@ -1872,7 +1892,7 @@ public class QuestScript extends Script {
 
             sleepUntil(() -> Rs2Player.isMoving() || Rs2Player.isAnimating(), 2000);
             sleep(100);
-            sleepUntil(() -> !Rs2Player.isMoving() && !Rs2Player.isAnimating(), 5000);
+            sleepUntil(() -> !Rs2Player.isMoving() && !Rs2Player.isAnimating(), 2000);
             objectsHandeled.add(object.getHash());
         } else if (object != null && !Microbot.getClient().isInInstancedRegion()) {
             // Full walker, cancelling once adjacent — see the approach-walk comment above (door-target steps).

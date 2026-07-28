@@ -24,6 +24,8 @@ import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
  */
 public class PriestInPeril extends BaseQuest {
 	private static final String MONUMENT_NAME = "Monument";
+	/** The monument that accepts the golden key (3418,9894) — verified in game. */
+	private static final int CORRECT_MONUMENT_ID = 3499;
 
 	private int rotation = 0;
 
@@ -49,7 +51,12 @@ public class PriestInPeril extends BaseQuest {
 			return true; // not in the room yet — let the normal step walk us in
 		}
 
-		Rs2TileObjectModel monument = monuments.get(rotation++ % monuments.size());
+		// Monument 3499 (3418,9894) is always the one that accepts the key — try it first, and only
+		// fall back to rotating the others if it somehow isn't in the scene.
+		Rs2TileObjectModel monument = monuments.stream()
+				.filter(o -> o.getId() == CORRECT_MONUMENT_ID)
+				.findFirst()
+				.orElseGet(() -> monuments.get(rotation++ % monuments.size()));
 
 		Rs2Inventory.use(ItemID.PIPKEY_GOLD);
 		if (!sleepUntil(() -> Microbot.getClient().isWidgetSelected(), 2000)) {
