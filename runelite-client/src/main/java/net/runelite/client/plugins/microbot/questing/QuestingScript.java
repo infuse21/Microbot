@@ -84,6 +84,8 @@ public class QuestingScript extends Script {
     private static volatile Boolean obtainItemsSessionChoice;
 
     boolean unreachableTarget = false;
+    /** Where "I can't reach that!" was received, so we don't keep clicking from the same bad tile. */
+    private WorldPoint unreachableAtTile = null;
     int unreachableTargetCheckDist = 1;
 
     private QuestHelperConfig config;
@@ -2106,11 +2108,20 @@ public class QuestingScript extends Script {
                     Microbot.getClient().isInInstancedRegion()), Level.WARN);
         }
 
-        // Clear a stale "I can't reach that!" flag once the target is reachable, so the recovery below
-        // (for genuinely unreachable objects) can't trap us in place next to an already-reachable target.
-        if (unreachableTarget && object != null && Rs2Walker.canReach(object.getWorldLocation())) {
-            unreachableTarget = false;
-            unreachableTargetCheckDist = 1;
+        // "I can't reach that!" is the game telling us this exact spot doesn't work — typically a wall
+        // between us and an adjacent object (the crate in the Port Sarim shop back room). Remember WHERE
+        // it happened and refuse to click again from there; clear it once we've actually moved. Clearing
+        // it merely because a route exists was wrong: a route usually does exist — the long way round
+        // through the door — which is precisely what we need to walk.
+        if (unreachableTarget) {
+            WorldPoint here = Rs2Player.getWorldLocation();
+            if (unreachableAtTile == null) {
+                unreachableAtTile = here;
+            } else if (here != null && !here.equals(unreachableAtTile)) {
+                unreachableTarget = false;
+                unreachableAtTile = null;
+                unreachableTargetCheckDist = 1;
+            }
         }
 
         if (object != null && unreachableTarget) {
@@ -2170,10 +2181,18 @@ public class QuestingScript extends Script {
                     break;
                 radius++;
                 Rs2TileObjectModel finalObject = object;
-                targetTile = Rs2Tile.getWalkableTilesAroundTile(stepLocation, radius)
+                List<WorldPoint> withLineOfSight = Rs2Tile.getWalkableTilesAroundTile(stepLocation, radius)
                         .stream().filter(x -> hasLineOfSightFrom(x, finalObject))
+                        .sorted(Comparator.comparing(x -> x.distanceTo(Rs2Player.getWorldLocation())))
+                        .collect(Collectors.toList());
+
+                // Prefer a tile we can already walk to without crossing anything;;otherwise still accept a
+                // line-of-sight tile behind a door (the shop back room) and let the walker open it en
+                // route. Falling back to the object's own tile instead just parks us outside the wall.
+                targetTile = withLineOfSight.stream()
                         .filter(x -> locallyReachable == null || locallyReachable.containsKey(x))
-                        .sorted(Comparator.comparing(x -> x.distanceTo(Rs2Player.getWorldLocation()))).findFirst().orElse(null);
+                        .findFirst()
+                        .orElseGet(() -> withLineOfSight.stream().findFirst().orElse(null));
 
                 if (radius > 10 && targetTile == null)
                     targetTile = stepLocation;
@@ -2664,6 +2683,10 @@ public class QuestingScript extends Script {
             return false;
         }
         if (player.getPlane() != target.getPlane()) {
+            return false;
+        }
+        // The game said we can't reach it from this tile — believe it over any geometry heuristic.
+        if (unreachableTarget && player.equals(unreachableAtTile)) {
             return false;
         }
         int distance = player.distanceTo(target);
