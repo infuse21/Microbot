@@ -111,6 +111,7 @@ public class QuestingScript extends Script {
     private long lastPhaseLog = 0;
     private long lastApplyStepMark = 0;
     private long lastObjectDiagLog = 0;
+    private long lastApproachWarnLog = 0;
     /** Tracks enable→disable transitions so the master pause cleans up exactly once. */
     private boolean wasEnabled = false;
     /** Step-scoped memory of requirements the bank turned out not to stock (prevents bank-trip loops). */
@@ -2184,7 +2185,12 @@ public class QuestingScript extends Script {
             // the walker's door pipeline then endlessly tries to Open the locked door to route through it,
             // instead of ending the walk so we can use the item on it from the adjacent tile.
             final Rs2TileObjectModel approachTarget = object;
-            WalkerState approachState = Rs2Walker.walkWithStateUntil(targetTile, 3,
+            // Acceptance distance matters: walkWithState reports ARRIVED immediately for an UNWALKABLE
+            // target that is merely within acceptance (the crate's own tile, 3 tiles away through a shop
+            // wall) — no movement, no log. When the search fell back to the object's own tile, demand
+            // adjacency so the walker actually paths us in through the door.
+            int acceptance = targetTile.equals(stepLocation) ? 1 : 3;
+            WalkerState approachState = Rs2Walker.walkWithStateUntil(targetTile, acceptance,
                     () -> canInteractWithObject(approachTarget));
             // ARRIVED means we're as close as the approach can get — often INSTANTLY, with no log or
             // movement, when we already stand within acceptance of the chosen tile (e.g. 2 tiles from a
@@ -2200,8 +2206,8 @@ public class QuestingScript extends Script {
         // reachable). Yield rather than clicking through whatever is in the way — the tick retries, and
         // the log names the object so a genuinely impossible approach is visible instead of silent.
         if (approachArrived && !canInteractWithObject(object)) {
-            if (System.currentTimeMillis() - lastObjectDiagLog > 3000) {
-                lastObjectDiagLog = System.currentTimeMillis();
+            if (System.currentTimeMillis() - lastApproachWarnLog > 3000) {
+                lastApproachWarnLog = System.currentTimeMillis();
                 Microbot.log("[Questing] approach finished but object not clickable yet: id="
                         + (object == null ? "-" : object.getId())
                         + " at " + (object == null ? "-" : object.getWorldLocation()), Level.WARN);
