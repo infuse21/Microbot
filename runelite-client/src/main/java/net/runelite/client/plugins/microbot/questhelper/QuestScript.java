@@ -111,6 +111,7 @@ public class QuestScript extends Script {
     private int unmatchedOptionRotation = 0;
     /** Rotates which candidate object a highlighted item gets used on at a detailed step's spot. */
     private int detailedUseRotation = 0;
+    private QuestStep lastDetailedRotationStep = null;
 
     /**
      * Safety valve against {@link Rs2Dialogue#isInDialogue()} false positives. If the tick loop sits in
@@ -2145,6 +2146,12 @@ public class QuestScript extends Script {
 
     private boolean applyDetailedQuestStep(DetailedQuestStep conditionalStep) {
         if (conditionalStep instanceof NpcStep) return false;
+
+        // Fresh step, fresh candidate rotation — the first attempt must be the in-front object.
+        if (conditionalStep != lastDetailedRotationStep) {
+            lastDetailedRotationStep = conditionalStep;
+            detailedUseRotation = 0;
+        }
 
         // Steps without a location (pure "use item / read item" steps, e.g. Clock Tower) have a null
         // DefinedPoint — every .getDefinedPoint().getWorldPoint() chain below NPE'd each tick, which the
