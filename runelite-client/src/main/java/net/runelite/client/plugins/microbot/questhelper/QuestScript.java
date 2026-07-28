@@ -374,9 +374,14 @@ public class QuestScript extends Script {
 					// own interaction (and often PRODUCE the required item — e.g. picking feathers from a
 					// pile), so running the acquire flow there just chases later, unobtainable quest items
 					// (fakeBeak, disguise feathers) with a blocking walk and freezes the loop.
-					if (questStep instanceof DetailedQuestStep
-							&& !(questStep instanceof NpcStep || questStep instanceof ObjectStep || questStep instanceof DigStep)
-							&& shouldObtainMissingItems() && handleMissingItemRequirements((DetailedQuestStep) questStep)) {
+					// Interaction steps (Npc/Object/Dig) usually PRODUCE their required item (feathers from a
+					// pile), so the acquire flow stays off them — it used to chase later, unobtainable quest
+					// items with blocking walks. But when the missing item is sitting in the BANK (e.g. the
+					// rune essence Drezel wants), withdrawing is exactly right, so allow it in that case.
+					if (questStep instanceof DetailedQuestStep && shouldObtainMissingItems()
+							&& (!(questStep instanceof NpcStep || questStep instanceof ObjectStep || questStep instanceof DigStep)
+								|| missingItemIsInBank((DetailedQuestStep) questStep))
+							&& handleMissingItemRequirements((DetailedQuestStep) questStep)) {
 						return;
 					}
 
@@ -449,6 +454,30 @@ public class QuestScript extends Script {
 			}
 		}
 
+		return false;
+	}
+
+	/** True when a still-missing requirement of this step has stock in the bank we could withdraw. */
+	private boolean missingItemIsInBank(DetailedQuestStep questStep) {
+		Item[] bankItems = QuestContainerManager.getBankData().getItems();
+		if (bankItems == null || bankItems.length == 0) {
+			return false;
+		}
+		for (Requirement req : collectAllItemRequirements(questStep)) {
+			if (!(req instanceof ItemRequirement)) {
+				continue;
+			}
+			ItemRequirement ir = (ItemRequirement) req;
+			if (remainingQuantityNeeded(ir) <= 0) {
+				continue;
+			}
+			Set<Integer> ids = new HashSet<>(ir.getAllIds());
+			for (Item item : bankItems) {
+				if (item != null && item.getQuantity() > 0 && ids.contains(item.getId())) {
+					return true;
+				}
+			}
+		}
 		return false;
 	}
 
