@@ -13,6 +13,7 @@ import net.runelite.client.plugins.microbot.questhelper.logic.PiratesTreasure;
 import net.runelite.client.plugins.microbot.questhelper.logic.QuestRegistry;
 import net.runelite.client.plugins.microbot.questhelper.questinfo.QuestHelperQuest;
 import net.runelite.client.plugins.microbot.questhelper.managers.QuestContainerManager;
+import net.runelite.client.plugins.microbot.questhelper.panel.PanelDetails;
 import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
 import net.runelite.client.plugins.microbot.questhelper.requirements.Requirement;
 import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirement;
@@ -510,12 +511,19 @@ public class QuestScript extends Script {
 		// carries no requirement of its own). To keep the old protection, only take items a bank or the
 		// GE could actually supply — untradeable quest-progress items (keys, disguises, quest drops) are
 		// filtered out here, so we never walk off to shop for something only the quest can produce.
+		List<Requirement> candidates = new ArrayList<>(questStep.getRequirements());
+		candidates.addAll(remainingQuestItemRequirements(getQuestHelperPlugin().getSelectedQuest(), questStep));
+
 		List<ItemRequirement> missing = new ArrayList<>();
-		for (Requirement req : collectAllItemRequirements(questStep)) {
+		Set<Integer> consideredIds = new HashSet<>();
+		for (Requirement req : candidates) {
 			if (!(req instanceof ItemRequirement)) {
 				continue;
 			}
 			ItemRequirement ir = (ItemRequirement) req;
+			if (!consideredIds.add(ir.getId())) {
+				continue;
+			}
 			if (remainingQuantityNeeded(ir) <= 0 || bankWithdrawExhausted.contains(ir.getId())) {
 				continue;
 			}
@@ -546,17 +554,11 @@ public class QuestScript extends Script {
 			return false; // already gathered (or nothing left to gather) for this quest
 		}
 
-		QuestState state = null;
-		try {
-			state = quest.getQuest().getState(Microbot.getClient());
-		} catch (Exception ignored) {
-		}
-		if (state != QuestState.NOT_STARTED) {
-			upfrontGatherQuestId = questId; // mid-quest: leave it to the per-step top-ups
-			return false;
-		}
-
-		List<ItemRequirement> wanted = quest.getItemRequirements();
+		// Gather for the phases still ahead of us: for a NOT_STARTED quest that's the whole list, and
+		// mid-quest it's the current sidebar section onward — so joining a quest in progress buys what's
+		// still needed rather than everything it ever needed.
+		QuestStep activeStep = quest.getCurrentStep() != null ? quest.getCurrentStep().getActiveStep() : null;
+		List<ItemRequirement> wanted = remainingQuestItemRequirements(quest, activeStep);
 		if (wanted == null || wanted.isEmpty()) {
 			upfrontGatherQuestId = questId;
 			return false;
@@ -639,6 +641,71 @@ public class QuestScript extends Script {
 		Rs2Shop.closeShop();
 		sleepUntil(() -> !Rs2Shop.isOpen(), 2_000);
 		return true;
+	}
+
+	/**
+	 * The items still worth acquiring, based on where we actually are in the quest.
+	 *
+	 * <p>Quests group their steps into sidebar sections ({@link PanelDetails}), each carrying the items
+	 * that section needs. Locating the section that holds the current step lets us gather for that
+	 * section and everything after it, and ignore the ones already completed — so a quest joined
+	 * mid-run doesn't re-buy what earlier phases consumed, without the old blunt "assume everything is
+	 * already held" rule that disabled acquisition entirely.
+	 *
+	 * <p>Falls back to the full quest list when the current step can't be located in any section.
+	 */
+	private List<ItemRequirement> remainingQuestItemRequirements(QuestHelper quest, QuestStep activeStep) {
+		List<ItemRequirement> all = new ArrayList<>();
+		if (quest == null) {
+			return all;
+		}
+
+		List<PanelDetails> panels = null;
+		try {
+			panels = quest.getPanels();
+		} catch (Exception ignored) {
+		}
+
+		if (panels != null && !panels.isEmpty() && activeStep != null) {
+			int currentSection = -1;
+			for (int i = 0; i < panels.size() && currentSection == -1; i++) {
+				List<QuestStep> steps = panels.get(i).getSteps();
+				if (steps == null) {
+					continue;
+				}
+				for (QuestStep step : steps) {
+					if (step == null) {
+						continue;
+					}
+					if (step == activeStep || step.getSubsteps().contains(activeStep)) {
+						currentSection = i;
+						break;
+					}
+				}
+			}
+
+			if (currentSection != -1) {
+				Set<Integer> seen = new HashSet<>();
+				for (int i = currentSection; i < panels.size(); i++) {
+					List<Requirement> reqs = panels.get(i).getRequirements();
+					if (reqs == null) {
+						continue;
+					}
+					for (Requirement req : reqs) {
+						if (req instanceof ItemRequirement && seen.add(((ItemRequirement) req).getId())) {
+							all.add((ItemRequirement) req);
+						}
+					}
+				}
+				return all;
+			}
+		}
+
+		List<ItemRequirement> questLevel = quest.getItemRequirements();
+		if (questLevel != null) {
+			all.addAll(questLevel);
+		}
+		return all;
 	}
 
 	/** Whether the quest's bank snapshot shows any stock of this requirement. */
