@@ -2589,12 +2589,45 @@ public class QuestingScript extends Script {
      * is stored in the requirement's tooltip rather than as a field, so that's what we read — no edit to
      * the vendored model.
      */
+    private static java.lang.reflect.Field requirementTooltipField;
+
     private boolean obtainableDuringQuest(ItemRequirement requirement) {
         if (requirement == null) {
             return false;
         }
-        String tooltip = requirement.getTooltip();
-        return tooltip != null && tooltip.toLowerCase().contains("obtained during the quest");
+        // Read the raw tooltip field, not getTooltip(): ItemRequirement OVERRIDES getTooltip() and, as
+        // soon as the item exists in any tracked container, returns a container-based string (or null)
+        // instead of the authored text — so the flag vanished exactly when the item was in the bank,
+        // and the executor went shopping for Pirate's Treasure's bananas anyway.
+        String raw = rawTooltip(requirement);
+        if (raw == null) {
+            raw = requirement.getTooltip();
+        }
+        return raw != null && raw.toLowerCase().contains("obtained during the quest");
+    }
+
+    /** The requirement's own tooltip text, bypassing subclass overrides. Null if unreadable. */
+    private static String rawTooltip(ItemRequirement requirement) {
+        try {
+            if (requirementTooltipField == null) {
+                Class<?> c = requirement.getClass();
+                while (c != null && requirementTooltipField == null) {
+                    try {
+                        requirementTooltipField = c.getDeclaredField("tooltip");
+                    } catch (NoSuchFieldException ignored) {
+                        c = c.getSuperclass();
+                    }
+                }
+                if (requirementTooltipField == null) {
+                    return null;
+                }
+                requirementTooltipField.setAccessible(true);
+            }
+            Object value = requirementTooltipField.get(requirement);
+            return value == null ? null : value.toString();
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private boolean paused() {
