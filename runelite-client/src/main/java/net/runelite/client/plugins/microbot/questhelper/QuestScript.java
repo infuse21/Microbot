@@ -919,6 +919,27 @@ public class QuestScript extends Script {
 			}
 		}
 
+		// The GE has a fixed number of slots (8 members / 3 free), so a shopping list longer than that
+		// can't be placed at once. Buy as many as fit now; the rest are picked up on a later pass once
+		// these fill and free their slots. (This used to hard-stop the quester with "need 10, have 8".)
+		if (!toBuy.isEmpty()) {
+			int freeNow = Rs2GrandExchange.getAvailableSlotsCount();
+			if (freeNow <= 0) {
+				Microbot.status = "Waiting for a free Grand Exchange slot";
+				Rs2Bank.closeBank();
+				collectPurchasedItemsViaBank(toBuy);
+				return true;
+			}
+			if (toBuy.size() > freeNow) {
+				Microbot.log(String.format(
+						"Quest helper: %d items to buy but %d Grand Exchange slots free — buying in batches",
+						toBuy.size(), freeNow), Level.INFO);
+				List<ItemRequirement> batch = new ArrayList<>(toBuy.subList(0, freeNow));
+				toBuy.clear();
+				toBuy.addAll(batch);
+			}
+		}
+
 		long totalBuyCost = 0L;
 		Map<ItemRequirement, Integer> offerPrices = new HashMap<>();
 		Map<ItemRequirement, Integer> buyQuantities = new HashMap<>();
@@ -959,16 +980,7 @@ public class QuestScript extends Script {
 			return true;
 		}
 
-		if (!toBuy.isEmpty()) {
-			int freeSlots = Rs2GrandExchange.getAvailableSlotsCount();
-			if (freeSlots < toBuy.size()) {
-				Rs2Bank.closeBank();
-				stopQuesterWithReason(String.format(
-						"Not enough free Grand Exchange slots for missing quest items (need %d, have %d)",
-						toBuy.size(), freeSlots));
-				return true;
-			}
-		}
+		// (slot availability is handled above by batching, not by stopping)
 
 		if (!Rs2Bank.setWithdrawAsItem()) {
 			Rs2Bank.closeBank();
