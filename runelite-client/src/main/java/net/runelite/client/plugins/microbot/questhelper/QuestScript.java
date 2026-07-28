@@ -31,6 +31,7 @@ import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
 import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
+import net.runelite.client.plugins.microbot.util.misc.Rs2UiHelper;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.shop.Rs2Shop;
 import net.runelite.client.plugins.microbot.util.tile.Rs2Tile;
@@ -117,8 +118,13 @@ public class QuestScript extends Script {
     private final Set<Integer> upfrontGatherExhausted = new HashSet<>();
     /** Since when the visible dialogue-options widget has had no readable option text (0 = n/a). */
     private long emptyOptionsSinceMs = 0;
-    /** Rotates which option gets picked when a populated menu matches no quest dialog step. */
-    private int unmatchedOptionRotation = 0;
+    /** Pending learned-dialogue decision, confirmed once the quest visibly advances. */
+    private int pendingDialogueQuestId = -1;
+    private String pendingDialogueKey = null;
+    private String pendingDialogueChoice = null;
+    private List<String> pendingDialogueOptions = null;
+    private String pendingDialogueStepText = null;
+    private long pendingDialogueAtMs = 0;
     /** Rotates which candidate object a highlighted item gets used on at a detailed step's spot. */
     private int detailedUseRotation = 0;
     private QuestStep lastDetailedRotationStep = null;
@@ -160,6 +166,7 @@ public class QuestScript extends Script {
                 }
                 wasEnabled = true;
                 if (!Microbot.isLoggedIn()) return;
+                resolvePendingDialogue();
                 if (!super.run()) return;
                 if (getQuestHelperPlugin().getSelectedQuest() == null) return;
                 if (getQuestHelperPlugin().getSelectedQuest().getCurrentStep() == null) return;
@@ -303,17 +310,7 @@ public class QuestScript extends Script {
                             if (Rs2Dialogue.acceptQuestStartDialogue()) {
                                 return;
                             }
-                            // A populated menu with no matching quest option means the quest data's
-                            // dialog texts are stale (options get reworded). Dismissing loops
-                            // open->dismiss->re-talk forever; a human would just pick an option and keep
-                            // the conversation moving. Rotate through the options across attempts so a
-                            // lore pick can't loop us on the same entry.
-                            int optionCount = Math.max(1, Rs2Dialogue.getDialogueOptions().size());
-                            int pick = (unmatchedOptionRotation++ % optionCount) + 1;
-                            Microbot.log("[QuestHelper] no matching dialog option — picking option "
-                                    + pick + "/" + optionCount + " to keep the conversation moving", Level.WARN);
-                            Rs2Dialogue.keyPressForDialogueOption(pick);
-                            sleep(900, 1400);
+                            handleUnmatchedDialogueOptions();
                         }
                         return;
                     }
@@ -2296,6 +2293,114 @@ public class QuestScript extends Script {
      * after Jagex rewords an option — e.g. data "Yes." vs live "Yes, I think I've heard of it."
      * Word-prefix (not contains) so data "No." can never match inside "...I know it...".
      */
+    /**
+     * A populated options menu the quest data doesn't recognise. Order of preference:
+     * previously-learned answer, then a cautious guess — and for quests where a wrong choice is
+     * permanent, no guess at all: it stops and asks for a human.
+     */
+    private void handleUnmatchedDialogueOptions() {
+        QuestHelper quest = getQuestHelperPlugin().getSelectedQuest();
+        int questId = quest != null && quest.getQuest() != null ? quest.getQuest().getId() : -1;
+
+        List<String> options = Rs2Dialogue.getDialogueOptions().stream()
+                .map(w -> w == null ? "" : Rs2UiHelper.stripColTags(w.getText()))
+                .filter(t -> t != null && !t.isBlank())
+                .collect(Collectors.toList());
+        if (options.isEmpty()) {
+            return;
+        }
+
+        // A pending pick that left this same menu on screen was the wrong answer — remember that.
+        if (pendingDialogueKey != null
+                && pendingDialogueKey.equals(LearnedDialogue.optionsKey(options))
+                && pendingDialogueChoice != null
+                && System.currentTimeMillis() - pendingDialogueAtMs > 3000) {
+            LearnedDialogue.reject(questId, options, pendingDialogueChoice);
+            Microbot.log("[QuestHelper] \"" + pendingDialogueChoice + "\" did not advance the quest — won't retry it",
+                    Level.WARN);
+            clearPendingDialogue();
+        }
+
+        Set<String> negatives = LearnedDialogue.negatives(questId, options);
+        String learned = LearnedDialogue.recall(questId, options);
+
+        String choice = null;
+        if (learned != null && !learned.isBlank() && options.contains(learned)) {
+            choice = learned;
+        } else if (!LearnedDialogue.guessingAllowed(questId)) {
+            Microbot.status = "Quest helper: unknown dialogue in a permanent-choice quest — needs a human";
+            if (System.currentTimeMillis() - lastDialogueDiagLog > 5000) {
+                lastDialogueDiagLog = System.currentTimeMillis();
+                Microbot.log("[QuestHelper] unrecognised dialogue options in a quest with permanent "
+                        + "consequences; refusing to guess. Options: " + String.join(" | ", options), Level.ERROR);
+            }
+            return;
+        } else {
+            for (String option : options) {
+                if (negatives.contains(option) || LearnedDialogue.isDangerousOption(option)) {
+                    continue;
+                }
+                choice = option;
+                break;
+            }
+        }
+
+        if (choice == null) {
+            Microbot.status = "Quest helper: no safe dialogue option to pick";
+            return;
+        }
+
+        int index = options.indexOf(choice) + 1;
+        Microbot.log("[QuestHelper] " + (choice.equals(learned) ? "using learned" : "trying")
+                + " dialogue option " + index + ": \"" + choice + "\"", Level.WARN);
+
+        pendingDialogueQuestId = questId;
+        pendingDialogueOptions = new ArrayList<>(options);
+        pendingDialogueKey = LearnedDialogue.optionsKey(options);
+        pendingDialogueChoice = choice;
+        pendingDialogueStepText = activeStepText();
+        pendingDialogueAtMs = System.currentTimeMillis();
+
+        Rs2Dialogue.keyPressForDialogueOption(index);
+        sleep(900, 1400);
+    }
+
+    /** Confirms a pending dialogue pick once the quest has visibly moved on. */
+    private void resolvePendingDialogue() {
+        if (pendingDialogueChoice == null) {
+            return;
+        }
+        if (System.currentTimeMillis() - pendingDialogueAtMs > 25_000) {
+            clearPendingDialogue(); // never resolved either way — don't learn from it
+            return;
+        }
+        String now = activeStepText();
+        if (now != null && pendingDialogueStepText != null && !now.equals(pendingDialogueStepText)) {
+            LearnedDialogue.confirm(pendingDialogueQuestId, pendingDialogueOptions, pendingDialogueChoice);
+            clearPendingDialogue();
+        }
+    }
+
+    private void clearPendingDialogue() {
+        pendingDialogueChoice = null;
+        pendingDialogueKey = null;
+        pendingDialogueOptions = null;
+        pendingDialogueStepText = null;
+        pendingDialogueAtMs = 0;
+    }
+
+    private String activeStepText() {
+        QuestHelper quest = getQuestHelperPlugin().getSelectedQuest();
+        if (quest == null || quest.getCurrentStep() == null) {
+            return null;
+        }
+        QuestStep step = quest.getCurrentStep().getActiveStep();
+        if (step == null || step.getText() == null || step.getText().isEmpty()) {
+            return null;
+        }
+        return step.getText().get(0);
+    }
+
     static boolean dialogueChoiceMatches(String liveOption, String questChoice) {
         if (liveOption == null || questChoice == null || questChoice.isEmpty()) {
             return false;
