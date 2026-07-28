@@ -512,6 +512,7 @@ public class QuestScript extends Script {
 		}
 
 		boolean withdrewAny = false;
+		List<ItemRequirement> needBuy = new ArrayList<>();
 		for (ItemRequirement ir : missing) {
 			final ItemRequirement req = ir;
 			int needed = remainingQuantityNeeded(req);
@@ -523,9 +524,8 @@ public class QuestScript extends Script {
 				}
 			}
 			if (withdrawId == -1) {
-				Microbot.log("Quest helper: bank has no " + req.getName() + "; not retrying for this step",
-						Level.WARN);
-				bankWithdrawExhausted.add(req.getId());
+				// Bank can't supply it — buy it instead if it's tradeable (balls of wool, etc.).
+				needBuy.add(req);
 				continue;
 			}
 			Microbot.status = "Withdrawing " + req.getName() + " x" + needed;
@@ -536,7 +536,28 @@ public class QuestScript extends Script {
 
 		Rs2Bank.closeBank();
 		sleepUntil(() -> !Rs2Bank.isOpen(), 3_000);
-		return withdrewAny;
+
+		if (withdrewAny) {
+			return true;
+		}
+
+		// Nothing in the bank: buy the tradeable ones on the Grand Exchange (the same flow the
+		// non-interaction steps use, but scoped to THIS step's requirements so we never chase
+		// quest-level extras). Anything untradeable is marked exhausted so the step proceeds.
+		List<ItemRequirement> buyable = new ArrayList<>();
+		for (ItemRequirement req : needBuy) {
+			if (isItemRequirementTradable(req)) {
+				buyable.add(req);
+			} else {
+				Microbot.log("Quest helper: " + req.getName() + " is not in the bank and not tradeable; "
+						+ "letting the step handle it", Level.WARN);
+				bankWithdrawExhausted.add(req.getId());
+			}
+		}
+		if (!buyable.isEmpty()) {
+			return acquireMissingTradableItems(buyable);
+		}
+		return false;
 	}
 
 	private boolean handleMissingItemRequirements(DetailedQuestStep questStep) {
