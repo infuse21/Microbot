@@ -1622,6 +1622,23 @@ public class QuestScript extends Script {
                     .min(Comparator.comparing(o -> instanced ? 0
                             : o.getWorldLocation().distanceTo(Rs2Player.getWorldLocation())))
                     .orElse(null);
+
+            if (object == null) {
+                // Stale-id resilience: object ids drift when areas get graphical reworks (e.g. the
+                // Paterdomus staircases — quest data says 16671, the live stairs are 61189). The defined
+                // point still marks the right tile, so click the nearest actionable object there instead.
+                Rs2TileObjectModel atDp = Microbot.getRs2TileObjectCache().query()
+                        .where(o -> o.getWorldLocation() != null && o.getWorldLocation().distanceTo(dp) <= 2)
+                        .toList().stream()
+                        .filter(this::objectHasAnyAction)
+                        .min(Comparator.comparing(o -> o.getWorldLocation().distanceTo(dp)))
+                        .orElse(null);
+                if (atDp != null) {
+                    Microbot.log("[QuestHelper] stale-id fallback: step object id=" + step.getObjectID()
+                            + " not present; using id=" + atDp.getId() + " at " + atDp.getWorldLocation(), Level.WARN);
+                    object = atDp;
+                }
+            }
         }
 
         if (System.currentTimeMillis() - lastObjectDiagLog > 1500) {
@@ -1901,6 +1918,29 @@ public class QuestScript extends Script {
             }
         }
         return -1;
+    }
+
+    /** Whether the object's composition (impostor-aware) exposes at least one menu action. */
+    private boolean objectHasAnyAction(Rs2TileObjectModel object) {
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            ObjectComposition comp = Microbot.getClient().getObjectDefinition(object.getId());
+            if (comp == null) {
+                return false;
+            }
+            if (comp.getImpostorIds() != null && comp.getImpostor() != null) {
+                comp = comp.getImpostor();
+            }
+            String[] actions = comp.getActions();
+            if (actions == null) {
+                return false;
+            }
+            for (String a : actions) {
+                if (a != null && !a.isEmpty()) {
+                    return true;
+                }
+            }
+            return false;
+        }).orElse(false);
     }
 
     /** Nearest live-cache object matching the step's id or its alternates — the proven clickable model. */
