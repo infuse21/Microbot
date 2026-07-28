@@ -37,6 +37,8 @@ import net.runelite.client.plugins.microbot.util.misc.Rs2UiHelper;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.shop.Rs2Shop;
 import net.runelite.client.plugins.microbot.util.tile.Rs2Tile;
+import net.runelite.client.plugins.microbot.shortestpath.pathfinder.CollisionMap;
+import net.runelite.client.plugins.microbot.shortestpath.pathfinder.PathfinderConfig;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.walker.WalkerState;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
@@ -84,8 +86,9 @@ public class QuestingScript extends Script {
     private static volatile Boolean obtainItemsSessionChoice;
 
     boolean unreachableTarget = false;
-    /** Where "I can't reach that!" was received, so we don't keep clicking from the same bad tile. */
-    private WorldPoint unreachableAtTile = null;
+    /** Tiles the game rejected with "I can't reach that!", kept for the duration of the step. */
+    private final Set<WorldPoint> unreachableClickTiles = new HashSet<>();
+    private QuestStep unreachableTilesStep = null;
     int unreachableTargetCheckDist = 1;
 
     private QuestHelperConfig config;
@@ -2113,15 +2116,21 @@ public class QuestingScript extends Script {
         // it happened and refuse to click again from there; clear it once we've actually moved. Clearing
         // it merely because a route exists was wrong: a route usually does exist — the long way round
         // through the door — which is precisely what we need to walk.
+        if (step != unreachableTilesStep) {
+            unreachableTilesStep = step;
+            unreachableClickTiles.clear();
+        }
         if (unreachableTarget) {
+            // Record the tile the game rejected and KEEP it for this step. A single remembered tile was
+            // forgotten as soon as we shuffled, so the approach could walk us straight back and click
+            // through the same wall again.
             WorldPoint here = Rs2Player.getWorldLocation();
-            if (unreachableAtTile == null) {
-                unreachableAtTile = here;
-            } else if (here != null && !here.equals(unreachableAtTile)) {
-                unreachableTarget = false;
-                unreachableAtTile = null;
-                unreachableTargetCheckDist = 1;
+            if (here != null && unreachableClickTiles.add(here)) {
+                Microbot.log("[Questing] \"can't reach\" from " + here + " — won't click from there again "
+                        + "for this step", Level.WARN);
             }
+            unreachableTarget = false;
+            unreachableTargetCheckDist = 1;
         }
 
         if (object != null && unreachableTarget) {
@@ -2182,7 +2191,9 @@ public class QuestingScript extends Script {
                 radius++;
                 Rs2TileObjectModel finalObject = object;
                 List<WorldPoint> withLineOfSight = Rs2Tile.getWalkableTilesAroundTile(stepLocation, radius)
-                        .stream().filter(x -> hasLineOfSightFrom(x, finalObject))
+                        .stream()
+                        .filter(x -> !unreachableClickTiles.contains(x))
+                        .filter(x -> hasLineOfSightFrom(x, finalObject))
                         .sorted(Comparator.comparing(x -> x.distanceTo(Rs2Player.getWorldLocation())))
                         .collect(Collectors.toList());
 
@@ -2686,7 +2697,7 @@ public class QuestingScript extends Script {
             return false;
         }
         // The game said we can't reach it from this tile — believe it over any geometry heuristic.
-        if (unreachableTarget && player.equals(unreachableAtTile)) {
+        if (unreachableClickTiles.contains(player)) {
             return false;
         }
         int distance = player.distanceTo(target);
@@ -2697,6 +2708,37 @@ public class QuestingScript extends Script {
             return true;
         }
         return hasLineOfSightToObject(object);
+    }
+
+    /**
+     * Whether two adjacent tiles have no wall between them, per the pathfinder's collision map.
+     * Returns true when the map is unavailable, so a missing map never blocks an interaction.
+     */
+    private boolean noWallBetween(WorldPoint from, WorldPoint to) {
+        try {
+            PathfinderConfig pathfinderConfig = Rs2PathApi.getPathfinderConfig();
+            CollisionMap map = pathfinderConfig == null ? null : pathfinderConfig.getMap();
+            if (map == null || from == null || to == null || from.getPlane() != to.getPlane()) {
+                return true;
+            }
+            int dx = Integer.signum(to.getX() - from.getX());
+            int dy = Integer.signum(to.getY() - from.getY());
+            int x = from.getX(), y = from.getY(), z = from.getPlane();
+            boolean ok = true;
+            if (dx > 0) {
+                ok = map.e(x, y, z);
+            } else if (dx < 0) {
+                ok = map.w(x, y, z);
+            }
+            if (ok && dy > 0) {
+                ok = map.n(x, y, z);
+            } else if (ok && dy < 0) {
+                ok = map.s(x, y, z);
+            }
+            return ok;
+        } catch (Exception e) {
+            return true;
+        }
     }
 
     /** Nearest object within 2 tiles of {@code dp} that exposes at least one menu action, or null. */
