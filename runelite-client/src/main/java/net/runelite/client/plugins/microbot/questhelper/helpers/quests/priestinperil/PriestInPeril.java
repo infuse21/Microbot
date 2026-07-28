@@ -205,7 +205,7 @@ public class PriestInPeril extends BasicQuestHelper
 		goUpToFloorOneTemple = new ObjectStep(this, ObjectID.SPIRALSTAIRS, new WorldPoint(3418, 3493, 0), "Go upstairs.");
 		goUpToFloorTwoTemple = new ObjectStep(this, ObjectID.LADDER, new WorldPoint(3410, 3485, 1), "Climb up the ladder.");
 		talkToDrezel = new NpcStep(this, NpcID.PRIESTPERILTRAPPEDMONK_VIS, new WorldPoint(3418, 3489, 2), "Talk to Drezel on the top floor of the temple.");
-		talkToDrezel.addDialogSteps("So, what now?", "Yes, of course.", "What do we do?", "Seven Priestly Warriors?");
+		talkToDrezel.addDialogSteps("So, what now?", "Yes, of course.", "What do we do?");
 		talkToDrezel.addSubSteps(goUpToFloorOneTemple, goUpToFloorTwoTemple);
 
 		fillBucket = new ObjectStep(this, ObjectID.PRIESTPERIL_WELL, new WorldPoint(3423, 9890, 0), "Use the bucket on the well in the central room.", bucketHighlighted);
