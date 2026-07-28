@@ -107,6 +107,9 @@ public class QuestScript extends Script {
     private long lastObjectDiagLog = 0;
     /** Tracks enable→disable transitions so the master pause cleans up exactly once. */
     private boolean wasEnabled = false;
+    /** Step-scoped memory of requirements the bank turned out not to stock (prevents bank-trip loops). */
+    private QuestStep bankAttemptStep = null;
+    private final Set<Integer> bankWithdrawExhausted = new HashSet<>();
     /** Since when the visible dialogue-options widget has had no readable option text (0 = n/a). */
     private long emptyOptionsSinceMs = 0;
     /** Rotates which option gets picked when a populated menu matches no quest dialog step. */
@@ -378,11 +381,21 @@ public class QuestScript extends Script {
 					// pile), so the acquire flow stays off them — it used to chase later, unobtainable quest
 					// items with blocking walks. But when the missing item is sitting in the BANK (e.g. the
 					// rune essence Drezel wants), withdrawing is exactly right, so allow it in that case.
-					if (questStep instanceof DetailedQuestStep && shouldObtainMissingItems()
-							&& (!(questStep instanceof NpcStep || questStep instanceof ObjectStep || questStep instanceof DigStep)
-								|| missingItemIsInBank((DetailedQuestStep) questStep))
-							&& handleMissingItemRequirements((DetailedQuestStep) questStep)) {
-						return;
+					if (questStep instanceof DetailedQuestStep && shouldObtainMissingItems()) {
+						DetailedQuestStep detailed = (DetailedQuestStep) questStep;
+						boolean interactionStep = questStep instanceof NpcStep
+								|| questStep instanceof ObjectStep || questStep instanceof DigStep;
+						if (interactionStep) {
+							// Interaction steps usually PRODUCE their item (feathers from a pile), so the
+							// full acquire flow (ground loot / GE) stays off them. A bank withdrawal is
+							// still right when the step needs stock we already own (Drezel's essence), so
+							// try only that — and remember when the bank had nothing so it can't loop.
+							if (tryWithdrawMissingFromBank(detailed)) {
+								return;
+							}
+						} else if (handleMissingItemRequirements(detailed)) {
+							return;
+						}
 					}
 
 					/**
@@ -457,28 +470,73 @@ public class QuestScript extends Script {
 		return false;
 	}
 
-	/** True when a still-missing requirement of this step has stock in the bank we could withdraw. */
-	private boolean missingItemIsInBank(DetailedQuestStep questStep) {
-		Item[] bankItems = QuestContainerManager.getBankData().getItems();
-		if (bankItems == null || bankItems.length == 0) {
-			return false;
+	/**
+	 * Bank-only acquisition for interaction steps: withdraw whatever the STEP itself still needs (never
+	 * quest-level extras, which is what used to send us chasing unobtainable items). Returns true when
+	 * the tick was consumed. Requirements the bank turns out not to stock are remembered per step, so a
+	 * step whose item can't come from a bank (feathers from a pile) makes at most one trip, then falls
+	 * through to its normal logic instead of looping.
+	 */
+	private boolean tryWithdrawMissingFromBank(DetailedQuestStep questStep) {
+		if (questStep != bankAttemptStep) {
+			bankAttemptStep = questStep;
+			bankWithdrawExhausted.clear();
 		}
-		for (Requirement req : collectAllItemRequirements(questStep)) {
+
+		List<ItemRequirement> missing = new ArrayList<>();
+		for (Requirement req : questStep.getRequirements()) {
 			if (!(req instanceof ItemRequirement)) {
 				continue;
 			}
 			ItemRequirement ir = (ItemRequirement) req;
-			if (remainingQuantityNeeded(ir) <= 0) {
+			if (remainingQuantityNeeded(ir) <= 0 || bankWithdrawExhausted.contains(ir.getId())) {
 				continue;
 			}
-			Set<Integer> ids = new HashSet<>(ir.getAllIds());
-			for (Item item : bankItems) {
-				if (item != null && item.getQuantity() > 0 && ids.contains(item.getId())) {
-					return true;
-				}
+			missing.add(ir);
+		}
+		if (missing.isEmpty()) {
+			return false;
+		}
+
+		if (!Rs2Bank.isOpen()) {
+			Microbot.status = "Quest helper: withdrawing " + missing.get(0).getName();
+			Rs2Bank.walkToBankAndUseBank();
+			if (!sleepUntil(Rs2Bank::isOpen, 15_000)) {
+				return true; // still travelling; try again next tick
 			}
 		}
-		return false;
+
+		if (!Rs2Bank.setWithdrawAsItem()) {
+			Rs2Bank.closeBank();
+			return false;
+		}
+
+		boolean withdrewAny = false;
+		for (ItemRequirement ir : missing) {
+			final ItemRequirement req = ir;
+			int needed = remainingQuantityNeeded(req);
+			int withdrawId = -1;
+			for (Integer id : req.getAllIds()) {
+				if (id != null && id > 0 && Rs2Bank.count(id) > 0) {
+					withdrawId = id;
+					break;
+				}
+			}
+			if (withdrawId == -1) {
+				Microbot.log("Quest helper: bank has no " + req.getName() + "; not retrying for this step",
+						Level.WARN);
+				bankWithdrawExhausted.add(req.getId());
+				continue;
+			}
+			Microbot.status = "Withdrawing " + req.getName() + " x" + needed;
+			Rs2Bank.withdrawX(withdrawId, needed);
+			sleepUntil(() -> hasItemRequirementOnPlayer(req), 3_000);
+			withdrewAny = true;
+		}
+
+		Rs2Bank.closeBank();
+		sleepUntil(() -> !Rs2Bank.isOpen(), 3_000);
+		return withdrewAny;
 	}
 
 	private boolean handleMissingItemRequirements(DetailedQuestStep questStep) {
