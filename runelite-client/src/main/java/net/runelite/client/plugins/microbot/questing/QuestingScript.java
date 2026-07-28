@@ -643,6 +643,7 @@ public class QuestingScript extends Script {
 
 		Rs2Shop.buyItemOptimally(requirement.getName(), needed);
 		sleepUntil(() -> remainingQuantityNeeded(requirement) <= 0, 5_000);
+		rememberAcquired(requirement);
 		Rs2Shop.closeShop();
 		sleepUntil(() -> !Rs2Shop.isOpen(), 2_000);
 		return true;
@@ -766,6 +767,7 @@ public class QuestingScript extends Script {
 			Microbot.status = "Withdrawing " + req.getName() + " x" + needed;
 			Rs2Bank.withdrawX(withdrawId, needed);
 			sleepUntil(() -> hasItemRequirementOnPlayer(req), 3_000);
+			rememberAcquired(req);
 			withdrewAny = true;
 		}
 
@@ -1376,6 +1378,19 @@ public class QuestingScript extends Script {
 		if (questId != heldTrackingQuestId) {
 			heldTrackingQuestId = questId;
 			everHeldItemRequirementIds.clear();
+			QuestState startState = null;
+			try {
+				startState = selectedQuest.getQuest().getState(Microbot.getClient());
+			} catch (Exception ignored) {
+			}
+			if (startState == QuestState.NOT_STARTED) {
+				// Fresh playthrough — forget what a previous run obtained.
+				AcquiredItemMemory.clearQuest(questId);
+			} else {
+				// Survives client restarts: without this, a consumable the quest already used up
+				// (Prince Ali's 3 balls of wool) reads as missing again and gets re-bought.
+				everHeldItemRequirementIds.addAll(AcquiredItemMemory.forQuest(questId));
+			}
 			// NOTE: joining an IN_PROGRESS quest used to pre-mark EVERY quest-level requirement as
 			// "already held", which made collectAllItemRequirements skip all of them — so mid-quest
 			// nothing was ever acquired (answering "yes" to obtain missing items did nothing at all).
@@ -1396,6 +1411,7 @@ public class QuestingScript extends Script {
 			}
 			if (hasItemRequirementOnPlayer(ir)) {
 				everHeldItemRequirementIds.add(ir.getId());
+				AcquiredItemMemory.record(questId, ir.getId());
 			}
 		}
 	}
@@ -2553,6 +2569,16 @@ public class QuestingScript extends Script {
      * can't help while we're still inside one of them, which is why "stop" appeared to do nothing
      * during a shopping trip.
      */
+    /** Records an item as obtained for the selected quest, so it is never bought for it again. */
+    private void rememberAcquired(ItemRequirement requirement) {
+        QuestHelper quest = getQuestHelperPlugin() == null ? null : getQuestHelperPlugin().getSelectedQuest();
+        if (quest == null || quest.getQuest() == null || requirement == null) {
+            return;
+        }
+        everHeldItemRequirementIds.add(requirement.getId());
+        AcquiredItemMemory.record(quest.getQuest().getId(), requirement.getId());
+    }
+
     private boolean paused() {
         return config == null || !config.startStopQuestHelper();
     }
