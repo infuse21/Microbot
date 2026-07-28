@@ -529,7 +529,8 @@ public class QuestingScript extends Script {
 			if (!consideredIds.add(ir.getId())) {
 				continue;
 			}
-			if (remainingQuantityNeeded(ir) <= 0 || bankWithdrawExhausted.contains(ir.getId())) {
+			if (remainingQuantityNeeded(ir) <= 0 || bankWithdrawExhausted.contains(ir.getId())
+					|| obtainableDuringQuest(ir)) {
 				continue;
 			}
 			if (!isItemRequirementTradable(ir) && !bankSnapshotHas(ir)
@@ -2577,6 +2578,23 @@ public class QuestingScript extends Script {
         }
         everHeldItemRequirementIds.add(requirement.getId());
         AcquiredItemMemory.record(quest.getQuest().getId(), requirement.getId());
+    }
+
+    /**
+     * Whether the quest itself says this item is obtained by playing it.
+     *
+     * <p>Quest authors mark these with {@code canBeObtainedDuringQuest()}, which the sidebar renders as
+     * "Can be obtained during the quest." (Pirate's Treasure's 10 bananas, picked from the plantation).
+     * Buying them is money wasted on something the quest hands you, so acquisition skips them. The flag
+     * is stored in the requirement's tooltip rather than as a field, so that's what we read — no edit to
+     * the vendored model.
+     */
+    private boolean obtainableDuringQuest(ItemRequirement requirement) {
+        if (requirement == null) {
+            return false;
+        }
+        String tooltip = requirement.getTooltip();
+        return tooltip != null && tooltip.toLowerCase().contains("obtained during the quest");
     }
 
     private boolean paused() {
