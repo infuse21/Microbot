@@ -1421,6 +1421,29 @@ public class QuestScript extends Script {
                             .orElse(null));
         }
 
+        // Loot a kill step's reward drop before hunting the next NPC: a step like "Kill a Monk of
+        // Zamorak for a golden key" carries the key as an ItemRequirement — once the NPC dies the step
+        // only completes by PICKING UP the drop, which nothing else does (the acquire flow is gated off
+        // NpcSteps, and the drop despawns if we just wait for a respawn to kill again).
+        if (!Rs2Combat.inCombat()) {
+            for (Requirement req : step.getRequirements()) {
+                if (!(req instanceof ItemRequirement)) {
+                    continue;
+                }
+                ItemRequirement ir = (ItemRequirement) req;
+                if (hasItemRequirementOnPlayer(ir)) {
+                    continue;
+                }
+                for (Integer groundId : ir.getAllIds()) {
+                    if (groundId != null && groundId > 0 && lootGroundItem(groundId, 12)) {
+                        Microbot.log("[QuestHelper] looting step-required drop id=" + groundId, Level.WARN);
+                        sleepUntil(() -> hasItemRequirementOnPlayer(ir), 4000);
+                        return true;
+                    }
+                }
+            }
+        }
+
         // Decide whether to interact now or walk closer first:
         //  - instanced region: interact (canReach/LOS are unreliable there).
         //  - on screen AND line of sight: interact (a direct click resolves).
