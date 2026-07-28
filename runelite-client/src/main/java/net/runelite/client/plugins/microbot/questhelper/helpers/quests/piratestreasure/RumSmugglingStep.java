@@ -130,10 +130,14 @@ public class RumSmugglingStep extends ConditionalStep
 		hadRumOffKaramja = new Conditions(true, karamjanRum, offKaramja);
 		lostRum = new Conditions(LogicType.AND, inPirateTreasureMenu, new WidgetTextRequirement(InterfaceID.Questjournal.TEXTLAYER, true, "I seem to have lost it."));
 
-		Requirement haveRumFromWidget = new Conditions(inPirateTreasureMenu, new WidgetTextRequirement(InterfaceID.Questjournal.TEXTLAYER, true, "I should take it to"));
+		// "I have the rum" / "get the rum off Karamja" are the current journal wording; the older
+		// phrasings are kept so both work.
+		Requirement haveRumFromWidget = new Conditions(inPirateTreasureMenu, new WidgetTextRequirement(InterfaceID.Questjournal.TEXTLAYER, true,
+			"I should take it to", "I have the rum", "get the rum off"));
 
 		Requirement agreedToGetRum = new DialogRequirement("Ok, I will bring you some rum.");
-		Requirement atStartFromWidget = new Conditions(inPirateTreasureMenu, new WidgetTextRequirement(InterfaceID.Questjournal.TEXTLAYER, true, "I need to go to"));
+		Requirement atStartFromWidget = new Conditions(inPirateTreasureMenu, new WidgetTextRequirement(InterfaceID.Questjournal.TEXTLAYER, true,
+			"I need to go to", "He has agreed to tell me the location"));
 		atStart = new Conditions(true, LogicType.OR, agreedToGetRum, atStartFromWidget, lostRum, hadRumOffKaramja, haveRumFromWidget);
 
 		crateSent = new ChatMessageRequirement("Luthas hands you 30 coins.");
