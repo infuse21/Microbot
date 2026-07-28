@@ -105,6 +105,8 @@ public class QuestScript extends Script {
     private long lastPhaseLog = 0;
     private long lastApplyStepMark = 0;
     private long lastObjectDiagLog = 0;
+    /** Since when the visible dialogue-options widget has had no readable option text (0 = n/a). */
+    private long emptyOptionsSinceMs = 0;
 
     /**
      * Safety valve against {@link Rs2Dialogue#isInDialogue()} false positives. If the tick loop sits in
@@ -228,6 +230,25 @@ public class QuestScript extends Script {
                 if (getQuestHelperPlugin().getSelectedQuest() != null && !Microbot.getClientThread().runOnClientThreadOptional(() ->
                         getQuestHelperPlugin().getSelectedQuest().isCompleted()).orElse(false)) {
                     if (Rs2Widget.isWidgetVisible(ComponentID.DIALOG_OPTION_OPTIONS) && getQuestHelperPlugin().getSelectedQuest().getQuest().getId() != Quest.COOKS_ASSISTANT.getId() && !Rs2Bank.isOpen()) {
+                        // The options widget can be visible with its children still EMPTY (observed at
+                        // Drezel: options:[] for over a second). Dismissing then throws away a real
+                        // conversation and loops open->dismiss->re-talk forever. Wait while unpopulated;
+                        // if it stays unreadable for several seconds, press option 1 as a last resort —
+                        // never dismiss a live options menu.
+                        if (!Rs2Dialogue.hasSelectAnOption()) {
+                            if (emptyOptionsSinceMs == 0) {
+                                emptyOptionsSinceMs = System.currentTimeMillis();
+                            }
+                            if (System.currentTimeMillis() - emptyOptionsSinceMs > 4000) {
+                                Microbot.log("[QuestHelper] options menu unreadable for >4s — pressing option 1", Level.WARN);
+                                Rs2Dialogue.keyPressForDialogueOption(1);
+                                sleep(600, 900);
+                                emptyOptionsSinceMs = 0;
+                            }
+                            return;
+                        }
+                        emptyOptionsSinceMs = 0;
+
                         boolean hasOption = Rs2Dialogue.handleQuestOptionDialogueSelection();
                         //if there is no quest option in the dialogue, just click player location to remove
                         // the dialogue to avoid getting stuck in an infinite loop of dialogues
@@ -245,6 +266,7 @@ public class QuestScript extends Script {
                         }
                         return;
                     }
+                    emptyOptionsSinceMs = 0;
 
                     if (getQuestHelperPlugin().getSelectedQuest() != null &&
                             getQuestHelperPlugin().getSelectedQuest().getQuest().getId() == Quest.COOKS_ASSISTANT.getId() &&
