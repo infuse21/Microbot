@@ -163,7 +163,7 @@ public class QuestScript extends Script {
 
                             for (var dialogChoice : dialogChoices) {
                                 if (dialogChoice == null || dialogChoice.getText() == null
-                                        || !dialogChoice.getText().endsWith(choice.getChoice()))
+                                        || !dialogueChoiceMatches(dialogChoice.getText(), choice.getChoice()))
                                     continue;
 
                                 Object[] keyListener = dialogChoice.getOnKeyListener();
@@ -1849,6 +1849,36 @@ public class QuestScript extends Script {
         }
 
         return false;
+    }
+
+    /**
+     * Matches a live dialogue option against a quest-data dialog step. Exact/suffix match first (the
+     * original behaviour), then a normalized word-prefix match so slightly-stale quest data still hits
+     * after Jagex rewords an option — e.g. data "Yes." vs live "Yes, I think I've heard of it."
+     * Word-prefix (not contains) so data "No." can never match inside "...I know it...".
+     */
+    static boolean dialogueChoiceMatches(String liveOption, String questChoice) {
+        if (liveOption == null || questChoice == null || questChoice.isEmpty()) {
+            return false;
+        }
+        if (liveOption.endsWith(questChoice)) {
+            return true;
+        }
+        String live = normalizeDialogueText(liveOption);
+        String want = normalizeDialogueText(questChoice);
+        if (want.isEmpty() || live.isEmpty()) {
+            return false;
+        }
+        return live.equals(want) || live.startsWith(want + " ");
+    }
+
+    /** Lowercase, tags/punctuation stripped, whitespace collapsed. */
+    private static String normalizeDialogueText(String text) {
+        return text.replaceAll("<[^>]*>", " ")
+                .toLowerCase()
+                .replaceAll("[^a-z0-9 ]", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
     }
 
     /**
