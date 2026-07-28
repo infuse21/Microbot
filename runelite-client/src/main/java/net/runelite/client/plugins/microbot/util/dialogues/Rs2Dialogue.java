@@ -85,7 +85,9 @@ public class Rs2Dialogue {
      * @return true if the "Continue" option is visible in the NPC dialogue, false otherwise.
      */
     private static boolean hasNPCContinue() {
-        return Rs2Widget.isWidgetVisible(InterfaceID.DIALOG_NPC, 5);
+        // Content-gated: the dialog widget group can be present-but-empty (same phantom as group 229),
+        // which made isInDialogue() true with nothing on screen and stalled scripts in the space-press loop.
+        return messageBoxHasContent(InterfaceID.DIALOG_NPC, 5);
     }
 
     /**
@@ -95,7 +97,8 @@ public class Rs2Dialogue {
      * @return true if the "Continue" option is visible in the player dialogue, false otherwise.
      */
     private static boolean hasPlayerContinue() {
-        return Rs2Widget.isWidgetVisible(InterfaceID.DIALOG_PLAYER, 5);
+        // Content-gated — see hasNPCContinue.
+        return messageBoxHasContent(InterfaceID.DIALOG_PLAYER, 5);
     }
 
     /**
@@ -210,7 +213,16 @@ public class Rs2Dialogue {
         Widget widget = Rs2Widget.getWidget(InterfaceID.DIALOG_OPTION, 1);
         if (widget == null) return false;
 
-        return widget.getDynamicChildren() != null;
+        // Content-gated: a present-but-empty options widget (no children with text) is the same
+        // phantom as the empty message-box groups — not a real dialogue.
+        Widget[] children = widget.getDynamicChildren();
+        if (children == null || children.length == 0) return false;
+        for (Widget child : children) {
+            if (child != null && child.getText() != null && !child.getText().trim().isEmpty()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
