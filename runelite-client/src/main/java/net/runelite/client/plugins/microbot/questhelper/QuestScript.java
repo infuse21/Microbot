@@ -493,14 +493,22 @@ public class QuestScript extends Script {
 			bankWithdrawExhausted.clear();
 		}
 
+		// Consider quest-level requirements too, not just this step's: the item a step needs is often
+		// listed on the quest rather than the step (Prince Ali's "Ned makes a wig from 3 balls of wool"
+		// carries no requirement of its own). To keep the old protection, only take items a bank or the
+		// GE could actually supply — untradeable quest-progress items (keys, disguises, quest drops) are
+		// filtered out here, so we never walk off to shop for something only the quest can produce.
 		List<ItemRequirement> missing = new ArrayList<>();
-		for (Requirement req : questStep.getRequirements()) {
+		for (Requirement req : collectAllItemRequirements(questStep)) {
 			if (!(req instanceof ItemRequirement)) {
 				continue;
 			}
 			ItemRequirement ir = (ItemRequirement) req;
 			if (remainingQuantityNeeded(ir) <= 0 || bankWithdrawExhausted.contains(ir.getId())) {
 				continue;
+			}
+			if (!isItemRequirementTradable(ir) && !bankSnapshotHas(ir)) {
+				continue; // only the quest itself can supply this one
 			}
 			missing.add(ir);
 		}
@@ -565,6 +573,21 @@ public class QuestScript extends Script {
 	 *
 	 * @return true when the tick was consumed.
 	 */
+	/** Whether the quest's bank snapshot shows any stock of this requirement. */
+	private boolean bankSnapshotHas(ItemRequirement ir) {
+		Item[] bankItems = QuestContainerManager.getBankData().getItems();
+		if (bankItems == null) {
+			return false;
+		}
+		Set<Integer> ids = new HashSet<>(ir.getAllIds());
+		for (Item item : bankItems) {
+			if (item != null && item.getQuantity() > 0 && ids.contains(item.getId())) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	private boolean acquireFromBankThenGrandExchange(List<ItemRequirement> missing, Set<Integer> exhausted) {
 		if (missing.isEmpty()) {
 			return false;
