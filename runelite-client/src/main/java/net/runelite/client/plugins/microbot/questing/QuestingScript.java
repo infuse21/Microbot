@@ -2150,8 +2150,9 @@ public class QuestingScript extends Script {
         boolean differentPlane = objectStepDp != null
                 && objectStepDp.getPlane() != Rs2Player.getWorldLocation().getPlane();
         if (!Microbot.getClient().isInInstancedRegion()
-                && objectStepDp != null && (differentPlane || Rs2Player.getWorldLocation().distanceTo2D(objectStepDp) > 2)
-                && (object == null || !Rs2Walker.canReach(object.getWorldLocation()) || !hasLineOfSightToObject(object))) {
+                && objectStepDp != null
+                && (differentPlane || Rs2Player.getWorldLocation().distanceTo2D(objectStepDp) > 2
+                    || !canInteractWithObject(object))) {
             WorldPoint targetTile = null;
             WorldPoint stepLocation = object == null ? objectStepDp : object.getWorldLocation();
             // When we're already near the target, restrict approach candidates to tiles that are LOCALLY
@@ -2182,11 +2183,9 @@ public class QuestingScript extends Script {
             // a gated door (e.g. "use the feathers on the stone door") walks onto the door tile itself:
             // the walker's door pipeline then endlessly tries to Open the locked door to route through it,
             // instead of ending the walk so we can use the item on it from the adjacent tile.
-            final WorldPoint stepDp = objectStepDp;
-            WalkerState approachState = Rs2Walker.walkWithStateUntil(targetTile, 3, () -> {
-                WorldPoint p = Rs2Player.getWorldLocation();
-                return p != null && stepDp != null && p.distanceTo(stepDp) <= 2;
-            });
+            final Rs2TileObjectModel approachTarget = object;
+            WalkerState approachState = Rs2Walker.walkWithStateUntil(targetTile, 3,
+                    () -> canInteractWithObject(approachTarget));
             // ARRIVED means we're as close as the approach can get — often INSTANTLY, with no log or
             // movement, when we already stand within acceptance of the chosen tile (e.g. 2 tiles from a
             // staircase whose own tile is canReach=false). Returning here re-ran this block forever in
@@ -2197,25 +2196,24 @@ public class QuestingScript extends Script {
             approachArrived = true;
         }
 
+        // The approach finished but the object still isn't clickable from here (no line of sight, not
+        // reachable). Yield rather than clicking through whatever is in the way — the tick retries, and
+        // the log names the object so a genuinely impossible approach is visible instead of silent.
+        if (approachArrived && !canInteractWithObject(object)) {
+            if (System.currentTimeMillis() - lastObjectDiagLog > 3000) {
+                lastObjectDiagLog = System.currentTimeMillis();
+                Microbot.log("[Questing] approach finished but object not clickable yet: id="
+                        + (object == null ? "-" : object.getId())
+                        + " at " + (object == null ? "-" : object.getWorldLocation()), Level.WARN);
+            }
+            return false;
+        }
+
         // Once we're standing next to a reachable object, click it — don't gate on the on-screen/LOS
         // heuristic. Full-tile objects (e.g. a searchable pile of books) block line-of-sight to their own
         // tile, and the snapshot's local/canvas location can be unresolved, so that heuristic goes all-false
         // and we fall through to walkTo() forever, nudging in place next to the target and never interacting.
-        boolean adjacentAndReachable = object != null
-                && Rs2Walker.canReach(object.getWorldLocation())
-                && Rs2Player.getWorldLocation().distanceTo(object.getWorldLocation()) <= 2;
-
-        // Within click range of the step's own tile: interact even if canReach/LOS say no (locked doors).
-        boolean nearDefinedPoint = object != null
-                && step.getDefinedPoint() != null && step.getDefinedPoint().getWorldPoint() != null
-                && Rs2Player.getWorldLocation().distanceTo(step.getDefinedPoint().getWorldPoint()) <= 2;
-
-        if ((object != null && approachArrived)
-                || (object != null && Microbot.getClient().isInInstancedRegion())
-                || adjacentAndReachable
-                || nearDefinedPoint
-                || hasLineOfSightToObject(object)
-                || object != null && (Rs2Camera.isTileOnScreen(object.getLocalLocation()) || object.getCanvasLocation() != null)) {
+        if (canInteractWithObject(object)) {
             Rs2Walker.clearWalkingRoute("quest-helper:object-step-interact");
 
             // Re-resolve the object fresh from the live cache right before clicking, by the STEP's target
@@ -2632,6 +2630,44 @@ public class QuestingScript extends Script {
 
     private boolean paused() {
         return config == null || !config.startStopQuestHelper();
+    }
+
+    /**
+     * Whether the object can be clicked from where we stand.
+     *
+     * <p>Deliberately stricter than "is it on screen": a wall doesn't block rendering from an overhead
+     * camera, so an on-screen test says yes to a crate inside a shop we're standing outside of, and the
+     * click goes through the wall and silently fails. Nor is "within N tiles of the step's tile" enough,
+     * for the same reason.
+     *
+     * <p>Accepts: instanced regions (coordinates there are template values, so reach/LOS are unreliable);
+     * being directly adjacent (covers solid objects like a pile of books, which block line of sight to
+     * their own tile, and locked doors whose tile is never walkable); a reachable object a couple of
+     * tiles away; or plain line of sight.
+     */
+    private boolean canInteractWithObject(Rs2TileObjectModel object) {
+        if (object == null) {
+            return false;
+        }
+        if (Microbot.getClient().isInInstancedRegion()) {
+            return true;
+        }
+        WorldPoint player = Rs2Player.getWorldLocation();
+        WorldPoint target = object.getWorldLocation();
+        if (player == null || target == null) {
+            return false;
+        }
+        if (player.getPlane() != target.getPlane()) {
+            return false;
+        }
+        int distance = player.distanceTo(target);
+        if (distance <= 1) {
+            return true;
+        }
+        if (distance <= 2 && Rs2Walker.canReach(target)) {
+            return true;
+        }
+        return hasLineOfSightToObject(object);
     }
 
     /** Nearest object within 2 tiles of {@code dp} that exposes at least one menu action, or null. */
