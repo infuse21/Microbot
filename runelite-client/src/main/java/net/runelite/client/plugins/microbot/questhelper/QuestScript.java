@@ -47,6 +47,7 @@ import net.runelite.client.plugins.microbot.api.tileitem.models.Rs2TileItemModel
 import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -125,6 +126,9 @@ public class QuestScript extends Script {
     private List<String> pendingDialogueOptions = null;
     private String pendingDialogueStepText = null;
     private long pendingDialogueAtMs = 0;
+    /** Quest-authored dialogue options, indexed once per quest. */
+    private Integer vocabularyQuestId = null;
+    private Set<String> dialogueVocabulary = Collections.emptySet();
     /** Rotates which candidate object a highlighted item gets used on at a detailed step's spot. */
     private int detailedUseRotation = 0;
     private QuestStep lastDetailedRotationStep = null;
@@ -2336,12 +2340,38 @@ public class QuestScript extends Script {
             }
             return;
         } else {
+            // Prefer an option the quest itself declares somewhere — an author-written answer beats a
+            // guess. In permanent-choice quests this is allowed ONLY when exactly one option matches:
+            // several matches means an intentional branch (which gang, which reward) that must not be
+            // decided automatically.
+            List<String> authored = new ArrayList<>();
             for (String option : options) {
-                if (negatives.contains(option) || LearnedDialogue.isDangerousOption(option)) {
+                if (negatives.contains(option)) {
                     continue;
                 }
-                choice = option;
-                break;
+                for (String known : questDialogueVocabulary(quest)) {
+                    if (dialogueChoiceMatches(option, known)) {
+                        authored.add(option);
+                        break;
+                    }
+                }
+            }
+
+            if (authored.size() == 1) {
+                choice = authored.get(0);
+            } else if (!LearnedDialogue.guessingAllowed(questId)) {
+                Microbot.status = "Quest helper: ambiguous dialogue in a permanent-choice quest — needs a human";
+                return;
+            } else if (!authored.isEmpty()) {
+                choice = authored.get(0);
+            } else {
+                for (String option : options) {
+                    if (negatives.contains(option) || LearnedDialogue.isDangerousOption(option)) {
+                        continue;
+                    }
+                    choice = option;
+                    break;
+                }
             }
         }
 
@@ -2363,6 +2393,63 @@ public class QuestScript extends Script {
 
         Rs2Dialogue.keyPressForDialogueOption(index);
         sleep(900, 1400);
+    }
+
+    /**
+     * Every dialogue option the selected quest declares anywhere — not just on the active step.
+     *
+     * <p>Quest authors attach {@code addDialogStep} texts to the step where they expect the menu, but
+     * the same menu often appears while a different (or sub-) step is active, so a perfectly good
+     * answer already written in the quest data goes unused and we fall through to guessing. Indexing
+     * the whole quest gives the learner a quest-authored base to draw on: the answer is still the
+     * author's, not invented, so it's safe to prefer over any guess.
+     */
+    private Set<String> questDialogueVocabulary(QuestHelper quest) {
+        if (quest == null || quest.getQuest() == null) {
+            return Collections.emptySet();
+        }
+        int questId = quest.getQuest().getId();
+        if (vocabularyQuestId != null && vocabularyQuestId == questId) {
+            return dialogueVocabulary;
+        }
+
+        Set<String> vocabulary = new HashSet<>();
+        try {
+            List<PanelDetails> panels = quest.getPanels();
+            if (panels != null) {
+                for (PanelDetails panel : panels) {
+                    if (panel.getSteps() == null) {
+                        continue;
+                    }
+                    for (QuestStep step : panel.getSteps()) {
+                        collectStepChoices(step, vocabulary);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            Microbot.log("[QuestHelper] could not index quest dialogue: " + e.getMessage(), Level.WARN);
+        }
+
+        vocabularyQuestId = questId;
+        dialogueVocabulary = vocabulary;
+        Microbot.log("[QuestHelper] indexed " + vocabulary.size() + " quest-authored dialogue options", Level.INFO);
+        return vocabulary;
+    }
+
+    private void collectStepChoices(QuestStep step, Set<String> into) {
+        if (step == null) {
+            return;
+        }
+        if (step.getChoices() != null && step.getChoices().getChoices() != null) {
+            for (var choice : step.getChoices().getChoices()) {
+                if (choice != null && choice.getChoice() != null && !choice.getChoice().isBlank()) {
+                    into.add(choice.getChoice());
+                }
+            }
+        }
+        for (QuestStep substep : step.getSubsteps()) {
+            collectStepChoices(substep, into);
+        }
     }
 
     /** Confirms a pending dialogue pick once the quest has visibly moved on. */
