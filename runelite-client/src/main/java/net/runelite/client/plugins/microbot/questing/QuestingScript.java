@@ -162,7 +162,9 @@ public class QuestingScript extends Script {
                     // re-enabling resumes exactly where it left off.
                     if (wasEnabled) {
                         wasEnabled = false;
-                        Rs2Walker.clearWalkingRoute("quest-helper:disabled");
+                        // Cancels any walk in flight — including one started deep inside a bank or
+                        // Grand Exchange trip, which is the longest thing a tick can be stuck in.
+                        Rs2Walker.clearWalkingRoute("questing:disabled");
                         dialogueStartedStep = null;
                         dialogueSpaceStuckStep = null;
                         dialogueCooldownEndsAt = 0;
@@ -731,10 +733,10 @@ public class QuestingScript extends Script {
 			return false;
 		}
 
-		if (!Rs2Bank.isOpen()) {
+		if (!Rs2Bank.isOpen() && !paused()) {
 			Microbot.status = "Quest helper: withdrawing " + missing.get(0).getName();
 			Rs2Bank.walkToBankAndUseBank();
-			if (!sleepUntil(Rs2Bank::isOpen, 15_000)) {
+			if (!sleepUntil(() -> Rs2Bank.isOpen() || paused(), 15_000)) {
 				return true; // still travelling; try again next tick
 			}
 		}
@@ -861,11 +863,11 @@ public class QuestingScript extends Script {
 		}
 
 		if (actionable.isEmpty()) {
-			if (!Rs2GrandExchange.isOpen()) {
+			if (!Rs2GrandExchange.isOpen() && !paused()) {
 				Microbot.status = "Quest helper: heading to Grand Exchange for in-progress offers";
 				Rs2GrandExchange.walkToGrandExchange();
 				Rs2GrandExchange.openExchange();
-				sleepUntil(Rs2GrandExchange::isOpen, 15_000);
+				sleepUntil(() -> Rs2GrandExchange.isOpen() || paused(), 15_000);
 				if (!Rs2GrandExchange.isOpen()) {
 					return true;
 				}
@@ -873,7 +875,7 @@ public class QuestingScript extends Script {
 
 			if (!Rs2GrandExchange.hasBoughtOffer()) {
 				Microbot.status = "Waiting for Grand Exchange offers to fill";
-				if (!sleepUntil(Rs2GrandExchange::hasBoughtOffer, 60_000)) {
+				if (!sleepUntil(() -> Rs2GrandExchange.hasBoughtOffer() || paused(), 60_000)) {
 					stopQuesterWithReason(
 							"Grand Exchange offers for missing quest items did not fill within 60 seconds. "
 									+ "They may be underpriced or low supply — cancel them manually and retry.");
@@ -885,10 +887,10 @@ public class QuestingScript extends Script {
 			return true;
 		}
 
-		if (!Rs2Bank.isOpen()) {
+		if (!Rs2Bank.isOpen() && !paused()) {
 			Microbot.status = "Quest helper: walking to bank for missing items";
 			Rs2Bank.walkToBankAndUseBank();
-			sleepUntil(Rs2Bank::isOpen, 15_000);
+			sleepUntil(() -> Rs2Bank.isOpen() || paused(), 15_000);
 			if (!Rs2Bank.isOpen()) {
 				return true;
 			}
@@ -1039,11 +1041,11 @@ public class QuestingScript extends Script {
 			return true;
 		}
 
-		if (!Rs2GrandExchange.isOpen()) {
+		if (!Rs2GrandExchange.isOpen() && !paused()) {
 			Microbot.status = "Quest helper: walking to Grand Exchange";
 			Rs2GrandExchange.walkToGrandExchange();
 			Rs2GrandExchange.openExchange();
-			sleepUntil(Rs2GrandExchange::isOpen, 15_000);
+			sleepUntil(() -> Rs2GrandExchange.isOpen() || paused(), 15_000);
 			if (!Rs2GrandExchange.isOpen()) {
 				return true;
 			}
@@ -1084,7 +1086,7 @@ public class QuestingScript extends Script {
 					"Waiting for Grand Exchange offers to fill (attempt %d/%d)",
 					attempt, maxBuyAttempts);
 
-			sleepUntil(() -> itemsStillBuying(toBuy, buyPrimaryIds).isEmpty(), perAttemptWaitMs);
+			sleepUntil(() -> itemsStillBuying(toBuy, buyPrimaryIds).isEmpty() || paused(), perAttemptWaitMs);
 
 			List<ItemRequirement> stillPending = itemsStillBuying(toBuy, buyPrimaryIds);
 			if (stillPending.isEmpty()) {
@@ -1196,6 +1198,9 @@ public class QuestingScript extends Script {
 	}
 
 	private void collectPurchasedItemsViaBank(List<ItemRequirement> items) {
+		if (paused()) {
+			return;
+		}
 		Microbot.status = "Collecting purchased quest items to bank";
 		Rs2GrandExchange.collectAllToBank();
 		sleep(800, 1200);
@@ -1205,10 +1210,10 @@ public class QuestingScript extends Script {
 			sleepUntil(() -> !Rs2GrandExchange.isOpen(), 2_000);
 		}
 
-		if (!Rs2Bank.isOpen()) {
+		if (!Rs2Bank.isOpen() && !paused()) {
 			Microbot.status = "Opening bank to retrieve purchased quest items";
 			Rs2Bank.walkToBankAndUseBank();
-			sleepUntil(Rs2Bank::isOpen, 15_000);
+			sleepUntil(() -> Rs2Bank.isOpen() || paused(), 15_000);
 			if (!Rs2Bank.isOpen()) {
 				Microbot.log("Quest helper: failed to open bank after Grand Exchange collection", Level.WARN);
 				return;
@@ -1591,10 +1596,13 @@ public class QuestingScript extends Script {
 	}
 
 	private boolean unnoteItemsViaBank(List<ItemRequirement> items) {
-		if (!Rs2Bank.isOpen()) {
+		if (paused()) {
+			return false;
+		}
+		if (!Rs2Bank.isOpen() && !paused()) {
 			Microbot.status = "Quest helper: walking to bank to un-note items";
 			Rs2Bank.walkToBankAndUseBank();
-			sleepUntil(Rs2Bank::isOpen, 15_000);
+			sleepUntil(() -> Rs2Bank.isOpen() || paused(), 15_000);
 			if (!Rs2Bank.isOpen()) {
 				return true;
 			}
