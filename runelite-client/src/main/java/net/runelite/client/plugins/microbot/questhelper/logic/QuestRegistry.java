@@ -16,6 +16,7 @@ public class QuestRegistry {
         QUEST_MAP.put(Quest.RUNE_MYSTERIES.getId(), new RuneMysteries());
         QUEST_MAP.put(Quest.PIRATES_TREASURE.getId(), new PiratesTreasure());
         QUEST_MAP.put(Quest.EAGLES_PEAK.getId(), new EaglesPeak());
+        QUEST_MAP.put(Quest.PRIEST_IN_PERIL.getId(), new PriestInPeril());
 
     }
 
