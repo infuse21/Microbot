@@ -52,6 +52,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
@@ -1168,7 +1169,21 @@ public class QuestScript extends Script {
 		sleepUntil(() -> !Rs2Bank.isOpen(), 3_000);
 	}
 
+	/** Tradability never changes for an item id, but the lookup is a client-thread hop — memoize it. */
+	private static final Map<Integer, Boolean> TRADABLE_CACHE = new ConcurrentHashMap<>();
+
 	private boolean isItemRequirementTradable(ItemRequirement itemRequirement) {
+		Integer key = itemRequirement.getId();
+		Boolean cached = TRADABLE_CACHE.get(key);
+		if (cached != null) {
+			return cached;
+		}
+		boolean tradable = computeItemRequirementTradable(itemRequirement);
+		TRADABLE_CACHE.put(key, tradable);
+		return tradable;
+	}
+
+	private boolean computeItemRequirementTradable(ItemRequirement itemRequirement) {
 		return Microbot.getClientThread().runOnClientThreadOptional(() -> {
 			for (Integer id : itemRequirement.getAllIds()) {
 				if (id == null || id <= 0) {
@@ -1271,23 +1286,10 @@ public class QuestScript extends Script {
 		if (questId != heldTrackingQuestId) {
 			heldTrackingQuestId = questId;
 			everHeldItemRequirementIds.clear();
-
-			QuestState state = null;
-			try {
-				state = selectedQuest.getQuest().getState(Microbot.getClient());
-			} catch (Exception ignored) {
-			}
-
-			if (state == QuestState.IN_PROGRESS) {
-				List<ItemRequirement> questLevel = selectedQuest.getItemRequirements();
-				if (questLevel != null) {
-					for (ItemRequirement ir : questLevel) {
-						if (ir != null) {
-							everHeldItemRequirementIds.add(ir.getId());
-						}
-					}
-				}
-			}
+			// NOTE: joining an IN_PROGRESS quest used to pre-mark EVERY quest-level requirement as
+			// "already held", which made collectAllItemRequirements skip all of them — so mid-quest
+			// nothing was ever acquired (answering "yes" to obtain missing items did nothing at all).
+			// Only items we actually observe on the player are marked now, by the loop below.
 		}
 
 		List<ItemRequirement> questLevel = selectedQuest.getItemRequirements();
