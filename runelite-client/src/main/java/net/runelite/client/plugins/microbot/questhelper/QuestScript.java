@@ -107,6 +107,8 @@ public class QuestScript extends Script {
     private long lastObjectDiagLog = 0;
     /** Since when the visible dialogue-options widget has had no readable option text (0 = n/a). */
     private long emptyOptionsSinceMs = 0;
+    /** Rotates which option gets picked when a populated menu matches no quest dialog step. */
+    private int unmatchedOptionRotation = 0;
 
     /**
      * Safety valve against {@link Rs2Dialogue#isInDialogue()} false positives. If the tick loop sits in
@@ -250,19 +252,21 @@ public class QuestScript extends Script {
                         emptyOptionsSinceMs = 0;
 
                         boolean hasOption = Rs2Dialogue.handleQuestOptionDialogueSelection();
-                        //if there is no quest option in the dialogue, just click player location to remove
-                        // the dialogue to avoid getting stuck in an infinite loop of dialogues
                         if (!hasOption) {
                             if (Rs2Dialogue.acceptQuestStartDialogue()) {
                                 return;
                             }
-                            if (getQuestHelperPlugin().getSelectedQuest() != null &&
-                                    getQuestHelperPlugin().getSelectedQuest().getQuest().getId() == Quest.IMP_CATCHER.getId()
-                                    && Microbot.getClient().getTopLevelWorldView().getPlane() == 1) {
-                                Rs2Dialogue.keyPressForDialogueOption(1); // presses option 1
-                                sleep(1200,1800);
-                            }
-                            Rs2Walker.walkFastCanvas(Rs2Player.getWorldLocation());
+                            // A populated menu with no matching quest option means the quest data's
+                            // dialog texts are stale (options get reworded). Dismissing loops
+                            // open->dismiss->re-talk forever; a human would just pick an option and keep
+                            // the conversation moving. Rotate through the options across attempts so a
+                            // lore pick can't loop us on the same entry.
+                            int optionCount = Math.max(1, Rs2Dialogue.getDialogueOptions().size());
+                            int pick = (unmatchedOptionRotation++ % optionCount) + 1;
+                            Microbot.log("[QuestHelper] no matching dialog option — picking option "
+                                    + pick + "/" + optionCount + " to keep the conversation moving", Level.WARN);
+                            Rs2Dialogue.keyPressForDialogueOption(pick);
+                            sleep(900, 1400);
                         }
                         return;
                     }
