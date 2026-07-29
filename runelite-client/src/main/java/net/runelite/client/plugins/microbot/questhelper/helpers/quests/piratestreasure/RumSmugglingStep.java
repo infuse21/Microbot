@@ -58,9 +58,11 @@ public class RumSmugglingStep extends ConditionalStep
 	private Zone karamjaZone1;
 	private Zone karamjaZone2;
 	private Zone karamjaBoat;
+	private Zone wydinBackRoom;
 
 	// Miscellaneous requirements
 	private ZoneRequirement onKaramja;
+	private Conditions employedByWydin;
 
 	private ItemRequirement karamjanRum;
 	private ItemRequirement whiteApron;
@@ -83,6 +85,7 @@ public class RumSmugglingStep extends ConditionalStep
 	private QuestStep syncStep;
 	private QuestStep talkToCustomsOfficer;
 	private QuestStep getRumFromCrate;
+	private QuestStep talkToWydin;
 	private QuestStep getWhiteApron;
 	private QuestStep addBananasToCrate;
 	private QuestStep addRumToCrate;
@@ -112,6 +115,8 @@ public class RumSmugglingStep extends ConditionalStep
 		karamjaZone1 = new Zone(new WorldPoint(2688, 3235, 0), new WorldPoint(2903, 2879, 0));
 		karamjaZone2 = new Zone(new WorldPoint(2903, 2879, 0), new WorldPoint(2964, 3187, 0));
 		karamjaBoat = new Zone(new WorldPoint(2964, 3138, 0), new WorldPoint(2951, 3144, 1));
+		// Kept tight around the crate: every tile in here is unambiguously behind the locked door.
+		wydinBackRoom = new Zone(new WorldPoint(3009, 3206, 0), new WorldPoint(3010, 3208, 0));
 	}
 
 	private void setupRequirements()
@@ -149,6 +154,15 @@ public class RumSmugglingStep extends ConditionalStep
 
 		Requirement employedFromDialog = new Conditions(new DialogRequirement("If you could fill it up with bananas, I'll pay you 30 gold.", "Have you completed your task yet?", "you should see the old crate"));
 		employed = new Conditions(true, LogicType.OR, employedFromDialog, employedFromWidget, employedByWydinFromWidget);
+
+		/* Employed by Wydin specifically — the back room stays locked until then, so this gates the
+		 * crate step. Latching, because no single signal survives on its own: the dialogue is gone
+		 * once the conversation ends, the journal line is only readable while the journal is open, and
+		 * you walk back out of the room again. Asking is enough to move on — the prerequisites Wydin
+		 * actually cares about are already gated below. */
+		Requirement askedWydinForJob = new DialogRequirement("can I get a job here");
+		employedByWydin = new Conditions(true, LogicType.OR,
+			askedWydinForJob, employedByWydinFromWidget, new ZoneRequirement(wydinBackRoom));
 
 		// This can't be a dialog requirement because the check function doesn't do the actual checking
 		haveYouCompletedyourTaskYet = new WidgetTextRequirement(InterfaceID.ChatLeft.TEXT, "Have you completed your task yet?");
@@ -213,6 +227,13 @@ public class RumSmugglingStep extends ConditionalStep
 		getWhiteApron = new DetailedQuestStep(getQuestHelper(), new WorldPoint(3016, 3229, 0),
 			"Grab the white apron from the Fishing Shop.", whiteApronHanging);
 
+		// The back room is locked to anyone Wydin hasn't hired. Upstream folded this into the crate
+		// step's dialogue and left a human to work out that they had to ask him first; as its own step
+		// the prerequisite is explicit, and automation has something to act on.
+		talkToWydin = new NpcStep(getQuestHelper(), NpcID.WYDIN, new WorldPoint(3013, 3206, 0),
+			"Talk to Wydin in the Port Sarim food shop and ask him for a job — the back room is locked until he employs you.");
+		talkToWydin.addDialogStep("Well, can I get a job here?");
+
 		getRumFromCrate = new ObjectStep(getQuestHelper(), ObjectID.GROCERYCRATE, new WorldPoint(3009, 3207, 0),
 			"Search the crate in the back room of the Port Sarim food shop. Make sure you're wearing your white apron.", whiteApronEquipped);
 		getRumFromCrate.addDialogStep("Well, can I get a job here?");
@@ -226,7 +247,8 @@ public class RumSmugglingStep extends ConditionalStep
 	{
 		this.addStep(hasRumOffKaramja, bringRumToRedbeard);
 		this.addStep(and(verifiedAState, haveShippedRum, onKaramja), talkToCustomsOfficer);
-		this.addStep(and(verifiedAState, haveShippedRum, whiteApron), getRumFromCrate);
+		this.addStep(and(verifiedAState, haveShippedRum, whiteApron, employedByWydin), getRumFromCrate);
+		this.addStep(and(verifiedAState, haveShippedRum, whiteApron), talkToWydin);
 		this.addStep(and(verifiedAState, haveShippedRum), getWhiteApron);
 		this.addStep(and(verifiedAState, filledCrateWithBananasAndRum, onKaramja), talkToLuthasAgain);
 		this.addStep(and(verifiedAState, stashedRum, onKaramja), addBananasToCrate);
@@ -290,6 +312,7 @@ public class RumSmugglingStep extends ConditionalStep
 		sections.add(new PanelDetails("Back to Port Sarim", List.of(
 			talkToCustomsOfficer,
 			getWhiteApron,
+			talkToWydin,
 			getRumFromCrate,
 			bringRumToRedbeard
 		)));
