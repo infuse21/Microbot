@@ -468,8 +468,15 @@ public class QuestingScript extends Script {
                     sleepUntil(() -> !Rs2Player.isInteracting() && !Rs2Player.isMoving() && !Rs2Player.isAnimating(), 2000);
                 }
 
-            } catch (Exception ex) {
-                Microbot.log("Quest helper tick error: " + ex.getMessage(), Level.ERROR, ex);
+            } catch (Throwable ex) {
+                // Throwable, not Exception. scheduleWithFixedDelay captures whatever escapes into the
+                // Future and silently stops rescheduling — so anything outside Exception (an Error, a
+                // NoClassDefFoundError from a lazily-loaded class, a StackOverflowError) killed questing
+                // permanently with nothing in the log and no thread left running. Observed on The
+                // Corsair Curse's final step: loopCount frozen at 91, both pool threads parked, not one
+                // line written. Catching it here keeps the schedule alive and, just as importantly,
+                // makes the cause visible.
+                Microbot.log("Quest helper tick error: " + ex, Level.ERROR, ex);
             }
         }, 0, Rs2Random.between(400, 1000), TimeUnit.MILLISECONDS);
         return true;
