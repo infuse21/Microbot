@@ -43,7 +43,7 @@ public class PriestInPeril extends BaseQuest {
 
 		List<Rs2TileObjectModel> monuments = Microbot.getRs2TileObjectCache().query()
 				.withName(MONUMENT_NAME)
-				.toList().stream()
+				.toListOnClientThread().stream()
 				.sorted(Comparator.comparing(o -> o.getWorldLocation().distanceTo(Rs2Player.getWorldLocation())))
 				.collect(Collectors.toList());
 
