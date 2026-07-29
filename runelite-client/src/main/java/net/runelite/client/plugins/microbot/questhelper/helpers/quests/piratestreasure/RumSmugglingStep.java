@@ -232,6 +232,8 @@ public class RumSmugglingStep extends ConditionalStep
 		// the prerequisite is explicit, and automation has something to act on.
 		talkToWydin = new NpcStep(getQuestHelper(), NpcID.WYDIN, new WorldPoint(3013, 3206, 0),
 			"Talk to Wydin in the Port Sarim food shop and ask him for a job — the back room is locked until he employs you.");
+		// "Can I get a job here?" is the wording in game; upstream's "Well, ..." is kept as an alternate.
+		talkToWydin.addDialogStep("Can I get a job here?");
 		talkToWydin.addDialogStep("Well, can I get a job here?");
 
 		getRumFromCrate = new ObjectStep(getQuestHelper(), ObjectID.GROCERYCRATE, new WorldPoint(3009, 3207, 0),

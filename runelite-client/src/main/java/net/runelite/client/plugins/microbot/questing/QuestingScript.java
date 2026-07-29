@@ -2573,7 +2573,19 @@ public class QuestingScript extends Script {
         if (want.isEmpty() || live.isEmpty()) {
             return false;
         }
-        return live.equals(want) || live.startsWith(want + " ");
+        if (live.equals(want) || live.startsWith(want + " ")) {
+            return true;
+        }
+        // The reverse drift: the quest data carries leading filler the game has since dropped, e.g.
+        // Pirate's Treasure declares "Well, can I get a job here?" against a live "Can I get a job
+        // here?". Only accept it when the live option is specific enough to stand alone — a loose
+        // suffix match would let "Thank you." satisfy a declared "No, thank you.", and picking the
+        // wrong option is the one mistake in a quest that can't be undone.
+        return countWords(live) >= 3 && want.endsWith(" " + live);
+    }
+
+    private static int countWords(String normalized) {
+        return normalized.isEmpty() ? 0 : normalized.split(" ").length;
     }
 
     /** Lowercase, tags/punctuation stripped, whitespace collapsed. */
