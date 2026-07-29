@@ -664,6 +664,20 @@ public class Rs2Walker {
      * pathfinder decide. Only a target sitting in mapped, wholly blocked terrain is rejected —
      * otherwise this would refuse instances and any region missing from the collision map.
      */
+    /**
+     * Whether the pathfinder's collision map considers this tile standable.
+     *
+     * <p>Anyone <em>choosing</em> a destination should filter candidates through this. {@link #walkTo}
+     * pre-flights the target and rejects it outright when nothing walkable lies within the arrival
+     * distance, so picking an unwalkable tile fails the entire walk rather than degrading to something
+     * close by. The scene's own notion of walkability and this map do not always agree — the Corsair
+     * Cove staircase approach at (2531,2834) reads walkable in the scene and blocked here.
+     */
+    public static boolean isWalkableInCollisionMap(WorldPoint tile) {
+        PathfinderConfig config = Rs2PathApi.getPathfinderConfig();
+        return hasWalkableTileWithin(config != null ? config.getMap() : null, tile, 0);
+    }
+
     static boolean hasWalkableTileWithin(CollisionMap map, WorldPoint target, int distance) {
         if (map == null || target == null) {
             return true;

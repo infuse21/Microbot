@@ -2239,6 +2239,11 @@ public class QuestingScript extends Script {
                 List<WorldPoint> withLineOfSight = Rs2Tile.getWalkableTilesAroundTile(stepLocation, radius)
                         .stream()
                         .filter(x -> !unreachableClickTiles.contains(x))
+                        // The walker pre-flights its destination against the collision map and rejects
+                        // the walk outright if the tile is blocked there, so a candidate the scene calls
+                        // walkable but the map does not takes the whole step down with it — exactly what
+                        // (2531,2834) did at the Corsair Cove stairs.
+                        .filter(Rs2Walker::isWalkableInCollisionMap)
                         .filter(x -> isOrthogonallyAgainst(x, targetFootprint) || hasLineOfSightFrom(x, finalObject))
                         .sorted(Comparator.comparing(x -> x.distanceTo(Rs2Player.getWorldLocation())))
                         .collect(Collectors.toList());
