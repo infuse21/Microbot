@@ -95,6 +95,20 @@ After step 1:
 Recommended discipline: **never edit vendored quest data to fix an executor bug.** If a quest needs a
 per-quest workaround, it goes in `questing/quests/` (as Eagles' Peak and Priest in Peril already do).
 
+The inverse also holds, and matters more than it sounds: **a genuine gap in the quest data is fixed in
+the quest data.** Read literally, the rule above pushes every failure into `questing/quests/`, and a
+missing step there becomes a hack that papers over a model the executor still believes.
+
+Pirate's Treasure is the worked example. The back room of the Port Sarim food shop is locked until
+Wydin hires you, and the quest had no step for being hired — upstream folded the answer into the crate
+step's dialogue and left a human to infer the rest. Two attempts to patch it in `questing/quests/`
+failed, because the executor was being asked to reach a crate the step tree insisted was already
+reachable. Adding `talkToWydin` as a real step fixed it in one go, and is upstreamable besides.
+
+The distinguishing question: *would a human following the sidebar, and nothing else, get stuck here?*
+If yes, it is a data gap — add the step. If a human sails through and only automation trips, it is
+ours — fix the executor.
+
 ## Risks and non-goals
 
 **Risks**
