@@ -173,7 +173,9 @@ public class TheCorsairCurse extends BasicQuestHelper
 	{
 		combatGear = new ItemRequirement("Combat gear + food to defeat Ithoi (level 34), who uses magic", -1, -1).isNotConsumed();
 		combatGear.setDisplayItemId(BankSlotIcons.getCombatGear());
-		spade = new ItemRequirement("Spade", ItemID.SPADE).isNotConsumed();
+		// MICROBOT: flagged obtainable in-quest so that arriving without one falls through to the
+		// pickUpSpade step (there is a spade lying in the Cove) instead of walking back to a bank.
+		spade = new ItemRequirement("Spade", ItemID.SPADE).isNotConsumed().canBeObtainedDuringQuest();
 		tinderbox = new ItemRequirement("Tinderbox", ItemID.TINDERBOX).isNotConsumed();
 		ogreArtfact = new ItemRequirement("Ogre artefact", ItemID.CORSCURS_RELIC);
 	}
@@ -339,6 +341,12 @@ public class TheCorsairCurse extends BasicQuestHelper
 	{
 		ArrayList<ItemRequirement> reqs = new ArrayList<>();
 		reqs.add(combatGear);
+		// MICROBOT: the quest supplies a spade in the Cove (pickUpSpade), so upstream doesn't ask you to
+		// bring one. Listing it here means the up-front gather picks one up while still near a bank —
+		// Corsair Cove is ~1000 tiles from the nearest one, and realising you need a spade after you
+		// arrive is an enormous round trip. Harmless if you already own one, and the in-Cove spade
+		// remains the fallback when you don't.
+		reqs.add(spade);
 		return reqs;
 	}
 
