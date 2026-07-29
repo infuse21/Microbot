@@ -4,6 +4,8 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.MenuAction;
 import net.runelite.api.Point;
 import net.runelite.api.Quest;
+import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.gameval.NpcID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.questhelper.QuestHelperPlugin;
@@ -44,9 +46,36 @@ public class PiratesTreasure extends BaseQuest {
             this.mQuestPlugin = mQuestPlugin;
         }
 
+    /** Crate in the back room of Wydin's food shop, Port Sarim. */
+    private static final WorldPoint WYDIN_BACK_ROOM_CRATE = new WorldPoint(3009, 3207, 0);
+
     @Override
     public boolean executeCustomLogic() {
         QuestStep questStep = getQuestHelperPlugin().getSelectedQuest().getCurrentStep().getActiveStep();
+
+        // The back room is LOCKED until Wydin employs you — wearing the white apron isn't enough, and
+        // an apron can be obtained (or bought) without ever taking the job, which leaves the quest
+        // pointing at a crate behind a door with genuinely no path to it. Ask Wydin for the job first;
+        // the step already carries the answer ("Well, can I get a job here?"), so the normal dialogue
+        // handling finishes the conversation.
+        if (questStep != null && questStep.getText() != null && !questStep.getText().isEmpty()
+                && questStep.getText().get(0).contains("Search the crate in the back room")
+                && !Rs2Walker.canReach(WYDIN_BACK_ROOM_CRATE)
+                && !Rs2Dialogue.isInDialogue()) {
+            var wydin = Microbot.getRs2NpcCache().query().withId(NpcID.WYDIN).nearestOnClientThread();
+            if (wydin != null) {
+                if (Rs2Player.getWorldLocation().distanceTo(wydin.getWorldLocation()) > 4) {
+                    Microbot.status = "Walking to Wydin for the job";
+                    Rs2Walker.walkTo(wydin.getWorldLocation(), 3);
+                    return false;
+                }
+                Microbot.status = "Asking Wydin for a job";
+                Microbot.log("[PiratesTreasure] back room unreachable — asking Wydin for the job first");
+                wydin.click("Talk-to");
+                sleep(1800, 2400);
+                return false;
+            }
+        }
         if (getQuestHelperPlugin().getSelectedQuest().getQuest().getId() == Quest.PIRATES_TREASURE.getId()) {
             if (questStep.getText().contains("Please open Pirate Treasure's Quest Journal to sync the current quest state.")) {
 
