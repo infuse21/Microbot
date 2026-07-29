@@ -1335,6 +1335,17 @@ public class QuestingScript extends Script {
 		return Math.max(0, itemRequirement.getQuantity() - onPlayer);
 	}
 
+	/** Whether every item the step itself asks for is already on the player. */
+	private boolean stepOwnItemRequirementsSatisfied(DetailedQuestStep questStep) {
+		for (Requirement requirement : questStep.getRequirements()) {
+			if (requirement instanceof ItemRequirement
+					&& !hasItemRequirementOnPlayer((ItemRequirement) requirement)) {
+				return false;
+			}
+		}
+		return true;
+	}
+
 	private List<Requirement> collectAllItemRequirements(DetailedQuestStep questStep) {
 		List<Requirement> combined = new ArrayList<>(questStep.getRequirements());
 
@@ -1343,6 +1354,17 @@ public class QuestingScript extends Script {
 			if (req instanceof ItemRequirement) {
 				seenIds.add(((ItemRequirement) req).getId());
 			}
+		}
+
+		// Quest-level items are a shopping list for the quest as a whole, so they must never preempt a
+		// step that can already run. Pirate's Treasure still lists the rum, the apron and 10 bananas
+		// once they have been spent; on the final "Read the Pirate message." step — message in hand —
+		// that sent the character off to restock instead of reading it, and the step never executed.
+		//
+		// The step's OWN requirements are still collected either way, so a genuinely blocked step still
+		// acquires what it needs, and the equip pass below still runs.
+		if (stepOwnItemRequirementsSatisfied(questStep)) {
+			return combined;
 		}
 
 		QuestHelper selectedQuest = getQuestHelperPlugin().getSelectedQuest();
