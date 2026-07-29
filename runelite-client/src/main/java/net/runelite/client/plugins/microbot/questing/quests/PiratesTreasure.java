@@ -46,8 +46,8 @@ public class PiratesTreasure extends BaseQuest {
             this.mQuestPlugin = mQuestPlugin;
         }
 
-    /** Crate in the back room of Wydin's food shop, Port Sarim. */
-    private static final WorldPoint WYDIN_BACK_ROOM_CRATE = new WorldPoint(3009, 3207, 0);
+    /** Standing tile inside the back room of Wydin's food shop, Port Sarim. */
+    private static final WorldPoint WYDIN_BACK_ROOM_TILE = new WorldPoint(3010, 3207, 0);
 
     @Override
     public boolean executeCustomLogic() {
@@ -60,9 +60,10 @@ public class PiratesTreasure extends BaseQuest {
         // handling finishes the conversation.
         if (questStep != null && questStep.getText() != null && !questStep.getText().isEmpty()
                 && questStep.getText().get(0).contains("Search the crate in the back room")
-                && !Rs2Walker.canReach(WYDIN_BACK_ROOM_CRATE)
+                && !Rs2Walker.canReach(WYDIN_BACK_ROOM_TILE)
                 && !Rs2Dialogue.isInDialogue()) {
             var wydin = Microbot.getRs2NpcCache().query().withId(NpcID.WYDIN).nearestOnClientThread();
+            Microbot.log("[PiratesTreasure] back room unreachable; wydin=" + (wydin != null));
             if (wydin != null) {
                 if (Rs2Player.getWorldLocation().distanceTo(wydin.getWorldLocation()) > 4) {
                     Microbot.status = "Walking to Wydin for the job";
