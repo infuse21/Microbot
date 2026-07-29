@@ -117,6 +117,7 @@ public class QuestingScript extends Script {
     private long lastApplyStepMark = 0;
     private long lastObjectDiagLog = 0;
     private long lastApproachWarnLog = 0;
+    private long lastWallDiagLog = 0;
     /** Tracks enable→disable transitions so the master pause cleans up exactly once. */
     private boolean wasEnabled = false;
     /** Step-scoped memory of requirements the bank turned out not to stock (prevents bank-trip loops). */
@@ -2163,6 +2164,16 @@ public class QuestingScript extends Script {
         // canReach/LOS fail (e.g. a locked door: its own tile is never reachable, and walking "closer"
         // means routing THROUGH it — the walker's door pipeline then spams Open on a door the step wants
         // an item used on instead).
+        // Catalogued approach tile: walk to that exact tile first, then interact only from there.
+        if (object != null) {
+            WorldPoint approachTile = QuestApproachCatalog.lookup(object.getId());
+            if (approachTile != null && !approachTile.equals(Rs2Player.getWorldLocation())) {
+                Microbot.status = "Walking to approach tile for " + object.getId();
+                Rs2Walker.walkTo(approachTile, 0);
+                return false;
+            }
+        }
+
         boolean approachArrived = false;
         WorldPoint objectStepDp = step.getDefinedPoint() != null ? step.getDefinedPoint().getWorldPoint() : null;
         // A target on another floor must ALWAYS be walked to (the walker takes the stairs/ladders):
@@ -2700,13 +2711,24 @@ public class QuestingScript extends Script {
         if (unreachableClickTiles.contains(player)) {
             return false;
         }
+        // A catalogued object: only ever interact from its stated tile.
+        WorldPoint approach = QuestApproachCatalog.lookup(object.getId());
+        if (approach != null) {
+            return player.equals(approach);
+        }
         int distance = player.distanceTo(target);
         if (distance <= 1) {
             // Adjacent, but a wall can still sit between the two tiles. The collision map can't answer
             // this — its edge flags conflate a wall with the object's own blocking, so the tile inside
             // the shop reads just as blocked as the one outside. The scene's WallObjects carry an
             // orientation, which says exactly which side the wall is on.
-            return !wallBetween(player, target);
+            boolean blocked = wallBetween(player, target);
+            if (blocked || System.currentTimeMillis() - lastWallDiagLog > 5000) {
+                lastWallDiagLog = System.currentTimeMillis();
+                Microbot.log("[Questing] adjacency check " + player + " -> " + target
+                        + " wallBetween=" + blocked + " " + describeWallsAt(player, target), Level.WARN);
+            }
+            return !blocked;
         }
         if (distance <= 2 && Rs2Walker.canReach(target)) {
             return true;
@@ -2742,6 +2764,25 @@ public class QuestingScript extends Script {
         } catch (Exception e) {
             return false; // never block an interaction because the check itself failed
         }
+    }
+
+    /** Diagnostic: what wall objects sit on these two tiles, and with which orientations. */
+    private String describeWallsAt(WorldPoint from, WorldPoint to) {
+        StringBuilder sb = new StringBuilder("walls[");
+        try {
+            for (WallObject wall : Rs2GameObject.getWallObjects(w -> true, 3)) {
+                WorldPoint loc = wall.getWorldLocation();
+                if (loc != null && (loc.equals(from) || loc.equals(to))) {
+                    sb.append(loc.equals(from) ? "from" : "to")
+                            .append("(id=").append(wall.getId())
+                            .append(",oA=").append(wall.getOrientationA())
+                            .append(",oB=").append(wall.getOrientationB()).append(") ");
+                }
+            }
+        } catch (Exception e) {
+            sb.append("unavailable");
+        }
+        return sb.append(']').toString();
     }
 
     private boolean orientationFaces(WallObject wall, int dx, int dy) {
