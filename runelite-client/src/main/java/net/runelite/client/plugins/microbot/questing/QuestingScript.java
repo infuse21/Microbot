@@ -2748,11 +2748,13 @@ public class QuestingScript extends Script {
         // Being permissive here is safe because it is self-correcting: a click through a wall answers
         // "I can't reach that!", which blacklists this tile above and forces the approach search to try
         // elsewhere. One wasted click beats a permanent stall.
-        if (isOrthogonallyAgainst(player, object.getFootprint())) {
+        // Resolved once: getFootprint() hops to the client thread, and this runs several times a tick.
+        WorldArea footprint = object.getFootprint();
+        if (isOrthogonallyAgainst(player, footprint)) {
             return true;
         }
         // Further away, line of sight is still the right test — it rejects a target behind a wall.
-        return hasLineOfSightToObject(object);
+        return hasLineOfSightToArea(footprint);
     }
 
     /** Whether {@code point} is directly north/south/east/west of the area (not diagonal, not inside). */
@@ -2935,12 +2937,15 @@ public class QuestingScript extends Script {
 		// Against the object's whole footprint, not its centre tile: a multi-tile object read as 1x1
 		// rejects tiles the game accepts (south of the Blue Moon Inn staircase is orthogonally against
 		// the object but diagonal to its centre, and the step stalled on "not clickable yet").
-		WorldArea objectArea = object.getFootprint();
-		WorldArea playerArea = Rs2Player.getWorldLocation().toWorldArea();
-		if (objectArea == null) {
+		return hasLineOfSightToArea(object.getFootprint());
+	}
+
+	private boolean hasLineOfSightToArea(WorldArea objectArea) {
+		if (objectArea == null || Microbot.getClient().getLocalPlayer() == null
+				|| Rs2Player.getWorldLocation() == null) {
 			return false;
 		}
-
+		WorldArea playerArea = Rs2Player.getWorldLocation().toWorldArea();
 		return Microbot.getClient().getTopLevelWorldView() != null
 				&& playerArea.hasLineOfSightTo(Microbot.getClient().getTopLevelWorldView(), objectArea);
 	}

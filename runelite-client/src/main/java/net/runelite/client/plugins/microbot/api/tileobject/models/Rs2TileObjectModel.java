@@ -71,14 +71,18 @@ public class Rs2TileObjectModel implements TileObject, IEntity {
         if (location == null) {
             return null;
         }
-        if (tileObject instanceof GameObject) {
-            GameObject gameObject = (GameObject) tileObject;
-            int sizeX = Math.max(1, gameObject.sizeX());
-            int sizeY = Math.max(1, gameObject.sizeY());
-            if (sizeX > 1 || sizeY > 1) {
-                return new WorldArea(location.getX() - sizeX / 2, location.getY() - sizeY / 2,
-                        sizeX, sizeY, location.getPlane());
-            }
+        if (!(tileObject instanceof GameObject)) {
+            return location.toWorldArea();
+        }
+        final GameObject gameObject = (GameObject) tileObject;
+        // sizeX/sizeY read the object's definition, so they belong on the client thread. Falling back
+        // to 1x1 on failure keeps the old behaviour rather than inventing a footprint.
+        int[] size = Microbot.getClientThread().runOnClientThreadOptional(
+                        () -> new int[]{Math.max(1, gameObject.sizeX()), Math.max(1, gameObject.sizeY())})
+                .orElse(new int[]{1, 1});
+        if (size[0] > 1 || size[1] > 1) {
+            return new WorldArea(location.getX() - size[0] / 2, location.getY() - size[1] / 2,
+                    size[0], size[1], location.getPlane());
         }
         return location.toWorldArea();
     }
