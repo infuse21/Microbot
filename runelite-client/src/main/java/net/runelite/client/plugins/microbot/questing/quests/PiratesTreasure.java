@@ -46,37 +46,45 @@ public class PiratesTreasure extends BaseQuest {
             this.mQuestPlugin = mQuestPlugin;
         }
 
-    /** Standing tile inside the back room of Wydin's food shop, Port Sarim. */
-    private static final WorldPoint WYDIN_BACK_ROOM_TILE = new WorldPoint(3010, 3207, 0);
+    private long lastWydinTalkMs = 0;
+
+    /** Whether we're inside the back room of Wydin's food shop (east of the dividing wall). */
+    private boolean inWydinBackRoom() {
+        WorldPoint p = Rs2Player.getWorldLocation();
+        return p != null && p.getPlane() == 0
+                && p.getX() >= 3009 && p.getX() <= 3012
+                && p.getY() >= 3204 && p.getY() <= 3210;
+    }
 
     @Override
     public boolean executeCustomLogic() {
         QuestStep questStep = getQuestHelperPlugin().getSelectedQuest().getCurrentStep().getActiveStep();
 
-        // The back room is LOCKED until Wydin employs you — wearing the white apron isn't enough, and
-        // an apron can be obtained (or bought) without ever taking the job, which leaves the quest
-        // pointing at a crate behind a door with genuinely no path to it. Ask Wydin for the job first;
-        // the step already carries the answer ("Well, can I get a job here?"), so the normal dialogue
-        // handling finishes the conversation.
+        // Back room step: the room only opens once Wydin employs you. Don't try to infer whether the
+        // door is passable — just talk to him if we're not inside yet. The step already declares the
+        // answer ("Well, can I get a job here?"), so the normal dialogue handling does the rest, and
+        // talking again when already employed is harmless.
         if (questStep != null && questStep.getText() != null && !questStep.getText().isEmpty()
                 && questStep.getText().get(0).contains("Search the crate in the back room")
-                && !Rs2Walker.canReach(WYDIN_BACK_ROOM_TILE)
-                && !Rs2Dialogue.isInDialogue()) {
+                && !Rs2Dialogue.isInDialogue()
+                && !inWydinBackRoom()
+                && System.currentTimeMillis() - lastWydinTalkMs > 12_000) {
             var wydin = Microbot.getRs2NpcCache().query().withId(NpcID.WYDIN).nearestOnClientThread();
-            Microbot.log("[PiratesTreasure] back room unreachable; wydin=" + (wydin != null));
             if (wydin != null) {
                 if (Rs2Player.getWorldLocation().distanceTo(wydin.getWorldLocation()) > 4) {
                     Microbot.status = "Walking to Wydin for the job";
                     Rs2Walker.walkTo(wydin.getWorldLocation(), 3);
                     return false;
                 }
+                lastWydinTalkMs = System.currentTimeMillis();
                 Microbot.status = "Asking Wydin for a job";
-                Microbot.log("[PiratesTreasure] back room unreachable — asking Wydin for the job first");
+                Microbot.log("[PiratesTreasure] talking to Wydin to get the job");
                 wydin.click("Talk-to");
                 sleep(1800, 2400);
                 return false;
             }
         }
+
         if (getQuestHelperPlugin().getSelectedQuest().getQuest().getId() == Quest.PIRATES_TREASURE.getId()) {
             if (questStep.getText().contains("Please open Pirate Treasure's Quest Journal to sync the current quest state.")) {
 
