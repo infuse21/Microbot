@@ -4837,6 +4837,8 @@
 # Corsair Cove											
 2578 2840 0	2578 2837 1	Cross;Gangplank;31756								1	
 2578 2837 1	2578 2840 0	Cross;Gangplank;31756								1	
+2529 2835 1	2532 2833 0	Climb;Stairs;31735									
+2532 2833 0	2529 2835 1	Climb;Stairs;31735									
 2523 2860 0	2012 9004 1	Enter;Hole;31791								2	
 2012 9004 1	2523 2860 0	Climb;Vine ladder;31790								2	
 2483 2889 0	1971 9035 1	Enter;Cave;31766								2	
