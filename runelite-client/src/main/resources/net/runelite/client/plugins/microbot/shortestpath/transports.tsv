@@ -4839,6 +4839,12 @@
 2578 2837 1	2578 2840 0	Cross;Gangplank;31756								1	
 2529 2835 1	2532 2833 0	Climb;Stairs;31735									
 2532 2833 0	2529 2835 1	Climb;Stairs;31735									
+2550 2862 0	2547 2862 1	Climb-up;Stairs;31733									
+2547 2862 1	2550 2862 0	Climb-down;Stairs;31734									
+2555 2857 0	2555 2854 1	Climb-up;Stairs;31733									
+2555 2854 1	2555 2857 0	Climb-down;Stairs;31734									
+2561 2865 0	2561 2868 1	Climb-up;Stairs;31733									
+2561 2868 1	2561 2865 0	Climb-down;Stairs;31734									
 2523 2860 0	2012 9004 1	Enter;Hole;31791								2	
 2012 9004 1	2523 2860 0	Climb;Vine ladder;31790								2	
 2483 2889 0	1971 9035 1	Enter;Cave;31766								2	
