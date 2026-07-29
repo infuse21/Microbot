@@ -118,9 +118,11 @@ public class LiveCollisionTest {
     }
 
     @Test
-    public void wallDoorExemptsOnlyItsOrientedEdge() {
-        // A closed north-facing wall door owns only the north edge. Other live-blocked edges touching
-        // the same tile must remain authoritative instead of being erased by a tile-wide exemption.
+    public void wallDoorEdgeRecordedPassable_othersKeepTheirLiveWalls() {
+        // A closed north-facing wall door owns only the north edge. That edge is recorded KNOWN +
+        // PASSABLE (the door's block flags are transient — the runtime opens it on contact), which is
+        // what makes doors the static map wrongly holds as walls routable once seen. Other live-blocked
+        // edges touching the same tile must remain authoritative.
         int[][][] flags = openScene();
         final int dx = 50, dy = 50;
         flags[0][dx][dy] |= CollisionDataFlag.BLOCK_MOVEMENT_NORTH
@@ -133,8 +135,9 @@ public class LiveCollisionTest {
 
         LiveCollisionSnapshot snap = LiveCollisionCapture.build(BASE_X, BASE_Y, 1, flags, doorEdges);
 
-        // The physical doorway falls back to static so the runtime door handler can open it.
-        assertNull(snap.edge(BASE_X + dx, BASE_Y + dy, 0, FLAG_NORTH));
+        // The doorway edge reads passable despite the closed door's block flags — the pathfinder routes
+        // through it regardless of what the static map thinks, and the door subsystem opens it.
+        assertEquals(Boolean.TRUE, snap.edge(BASE_X + dx, BASE_Y + dy, 0, FLAG_NORTH));
         // Unrelated edges around the same tile retain their live walls.
         assertEquals(Boolean.FALSE, snap.edge(BASE_X + dx, BASE_Y + dy, 0, FLAG_EAST));
         assertEquals(Boolean.FALSE, snap.edge(BASE_X + dx, BASE_Y + dy - 1, 0, FLAG_NORTH));
@@ -145,13 +148,34 @@ public class LiveCollisionTest {
     }
 
     @Test
-    public void gameObjectDoorExemptsEdgesTouchingItsFootprint() {
+    public void gameObjectDoorEdgesRecordedPassableWhenTilesStandable() {
         int[][][] flags = openScene();
         final int dx = 50, dy = 50;
         flags[0][dx][dy] |= CollisionDataFlag.BLOCK_MOVEMENT_NORTH
                 | CollisionDataFlag.BLOCK_MOVEMENT_EAST
                 | CollisionDataFlag.BLOCK_MOVEMENT_SOUTH
                 | CollisionDataFlag.BLOCK_MOVEMENT_WEST;
+
+        LiveCollisionDoorMask doorEdges = new LiveCollisionDoorMask(1);
+        doorEdges.markGameObject(0, dx, dy, dx, dy);
+        LiveCollisionSnapshot snap = LiveCollisionCapture.build(BASE_X, BASE_Y, 1, flags, doorEdges);
+
+        // Directional blocks only (tiles standable): every door-owned edge is known + passable.
+        assertEquals(Boolean.TRUE, snap.edge(BASE_X + dx, BASE_Y + dy, 0, FLAG_NORTH));
+        assertEquals(Boolean.TRUE, snap.edge(BASE_X + dx, BASE_Y + dy, 0, FLAG_EAST));
+        assertEquals(Boolean.TRUE, snap.edge(BASE_X + dx, BASE_Y + dy - 1, 0, FLAG_NORTH));
+        assertEquals(Boolean.TRUE, snap.edge(BASE_X + dx - 1, BASE_Y + dy, 0, FLAG_EAST));
+    }
+
+    @Test
+    public void doorOwnedEdgeWithBlockedTileStaysUnknown_neverKnownBlocked() {
+        // An object-door whose closed footprint occupies its tile (BLOCK_MOVEMENT_FULL — same shape as a
+        // Motherlode rockfall) must leave its edges UNKNOWN so the static map keeps deciding. Recording
+        // them known-blocked would wall off an openable obstacle until a lucky revisit; recording them
+        // passable would lie about a tile you genuinely cannot stand on while it is closed.
+        int[][][] flags = openScene();
+        final int dx = 50, dy = 50;
+        flags[0][dx][dy] |= CollisionDataFlag.BLOCK_MOVEMENT_FULL;
 
         LiveCollisionDoorMask doorEdges = new LiveCollisionDoorMask(1);
         doorEdges.markGameObject(0, dx, dy, dx, dy);
