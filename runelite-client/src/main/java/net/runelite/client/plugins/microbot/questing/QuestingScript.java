@@ -2103,8 +2103,9 @@ public class QuestingScript extends Script {
             lastObjectDiagLog = System.currentTimeMillis();
             WorldPoint diagDp = step.getDefinedPoint() != null ? step.getDefinedPoint().getWorldPoint() : null;
             Microbot.log(String.format(
-                    "[QuestHelper] objectStep id=%d scan=%d found=%s objPos=%s dp=%s player=%s unreachableFlag=%s instanced=%s",
-                    step.getObjectID(), stepObjects.size(), object != null,
+                    "[QuestHelper] objectStep id=%d resolvedId=%s scan=%d found=%s objPos=%s dp=%s player=%s unreachableFlag=%s instanced=%s",
+                    step.getObjectID(), object == null ? "-" : String.valueOf(object.getId()),
+                    stepObjects.size(), object != null,
                     object == null ? "-" : object.getWorldLocation(),
                     diagDp, Rs2Player.getWorldLocation(), unreachableTarget,
                     Microbot.getClient().isInInstancedRegion()), Level.WARN);
@@ -2163,13 +2164,20 @@ public class QuestingScript extends Script {
         // means routing THROUGH it — the walker's door pipeline then spams Open on a door the step wants
         // an item used on instead).
         // Catalogued approach tile: walk to that exact tile first, then interact only from there.
-        if (object != null) {
-            WorldPoint approachTile = QuestApproachCatalog.lookup(object.getId());
-            if (approachTile != null && !approachTile.equals(Rs2Player.getWorldLocation())) {
-                Microbot.status = "Walking to approach tile for " + object.getId();
-                Rs2Walker.walkTo(approachTile, 0);
-                return false;
-            }
+        // Key on the step's declared id first. The resolved object's raw id can differ from it — multiloc
+        // impostors, or the stale-id fallback above deliberately picking a different object at the same
+        // tile — and keying only on the resolved id silently skipped the override: the Port Sarim crate
+        // sat on the catalogued 2071 with the walk still going to the crate's own tile.
+        WorldPoint approachTile = QuestApproachCatalog.lookup(step.getObjectID());
+        if (approachTile == null && object != null) {
+            approachTile = QuestApproachCatalog.lookup(object.getId());
+        }
+        if (approachTile != null && !approachTile.equals(Rs2Player.getWorldLocation())) {
+            Microbot.status = "Walking to approach tile " + approachTile;
+            Microbot.log("[QuestHelper] approach-tile override: walking to " + approachTile
+                    + " for step object id=" + step.getObjectID(), Level.WARN);
+            Rs2Walker.walkTo(approachTile, 0);
+            return false;
         }
 
         boolean approachArrived = false;
@@ -2182,7 +2190,7 @@ public class QuestingScript extends Script {
         if (!Microbot.getClient().isInInstancedRegion()
                 && objectStepDp != null
                 && (differentPlane || Rs2Player.getWorldLocation().distanceTo2D(objectStepDp) > 2
-                    || !canInteractWithObject(object))) {
+                    || !canInteractWithObject(object, step.getObjectID()))) {
             WorldPoint targetTile = null;
             WorldPoint stepLocation = object == null ? objectStepDp : object.getWorldLocation();
             // When we're already near the target, restrict approach candidates to tiles that are LOCALLY
@@ -2230,7 +2238,7 @@ public class QuestingScript extends Script {
             // adjacency so the walker actually paths us in through the door.
             int acceptance = targetTile.equals(stepLocation) ? 1 : 3;
             WalkerState approachState = Rs2Walker.walkWithStateUntil(targetTile, acceptance,
-                    () -> canInteractWithObject(approachTarget));
+                    () -> canInteractWithObject(approachTarget, step.getObjectID()));
             // ARRIVED means we're as close as the approach can get — often INSTANTLY, with no log or
             // movement, when we already stand within acceptance of the chosen tile (e.g. 2 tiles from a
             // staircase whose own tile is canReach=false). Returning here re-ran this block forever in
@@ -2244,7 +2252,7 @@ public class QuestingScript extends Script {
         // The approach finished but the object still isn't clickable from here (no line of sight, not
         // reachable). Yield rather than clicking through whatever is in the way — the tick retries, and
         // the log names the object so a genuinely impossible approach is visible instead of silent.
-        if (approachArrived && !canInteractWithObject(object)) {
+        if (approachArrived && !canInteractWithObject(object, step.getObjectID())) {
             if (System.currentTimeMillis() - lastApproachWarnLog > 3000) {
                 lastApproachWarnLog = System.currentTimeMillis();
                 Microbot.log("[Questing] approach finished but object not clickable yet: id="
@@ -2258,7 +2266,7 @@ public class QuestingScript extends Script {
         // heuristic. Full-tile objects (e.g. a searchable pile of books) block line-of-sight to their own
         // tile, and the snapshot's local/canvas location can be unresolved, so that heuristic goes all-false
         // and we fall through to walkTo() forever, nudging in place next to the target and never interacting.
-        if (canInteractWithObject(object)) {
+        if (canInteractWithObject(object, step.getObjectID())) {
             Rs2Walker.clearWalkingRoute("quest-helper:object-step-interact");
 
             // Re-resolve the object fresh from the live cache right before clicking, by the STEP's target
@@ -2702,7 +2710,7 @@ public class QuestingScript extends Script {
      * their own tile, and locked doors whose tile is never walkable); a reachable object a couple of
      * tiles away; or plain line of sight.
      */
-    private boolean canInteractWithObject(Rs2TileObjectModel object) {
+    private boolean canInteractWithObject(Rs2TileObjectModel object, int stepObjectId) {
         if (object == null) {
             return false;
         }
@@ -2721,8 +2729,12 @@ public class QuestingScript extends Script {
         if (unreachableClickTiles.contains(player)) {
             return false;
         }
-        // A catalogued object: only ever interact from its stated tile.
-        WorldPoint approach = QuestApproachCatalog.lookup(object.getId());
+        // A catalogued object: only ever interact from its stated tile. Checked against the step's
+        // declared id as well as the resolved one — see the approach-tile walk for why they differ.
+        WorldPoint approach = QuestApproachCatalog.lookup(stepObjectId);
+        if (approach == null) {
+            approach = QuestApproachCatalog.lookup(object.getId());
+        }
         if (approach != null) {
             return player.equals(approach);
         }
