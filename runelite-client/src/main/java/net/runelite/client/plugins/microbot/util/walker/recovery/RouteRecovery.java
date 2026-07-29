@@ -27,6 +27,66 @@ public final class RouteRecovery {
     }
 
     /**
+     * What the recovery block should do with its chosen click target. One value per outcome so the
+     * imperative shell in {@code Rs2Walker} is a flat if/else with no decision logic of its own — every
+     * guard interaction (preemption vs walled vs cooldown) is pinned by the decision-table tests instead
+     * of being re-discovered live (the walled-guard cooldown bug: the cooldown was written into the
+     * guard's entry condition, so while it ran the walled check vanished and recovery clicked through
+     * the shop wall it existed to avoid).
+     */
+    public enum RecoveryClickAction {
+        /** No blockers: clamp and issue the minimap click. */
+        CLICK,
+        /** A door interaction is settling or the player is mid-walk — a click now would CANCEL it. */
+        YIELD_ACTION_IN_FLIGHT,
+        /** Target is walled off (Euclidean-near yet absent from the player BFS): replan from reality. */
+        REPLAN_WALLED,
+        /** Target is walled off but a replan just happened — wait out the cooldown; NEVER click. */
+        WAIT_WALLED,
+        /** No usable target (null / the player's own tile): skip the click, fall through to rejoin logic. */
+        NO_TARGET
+    }
+
+    /**
+     * The recovery click decision, pure. Guard ORDER is part of the contract and pinned by tests:
+     * <ol>
+     *   <li>Action-in-flight preemption first — the recovery pass is seconds long and its door scans can
+     *       interact mid-pass; a stale click would cancel the door-open and drag the player away.</li>
+     *   <li>Walled-target check second — a target within {@code walledRadius} that is absent from the
+     *       player-origin BFS is separated by a wall/door (the BFS step budget comfortably covers the
+     *       radius). The {@code replanCooldownMs} chooses REPLAN vs WAIT only; it must never re-enable
+     *       the click.</li>
+     *   <li>Otherwise CLICK (targets beyond the radius stay trusted — the BFS cannot vouch out there).</li>
+     * </ol>
+     * An empty/null {@code reachable} disables the walled check (headless tests, collision-odd tiles).
+     */
+    public static RecoveryClickAction decideRecoveryClick(WorldPoint recoverTarget,
+                                                          WorldPoint playerLoc,
+                                                          boolean doorInteractionSettling,
+                                                          boolean playerMoving,
+                                                          Set<WorldPoint> reachable,
+                                                          int walledRadius,
+                                                          long nowMs,
+                                                          long lastWalledReplanAtMs,
+                                                          long replanCooldownMs) {
+        if (doorInteractionSettling || playerMoving) {
+            return RecoveryClickAction.YIELD_ACTION_IN_FLIGHT;
+        }
+        if (recoverTarget == null || playerLoc == null || recoverTarget.equals(playerLoc)) {
+            return RecoveryClickAction.NO_TARGET;
+        }
+        boolean walled = reachable != null && !reachable.isEmpty()
+                && !reachable.contains(recoverTarget)
+                && playerLoc.distanceTo2D(recoverTarget) <= walledRadius;
+        if (walled) {
+            return nowMs - lastWalledReplanAtMs > replanCooldownMs
+                    ? RecoveryClickAction.REPLAN_WALLED
+                    : RecoveryClickAction.WAIT_WALLED;
+        }
+        return RecoveryClickAction.CLICK;
+    }
+
+    /**
      * Picks the furthest forward path tile (from {@code startIdx}, within {@code FORWARD_SCAN_TILES}) that
      * is on the player's plane, within {@code maxEuclidean} of the player, reachable (when a reachable set
      * is supplied), and clickable per {@code isClickable}.

@@ -2384,45 +2384,37 @@ public class Rs2Walker {
                                     && !frontierObstacle.walkTarget().equals(playerLoc)) {
                                 recoverTarget = frontierObstacle.walkTarget();
                             }
-                            // The recovery pass is LONG (door scans inside it interact and can walk the
-                            // player to a door). The recoverTarget above was computed from the state at pass
-                            // START — by click time the world may have moved on. Re-check the cheap guards
-                            // NOW: if a door interaction is settling or the player is mid-walk (e.g. walking
-                            // to the door the segment scan just clicked), a stale minimap click would CANCEL
-                            // that action and drag the player away ("gets to the door then backtracks").
-                            if (isDoorInteractionSettling() || Rs2Player.isMoving()) {
+                            // The click decision (preemption vs walled vs cooldown vs click) is PURE and
+                            // decision-table-tested in RouteRecovery — this shell only carries out the
+                            // chosen action. Guard rationale (long recovery pass, walled end-snap, cooldown
+                            // that throttles the replan but never re-enables the click) lives with the
+                            // decision, where the interactions are pinned by tests instead of re-discovered
+                            // live (Clock Tower backtrack; Port Sarim wall-click during cooldown).
+                            RouteRecovery.RecoveryClickAction clickAction = RouteRecovery.decideRecoveryClick(
+                                    recoverTarget, playerLoc,
+                                    isDoorInteractionSettling(), Rs2Player.isMoving(),
+                                    reachableTilesCache != null ? reachableTilesCache.keySet() : null,
+                                    WALLED_RECOVERY_TARGET_EUCLIDEAN,
+                                    System.currentTimeMillis(), lastWalledRecoveryReplanAtMs,
+                                    WALLED_RECOVERY_REPLAN_COOLDOWN_MS);
+                            if (clickAction == RouteRecovery.RecoveryClickAction.YIELD_ACTION_IN_FLIGHT) {
                                 exitReason = "recovery-click-preempted-by-action";
                                 break;
                             }
-                            // End-snap guard: when the goal (or any recovery target) is Euclidean-NEAR but
-                            // absent from the local reachability BFS, a wall/door genuinely separates us —
-                            // within the recovery click radius an 18+-step BFS cannot miss a normally
-                            // connected tile. The old behavior clicked it anyway ("skip to the end point"),
-                            // parking the player against the wall. Replan from where we actually stand
-                            // instead: the fresh route starts from reality (through the doors), not from a
-                            // stale anchor.
-                            // The cooldown throttles how often we REPLAN. It must not re-enable the click:
-                            // gating the whole check on it meant that once the cooldown was running, a walled
-                            // target fell straight through to the click below — the exact behaviour this guard
-                            // exists to stop. Observed at Port Sarim: guard replanned, then five seconds later
-                            // clicked (3010,3207) from (3008,3208) through the shop's west wall and parked
-                            // there. A walled target is never clickable, cooldown or not.
-                            if (recoverTarget != null && reachableTilesCache != null && !reachableTilesCache.isEmpty()
-                                    && !reachableTilesCache.containsKey(recoverTarget)
-                                    && playerLoc.distanceTo2D(recoverTarget) <= WALLED_RECOVERY_TARGET_EUCLIDEAN) {
-                                if (System.currentTimeMillis() - lastWalledRecoveryReplanAtMs > WALLED_RECOVERY_REPLAN_COOLDOWN_MS) {
-                                    lastWalledRecoveryReplanAtMs = System.currentTimeMillis();
-                                    WebWalkLog.spInfo("recovery_target_walled | to={} player={} replanning",
-                                            compactWorldPoint(recoverTarget), compactWorldPoint(playerLoc));
-                                    recalculatePath();
-                                    exitReason = "recovery-target-walled-replan";
-                                } else {
-                                    exitReason = "recovery-target-walled-waiting";
-                                }
+                            if (clickAction == RouteRecovery.RecoveryClickAction.REPLAN_WALLED) {
+                                lastWalledRecoveryReplanAtMs = System.currentTimeMillis();
+                                WebWalkLog.spInfo("recovery_target_walled | to={} player={} replanning",
+                                        compactWorldPoint(recoverTarget), compactWorldPoint(playerLoc));
+                                recalculatePath();
+                                exitReason = "recovery-target-walled-replan";
+                                break;
+                            }
+                            if (clickAction == RouteRecovery.RecoveryClickAction.WAIT_WALLED) {
+                                exitReason = "recovery-target-walled-waiting";
                                 break;
                             }
                             WorldPoint clickedRecoveryTarget = null;
-                            if (recoverTarget != null && !recoverTarget.equals(playerLoc)) {
+                            if (clickAction == RouteRecovery.RecoveryClickAction.CLICK) {
                                 recoverTarget = RouteRecovery.clampToEuclideanRadius(playerLoc, recoverTarget,
                                         recoveryMinimapReach - 1);
                                 clickedRecoveryTarget = clickMiniMapOrFallback(rawPath, recoverTarget, playerLoc,
