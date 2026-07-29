@@ -99,15 +99,24 @@ The inverse also holds, and matters more than it sounds: **a genuine gap in the 
 the quest data.** Read literally, the rule above pushes every failure into `questing/quests/`, and a
 missing step there becomes a hack that papers over a model the executor still believes.
 
-Pirate's Treasure is the worked example. The back room of the Port Sarim food shop is locked until
-Wydin hires you, and the quest had no step for being hired — upstream folded the answer into the crate
-step's dialogue and left a human to infer the rest. Two attempts to patch it in `questing/quests/`
-failed, because the executor was being asked to reach a crate the step tree insisted was already
-reachable. Adding `talkToWydin` as a real step fixed it in one go, and is upstreamable besides.
-
 The distinguishing question: *would a human following the sidebar, and nothing else, get stuck here?*
 If yes, it is a data gap — add the step. If a human sails through and only automation trips, it is
 ours — fix the executor.
+
+**Apply that test honestly — Pirate's Treasure is the cautionary example, not a supporting one.** The
+back room of the Port Sarim food shop is locked until Wydin hires you, and the quest has no step for
+being hired, so it looked like a textbook data gap and a `talkToWydin` step was added on that basis.
+It isn't one. A human walking at the crate reaches the door, tries it, and Wydin starts the
+conversation himself — upstream's model works fine, because a human approaches through the shop.
+
+The executor didn't, and that is the actual defect: it asked the walker to get *within N tiles of the
+crate's tile* and was satisfied at (3008, 3207) — one tile away, on the far side of an exterior wall.
+Distance is a proxy for interactability and the proxy fails through walls. Collision was right the
+whole time; it correctly reported the inside tile as unreachable.
+
+The `talkToWydin` step is kept because it is harmless and makes the prerequisite explicit rather than
+relying on an incidental door trigger. But it fixed one quest, and the goal-specification bug beneath
+it affects every step that interacts with anything.
 
 ### Marking our edits
 
