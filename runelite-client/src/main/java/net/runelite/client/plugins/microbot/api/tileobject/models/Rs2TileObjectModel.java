@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.Point;
 import net.runelite.api.coords.LocalPoint;
+import net.runelite.api.coords.WorldArea;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.api.IEntity;
@@ -52,6 +53,35 @@ public class Rs2TileObjectModel implements TileObject, IEntity {
     private final TileObjectType tileObjectType;
     private final TileObject tileObject;
     private String[] actions;
+
+    /**
+     * The tiles this object actually occupies.
+     *
+     * <p>For a multi-tile game object {@link #getWorldLocation()} is the CENTRE tile, so treating the
+     * object as a 1x1 area there silently omits the rest of it — the far half of a staircase, a bank
+     * booth's second tile. Anything reasoning about adjacency or line of sight has to work against the
+     * whole footprint or it rejects positions the game accepts: standing south of the Blue Moon Inn
+     * staircase reads as diagonal to its centre while being orthogonally against the object itself.
+     *
+     * <p>The south-west corner is derived the same way {@link #click(String)} derives its menu params,
+     * so the two agree on what the object covers.
+     */
+    public WorldArea getFootprint() {
+        WorldPoint location = getWorldLocation();
+        if (location == null) {
+            return null;
+        }
+        if (tileObject instanceof GameObject) {
+            GameObject gameObject = (GameObject) tileObject;
+            int sizeX = Math.max(1, gameObject.sizeX());
+            int sizeY = Math.max(1, gameObject.sizeY());
+            if (sizeX > 1 || sizeY > 1) {
+                return new WorldArea(location.getX() - sizeX / 2, location.getY() - sizeY / 2,
+                        sizeX, sizeY, location.getPlane());
+            }
+        }
+        return location.toWorldArea();
+    }
 
 
     @Override

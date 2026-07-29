@@ -2906,8 +2906,14 @@ public class QuestingScript extends Script {
 			return false;
 		}
 
-		WorldArea objectArea = object.getWorldLocation().toWorldArea();
+		// Against the object's whole footprint, not its centre tile: a multi-tile object read as 1x1
+		// rejects tiles the game accepts (south of the Blue Moon Inn staircase is orthogonally against
+		// the object but diagonal to its centre, and the step stalled on "not clickable yet").
+		WorldArea objectArea = object.getFootprint();
 		WorldArea playerArea = Rs2Player.getWorldLocation().toWorldArea();
+		if (objectArea == null) {
+			return false;
+		}
 
 		return Microbot.getClient().getTopLevelWorldView() != null
 				&& playerArea.hasLineOfSightTo(Microbot.getClient().getTopLevelWorldView(), objectArea);
@@ -2919,7 +2925,10 @@ public class QuestingScript extends Script {
 		}
 
 		WorldArea fromArea = point.toWorldArea();
-		WorldArea targetArea = object.getWorldLocation().toWorldArea();
+		WorldArea targetArea = object.getFootprint();
+		if (targetArea == null) {
+			return false;
+		}
 
 		return Microbot.getClient().getTopLevelWorldView() != null
 				&& fromArea.hasLineOfSightTo(Microbot.getClient().getTopLevelWorldView(), targetArea);
