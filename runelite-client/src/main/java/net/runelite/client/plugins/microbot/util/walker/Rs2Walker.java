@@ -2401,15 +2401,24 @@ public class Rs2Walker {
                             // parking the player against the wall. Replan from where we actually stand
                             // instead: the fresh route starts from reality (through the doors), not from a
                             // stale anchor.
+                            // The cooldown throttles how often we REPLAN. It must not re-enable the click:
+                            // gating the whole check on it meant that once the cooldown was running, a walled
+                            // target fell straight through to the click below — the exact behaviour this guard
+                            // exists to stop. Observed at Port Sarim: guard replanned, then five seconds later
+                            // clicked (3010,3207) from (3008,3208) through the shop's west wall and parked
+                            // there. A walled target is never clickable, cooldown or not.
                             if (recoverTarget != null && reachableTilesCache != null && !reachableTilesCache.isEmpty()
                                     && !reachableTilesCache.containsKey(recoverTarget)
-                                    && playerLoc.distanceTo2D(recoverTarget) <= WALLED_RECOVERY_TARGET_EUCLIDEAN
-                                    && System.currentTimeMillis() - lastWalledRecoveryReplanAtMs > WALLED_RECOVERY_REPLAN_COOLDOWN_MS) {
-                                lastWalledRecoveryReplanAtMs = System.currentTimeMillis();
-                                WebWalkLog.spInfo("recovery_target_walled | to={} player={} replanning",
-                                        compactWorldPoint(recoverTarget), compactWorldPoint(playerLoc));
-                                recalculatePath();
-                                exitReason = "recovery-target-walled-replan";
+                                    && playerLoc.distanceTo2D(recoverTarget) <= WALLED_RECOVERY_TARGET_EUCLIDEAN) {
+                                if (System.currentTimeMillis() - lastWalledRecoveryReplanAtMs > WALLED_RECOVERY_REPLAN_COOLDOWN_MS) {
+                                    lastWalledRecoveryReplanAtMs = System.currentTimeMillis();
+                                    WebWalkLog.spInfo("recovery_target_walled | to={} player={} replanning",
+                                            compactWorldPoint(recoverTarget), compactWorldPoint(playerLoc));
+                                    recalculatePath();
+                                    exitReason = "recovery-target-walled-replan";
+                                } else {
+                                    exitReason = "recovery-target-walled-waiting";
+                                }
                                 break;
                             }
                             WorldPoint clickedRecoveryTarget = null;
