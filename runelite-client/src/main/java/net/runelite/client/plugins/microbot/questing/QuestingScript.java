@@ -2223,16 +2223,23 @@ public class QuestingScript extends Script {
                     Rs2Player.getWorldLocation().distanceTo(stepLocation) <= 15
                             ? Rs2Tile.getReachableTilesFromTile(Rs2Player.getWorldLocation(), 15)
                             : null;
+            // Resolved once — getFootprint() costs a client-thread hop and this loop can run several
+            // times per tick.
+            final WorldArea targetFootprint = object == null ? null : object.getFootprint();
             int radius = 0;
             while (targetTile == null) {
                 if (mainScheduledFuture.isCancelled())
                     break;
                 radius++;
                 Rs2TileObjectModel finalObject = object;
+                // Candidates must pass the same test the interact gate applies, or the approach walks
+                // somewhere it can never click from. Line of sight alone rejects the tiles pressed up
+                // against a solid object — it cannot see INTO the tile the object fills — which is how
+                // a staircase's only two usable tiles got filtered out and a spot three tiles away won.
                 List<WorldPoint> withLineOfSight = Rs2Tile.getWalkableTilesAroundTile(stepLocation, radius)
                         .stream()
                         .filter(x -> !unreachableClickTiles.contains(x))
-                        .filter(x -> hasLineOfSightFrom(x, finalObject))
+                        .filter(x -> isOrthogonallyAgainst(x, targetFootprint) || hasLineOfSightFrom(x, finalObject))
                         .sorted(Comparator.comparing(x -> x.distanceTo(Rs2Player.getWorldLocation())))
                         .collect(Collectors.toList());
 
@@ -2254,11 +2261,17 @@ public class QuestingScript extends Script {
             // the walker's door pipeline then endlessly tries to Open the locked door to route through it,
             // instead of ending the walk so we can use the item on it from the adjacent tile.
             final Rs2TileObjectModel approachTarget = object;
-            // Acceptance distance matters: walkWithState reports ARRIVED immediately for an UNWALKABLE
-            // target that is merely within acceptance (the crate's own tile, 3 tiles away through a shop
-            // wall) — no movement, no log. When the search fell back to the object's own tile, demand
-            // adjacency so the walker actually paths us in through the door.
-            int acceptance = targetTile.equals(stepLocation) ? 1 : 3;
+            // Go to the chosen tile exactly. Acceptance is a distance proxy for "close enough to
+            // interact" and it is not one: at 3 the walker reported ARRIVED from three tiles away from
+            // the very tile the search picked for its line of sight, leaving the player unable to click
+            // anything and the step looping in place (Corsair Curse stairs, parked at (2557,2858) for
+            // a target at (2555,2855)). The search already did the work of finding somewhere usable —
+            // honour it. Stopping early is the completion callback's job, not acceptance's: it cancels
+            // the walk the moment the object actually becomes clickable.
+            //
+            // The object's own tile stays at 1, since that fallback target is unwalkable by definition
+            // and demanding it exactly could never arrive.
+            int acceptance = targetTile.equals(stepLocation) ? 1 : 0;
             WalkerState approachState = Rs2Walker.walkWithStateUntil(targetTile, acceptance,
                     () -> canInteractWithObject(approachTarget, step.getObjectID()));
             // ARRIVED means we're as close as the approach can get — often INSTANTLY, with no log or
