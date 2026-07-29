@@ -2738,14 +2738,40 @@ public class QuestingScript extends Script {
         if (approach != null) {
             return player.equals(approach);
         }
-        // Line of sight is the correct test, and the only one that separates these two cases:
-        // WorldArea.hasLineOfSightTo walks the BLOCK_LINE_OF_SIGHT_* collision flags, which are distinct
-        // from the movement-blocking flags. A wall sets them, so a crate on the far side of a shop wall
-        // is correctly rejected; a solid object like a crate or a pile of books blocks MOVEMENT but not
-        // sight, so standing next to one still passes. That is why the earlier "adjacent is good enough"
-        // shortcut kept clicking through walls, and why a collision-edge test couldn't work — those flags
-        // conflate the wall with the object's own footprint.
+        // Standing orthogonally against the object is enough — that is what the game requires to click
+        // it. Line of sight cannot express this: hasLineOfSightTo refuses to see INTO a tile the object
+        // itself fills, so a solid object you are pressed against always fails it (the Blue Moon chest,
+        // adjacent with the key in hand, never became "clickable"). Collision flags can't either — the
+        // blocked edge at (3219,3395)->north is the chest, while the identical-looking blocked edge at
+        // (3008,3207)->east is a shop wall.
+        //
+        // Being permissive here is safe because it is self-correcting: a click through a wall answers
+        // "I can't reach that!", which blacklists this tile above and forces the approach search to try
+        // elsewhere. One wasted click beats a permanent stall.
+        if (isOrthogonallyAgainst(player, object.getFootprint())) {
+            return true;
+        }
+        // Further away, line of sight is still the right test — it rejects a target behind a wall.
         return hasLineOfSightToObject(object);
+    }
+
+    /** Whether {@code point} is directly north/south/east/west of the area (not diagonal, not inside). */
+    static boolean isOrthogonallyAgainst(WorldPoint point, WorldArea area) {
+        if (point == null || area == null || point.getPlane() != area.getPlane()) {
+            return false;
+        }
+        int westX = area.getX();
+        int eastX = area.getX() + area.getWidth() - 1;
+        int southY = area.getY();
+        int northY = area.getY() + area.getHeight() - 1;
+
+        boolean alignedX = point.getX() >= westX && point.getX() <= eastX;
+        boolean alignedY = point.getY() >= southY && point.getY() <= northY;
+
+        if (alignedX && (point.getY() == southY - 1 || point.getY() == northY + 1)) {
+            return true;
+        }
+        return alignedY && (point.getX() == westX - 1 || point.getX() == eastX + 1);
     }
 
     /** Nearest object within 2 tiles of {@code dp} that exposes at least one menu action, or null. */
