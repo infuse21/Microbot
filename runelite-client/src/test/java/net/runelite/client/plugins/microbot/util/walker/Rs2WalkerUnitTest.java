@@ -1535,6 +1535,44 @@ public class Rs2WalkerUnitTest {
     }
 
     @Test
+    public void shouldBlacklistDoorAfterWrongTraversal_sampledWhileMoving_returnsFalse() {
+        // The Wydin's-shop poisoning: the interact walked the player toward the door, the progress wait
+        // sampled MID-WALK (after=3012,3211 with the player still moving), and the walker blacklisted —
+        // and learn-persisted — the shop's front door as permanently blocked. A same-plane sample taken
+        // while the player is walking is a point along the path, never a traversal verdict.
+        assertFalse("mid-walk sample must not blacklist the door",
+                Rs2Walker.shouldBlacklistDoorAfterWrongTraversal(
+                        new WorldPoint(3008, 3207, 0),   // before: en route toward the door
+                        new WorldPoint(3012, 3211, 0),   // after: still walking
+                        new WorldPoint(3012, 3204, 0),
+                        new WorldPoint(3011, 3204, 0),
+                        true));
+    }
+
+    @Test
+    public void shouldBlacklistDoorAfterWrongTraversal_settledWrongWayDisplacement_stillBlacklists() {
+        // Same shape of movement, but the player has STOPPED: a door that displaced the player the wrong
+        // way and left them settled there is a genuine wrong traversal — the original blacklist case.
+        assertTrue(Rs2Walker.shouldBlacklistDoorAfterWrongTraversal(
+                new WorldPoint(3011, 3205, 0),           // started beside the edge
+                new WorldPoint(3016, 3206, 0),           // settled 5 tiles away on the wrong side
+                new WorldPoint(3012, 3204, 0),
+                new WorldPoint(3011, 3204, 0),
+                false));
+    }
+
+    @Test
+    public void shouldBlacklistDoorAfterWrongTraversal_planeChangeTrustedEvenWhileMoving() {
+        // A plane change cannot come from walking — the door acted. Trusted regardless of motion state.
+        assertTrue(Rs2Walker.shouldBlacklistDoorAfterWrongTraversal(
+                new WorldPoint(3011, 3205, 0),
+                new WorldPoint(3011, 3205, 1),
+                new WorldPoint(3012, 3204, 0),
+                new WorldPoint(3011, 3204, 0),
+                true));
+    }
+
+    @Test
     public void markDoorEdgeAttemptThisPass_allowsFirstAttemptOnly() {
         java.util.Map<String, WorldPoint> attempted = new java.util.HashMap<>();
         WorldPoint[] segment = new WorldPoint[] {

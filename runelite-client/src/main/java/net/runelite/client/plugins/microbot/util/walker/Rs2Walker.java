@@ -3497,10 +3497,27 @@ public class Rs2Walker {
                                                                     int maxEuclidean,
                                                                     int rawAnchorIndex,
                                                                     Predicate<WorldPoint> isCandidate) {
-        return WalkerPathGeometry.findFurthestRawPathPointMatching(rawPath, playerLoc, maxEuclidean,
+        Map<WorldPoint, Integer> reachable = getClosestIndexReachableTiles(playerLoc);
+        WorldPoint selected = WalkerPathGeometry.findFurthestRawPathPointMatching(rawPath, playerLoc, maxEuclidean,
                 rawAnchorIndex, isCandidate, ROUTE_PROGRESS_FORWARD_SEARCH_TILES,
                 () -> getClosestTileIndex(rawPath, playerLoc),
-                getClosestIndexReachableTiles(playerLoc), CLOSEST_INDEX_REACHABLE_STEP_BUDGET);
+                reachable, CLOSEST_INDEX_REACHABLE_STEP_BUDGET);
+        // Output-side net: whatever path the scan took (stale anchor, player-anchored retry, a fold the
+        // along-route gate could not vouch for), a selected tile that is Euclidean-NEAR the player yet
+        // absent from the player-origin BFS is on the far side of a wall/door — clicking it walks the
+        // player into the wall (Wydin's shop: first click chose the goal 2 tiles away through the
+        // back-room wall and the walk unravelled from there). Refuse it; every caller has a
+        // reachability-aware fallback (wall-nudge clamp, rejoin, recovery). The log carries the anchor
+        // context so a recurrence is diagnosable from a single line.
+        if (selected != null && reachable != null && !reachable.isEmpty()
+                && !reachable.containsKey(selected)
+                && playerLoc != null
+                && playerLoc.distanceTo2D(selected) <= CLOSEST_INDEX_REACHABLE_STEP_BUDGET - 2) {
+            WebWalkLog.spInfo("route_click_walled | to={} player={} anchorIdx={} — refused, falling back",
+                    compactWorldPoint(selected), compactWorldPoint(playerLoc), rawAnchorIndex);
+            return null;
+        }
+        return selected;
     }
 
     /**
@@ -5729,7 +5746,7 @@ public class Rs2Walker {
                             return true;
                         }
                         if (!traversed) {
-                            if (shouldBlacklistDoorAfterWrongTraversal(posBefore, posAfter, fromWp, toWp)) {
+                            if (shouldBlacklistDoorAfterWrongTraversal(posBefore, posAfter, fromWp, toWp, Rs2Player.isMoving())) {
                                 sessionBlacklistedDoors.add(probe);
                                 log.warn("[Walker] Blacklisting door after wrong traversal: door={} from={} to={} before={} after={}",
                                         probe, fromWp, toWp, posBefore, posAfter);
@@ -5855,7 +5872,7 @@ public class Rs2Walker {
             markNearbyDoorFamilyOpened(object, probe, action, SEGMENT_DOOR_FAMILY_MARK_RADIUS);
             return true;
         }
-        if (shouldBlacklistDoorAfterWrongTraversal(posBefore, posAfter, fromWp, toWp)) {
+        if (shouldBlacklistDoorAfterWrongTraversal(posBefore, posAfter, fromWp, toWp, Rs2Player.isMoving())) {
             sessionBlacklistedDoors.add(probe);
             log.warn("[Walker] Blacklisting door after wrong traversal: door={} from={} to={} before={} after={}",
                     probe, fromWp, toWp, posBefore, posAfter);
@@ -6705,6 +6722,20 @@ public class Rs2Walker {
     }
 
     static boolean shouldBlacklistDoorAfterWrongTraversal(WorldPoint start, WorldPoint end, WorldPoint fromWp, WorldPoint toWp) {
+        return shouldBlacklistDoorAfterWrongTraversal(start, end, fromWp, toWp, false);
+    }
+
+    /**
+     * As {@link #shouldBlacklistDoorAfterWrongTraversal(WorldPoint, WorldPoint, WorldPoint, WorldPoint)}
+     * but aware of whether the {@code end} position was sampled while the player was STILL WALKING. The
+     * interact walks the player to the door first and the progress wait can time out en route, so a
+     * moving sample is just a point along the path — not a traversal verdict. Deciding from one poisoned
+     * Wydin's shop door: before=3008,3207 (en route), after=3012,3211 (seven tiles from the edge, mid
+     * walk) was blacklisted AND learn-persisted as a blocked edge. A same-plane moving sample must never
+     * blacklist; a plane change is still trusted (the door acted — walking cannot change plane).
+     */
+    static boolean shouldBlacklistDoorAfterWrongTraversal(WorldPoint start, WorldPoint end, WorldPoint fromWp,
+                                                          WorldPoint toWp, boolean sampledWhileMoving) {
         if (start == null || end == null || toWp == null) {
             return false;
         }
@@ -6713,6 +6744,9 @@ public class Rs2Walker {
         }
         if (start.getPlane() != end.getPlane()) {
             return true;
+        }
+        if (sampledWhileMoving) {
+            return false;
         }
         if (!startedNearDoorEdge(start, fromWp, toWp)) {
             return false;
@@ -7390,7 +7424,7 @@ public class Rs2Walker {
             }
 			return true;
 		}
-        boolean wrongTraversal = bestLoc != null && shouldBlacklistDoorAfterWrongTraversal(posBefore, posAfter, bestFrom, bestTo);
+        boolean wrongTraversal = bestLoc != null && shouldBlacklistDoorAfterWrongTraversal(posBefore, posAfter, bestFrom, bestTo, Rs2Player.isMoving());
         if (wrongTraversal) {
             log.warn("[Walker] Path-adj door traversed wrong way; not session-blacklisting fallback candidate: door={} from={} to={} before={} after={}",
                     bestLoc, bestFrom, bestTo, posBefore, posAfter);
