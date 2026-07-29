@@ -161,8 +161,16 @@ public class RumSmugglingStep extends ConditionalStep
 		 * you walk back out of the room again. Asking is enough to move on — the prerequisites Wydin
 		 * actually cares about are already gated below. */
 		Requirement askedWydinForJob = new DialogRequirement("can I get a job here");
+		// The one signal that still holds *after* the fact. The three above all fire only at the moment
+		// of being hired, so a character hired in an earlier session can never satisfy them: the job
+		// option is gone from his menu for good, the journal line needs the journal open, and you walk
+		// back out of the room. "Work out front" is offered only to someone already employed, so it
+		// re-establishes the fact every time we talk to him.
+		Requirement wydinOffersShopFloorWork =
+			new WidgetTextRequirement(InterfaceID.Chatmenu.OPTIONS, true, "work out front");
 		employedByWydin = new Conditions(true, LogicType.OR,
-			askedWydinForJob, employedByWydinFromWidget, new ZoneRequirement(wydinBackRoom));
+			askedWydinForJob, wydinOffersShopFloorWork, employedByWydinFromWidget,
+			new ZoneRequirement(wydinBackRoom));
 
 		// This can't be a dialog requirement because the check function doesn't do the actual checking
 		haveYouCompletedyourTaskYet = new WidgetTextRequirement(InterfaceID.ChatLeft.TEXT, "Have you completed your task yet?");
