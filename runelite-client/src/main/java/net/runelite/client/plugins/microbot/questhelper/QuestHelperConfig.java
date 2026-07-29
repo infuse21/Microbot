@@ -238,6 +238,8 @@ public interface QuestHelperConfig extends Config
 		FILLED_OUTLINE
 	}
 
+	// MICROBOT: this whole section is ours — every @ConfigItem tagged section = microbotSection below
+	// belongs to the questing automation, not upstream Quest Helper.
 	@ConfigSection(
 		position = 0,
 		name = "Microbot",

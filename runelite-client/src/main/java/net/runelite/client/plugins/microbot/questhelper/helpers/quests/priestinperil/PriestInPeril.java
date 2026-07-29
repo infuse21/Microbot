@@ -205,6 +205,7 @@ public class PriestInPeril extends BasicQuestHelper
 		goUpToFloorOneTemple = new ObjectStep(this, ObjectID.SPIRALSTAIRS, new WorldPoint(3418, 3493, 0), "Go upstairs.");
 		goUpToFloorTwoTemple = new ObjectStep(this, ObjectID.LADDER, new WorldPoint(3410, 3485, 1), "Climb up the ladder.");
 		talkToDrezel = new NpcStep(this, NpcID.PRIESTPERILTRAPPEDMONK_VIS, new WorldPoint(3418, 3489, 2), "Talk to Drezel on the top floor of the temple.");
+		// MICROBOT: "What do we do?" is the current in-game wording; upstream's two are still offered.
 		talkToDrezel.addDialogSteps("So, what now?", "Yes, of course.", "What do we do?");
 		talkToDrezel.addSubSteps(goUpToFloorOneTemple, goUpToFloorTwoTemple);
 

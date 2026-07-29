@@ -60,8 +60,10 @@ public class NpcStep extends DetailedQuestStep
 	@Inject
 	protected Client client;
 
+	// MICROBOT: exposed so the questing executor can resolve the step's NPC through the entity cache.
 	@Getter
 	protected final int npcID;
+	// MICROBOT: exposed for the same reason — alternates are the fallback when the primary id is stale.
 	@Getter
 	protected final List<Integer> alternateNpcIDs = new ArrayList<>();
 

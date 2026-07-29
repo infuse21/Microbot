@@ -58,11 +58,11 @@ public class RumSmugglingStep extends ConditionalStep
 	private Zone karamjaZone1;
 	private Zone karamjaZone2;
 	private Zone karamjaBoat;
-	private Zone wydinBackRoom;
+	private Zone wydinBackRoom; // MICROBOT
 
 	// Miscellaneous requirements
 	private ZoneRequirement onKaramja;
-	private Conditions employedByWydin;
+	private Conditions employedByWydin; // MICROBOT
 
 	private ItemRequirement karamjanRum;
 	private ItemRequirement whiteApron;
@@ -85,7 +85,7 @@ public class RumSmugglingStep extends ConditionalStep
 	private QuestStep syncStep;
 	private QuestStep talkToCustomsOfficer;
 	private QuestStep getRumFromCrate;
-	private QuestStep talkToWydin;
+	private QuestStep talkToWydin; // MICROBOT
 	private QuestStep getWhiteApron;
 	private QuestStep addBananasToCrate;
 	private QuestStep addRumToCrate;
@@ -115,7 +115,7 @@ public class RumSmugglingStep extends ConditionalStep
 		karamjaZone1 = new Zone(new WorldPoint(2688, 3235, 0), new WorldPoint(2903, 2879, 0));
 		karamjaZone2 = new Zone(new WorldPoint(2903, 2879, 0), new WorldPoint(2964, 3187, 0));
 		karamjaBoat = new Zone(new WorldPoint(2964, 3138, 0), new WorldPoint(2951, 3144, 1));
-		// Kept tight around the crate: every tile in here is unambiguously behind the locked door.
+		// MICROBOT: kept tight around the crate — every tile in here is unambiguously behind the locked door.
 		wydinBackRoom = new Zone(new WorldPoint(3009, 3206, 0), new WorldPoint(3010, 3208, 0));
 	}
 
@@ -135,8 +135,8 @@ public class RumSmugglingStep extends ConditionalStep
 		hadRumOffKaramja = new Conditions(true, karamjanRum, offKaramja);
 		lostRum = new Conditions(LogicType.AND, inPirateTreasureMenu, new WidgetTextRequirement(InterfaceID.Questjournal.TEXTLAYER, true, "I seem to have lost it."));
 
-		// "I have the rum" / "get the rum off Karamja" are the current journal wording; the older
-		// phrasings are kept so both work.
+		// MICROBOT: "I have the rum" / "get the rum off Karamja" are the current journal wording; the
+		// older phrasings are kept so both work.
 		Requirement haveRumFromWidget = new Conditions(inPirateTreasureMenu, new WidgetTextRequirement(InterfaceID.Questjournal.TEXTLAYER, true,
 			"I should take it to", "I have the rum", "get the rum off"));
 
@@ -155,7 +155,7 @@ public class RumSmugglingStep extends ConditionalStep
 		Requirement employedFromDialog = new Conditions(new DialogRequirement("If you could fill it up with bananas, I'll pay you 30 gold.", "Have you completed your task yet?", "you should see the old crate"));
 		employed = new Conditions(true, LogicType.OR, employedFromDialog, employedFromWidget, employedByWydinFromWidget);
 
-		/* Employed by Wydin specifically — the back room stays locked until then, so this gates the
+		/* MICROBOT: employed by Wydin specifically — the back room stays locked until then, so this gates the
 		 * crate step. Latching, because no single signal survives on its own: the dialogue is gone
 		 * once the conversation ends, the journal line is only readable while the journal is open, and
 		 * you walk back out of the room again. Asking is enough to move on — the prerequisites Wydin
@@ -227,7 +227,7 @@ public class RumSmugglingStep extends ConditionalStep
 		getWhiteApron = new DetailedQuestStep(getQuestHelper(), new WorldPoint(3016, 3229, 0),
 			"Grab the white apron from the Fishing Shop.", whiteApronHanging);
 
-		// The back room is locked to anyone Wydin hasn't hired. Upstream folded this into the crate
+		// MICROBOT: the back room is locked to anyone Wydin hasn't hired. Upstream folded this into the crate
 		// step's dialogue and left a human to work out that they had to ask him first; as its own step
 		// the prerequisite is explicit, and automation has something to act on.
 		talkToWydin = new NpcStep(getQuestHelper(), NpcID.WYDIN, new WorldPoint(3013, 3206, 0),
@@ -247,6 +247,8 @@ public class RumSmugglingStep extends ConditionalStep
 	{
 		this.addStep(hasRumOffKaramja, bringRumToRedbeard);
 		this.addStep(and(verifiedAState, haveShippedRum, onKaramja), talkToCustomsOfficer);
+		// MICROBOT: employedByWydin gate + the talkToWydin branch below it are ours; upstream had a
+		// single unconditional crate step here.
 		this.addStep(and(verifiedAState, haveShippedRum, whiteApron, employedByWydin), getRumFromCrate);
 		this.addStep(and(verifiedAState, haveShippedRum, whiteApron), talkToWydin);
 		this.addStep(and(verifiedAState, haveShippedRum), getWhiteApron);
@@ -312,7 +314,7 @@ public class RumSmugglingStep extends ConditionalStep
 		sections.add(new PanelDetails("Back to Port Sarim", List.of(
 			talkToCustomsOfficer,
 			getWhiteApron,
-			talkToWydin,
+			talkToWydin, // MICROBOT
 			getRumFromCrate,
 			bringRumToRedbeard
 		)));

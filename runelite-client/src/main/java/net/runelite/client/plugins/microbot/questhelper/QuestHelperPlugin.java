@@ -640,6 +640,8 @@ public class QuestHelperPlugin extends Plugin
 			binder.bind(QuestHelper.class).toInstance(questHelper);
 			binder.install(questHelper);
 		};
+		// MICROBOT: child of Microbot's injector rather than RuneLite's, so quest helpers can inject
+		// Microbot services. Upstream uses the plugin's own injector here.
 		Injector questInjector = Microbot.getInjector().createChildInjector(questModule);
 		injector.injectMembers(questHelper);
 		questHelper.setInjector(questInjector);

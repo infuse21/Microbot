@@ -15,7 +15,15 @@ ae1f441248b9742c1eaa667b18052785eb6ed058
 # Last sync date: 2026-07-19
 # Sync method: upstream source mirror with manual package transformation and Microbot hook preservation
 # Integration branch: local workspace
-# Local commit: pending
+# Local commit: 6c78e87328
+
+# Finding our edits after a pull
+# Everything Microbot has changed in this package is tagged with a "MICROBOT" comment:
+#     grep -rn "MICROBOT" <this directory>
+# Post-sync edits can also be diffed directly:
+#     git diff 6c78e87328..HEAD -- <this directory>
+# The grep is the more reliable of the two, because it also covers integration that predates the
+# sync commit and is therefore baked into it (the injector hook, the Microbot config section).
 
 # Sync history log:
 # 2026-07-19 - Complete sync to upstream ae1f4412 (Quest Helper 4.16.1 source)

@@ -54,8 +54,10 @@ import static net.runelite.client.plugins.microbot.questhelper.QuestHelperConfig
 
 public class ObjectStep extends DetailedQuestStep
 {
+	// MICROBOT: exposed for the same reason — alternates are the fallback when the primary id is stale.
 	@Getter
 	protected final ArrayList<Integer> alternateObjectIDs = new ArrayList<>();
+	// MICROBOT: exposed so the questing executor can resolve the step's object through the entity cache.
 	@Getter
 	private final int objectID;
 	@Getter

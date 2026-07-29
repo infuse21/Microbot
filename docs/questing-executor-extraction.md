@@ -109,6 +109,19 @@ The distinguishing question: *would a human following the sidebar, and nothing e
 If yes, it is a data gap — add the step. If a human sails through and only automation trips, it is
 ours — fix the executor.
 
+### Marking our edits
+
+Every Microbot change inside `questhelper/**` carries a `MICROBOT` comment, so the change list is:
+
+```
+grep -rn "MICROBOT" runelite-client/src/main/java/net/runelite/client/plugins/microbot/questhelper/
+```
+
+Diffing against the sync commit (`git diff 6c78e87328..HEAD -- questhelper/`) finds post-sync edits
+only. It misses the integration that predates the sync and is baked into that commit — the injector
+hook in `QuestHelperPlugin`, the Microbot config section — which is why the marker is the source of
+truth. Tag new edits as you make them; the point is that a future pull is a checklist, not a dig.
+
 ## Risks and non-goals
 
 **Risks**
