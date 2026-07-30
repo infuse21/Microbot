@@ -51,7 +51,9 @@ import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.CollisionMap;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.Pathfinder;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.PathfinderConfig;
+import net.runelite.client.plugins.microbot.util.walker.WebWalkLog;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveCollisionCapture;
+import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveCollisionConflicts;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveCollisionOverlay;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveCollisionPersistence;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveCollisionSnapshot;
@@ -221,6 +223,7 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
 		cacheConfigValues();
         applyVerboseWalkerLogging(config.verboseWalkerLogging());
         SplitFlagMap map = SplitFlagMap.fromResources();
+        staticCollisionData = map;
         Map<WorldPoint, Set<Transport>> transports = Transport.loadAllFromResources();
 
         List<Restriction> restrictions = Restriction.loadAllFromResources();
@@ -398,7 +401,6 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
             "walkWithBankedTransports",
             "minBankRouteSavings",
             "bankTripWhenCacheUnavailable",
-            "preferNonConsumableTeleportAndSpells",
             "preferTransportToTarget",
             "maxSimilarTransportDistance"
     );
@@ -619,6 +621,11 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
     // actually reloads rather than every tick (avoids the per-tick allocation the design warns against).
     private int lastLiveCaptureBaseX = Integer.MIN_VALUE;
     private int lastLiveCaptureBaseY = Integer.MIN_VALUE;
+    // Static-vs-live conflict telemetry (log-only): the shipped map, kept for comparing each fresh
+    // capture, and a rate limit so frequent recaptures (every object spawn) log at most occasionally.
+    private SplitFlagMap staticCollisionData;
+    private long lastCollisionConflictLogAtMs;
+    private static final long COLLISION_CONFLICT_LOG_INTERVAL_MS = 30_000L;
     // Set by object spawn/despawn events so a mid-scene change (door, temp object) triggers one recapture
     // on the next tick. Debounced to at most one rebuild per tick regardless of how many objects changed.
     private volatile boolean liveCollisionDirty = false;
@@ -646,6 +653,29 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
      * every cache revision — then forces an immediate recapture so, while the flag is still on, the store
      * refills from scratch. The developer escape hatch for a bad capture that has corrupted routing.
      */
+    /**
+     * Static-vs-live conflict telemetry: one throttled summary per capture window quantifying how much
+     * the live scene disagrees with the shipped map. Log-only — feeds the persistent-live-store
+     * decision with magnitudes instead of anecdotes. Runs off the fresh immutable snapshot, never on
+     * the pathfinder hot path.
+     */
+    private void logLiveStaticConflicts(LiveCollisionSnapshot snapshot) {
+        if (staticCollisionData == null) {
+            return;
+        }
+        long now = System.currentTimeMillis();
+        if (now - lastCollisionConflictLogAtMs < COLLISION_CONFLICT_LOG_INTERVAL_MS) {
+            return;
+        }
+        LiveCollisionConflicts.Tally tally = LiveCollisionConflicts.tally(snapshot, staticCollisionData);
+        if (tally.isEmpty()) {
+            return;
+        }
+        lastCollisionConflictLogAtMs = now;
+        WebWalkLog.spInfo("collision_conflict | liveOpensStatic={} liveBlocksStatic={} base={},{} — live scene disagrees with the shipped map",
+                tally.liveOpensStatic, tally.liveBlocksStatic, snapshot.getBaseX(), snapshot.getBaseY());
+    }
+
     private void resetLearnedCollision() {
         if (pathfinderConfig != null) {
             pathfinderConfig.getLiveCollisionOverlay().clear();
@@ -754,6 +784,7 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
             }
 
             overlay.set(snapshot);
+            logLiveStaticConflicts(snapshot);
             // Persist the regions this capture just changed so the learned collision survives a restart.
             if (liveCollisionPersistence != null) {
                 liveCollisionPersistence.persist(overlay.drainDirty());
