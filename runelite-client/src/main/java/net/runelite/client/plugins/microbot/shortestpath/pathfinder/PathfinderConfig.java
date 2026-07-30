@@ -199,6 +199,11 @@ public class PathfinderConfig {
     private Set<Integer> refreshAvailableItemIds;
     private int[] refreshBoostedLevels;
     private Map<String, int[]> refreshCurrencyCache;
+    // Varplayer values snapshot for the current refreshTransports pass. Without it, every varp
+    // condition on every transport paid a full cross-thread hop (getLiveVarplayerValue), and the
+    // global state cache never retains zero-valued varps — ~115 varp-gated rows accounted for
+    // ~2.3s of the 2.8s refilter. Captured in the same client-thread block as boosted levels.
+    private Map<Integer, Integer> refreshVarplayerValues;
     private static final Skill[] SKILLS = Skill.values();
 
     /**
@@ -540,6 +545,7 @@ public class PathfinderConfig {
         }
 
         refreshBoostedLevels = new int[SKILLS.length];
+        Map<Integer, Integer> varplayerValues = new HashMap<>();
         Microbot.getClientThread().runOnClientThreadOptional(() -> {
             for (int i = 0; i < SKILLS.length; i++) {
                 refreshBoostedLevels[i] = client.getBoostedSkillLevel(SKILLS[i]);
@@ -547,11 +553,14 @@ public class PathfinderConfig {
             for (int id : varbitIds) {
                 Microbot.getVarbitValue(id);
             }
+            // Read varps directly into the refresh snapshot: the global cache drops zero values,
+            // so pre-warming through it never helped the zero-valued ones.
             for (int id : varplayerIds) {
-                Microbot.getVarbitPlayerValue(id);
+                varplayerValues.put(id, client.getVarpValue(id));
             }
             return true;
         });
+        refreshVarplayerValues = varplayerValues;
         long cacheTime = System.currentTimeMillis() - cacheStart;
 
         long filterStart = System.currentTimeMillis();
@@ -641,6 +650,7 @@ public class PathfinderConfig {
         refreshAvailableItemIds = null;
         refreshBoostedLevels = null;
         refreshCurrencyCache = null;
+        refreshVarplayerValues = null;
 
         // varbit/varplayer counts = distinct ids referenced by merged transport definitions this refresh, not total client var space.
         WebWalkLog.cfg("refresh_transports merge={}ms cache={}ms filter={}ms useTrans={}ms similar={}ms total/chk={}/{} usablePost={} vb={} vp={}",
@@ -1078,7 +1088,19 @@ public class PathfinderConfig {
     private boolean varplayerChecks(Transport transport) {
         return transport.getVarplayers().isEmpty() ||
                 transport.getVarplayers().stream()
-                        .allMatch(varplayerCheck -> varplayerCheck.matches(getLiveVarplayerValue(varplayerCheck.getVarplayerId())));
+                        .allMatch(varplayerCheck -> varplayerCheck.matches(getVarplayerValue(varplayerCheck.getVarplayerId())));
+    }
+
+    /** Refresh-scoped snapshot first (no cross-thread hop); live read only outside a refresh pass. */
+    private int getVarplayerValue(int varplayerId) {
+        Map<Integer, Integer> snapshot = refreshVarplayerValues;
+        if (snapshot != null) {
+            Integer value = snapshot.get(varplayerId);
+            if (value != null) {
+                return value;
+            }
+        }
+        return getLiveVarplayerValue(varplayerId);
     }
 
     private int getLiveVarplayerValue(int varplayerId) {

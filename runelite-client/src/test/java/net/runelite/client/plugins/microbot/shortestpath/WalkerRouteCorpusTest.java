@@ -127,6 +127,21 @@ public class WalkerRouteCorpusTest {
         assertTrue("baseline overland route must arrive", arrives(path, new WorldPoint(3164, 3485, 0), 5));
     }
 
+    // ---- Falador-area farm (the walk-1 "hairpin" report — resolved: no bug) ------------------------
+
+    @Test
+    public void farmFieldGoal_arrivesViaTheHonestTour() {
+        // The reported 67-tile "out-and-back" was two parallel rows on OPPOSITE sides of the field
+        // fence: the goal tile sits inside the enclosure, whose only mapped opening is the far west
+        // corner, so the tour is the honest shortest path. Cold reproduction settled static-vs-live
+        // in one run; live, the walk correctly ended within-distance on the road without walking the
+        // loop. Pinned so a collision regression around the fence turns this into a loud failure.
+        WorldPoint faladorCentre = new WorldPoint(2964, 3378, 0);
+        WorldPoint fieldGoal = new WorldPoint(2930, 3449, 0);
+        List<WorldPoint> path = route(configWith(WalkerRouteCorpusTest::unrestricted), faladorCentre, fieldGoal);
+        assertTrue("goal inside the fenced field must remain reachable", arrives(path, fieldGoal, 5));
+    }
+
     // ---- Tempoross / Ruins of Unkah (the route-flapping incident) ----------------------------------
 
     @Test
