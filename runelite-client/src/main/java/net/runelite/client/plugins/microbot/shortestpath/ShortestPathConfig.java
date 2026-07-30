@@ -752,17 +752,6 @@ public interface ShortestPathConfig extends Config {
         return 80;
     }
 
-    @ConfigItem(
-            keyName = "preferNonConsumableTeleportAndSpells",
-            name = "Prefer  non-consumable teleports and spells",
-            description = " Whether to prefer using non-consumable teleportation items and spells over consumable items.<br>" +
-                    "This will only apply when 'Walk with banked transports' is enabled",
-            position = 3,
-            section = sectionAdvanced
-    )
-    default boolean preferNonConsumableTeleportAndSpells() {
-        return false;
-    }
         @ConfigItem(
                 keyName = "preferTransportToTarget",
                 name = "Prefer transport to target",
