@@ -695,6 +695,18 @@ public interface ShortestPathConfig extends Config {
     default boolean drawDebugPanel() {
         return false;
     }
+
+    @ConfigItem(
+            keyName = "verboseWalkerLogging",
+            name = "Verbose console logging",
+            description = "Log walker/shortest-path DEBUG detail to the console without restarting the client "
+                    + "in debug mode. Console only — never the game chat.",
+            position = 3,
+            section = sectionDebug
+    )
+    default boolean verboseWalkerLogging() {
+        return false;
+    }
     @ConfigSection(
             name = "Advanced Options",
             description = "Advanced pathfinding and transport settings",
