@@ -245,6 +245,32 @@ public class ShortestPathCoreTest {
 	}
 
 	@Test
+	public void shantaySouthboundOffersBothTicketAndCoinVariants() {
+		// Southbound through the Shantay Pass must be plannable BOTH when already holding a ticket
+		// (item 1854) and when merely holding 5 coins (Shantay sells passes at the gate; the walker's
+		// ensureShantayPassBeforeGate buys one before interacting). Without the coin variant, a player
+		// without a ticket gets a several-hundred-tile detour around the desert. Also guards against
+		// the duplicate origin/destination rows being deduplicated away at load.
+		HashMap<WorldPoint, Set<Transport>> transports = Transport.loadAllFromResources();
+		WorldPoint origin = new WorldPoint(3304, 3117, 0);
+		Set<Transport> atGate = transports.get(origin);
+		assertNotNull("no transports loaded at the Shantay gate origin", atGate);
+		boolean hasTicketVariant = false;
+		boolean hasCoinVariant = false;
+		for (Transport t : atGate) {
+			if (t.getObjectId() != 4031) continue;
+			if (t.getDestination() == null || t.getDestination().getY() >= origin.getY()) continue;
+			if (t.getItemIdRequirements() != null && !t.getItemIdRequirements().isEmpty()) {
+				hasTicketVariant = true;
+			} else if (t.getCurrencyAmount() > 0) {
+				hasCoinVariant = true;
+			}
+		}
+		assertTrue("southbound Shantay must keep the ticket-gated variant", hasTicketVariant);
+		assertTrue("southbound Shantay must offer the 5-coin buy-at-gate variant", hasCoinVariant);
+	}
+
+	@Test
 	public void testNewTransportTypesLoaded() {
 		HashMap<WorldPoint, Set<Transport>> transports = Transport.loadAllFromResources();
 
