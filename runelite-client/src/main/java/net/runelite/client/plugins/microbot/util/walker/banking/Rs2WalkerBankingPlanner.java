@@ -174,6 +174,25 @@ public final class Rs2WalkerBankingPlanner {
                 return;
             }
 
+            // Pure currency transports (charter fares, magic carpets, the Shantay 5-coin gate row) have
+            // EMPTY itemIdRequirements, so the item loop below never runs for them — their coins were
+            // never added to the withdrawal map. The transport was correctly detected as missing, but the
+            // fare was never fetched: the post-bank replan (inventory-only) then dropped the transport and
+            // produced the long overland route ("banked walking does not withdraw gold"). Sum fares across
+            // every currency transport on the route.
+            if (isCurrencyBasedTransport(transport.getType())
+                    && transport.getCurrencyAmount() > 0
+                    && (transport.getItemIdRequirements() == null || transport.getItemIdRequirements().isEmpty())) {
+                int currencyItemId = getCurrencyItemId(transport.getCurrencyName());
+                if (currencyItemId > 0) {
+                    int currentQuantity = itemQuantityMap.getOrDefault(currencyItemId, 0);
+                    itemQuantityMap.put(currencyItemId, currentQuantity + transport.getCurrencyAmount());
+                    log.debug("Added currency fare requirement: itemId={} x{} for {}",
+                            currencyItemId, transport.getCurrencyAmount(), transport.getType());
+                }
+                return;
+            }
+
             if (transport.getItemIdRequirements() != null) {
                 for (Set<Integer> alternativeItems : transport.getItemIdRequirements()) {
                     int requiredQuantity = (isCurrencyBasedTransport(transport.getType()) && transport.getCurrencyAmount() > 0)
