@@ -998,13 +998,44 @@ public class Rs2WalkerUnitTest {
         long now = 10_000L;
 
         assertEquals("door-settling", Rs2Walker.offPathRecalcDeferralReason(
-                true, false, false, true, false, false,
+                true, false, false, true, true, false, false,
                 now, 0L, 0L, 0L, 0L));
         assertEquals("transport-settling", Rs2Walker.offPathRecalcDeferralReason(
-                true, false, false, false, true, false,
+                true, false, false, true, false, true, false,
                 now, 0L, 0L, 0L, 0L));
         assertEquals("moving", Rs2Walker.offPathRecalcDeferralReason(
-                true, false, false, false, false, false,
+                true, false, false, true, false, false, false,
+                now, 0L, 0L, 0L, 0L));
+    }
+
+    /**
+     * The Gu'Tanoth rogue drift: ogre combat dragged the player a tile per second for 27s.
+     * Moving stayed true with no walker click in flight, "moving" deferred the off-path recalc
+     * every pass, and the walker was fully passive until the script gave up. Busy state without
+     * walker-owned movement must NOT defer — the recalc fires and replans from the drift position.
+     */
+    @Test
+    public void offPathRecalcDeferralReason_unownedBusyStateDoesNotDefer() {
+        long now = 10_000L;
+
+        assertEquals(null, Rs2Walker.offPathRecalcDeferralReason(
+                true, false, false, false, false, false, false,
+                now, 0L, 0L, 0L, 0L));
+        assertEquals(null, Rs2Walker.offPathRecalcDeferralReason(
+                false, true, false, false, false, false, false,
+                now, 0L, 0L, 0L, 0L));
+        assertEquals(null, Rs2Walker.offPathRecalcDeferralReason(
+                false, false, true, false, false, false, false,
+                now, 0L, 0L, 0L, 0L));
+        // The drift refreshes lastMovedAtMs every tick — "recent-movement" must not defer
+        // unowned movement either, or the tile-per-second creep re-arms it forever.
+        assertEquals(null, Rs2Walker.offPathRecalcDeferralReason(
+                true, false, false, false, false, false, false,
+                now, 9_900L, 0L, 0L, 0L));
+        // Settle windows are walker-owned by construction (bounded, set on our own interaction)
+        // and keep deferring regardless of the ownership flag.
+        assertEquals("door-settling", Rs2Walker.offPathRecalcDeferralReason(
+                true, false, false, false, true, false, false,
                 now, 0L, 0L, 0L, 0L));
     }
 
@@ -1013,13 +1044,13 @@ public class Rs2WalkerUnitTest {
         long now = 10_000L;
 
         assertEquals("route-progress", Rs2Walker.offPathRecalcDeferralReason(
-                false, false, false, false, false, false,
+                false, false, false, false, false, false, false,
                 now, 0L, 8_000L, 0L, 0L));
         assertEquals("recent-click", Rs2Walker.offPathRecalcDeferralReason(
-                false, false, false, false, false, false,
+                false, false, false, false, false, false, false,
                 now, 0L, 0L, 8_000L, 0L));
         assertEquals("interim-progress", Rs2Walker.offPathRecalcDeferralReason(
-                false, false, false, false, false, true,
+                false, false, false, false, false, false, true,
                 now, 0L, 0L, 0L, 8_000L));
     }
 
@@ -1028,8 +1059,24 @@ public class Rs2WalkerUnitTest {
         long now = 10_000L;
 
         assertEquals(null, Rs2Walker.offPathRecalcDeferralReason(
-                false, false, false, false, false, false,
+                false, false, false, true, false, false, false,
                 now, 7_000L, 6_000L, 7_000L, 7_000L));
+    }
+
+    /**
+     * A target &le;100 chebyshev used to skip the bank compare outright, so a purchasable gate
+     * 30 straight-line tiles away (Shantay: ~700 by inventory-only path) never got its fare
+     * withdrawn — the walker silently took the detour. The ceiling decides when "close" is a lie.
+     */
+    @Test
+    public void shortWalkDirectPathCeiling_flagsGateDetours() {
+        assertTrue("the Shantay detour (700 tiles for a 30-tile hop) must escalate to the bank compare",
+                700 > Rs2Walker.shortWalkDirectPathCeiling(30));
+        assertTrue("an honest town wiggle (150 tiles for an 80-tile hop) must stay direct",
+                150 <= Rs2Walker.shortWalkDirectPathCeiling(80));
+        assertEquals("tiny distances keep a floor so building detours don't trip it",
+                60, Rs2Walker.shortWalkDirectPathCeiling(5));
+        assertEquals(300, Rs2Walker.shortWalkDirectPathCeiling(100));
     }
 
     @Test

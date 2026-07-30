@@ -51,7 +51,10 @@ public final class RouteRecovery {
      * The recovery click decision, pure. Guard ORDER is part of the contract and pinned by tests:
      * <ol>
      *   <li>Action-in-flight preemption first — the recovery pass is seconds long and its door scans can
-     *       interact mid-pass; a stale click would cancel the door-open and drag the player away.</li>
+     *       interact mid-pass; a stale click would cancel the door-open and drag the player away.
+     *       {@code walkerOwnedMovement} must be true only for movement the walker itself issued
+     *       (recent click / interaction) — external movement such as combat retaliation dragging the
+     *       player must NOT preempt, or the corrective click never fires while the drag lasts.</li>
      *   <li>Walled-target check second — a target within {@code walledRadius} that is absent from the
      *       player-origin BFS is separated by a wall/door (the BFS step budget comfortably covers the
      *       radius). The {@code replanCooldownMs} chooses REPLAN vs WAIT only; it must never re-enable
@@ -63,13 +66,13 @@ public final class RouteRecovery {
     public static RecoveryClickAction decideRecoveryClick(WorldPoint recoverTarget,
                                                           WorldPoint playerLoc,
                                                           boolean doorInteractionSettling,
-                                                          boolean playerMoving,
+                                                          boolean walkerOwnedMovement,
                                                           Set<WorldPoint> reachable,
                                                           int walledRadius,
                                                           long nowMs,
                                                           long lastWalledReplanAtMs,
                                                           long replanCooldownMs) {
-        if (doorInteractionSettling || playerMoving) {
+        if (doorInteractionSettling || walkerOwnedMovement) {
             return RecoveryClickAction.YIELD_ACTION_IN_FLIGHT;
         }
         if (recoverTarget == null || playerLoc == null || recoverTarget.equals(playerLoc)) {

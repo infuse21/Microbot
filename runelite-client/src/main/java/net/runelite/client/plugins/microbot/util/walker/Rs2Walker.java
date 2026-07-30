@@ -158,6 +158,13 @@ public class Rs2Walker {
     private static final long OFF_PATH_RECALC_RECENT_MOVEMENT_MS = 2_000L;
     private static final long OFF_PATH_RECALC_ROUTE_PROGRESS_GRACE_MS = 3_500L;
     private static final long OFF_PATH_RECALC_MINIMAP_CLICK_GRACE_MS = 2_500L;
+    // Busy state (moving/animating/interacting) only defers the off-path recalc and only
+    // preempts recovery clicks while the walker plausibly CAUSED it — within this window of
+    // the walker's last issued click or interaction. A single minimap click moves the player
+    // for at most ~8s (13 tiles, walking), so anything past 10s is external movement: combat
+    // retaliation, aggro pathing, another script. Unbounded "moving" deferral let ogre combat
+    // drag a player a tile per second for 27s while the walker stayed fully passive.
+    private static final long WALKER_MOVEMENT_OWNERSHIP_WINDOW_MS = 10_000L;
     private static final int OFF_PATH_RECALC_DEFER_WAIT_MIN_MS = 250;
     private static final int OFF_PATH_RECALC_DEFER_WAIT_MAX_MS = 1_200;
     private static final long RAW_SCAN_DOOR_FOCUS_MAX_MS = 2200L;
@@ -1989,7 +1996,10 @@ public class Rs2Walker {
                         break;
                     }
                     Telemetry.recordOffPathRecalc(Rs2Player.getWorldLocation(), path.size());
-                    WebWalkLog.recalc("no_longer_near_path");
+                    // Distinguish the drift signature in logs: off-path while still moving with no
+                    // walker action in flight = something external is steering the player.
+                    WebWalkLog.recalc(Rs2Player.isMoving()
+                            ? "off_path_unowned_movement" : "no_longer_near_path");
                     if (config.cancelInstead()) {
                         setTarget(null, "rs2walker:processWalk:off-path-cancel-instead");
                     } else {
@@ -2427,9 +2437,14 @@ public class Rs2Walker {
                             // that throttles the replan but never re-enables the click) lives with the
                             // decision, where the interactions are pinned by tests instead of re-discovered
                             // live (Clock Tower backtrack; Port Sarim wall-click during cooldown).
+                            // Movement only preempts the recovery click while the walker owns it
+                            // (protecting our own in-flight click/door-open). External movement —
+                            // combat dragging the player — must NOT block the corrective click.
                             RouteRecovery.RecoveryClickAction clickAction = RouteRecovery.decideRecoveryClick(
                                     recoverTarget, playerLoc,
-                                    isDoorInteractionSettling(), Rs2Player.isMoving(),
+                                    isDoorInteractionSettling(),
+                                    Rs2Player.isMoving()
+                                            && isMovementWalkerOwned(System.currentTimeMillis(), lastAttemptedMinimapClickAtMs),
                                     reachableTilesCache != null ? reachableTilesCache.keySet() : null,
                                     WALLED_RECOVERY_TARGET_EUCLIDEAN,
                                     System.currentTimeMillis(), lastWalledRecoveryReplanAtMs,
@@ -9887,6 +9902,7 @@ public class Rs2Walker {
     static String offPathRecalcDeferralReason(boolean playerMoving,
                                               boolean playerAnimating,
                                               boolean playerInteracting,
+                                              boolean movementOwned,
                                               boolean doorSettling,
                                               boolean transportSettling,
                                               boolean interimActive,
@@ -9901,14 +9917,19 @@ public class Rs2Walker {
         if (transportSettling) {
             return "transport-settling";
         }
-        if (playerMoving) {
-            return "moving";
-        }
-        if (playerAnimating) {
-            return "animating";
-        }
-        if (playerInteracting) {
-            return "interacting";
+        // Busy state defers only while the walker owns the movement. Combat retaliation and
+        // aggro pathing keep moving/animating/interacting true indefinitely, and an unbounded
+        // defer here paralyzes the walker while something else drags the player off the route.
+        if (movementOwned) {
+            if (playerMoving) {
+                return "moving";
+            }
+            if (playerAnimating) {
+                return "animating";
+            }
+            if (playerInteracting) {
+                return "interacting";
+            }
         }
         if (isRecentEvent(nowMs, routeProgressAtMs, OFF_PATH_RECALC_ROUTE_PROGRESS_GRACE_MS)) {
             return "route-progress";
@@ -9919,21 +9940,37 @@ public class Rs2Walker {
         if (interimActive && isRecentEvent(nowMs, interimProgressAtMs, INTERIM_PROGRESS_TIMEOUT_MS)) {
             return "interim-progress";
         }
-        if (isRecentEvent(nowMs, lastMovedAtMs, OFF_PATH_RECALC_RECENT_MOVEMENT_MS)) {
+        if (movementOwned && isRecentEvent(nowMs, lastMovedAtMs, OFF_PATH_RECALC_RECENT_MOVEMENT_MS)) {
             return "recent-movement";
         }
         return null;
     }
 
+    /**
+     * Whether current player movement is plausibly the result of a walker-issued action —
+     * a route/recovery click, a door interaction, or a transport handoff — rather than an
+     * external force (combat retaliation, aggro, another script). Only owned movement may
+     * defer the off-path recalc or preempt a recovery click.
+     */
+    private static boolean isMovementWalkerOwned(long nowMs, long minimapClickAtMs) {
+        long lastOwnedActionAtMs = Math.max(
+                Math.max(minimapClickAtMs, doorInteractionSettleStartedAtMs),
+                Math.max(routeState.lastTransportHandledAtMs,
+                        Math.max(routeState.lastUnreachableRecoveryClickAtMs, routeState.interimSetAtMs)));
+        return isRecentEvent(nowMs, lastOwnedActionAtMs, WALKER_MOVEMENT_OWNERSHIP_WINDOW_MS);
+    }
+
     private static String currentOffPathRecalcDeferralReason(long minimapClickAtMs) {
+        long nowMs = System.currentTimeMillis();
         return offPathRecalcDeferralReason(
                 Rs2Player.isMoving(),
                 Rs2Player.isAnimating(),
                 Rs2Player.isInteracting(),
+                isMovementWalkerOwned(nowMs, minimapClickAtMs),
                 isDoorInteractionSettling(),
                 isTransportInteractionSettling(),
                 routeState.interimTargetWp != null,
-                System.currentTimeMillis(),
+                nowMs,
                 lastMovedTimeMs,
                 routeState.routeProgressAdvancedAtMs,
                 minimapClickAtMs,
@@ -11533,8 +11570,24 @@ public class Rs2Walker {
         }
         int chebyshevToTarget = pl.distanceTo(target);
         if (!forceBanking && chebyshevToTarget <= 100) {
-            WebWalkLog.bankWalkDebug("skip_compare_short_distance dist={} goal={}", chebyshevToTarget, target);
-            return walkWithStateInternal(target, distance);
+            // Straight-line proximity says nothing about the walkable route: the Shantay gate is
+            // ~30 tiles away and ~700 by inventory-only path without a pass. Skipping the compare
+            // here meant no missing-item check, so gold for a purchasable gate was never withdrawn
+            // and the walker silently took the detour. One direct pathfind (cheap for a close,
+            // reachable target) decides whether the short-circuit is safe; a partial path counts
+            // as a detour too, since banking may be exactly what unlocks the blocked transport.
+            List<WorldPoint> directProbePath = getWalkPath(pl, target);
+            int directProbeTiles = getTotalTilesFromPath(directProbePath, target);
+            int directPathCeiling = shortWalkDirectPathCeiling(chebyshevToTarget);
+            if (directProbeTiles <= directPathCeiling) {
+                WebWalkLog.spInfo("bank_walk | skip_compare_short_distance dist={} directTiles={} goal={}",
+                        chebyshevToTarget, directProbeTiles, target);
+                return walkWithStateInternal(target, distance);
+            }
+            WebWalkLog.spInfo("bank_walk | short_distance_detour dist={} directTiles={} ceiling={} goal={} — running bank compare",
+                    chebyshevToTarget,
+                    directProbeTiles == Integer.MAX_VALUE ? "partial" : String.valueOf(directProbeTiles),
+                    directPathCeiling, target);
         }
         // Check what transport items are needed
         long compareStartedAt = System.currentTimeMillis();
@@ -11552,7 +11605,7 @@ public class Rs2Walker {
         }
         // If no missing transport items, go directly
         if (missingItemsWithQuantities.isEmpty() && !forceBanking) {
-            WebWalkLog.bankWalkDebug("direct_no_missing_items goal={}", target);
+            WebWalkLog.spInfo("bank_walk | direct_no_missing_items goal={}", target);
             WalkerState state = walkWithStateInternal(target, distance);
             if (state == WalkerState.ARRIVED) {
                 WebWalkLog.bankWalkDebug("arrived goal={}", target);
@@ -11590,6 +11643,17 @@ public class Rs2Walker {
         }
 
 
+    }
+
+    /**
+     * Ceiling for how long the inventory-only path may be before a "close" target (&le;100
+     * chebyshev) loses its right to skip the bank compare. 3x straight-line absorbs honest
+     * wall-hugging and indoor zigzags; the 60-tile floor keeps tiny distances from tripping
+     * on ordinary detours around buildings. Anything above this is a real detour — a gate the
+     * player lacks the item/fare for — and the banked flow must get its chance to fetch it.
+     */
+    static int shortWalkDirectPathCeiling(int chebyshevDistance) {
+        return Math.max(60, chebyshevDistance * 3);
     }
 
     private static WalkerState bootstrapBankMirrorForBankedPathing(int distance) {
