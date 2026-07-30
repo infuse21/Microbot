@@ -245,13 +245,7 @@ public class Rs2Walker {
     private static final int POST_TRANSPORT_RAW_SCAN_TRANSPORT_MAX_DIST = 15;
     private static final long TRANSPORT_POST_INTERACT_SETTLE_MS = 900L;
     private static final long RECENT_TRANSPORT_EDGE_SUPPRESS_MS = 8_000L;
-    private static volatile Integer rawScanFocusedDoorIdx = null;
-    private static volatile long rawScanFocusedDoorSetAtMs = 0L;
-    private static volatile int rawScanFocusedDoorAttempts = 0;
-    private static volatile long doorInteractionSettleUntilMs = 0L;
-    /** When the current door settle window started, and the door's far-side tile — the early-exit signal. */
-    private static volatile long doorInteractionSettleStartedAtMs = 0L;
-    private static volatile WorldPoint doorSettleFarSideWp = null;
+    // door-interaction state migrated to WalkerRouteState (see routeState)
     /**
      * Minimum settle after a door/transport interaction before the early exit may fire: one game tick of
      * post-action state flux (position sync, object state update). The 900ms constants above remain the
@@ -261,7 +255,6 @@ public class Rs2Walker {
      * settle had no early exit at all.
      */
     private static final long POST_INTERACT_SETTLE_MIN_MS = 300L;
-    private static volatile long lastDoorEdgePassSkipAtMs = 0L;
     // misc route-timer state migrated to WalkerRouteState (see routeState)
     /**
      * Consolidated route state (P1 walker decomposition, enabling step). Fields are migrated here in
@@ -2303,8 +2296,8 @@ public class Rs2Walker {
                             if (!gateDoorInteraction
                                     && unresolvedDoorNearRawPath
                                     && obstaclePolicy.allowNearbyFallback()
-                                    && nowMs - lastDoorPathAdjAttemptAtMs > 1200) {
-                                lastDoorPathAdjAttemptAtMs = nowMs;
+                                    && nowMs - routeState.lastDoorPathAdjAttemptAtMs > 1200) {
+                                routeState.lastDoorPathAdjAttemptAtMs = nowMs;
                                 if (tryResolvePathAdjacentBlocker(playerLoc, rawPath, rawEdgeStart, 3, 10)) {
                                     exitReason = "door-handled-path-adj-scan";
                                     break;
@@ -3292,10 +3285,8 @@ public class Rs2Walker {
     private static volatile String staminaSeedName = null;
     private static volatile int staminaThresholdCached = STAMINA_THRESHOLD_FALLBACK;
 
-	// Cooldown to avoid spamming expensive door fallback scans on unreachable tiles.
-	private static long lastDoorFallbackAttemptAtMs = 0L;
-	private static long lastDoorLosAttemptAtMs = 0L;
-	private static long lastDoorPathAdjAttemptAtMs = 0L;
+	// Door-scan cooldown state migrated to WalkerRouteState; the fallback/LOS timestamps that
+	// used to sit here were dead (written by nothing, read by nothing) and are simply gone.
     /**
      * End-snap guard bounds: a recovery target within this Euclidean radius that is absent from the
      * player-origin reachability BFS is walled/doored off (the recovery BFS's 18-step budget comfortably
@@ -5075,8 +5066,8 @@ public class Rs2Walker {
         }
 
         if (shouldUseFocusedRawDoorIndex(rawPath, rawStart)) {
-            int idx = rawScanFocusedDoorIdx;
-            rawScanFocusedDoorAttempts++;
+            int idx = routeState.rawScanFocusedDoorIdx;
+            routeState.rawScanFocusedDoorAttempts++;
             if (handleDoors(rawPath, idx, true)) {
                 log.info("[Walker] Raw path focused door handler resolved obstacle near {}", playerLoc);
                 return true;
@@ -5348,23 +5339,23 @@ public class Rs2Walker {
     }
 
     private static void setRawScanDoorFocus(int index) {
-        rawScanFocusedDoorIdx = index;
-        rawScanFocusedDoorSetAtMs = System.currentTimeMillis();
-        rawScanFocusedDoorAttempts = 0;
+        routeState.rawScanFocusedDoorIdx = index;
+        routeState.rawScanFocusedDoorSetAtMs = System.currentTimeMillis();
+        routeState.rawScanFocusedDoorAttempts = 0;
     }
 
     private static boolean shouldUseFocusedRawDoorIndex(List<WorldPoint> rawPath, int rawStartIdx) {
-        Integer idx = rawScanFocusedDoorIdx;
+        Integer idx = routeState.rawScanFocusedDoorIdx;
         if (idx == null) {
             return false;
         }
         if (routeState.interimTargetWp != null) {
             return false;
         }
-        if (System.currentTimeMillis() - rawScanFocusedDoorSetAtMs > RAW_SCAN_DOOR_FOCUS_MAX_MS) {
+        if (System.currentTimeMillis() - routeState.rawScanFocusedDoorSetAtMs > RAW_SCAN_DOOR_FOCUS_MAX_MS) {
             return false;
         }
-        if (rawScanFocusedDoorAttempts >= RAW_SCAN_DOOR_FOCUS_MAX_ATTEMPTS) {
+        if (routeState.rawScanFocusedDoorAttempts >= RAW_SCAN_DOOR_FOCUS_MAX_ATTEMPTS) {
             return false;
         }
         if (idx < 0 || idx >= rawPath.size() - 1) {
@@ -5377,12 +5368,12 @@ public class Rs2Walker {
     }
 
     private static void clearRawScanDoorFocus(String reason) {
-        if (rawScanFocusedDoorIdx != null && debug) {
+        if (routeState.rawScanFocusedDoorIdx != null && debug) {
             walkerDiag("clear raw door focus: %s", reason);
         }
-        rawScanFocusedDoorIdx = null;
-        rawScanFocusedDoorSetAtMs = 0L;
-        rawScanFocusedDoorAttempts = 0;
+        routeState.rawScanFocusedDoorIdx = null;
+        routeState.rawScanFocusedDoorSetAtMs = 0L;
+        routeState.rawScanFocusedDoorAttempts = 0;
     }
 
     private static boolean handleCurrentTileTransportTowardPath(List<WorldPoint> rawPath, List<WorldPoint> path, WorldPoint target) {
@@ -5515,13 +5506,9 @@ public class Rs2Walker {
     private static final long STATIONARY_DOOR_SUPPRESS_MS = 10_000;
     private static final Map<String, Long> recentDoorAttemptByEdge = new ConcurrentHashMap<>();
     private static final long DOOR_ATTEMPT_EDGE_COOLDOWN_MS = 2_500;
-    private static volatile WorldPoint lastDoorAttemptFrom = null;
-    private static volatile WorldPoint lastDoorAttemptTo = null;
-    private static volatile long lastDoorAttemptAtMs = 0L;
     private static final Map<String, Long> recentCurrentTileTransportByEdge = new ConcurrentHashMap<>();
     private static final long CURRENT_TILE_TRANSPORT_EDGE_COOLDOWN_MS = 2_200;
     private static final long DOOR_INTERACTION_GLOBAL_COOLDOWN_MS = 1_800;
-    private static volatile long nextDoorInteractionAllowedAtMs = 0L;
 
     static boolean hasQuestLockKeywords(String text) {
         if (text == null || text.isEmpty()) return false;
@@ -6208,9 +6195,9 @@ public class Rs2Walker {
     }
 
     private static boolean tryRecentDoorAttemptEdgeNudge(WorldPoint playerLoc, WorldPoint target) {
-        WorldPoint from = lastDoorAttemptFrom;
-        WorldPoint to = lastDoorAttemptTo;
-        long attemptedAt = lastDoorAttemptAtMs;
+        WorldPoint from = routeState.lastDoorAttemptFrom;
+        WorldPoint to = routeState.lastDoorAttemptTo;
+        long attemptedAt = routeState.lastDoorAttemptAtMs;
         if (playerLoc == null || from == null || to == null || attemptedAt <= 0L) {
             return false;
         }
@@ -6484,24 +6471,24 @@ public class Rs2Walker {
     }
 
     private static boolean shouldThrottleGlobalDoorInteraction() {
-        return Rs2DoorHandler.shouldThrottleGlobalDoorInteraction(nextDoorInteractionAllowedAtMs);
+        return Rs2DoorHandler.shouldThrottleGlobalDoorInteraction(routeState.nextDoorInteractionAllowedAtMs);
     }
 
     private static boolean isDoorInteractionSettling() {
         long now = System.currentTimeMillis();
-        if (now >= doorInteractionSettleUntilMs) {
+        if (now >= routeState.doorInteractionSettleUntilMs) {
             return false;
         }
         // Early exit: the interaction's purpose was opening the door — once its far side is reachable,
         // the edge is open and there is nothing left to settle (previously this was a flat 900ms freeze
         // after every door). One-tick floor for object-state flux; the window is cleared on success so
         // repeated checks this tick don't re-run the reachability probe.
-        WorldPoint farSide = doorSettleFarSideWp;
+        WorldPoint farSide = routeState.doorSettleFarSideWp;
         if (farSide != null
-                && now - doorInteractionSettleStartedAtMs >= POST_INTERACT_SETTLE_MIN_MS
+                && now - routeState.doorInteractionSettleStartedAtMs >= POST_INTERACT_SETTLE_MIN_MS
                 && Rs2Tile.isTileReachable(farSide)) {
-            doorInteractionSettleUntilMs = 0L;
-            doorSettleFarSideWp = null;
+            routeState.doorInteractionSettleUntilMs = 0L;
+            routeState.doorSettleFarSideWp = null;
             return false;
         }
         return true;
@@ -6546,7 +6533,7 @@ public class Rs2Walker {
     }
 
     private static boolean isDoorEdgePassSkipCoolingDown() {
-        return System.currentTimeMillis() - lastDoorEdgePassSkipAtMs < DOOR_EDGE_SKIP_COOLDOWN_MS;
+        return System.currentTimeMillis() - routeState.lastDoorEdgePassSkipAtMs < DOOR_EDGE_SKIP_COOLDOWN_MS;
     }
 
     private static boolean isRecoveryMovementInFlight() {
@@ -6556,21 +6543,21 @@ public class Rs2Walker {
     /** Starts the door settle window, remembering the far-side tile so it can end when the edge opens. */
     private static void markDoorInteractionSettling(WorldPoint farSideWp) {
         long now = System.currentTimeMillis();
-        doorInteractionSettleStartedAtMs = now;
-        doorInteractionSettleUntilMs = now + DOOR_POST_INTERACT_SETTLE_MS;
-        doorSettleFarSideWp = farSideWp;
+        routeState.doorInteractionSettleStartedAtMs = now;
+        routeState.doorInteractionSettleUntilMs = now + DOOR_POST_INTERACT_SETTLE_MS;
+        routeState.doorSettleFarSideWp = farSideWp;
     }
 
     private static void markGlobalDoorInteractionCooldown() {
-        nextDoorInteractionAllowedAtMs = Rs2DoorHandler.markGlobalDoorInteractionCooldown(DOOR_INTERACTION_GLOBAL_COOLDOWN_MS);
+        routeState.nextDoorInteractionAllowedAtMs = Rs2DoorHandler.markGlobalDoorInteractionCooldown(DOOR_INTERACTION_GLOBAL_COOLDOWN_MS);
     }
 
     private static void markDoorAttempt(WorldPoint doorTile, WorldPoint fromWp, WorldPoint toWp) {
         Rs2DoorHandler.markDoorAttempt(recentDoorAttemptByEdge, doorTile, fromWp, toWp);
         if (fromWp != null && toWp != null) {
-            lastDoorAttemptFrom = fromWp;
-            lastDoorAttemptTo = toWp;
-            lastDoorAttemptAtMs = System.currentTimeMillis();
+            routeState.lastDoorAttemptFrom = fromWp;
+            routeState.lastDoorAttemptTo = toWp;
+            routeState.lastDoorAttemptAtMs = System.currentTimeMillis();
         }
     }
 
@@ -7061,7 +7048,7 @@ public class Rs2Walker {
                 : null;
         WorldPoint playerBeforeAttempt = Rs2Player.getWorldLocation();
         if (!markDoorEdgeAttemptThisPass(attemptedDoorEdgesThisPass, segment, playerBeforeAttempt)) {
-            lastDoorEdgePassSkipAtMs = System.currentTimeMillis();
+            routeState.lastDoorEdgePassSkipAtMs = System.currentTimeMillis();
             WebWalkLog.spInfo("door_edge_pass_skip | idx={}", index);
             return false;
         }
@@ -9950,7 +9937,7 @@ public class Rs2Walker {
      */
     private static boolean isMovementWalkerOwned(long nowMs, long minimapClickAtMs) {
         long lastOwnedActionAtMs = Math.max(
-                Math.max(minimapClickAtMs, doorInteractionSettleStartedAtMs),
+                Math.max(minimapClickAtMs, routeState.doorInteractionSettleStartedAtMs),
                 Math.max(routeState.lastTransportHandledAtMs,
                         Math.max(routeState.lastUnreachableRecoveryClickAtMs, routeState.interimSetAtMs)));
         return isRecentEvent(nowMs, lastOwnedActionAtMs, WALKER_MOVEMENT_OWNERSHIP_WINDOW_MS);
