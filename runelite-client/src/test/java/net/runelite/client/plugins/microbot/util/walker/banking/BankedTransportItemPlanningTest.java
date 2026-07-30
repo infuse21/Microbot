@@ -116,6 +116,29 @@ public class BankedTransportItemPlanningTest {
                 summed.getOrDefault(net.runelite.api.gameval.ItemID.COINS, 0) >= one.getCurrencyAmount() * 2);
     }
 
+    /**
+     * An item-gated row whose item the bank cannot supply, but which is vendor-purchasable at the
+     * transport (the Shantay ticket row): the planner must withdraw the FARE, not request an item
+     * the withdrawal step can never satisfy. Headless bank counts read as zero, which is exactly
+     * the "not banked" case.
+     */
+    @Test
+    public void unbankedPurchasableItemFallsBackToItsFare() {
+        Transport ticketRow = all.stream()
+                .filter(t -> t.getObjectId() == 4031)
+                .filter(t -> t.getItemIdRequirements() != null && !t.getItemIdRequirements().isEmpty())
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("catalog should contain the Shantay ticket row"));
+
+        java.util.Map<Integer, Integer> map =
+                Rs2WalkerBankingPlanner.getMissingTransportItemIdsWithQuantities(java.util.List.of(ticketRow));
+
+        assertTrue("the fare must enter the withdrawal map",
+                map.getOrDefault(net.runelite.api.gameval.ItemID.COINS, 0) >= 5);
+        assertFalse("the unbankable ticket itself must not be requested",
+                map.containsKey(1854));
+    }
+
     /** Currency-bearing transports kept their existing eligibility. */
     @Test
     public void currencyTransportsRemainEligible() {

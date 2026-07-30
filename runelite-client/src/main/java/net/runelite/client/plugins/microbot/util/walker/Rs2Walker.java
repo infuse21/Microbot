@@ -8969,44 +8969,37 @@ public class Rs2Walker {
         return handleObject(transport, tileObject, transport.getAction());
     }
 
-    /** The Shantay Pass gate into the desert (object) and the ticket it consumes. */
-    private static final int SHANTAY_PASS_GATE_OBJECT_ID = 4031;
-    private static final int SHANTAY_PASS_ITEM_ID = net.runelite.api.gameval.ItemID.SHANTAY_PASS; // 1854
-
     /**
-     * Going SOUTH through the Shantay Pass consumes a Shantay pass ticket. The transport catalog offers
-     * the gate both item-gated (already holding a ticket) and currency-gated (5 coins — Shantay sells
-     * passes right at the gate), so the planner routes through the gate instead of a several-hundred-tile
-     * detour when the player merely lacks the ticket. This pre-step makes the currency variant work:
-     * buy the ticket from Shantay before interacting with the gate. Northbound needs nothing.
+     * A transport may be gated on an item that its own vendor sells on the spot (the Shantay pass
+     * pattern: the gate wants a ticket, Shantay sells tickets two tiles away). The catalog rows in
+     * {@code purchasable_items.tsv} say which item, which vendor, and how close the vendor must be
+     * to the transport origin; the transports.tsv duplicate-row OR (item row + currency-twin row)
+     * already made the planner route through such transports for players holding only the coins.
+     * This pre-step completes the currency variant: buy the item before interacting. Free rows
+     * (e.g. a gate's exit direction) carry neither item nor currency requirements and never match.
+     *
+     * <p>Vendor interaction is by NPC id — a name lookup once partial-matched the nearer
+     * "Shantay Guard" (Actions=[Talk-to, null, Pass]) and the buy silently failed.
      */
-    private static void ensureShantayPassBeforeGate(Transport transport) {
-        if (transport == null || transport.getObjectId() != SHANTAY_PASS_GATE_OBJECT_ID) {
+    private static void ensureRequiredItemBeforeTransport(Transport transport) {
+        PurchasableItemCatalog.PurchasableItem purchasable = PurchasableItemCatalog.forTransport(transport);
+        if (purchasable == null || Rs2Inventory.hasItem(purchasable.itemId)) {
             return;
         }
-        WorldPoint origin = transport.getOrigin();
-        WorldPoint dest = transport.getDestination();
-        if (origin == null || dest == null || dest.getY() >= origin.getY()) {
-            return; // northbound (leaving the desert) is free
-        }
-        if (Rs2Inventory.hasItem(SHANTAY_PASS_ITEM_ID)) {
-            return;
-        }
-        WebWalkLog.spInfo("shantay_buy_pass | buying ticket before the gate at={}",
+        WebWalkLog.spInfo("purchasable_buy | item={} vendor={} action={} at={}",
+                purchasable.itemId, purchasable.vendorNpcId, purchasable.vendorAction,
                 compactWorldPoint(Rs2Player.getWorldLocation()));
-        // Interact by id: the name lookup partial-matches the nearer "Shantay Guard", whose only
-        // options are Talk-to/Pass — the Buy-pass option lives on Shantay himself (live incident:
-        // "Action not found. Actions=[Talk-to, null, Pass]").
-        if (Rs2Npc.interact(net.runelite.api.gameval.NpcID.SHANTAY, "Buy-pass")) {
-            sleepUntil(() -> Rs2Inventory.hasItem(SHANTAY_PASS_ITEM_ID), 4000);
+        if (Rs2Npc.interact(purchasable.vendorNpcId, purchasable.vendorAction)) {
+            sleepUntil(() -> Rs2Inventory.hasItem(purchasable.itemId), 4000);
         }
-        if (!Rs2Inventory.hasItem(SHANTAY_PASS_ITEM_ID)) {
-            WebWalkLog.spWarn("shantay_buy_pass failed — no ticket after Buy-pass attempt");
+        if (!Rs2Inventory.hasItem(purchasable.itemId)) {
+            WebWalkLog.spWarn("purchasable_buy failed | item={} vendor={} — no item after {} attempt",
+                    purchasable.itemId, purchasable.vendorNpcId, purchasable.vendorAction);
         }
     }
 
     private static boolean handleObject(Transport transport, TileObject tileObject, String action) {
-        ensureShantayPassBeforeGate(transport);
+        ensureRequiredItemBeforeTransport(transport);
         WorldPoint before = Rs2Player.getWorldLocation();
         Rs2GameObject.interact(tileObject, action);
         if (handleObjectExceptions(transport, tileObject)) return true;

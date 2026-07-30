@@ -9,6 +9,7 @@ import net.runelite.client.plugins.microbot.shortestpath.pathfinder.Pathfinder;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Spells;
 import net.runelite.client.plugins.microbot.util.walker.Rs2PathApi;
+import net.runelite.client.plugins.microbot.shortestpath.PurchasableItemCatalog;
 import net.runelite.client.plugins.microbot.shortestpath.Transport;
 import net.runelite.client.plugins.microbot.shortestpath.TransportType;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
@@ -214,6 +215,23 @@ public final class Rs2WalkerBankingPlanner {
                         }
                     }
 
+                    // The bank holds none of the alternatives — withdrawing the item is impossible.
+                    // If one of them is vendor-purchasable at its transport (the Shantay pass
+                    // pattern), withdraw the fare instead so the buy-at-transport step can run.
+                    if (preferredItemId != null && preferredBankQuantity == 0) {
+                        PurchasableItemCatalog.PurchasableItem purchasable = alternativeItems.stream()
+                                .map(PurchasableItemCatalog::byItemId)
+                                .filter(java.util.Objects::nonNull)
+                                .findFirst()
+                                .orElse(null);
+                        int currencyItemId = purchasable == null ? -1 : getCurrencyItemId(purchasable.costCurrencyName);
+                        if (currencyItemId > 0) {
+                            itemQuantityMap.merge(currencyItemId, purchasable.costAmount, Integer::sum);
+                            log.debug("Transport item {} not banked but purchasable — withdrawing fare {} x{} instead",
+                                    purchasable.itemId, purchasable.costCurrencyName, purchasable.costAmount);
+                            break;
+                        }
+                    }
                     if (preferredItemId != null) {
                         int currentQuantity = itemQuantityMap.getOrDefault(preferredItemId, 0);
                         itemQuantityMap.put(preferredItemId, currentQuantity + requiredQuantity);
