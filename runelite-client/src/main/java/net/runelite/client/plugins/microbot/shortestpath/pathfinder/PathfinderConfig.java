@@ -111,6 +111,19 @@ public class PathfinderConfig {
     private final Set<Long> learnedBlockedEdgeKeys = ConcurrentHashMap.newKeySet();
     /** Backing file for {@link #learnedBlockedEdgeKeys}; redirectable for tests. */
     private volatile File learnedBlockedEdgesFile;
+    /**
+     * Two-strike hardening state: every row of the learned store (probation included), in file order,
+     * plus a by-key index for strike accounting. {@link #learnedBlockedEdgeKeys} holds only what is
+     * ENFORCED this session (confirmed rows + this session's own observations). Guarded by
+     * {@link #learnedEdgeLock}.
+     */
+    private final List<LearnedBlockedEdges.Edge> learnedEdgeRows = new ArrayList<>();
+    private final Map<Long, LearnedBlockedEdges.Edge> learnedEdgeRowsByKey = new HashMap<>();
+    private final Object learnedEdgeLock = new Object();
+    /** Observations needed before a learned block survives into LATER sessions. */
+    static final int LEARNED_EDGE_ENFORCE_STRIKES = 2;
+    /** A repeat observation only counts as independent evidence after this long. */
+    static final long LEARNED_EDGE_STRIKE_INDEPENDENCE_MS = 10 * 60_000L;
 
     private final Client client;
     private final ShortestPathConfig config;
@@ -729,38 +742,63 @@ public class PathfinderConfig {
     }
 
     /**
-     * Loads the human-editable learned-blocked-edges TSV into {@link #learnedBlockedEdgeKeys} and applies
-     * it to the live block set. Idempotent — both sets de-duplicate — so a redirect-and-reload in tests
-     * is safe.
+     * (Re)loads the human-editable learned-blocked-edges TSV. Only rows with
+     * {@link #LEARNED_EDGE_ENFORCE_STRIKES}+ strikes are applied to the live block set — a
+     * single-strike row is probation: the session that observed it blocked it at the time, but a
+     * fresh session ignores it until a second independent observation confirms (one bad sample must
+     * not poison the store permanently). A reload drops previously-applied learned keys first so the
+     * test seam can simulate a restart; static blocked edges are re-added and unaffected.
      */
     private void loadLearnedBlockedEdges() {
-        for (LearnedBlockedEdges.Edge edge : LearnedBlockedEdges.load(learnedBlockedEdgesFile)) {
-            long key = transportEdgeKey(
-                    WorldPointUtil.packWorldPoint(edge.origin),
-                    WorldPointUtil.packWorldPoint(edge.destination));
-            learnedBlockedEdgeKeys.add(key);
-            blockedTransportEdgesPacked.add(key);
-            if (edge.bidirectional) {
-                long reverse = transportEdgeKey(
-                        WorldPointUtil.packWorldPoint(edge.destination),
-                        WorldPointUtil.packWorldPoint(edge.origin));
-                learnedBlockedEdgeKeys.add(reverse);
-                blockedTransportEdgesPacked.add(reverse);
+        synchronized (learnedEdgeLock) {
+            blockedTransportEdgesPacked.removeAll(learnedBlockedEdgeKeys);
+            addStaticBlockedEdges();
+            learnedBlockedEdgeKeys.clear();
+            learnedEdgeRows.clear();
+            learnedEdgeRowsByKey.clear();
+            for (LearnedBlockedEdges.Edge edge : LearnedBlockedEdges.load(learnedBlockedEdgesFile)) {
+                long key = transportEdgeKey(
+                        WorldPointUtil.packWorldPoint(edge.origin),
+                        WorldPointUtil.packWorldPoint(edge.destination));
+                learnedEdgeRows.add(edge);
+                learnedEdgeRowsByKey.put(key, edge);
+                boolean enforced = edge.strikes >= LEARNED_EDGE_ENFORCE_STRIKES;
+                if (enforced) {
+                    learnedBlockedEdgeKeys.add(key);
+                    blockedTransportEdgesPacked.add(key);
+                } else {
+                    log.debug("[Walker] Learned edge on probation (strike {}/{}), not enforced: {} -> {}",
+                            edge.strikes, LEARNED_EDGE_ENFORCE_STRIKES, edge.origin, edge.destination);
+                }
+                if (edge.bidirectional) {
+                    long reverse = transportEdgeKey(
+                            WorldPointUtil.packWorldPoint(edge.destination),
+                            WorldPointUtil.packWorldPoint(edge.origin));
+                    learnedEdgeRowsByKey.putIfAbsent(reverse, edge);
+                    if (enforced) {
+                        learnedBlockedEdgeKeys.add(reverse);
+                        blockedTransportEdgesPacked.add(reverse);
+                    }
+                }
             }
         }
     }
 
     /**
      * Records a walking edge the walker just failed to traverse (e.g. a door that moved the player the
-     * wrong way) as a permanent block: it is applied to the live pathfinder set immediately and appended
-     * to the human-editable learned-blocked-edges TSV so it survives restarts and transport refreshes.
+     * wrong way). The observing session blocks the edge immediately — it just watched the failure, and
+     * anything less loops the walker into the same door. PERSISTENCE is two-strike gated: the row is
+     * written on probation (strike 1) and later sessions ignore it until a second observation at least
+     * {@link #LEARNED_EDGE_STRIKE_INDEPENDENCE_MS} later confirms it. One bad sample (the Wydin door
+     * poisoning) therefore self-heals on restart instead of requiring a hand-edit.
      *
      * <p>Only the attempted direction is blocked — not bidirectionally — so a genuinely one-way door
      * stays usable the other way. Callers must only pass <em>stable</em> map properties here; temporary,
      * quest/skill-gated doors are handled by {@code restrictions.tsv} and must not be learned, or the
      * bot would avoid them forever after the requirement is met.
      *
-     * @return {@code true} if this edge was newly learned; {@code false} if it was already known.
+     * @return {@code true} if this edge was newly blocked for this session; {@code false} if it was
+     * already enforced.
      */
     public boolean learnBlockedEdge(WorldPoint origin, WorldPoint destination, String reason) {
         if (origin == null || destination == null) {
@@ -773,10 +811,36 @@ public class PathfinderConfig {
             return false;
         }
         blockedTransportEdgesPacked.add(key);
-        LearnedBlockedEdges.append(learnedBlockedEdgesFile,
-                new LearnedBlockedEdges.Edge(origin, destination, false, reason == null ? "" : reason));
-        log.info("[Walker] Learned blocked edge {} -> {} ({}); persisted to {}",
-                origin, destination, reason, learnedBlockedEdgesFile);
+        long now = System.currentTimeMillis();
+        synchronized (learnedEdgeLock) {
+            LearnedBlockedEdges.Edge existing = learnedEdgeRowsByKey.get(key);
+            if (existing == null) {
+                LearnedBlockedEdges.Edge row = new LearnedBlockedEdges.Edge(
+                        origin, destination, false, reason == null ? "" : reason, 1, now);
+                learnedEdgeRows.add(row);
+                learnedEdgeRowsByKey.put(key, row);
+                LearnedBlockedEdges.append(learnedBlockedEdgesFile, row);
+                log.info("[Walker] Learned blocked edge {} -> {} ({}) — strike 1/{}: blocked this session, "
+                                + "enforced across sessions only after independent confirmation; {}",
+                        origin, destination, reason, LEARNED_EDGE_ENFORCE_STRIKES, learnedBlockedEdgesFile);
+            } else if (existing.strikes < LEARNED_EDGE_ENFORCE_STRIKES
+                    && now - existing.lastStrikeAtMs > LEARNED_EDGE_STRIKE_INDEPENDENCE_MS) {
+                LearnedBlockedEdges.Edge confirmed = existing.withStrikeAt(now);
+                int idx = learnedEdgeRows.indexOf(existing);
+                if (idx >= 0) {
+                    learnedEdgeRows.set(idx, confirmed);
+                }
+                learnedEdgeRowsByKey.put(key, confirmed);
+                LearnedBlockedEdges.save(learnedBlockedEdgesFile, learnedEdgeRows);
+                log.info("[Walker] Learned blocked edge {} -> {} ({}) — strike {}/{}: persistently enforced",
+                        origin, destination, reason, confirmed.strikes, LEARNED_EDGE_ENFORCE_STRIKES);
+            } else {
+                // Probation row re-observed within the independence window (e.g. a rapid client
+                // restart into the same stuck spot): session block stands, persistence unchanged.
+                log.debug("[Walker] Learned blocked edge {} -> {} re-observed within the independence "
+                        + "window; probation unchanged", origin, destination);
+            }
+        }
         return true;
     }
 
