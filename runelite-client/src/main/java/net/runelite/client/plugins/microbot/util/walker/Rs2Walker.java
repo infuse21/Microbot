@@ -2180,9 +2180,11 @@ public class Rs2Walker {
                             // through; a transport origin is applied as the recovery target further down. The
                             // scan is MLM-/proximity-gated inside the resolver, so it is a no-op elsewhere.
                             ObstacleResolution frontierObstacle = resolveRecoveryObstacle(rawPath, rawEdgeStart,
-                                    rawEdgeEnd, playerLoc, STALL_RECOVERY_MINIMAP_REACH_EUCLIDEAN, reachableTilesCache);
+                                    rawEdgeEnd, playerLoc, STALL_RECOVERY_MINIMAP_REACH_EUCLIDEAN, reachableTilesCache,
+                                    inInstance);
                             if (frontierObstacle.kind() == ObstacleResolution.Kind.INTERACTED) {
-                                exitReason = "rockfall-handled-local-reachability";
+                                // A rockfall was mined or an on-origin transport/shortcut was taken.
+                                exitReason = "frontier-obstacle-handled";
                                 break;
                             }
                             if (frontierObstacle.kind() == ObstacleResolution.Kind.ABORT) {
@@ -4534,7 +4536,8 @@ public class Rs2Walker {
     private static ObstacleResolution resolveRecoveryObstacle(List<WorldPoint> rawPath, int rawEdgeStart,
                                                               int rawEdgeEnd, WorldPoint playerLoc,
                                                               int recoveryMinimapReach,
-                                                              Map<WorldPoint, Integer> reachableTilesCache) {
+                                                              Map<WorldPoint, Integer> reachableTilesCache,
+                                                              boolean inInstance) {
         if (rawPath == null || rawPath.isEmpty() || playerLoc == null) {
             return ObstacleResolution.notApplicable();
         }
@@ -4545,9 +4548,34 @@ public class Rs2Walker {
             return rockfall;
         }
 
-        // (2) Reachable transport / agility-shortcut origin ahead: wide forward-window scan.
+        int playerRawIdx = getClosestTileIndex(rawPath, playerLoc);
+
+        // (2) A transport/agility shortcut whose ORIGIN the player is already standing on/beside.
+        // TransportResolver declines this case by design ("the normal loop owns it") — but when the
+        // blocked frontier IS the shortcut's far side, the normal loop never reaches its transport
+        // dispatch: the reachability miss sends every tick into recovery, whose frontier-derived segment
+        // window can miss the transport step entirely, and the player oscillates on the origin forever
+        // (Falador crumbling wall). Dispatch the transport right here, scanning a small window around the
+        // player's TRUE raw index rather than the smoothed-derived edge window.
+        boolean allowTransportDispatch = PohTeleports.isInHouse() || !inInstance;
+        if (playerRawIdx >= 0 && allowTransportDispatch) {
+            int scanFrom = Math.max(0, playerRawIdx - RAW_TRANSPORT_DISPATCH_MAX_DISTANCE);
+            int scanTo = Math.min(rawPath.size() - 1, playerRawIdx + ROUTE_PROGRESS_FORWARD_SEARCH_TILES);
+            for (int ri = scanFrom; ri < scanTo; ri++) {
+                if (hasExplicitTransportStep(rawPath, ri)
+                        && isRawTransportOriginNearPlayer(rawPath, ri, playerLoc, RAW_TRANSPORT_DISPATCH_MAX_DISTANCE)) {
+                    WebWalkLog.spInfo("recovery_on_origin_transport | origin={} player={} rawIdx={}",
+                            compactWorldPoint(rawPath.get(ri)), compactWorldPoint(playerLoc), ri);
+                    if (handleTransports(rawPath, ri)) {
+                        return ObstacleResolution.interacted();
+                    }
+                }
+            }
+        }
+
+        // (3) Reachable transport / agility-shortcut origin ahead: wide forward-window scan.
         WorldPoint shortcutOrigin = RouteRecovery.findReachableTransportOriginAhead(
-                rawPath, getClosestTileIndex(rawPath, playerLoc), playerLoc,
+                rawPath, playerRawIdx, playerLoc,
                 reachableTilesCache.keySet(), Rs2PathApi.getTransports(),
                 recoveryMinimapReach - 1, ROUTE_PROGRESS_FORWARD_SEARCH_TILES);
         if (shortcutOrigin != null && !shortcutOrigin.equals(playerLoc)) {
