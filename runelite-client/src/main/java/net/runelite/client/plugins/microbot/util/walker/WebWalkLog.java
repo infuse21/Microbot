@@ -25,8 +25,18 @@ public final class WebWalkLog {
     /** Cancel / EXIT / traceProcessWalkExit - compact WARN for production diagnosis. */
     public static void exitWarn(String reason, boolean nullCurrent, boolean targetMismatch, boolean interrupted,
             WorldPoint goal, WorldPoint current, int tailIdx, int tailMax, WorldPoint player) {
-        LOG.warn("[WebWalk] exit | r={} nullCur={} mismatch={} intr={} goal={} cur={} tail={}/{} at={}",
+        // Routine lifecycle exits (the script retargeting/cancelling the walk) are NORMAL, not
+        // warnings — at WARN they were mirrored into the game chatbox by GameChatAppender on every
+        // retarget, spamming the chat. Genuine anomalies keep WARN (and thus chat visibility).
+        boolean routine = reason != null
+                && (reason.startsWith("cancel:") || reason.equals("interrupted-exception"));
+        if (routine) {
+            LOG.info("[WebWalk] exit | r={} nullCur={} mismatch={} intr={} goal={} cur={} tail={}/{} at={}",
                 reason, nullCurrent, targetMismatch, interrupted, goal, current, tailIdx, tailMax, player);
+        } else {
+            LOG.warn("[WebWalk] exit | r={} nullCur={} mismatch={} intr={} goal={} cur={} tail={}/{} at={}",
+                reason, nullCurrent, targetMismatch, interrupted, goal, current, tailIdx, tailMax, player);
+        }
     }
 
     public static void exitDetailDebug(String fmt, Object... args) {
@@ -51,7 +61,9 @@ public final class WebWalkLog {
 
     /** Path ends far from goal - walking multi-hop segment. */
     public static void partialSegment(WorldPoint pathEnd, int distToGoal, WorldPoint goal, int waypointCount) {
-        LOG.info("[WebWalk] partial_seg | end={} dGoal={} goal={} nWp={}", pathEnd, distToGoal, goal, waypointCount);
+        // Debug: fires with identical content many times per second while a partial path is active;
+        // partial_retry remains the info-level summary.
+        LOG.debug("[WebWalk] partial_seg | end={} dGoal={} goal={} nWp={}", pathEnd, distToGoal, goal, waypointCount);
     }
 
     public static void partialRetry(int finalDist, int attempt, int maxAttempts) {

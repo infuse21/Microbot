@@ -201,7 +201,7 @@ public class QuestingScript extends Script {
                 QuestStep questStep = getQuestHelperPlugin().getSelectedQuest().getCurrentStep().getActiveStep();
                 if (System.currentTimeMillis() - lastPhaseLog > 1500) {
                     lastPhaseLog = System.currentTimeMillis();
-                    Microbot.log("[QuestHelper] tick phase=reached-step-eval step=" + (questStep == null ? "null" : questStep.getClass().getSimpleName()), Level.WARN);
+                    Microbot.log("[QuestHelper] tick phase=reached-step-eval step=" + (questStep == null ? "null" : questStep.getClass().getSimpleName()), Level.DEBUG);
                 }
 
                 // Drop the phantom-dialogue flag once the quest moves on to a different step.
@@ -448,7 +448,7 @@ public class QuestingScript extends Script {
 
                     if (System.currentTimeMillis() - lastApplyStepMark > 1500) {
                         lastApplyStepMark = System.currentTimeMillis();
-                        Microbot.log("[QuestHelper] tick phase=pre-apply-step", Level.WARN);
+                        Microbot.log("[QuestHelper] tick phase=pre-apply-step", Level.DEBUG);
                     }
 
                     if (getQuestHelperPlugin().getSelectedQuest().getCurrentStep() instanceof ConditionalStep) {
