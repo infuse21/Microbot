@@ -8994,7 +8994,10 @@ public class Rs2Walker {
         }
         WebWalkLog.spInfo("shantay_buy_pass | buying ticket before the gate at={}",
                 compactWorldPoint(Rs2Player.getWorldLocation()));
-        if (Rs2Npc.interact("Shantay", "Buy-pass")) {
+        // Interact by id: the name lookup partial-matches the nearer "Shantay Guard", whose only
+        // options are Talk-to/Pass — the Buy-pass option lives on Shantay himself (live incident:
+        // "Action not found. Actions=[Talk-to, null, Pass]").
+        if (Rs2Npc.interact(net.runelite.api.gameval.NpcID.SHANTAY, "Buy-pass")) {
             sleepUntil(() -> Rs2Inventory.hasItem(SHANTAY_PASS_ITEM_ID), 4000);
         }
         if (!Rs2Inventory.hasItem(SHANTAY_PASS_ITEM_ID)) {
