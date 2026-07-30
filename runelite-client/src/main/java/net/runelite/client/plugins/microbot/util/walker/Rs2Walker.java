@@ -1758,7 +1758,10 @@ public class Rs2Walker {
                     // same blocked tile.
                     List<WorldPoint> ranked = rankSidestepTilesToward(reachable, target);
                     int poolSize = Math.min(3, ranked.size());
-                    walkMiniMap(ranked.get(Rs2Random.between(0, poolSize)));
+                    WorldPoint sidestep = ranked.get(Rs2Random.between(0, poolSize));
+                    log.info("[Walker] stuck sidestep: clicked to={} player={} stuckCount={}",
+                            sidestep, Rs2Player.getWorldLocation(), stuckCount);
+                    walkMiniMap(sidestep);
                     sleepGaussian(1000, 300);
                     stuckCount = 0;
                 }
@@ -1794,7 +1797,13 @@ public class Rs2Walker {
                     return WalkerState.ARRIVED;
                 }
             }
+            // Continuation clicks are for flowing ALONG the route after an interim clears. Off-path they
+            // are actively harmful: the click keeps the player moving, movement defers the off-path
+            // recalc, the interim goes stale, and the next continuation click sustains the spiral — the
+            // walker can run minutes in the wrong corridor without ever replanning. Off-path, do nothing
+            // here: the player stops, the "moving" deferral ends, and OFFPATH_RECALC replans properly.
             if (clearedInterimTarget
+                    && isNearPath()
                     && !Rs2Player.isInteracting()
                     && !Rs2Player.isAnimating()
                     && !isDoorInteractionSettling()
@@ -3845,13 +3854,12 @@ public class Rs2Walker {
                     maxEuclidean - 1, rawPath == null || rawPath.isEmpty(), rawAnchorIndex);
             clicked = clickedTarget != null;
         }
-        if (clicked && "interim close route click".equals(logLabel)) {
-            log.debug("[Walker] {}: clicked={} to={} player={} idx={}",
-                    logLabel, true, clickedTarget, playerLoc, targetIdx);
-        } else {
-            log.info("[Walker] {}: clicked={} to={} player={} idx={}",
-                    logLabel, clicked, clicked ? clickedTarget : clickTarget, playerLoc, targetIdx);
-        }
+        // EVERY movement click logs at info. The interim-continuation label used to log at debug only,
+        // which made its clicks invisible: the walker appeared to "randomly click far from the path"
+        // and ran for minutes with no clicks in the log while continuation clicks silently chained
+        // (interim expires -> unlogged click -> player moving -> off-path recalc deferred -> repeat).
+        log.info("[Walker] {}: clicked={} to={} player={} idx={}",
+                logLabel, clicked, clicked ? clickedTarget : clickTarget, playerLoc, targetIdx);
         if (!clicked) {
             return false;
         }
