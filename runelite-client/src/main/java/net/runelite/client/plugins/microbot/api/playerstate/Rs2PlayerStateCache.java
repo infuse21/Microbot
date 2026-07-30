@@ -16,7 +16,6 @@ import net.runelite.api.events.VarbitChanged;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
-import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.questhelper.questinfo.QuestHelperQuest;
 
 import net.runelite.api.coords.WorldPoint;
@@ -73,6 +72,12 @@ public final class Rs2PlayerStateCache {
 			lastLocalPlayerTick = -1;
 			localPlayerPosition = null;
 			localPlayerWorldView = null;
+		}
+		// The server only re-sends non-zero varps after a hop/reconnect, so a value that
+		// dropped to 0 while out of sync would never be corrected by onVarbitChanged.
+		if (e.getGameState() == GameState.HOPPING || e.getGameState() == GameState.CONNECTION_LOST) {
+			varbits.clear();
+			varps.clear();
 		}
 	}
 
@@ -150,11 +155,16 @@ public final class Rs2PlayerStateCache {
 	}
 
 	private @Varbit int updateVarbitValue(@Varbit int varbitId) {
-		int value;
-		value = Microbot.getClientThread().runOnClientThreadOptional(() -> client.getVarbitValue(varbitId)).orElse(0);
-
-		varbits.put(varbitId, value);
-		return value;
+		return clientThread.runOnClientThreadOptional(() -> {
+			int value = client.getVarbitValue(varbitId);
+			// Only cache while logged in: before the initial varp sync completes the client
+			// returns default/stale values, and a wrong entry for a varp the server never
+			// re-sends (zero-valued ones) would stick until the next flush.
+			if (client.getGameState() == GameState.LOGGED_IN) {
+				varbits.put(varbitId, value);
+			}
+			return value;
+		}).orElse(0);
 	}
 
 	/**
@@ -176,14 +186,14 @@ public final class Rs2PlayerStateCache {
 	}
 
 	private @Varp int updateVarpValue(@Varp int varpId) {
-		int value;
-
-		value = Microbot.getClientThread().runOnClientThreadOptional(() -> client.getVarpValue(varpId)).orElse(0);
-
-		if (value > 0) {
-			varps.put(varpId, value);
-		}
-		return value;
+		return clientThread.runOnClientThreadOptional(() -> {
+			int value = client.getVarpValue(varpId);
+			// Zero is a legitimate value and must be cached too — see updateVarbitValue.
+			if (client.getGameState() == GameState.LOGGED_IN) {
+				varps.put(varpId, value);
+			}
+			return value;
+		}).orElse(0);
 	}
 
 	private void refreshLocalPlayer() {
