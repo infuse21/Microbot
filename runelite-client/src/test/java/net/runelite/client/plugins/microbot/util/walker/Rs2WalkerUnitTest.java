@@ -1535,6 +1535,38 @@ public class Rs2WalkerUnitTest {
     }
 
     @Test
+    public void transportSettle_endsOnceArrivedAndIdle() {
+        // The fix for the fixed ~900ms post-transport freeze: standing at the planned destination,
+        // neither moving nor animating, past the one-tick floor => the settle is OVER.
+        WorldPoint dest = new WorldPoint(3205, 3209, 0);
+        assertFalse("arrived and idle must end the settle",
+                Rs2Walker.transportSettlePending(400L, dest, dest, false, false));
+        // ... including standing one tile off the exact destination tile.
+        assertFalse(Rs2Walker.transportSettlePending(400L, new WorldPoint(3206, 3209, 0), dest, false, false));
+    }
+
+    @Test
+    public void transportSettle_holdsWhileTravelingOrWithinFloor() {
+        WorldPoint dest = new WorldPoint(3205, 3209, 0);
+        // within the one-tick floor: always settling, even if already at the destination
+        assertTrue(Rs2Walker.transportSettlePending(100L, dest, dest, false, false));
+        // mid-travel (moving) at the destination tile: still settling
+        assertTrue(Rs2Walker.transportSettlePending(400L, dest, dest, true, false));
+        // still animating (stairs/ship): still settling
+        assertTrue(Rs2Walker.transportSettlePending(400L, dest, dest, false, true));
+        // far from the destination: still settling until the ceiling
+        assertTrue(Rs2Walker.transportSettlePending(400L, new WorldPoint(3300, 3300, 0), dest, false, false));
+        // ceiling passed: settle over regardless
+        assertFalse(Rs2Walker.transportSettlePending(901L, new WorldPoint(3300, 3300, 0), dest, false, false));
+    }
+
+    @Test
+    public void transportSettle_unknownDestinationFallsBackToHalfWindow() {
+        assertTrue(Rs2Walker.transportSettlePending(400L, new WorldPoint(3205, 3209, 0), null, false, false));
+        assertFalse(Rs2Walker.transportSettlePending(500L, new WorldPoint(3205, 3209, 0), null, false, false));
+    }
+
+    @Test
     public void shouldBlacklistDoorAfterWrongTraversal_sampledWhileMoving_returnsFalse() {
         // The Wydin's-shop poisoning: the interact walked the player toward the door, the progress wait
         // sampled MID-WALK (after=3012,3211 with the player still moving), and the walker blacklisted —

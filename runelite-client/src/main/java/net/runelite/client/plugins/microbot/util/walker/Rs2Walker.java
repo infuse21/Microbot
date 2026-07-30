@@ -242,6 +242,18 @@ public class Rs2Walker {
     private static volatile long rawScanFocusedDoorSetAtMs = 0L;
     private static volatile int rawScanFocusedDoorAttempts = 0;
     private static volatile long doorInteractionSettleUntilMs = 0L;
+    /** When the current door settle window started, and the door's far-side tile — the early-exit signal. */
+    private static volatile long doorInteractionSettleStartedAtMs = 0L;
+    private static volatile WorldPoint doorSettleFarSideWp = null;
+    /**
+     * Minimum settle after a door/transport interaction before the early exit may fire: one game tick of
+     * post-action state flux (position sync, object state update). The 900ms constants above remain the
+     * CEILING for when the early-exit signal never confirms — previously they were the fixed cost of every
+     * single door and transport, because the transport early-exit compared against where the player stood
+     * when the transport was marked handled (always true while standing at the destination) and the door
+     * settle had no early exit at all.
+     */
+    private static final long POST_INTERACT_SETTLE_MIN_MS = 300L;
     private static volatile long lastDoorEdgePassSkipAtMs = 0L;
     // misc route-timer state migrated to WalkerRouteState (see routeState)
     /**
@@ -5740,7 +5752,7 @@ public class Rs2Walker {
                                     compactWorldPoint(probe), compactWorldPoint(fromWp), compactWorldPoint(toWp));
                             return false;
                         }
-                        markDoorInteractionSettling();
+                        markDoorInteractionSettling(toWp);
                         waitForDoorInteractionProgress(fromWp, toWp);
                         WorldPoint posAfter = Rs2Player.getWorldLocation();
                         boolean traversed = didTraverseInteractedDoor(posBefore, posAfter, probe, fromWp, toWp);
@@ -5877,7 +5889,7 @@ public class Rs2Walker {
                     compactWorldPoint(probe), compactWorldPoint(fromWp), compactWorldPoint(toWp));
             return false;
         }
-        markDoorInteractionSettling();
+        markDoorInteractionSettling(toWp);
         waitForDoorInteractionProgress(fromWp, toWp);
         WorldPoint posAfter = Rs2Player.getWorldLocation();
         boolean traversed = didTraverseInteractedDoor(posBefore, posAfter, probe, fromWp, toWp);
@@ -6425,7 +6437,23 @@ public class Rs2Walker {
     }
 
     private static boolean isDoorInteractionSettling() {
-        return System.currentTimeMillis() < doorInteractionSettleUntilMs;
+        long now = System.currentTimeMillis();
+        if (now >= doorInteractionSettleUntilMs) {
+            return false;
+        }
+        // Early exit: the interaction's purpose was opening the door — once its far side is reachable,
+        // the edge is open and there is nothing left to settle (previously this was a flat 900ms freeze
+        // after every door). One-tick floor for object-state flux; the window is cleared on success so
+        // repeated checks this tick don't re-run the reachability probe.
+        WorldPoint farSide = doorSettleFarSideWp;
+        if (farSide != null
+                && now - doorInteractionSettleStartedAtMs >= POST_INTERACT_SETTLE_MIN_MS
+                && Rs2Tile.isTileReachable(farSide)) {
+            doorInteractionSettleUntilMs = 0L;
+            doorSettleFarSideWp = null;
+            return false;
+        }
+        return true;
     }
 
     private static boolean isTransportInteractionSettling() {
@@ -6433,18 +6461,37 @@ public class Rs2Walker {
         if (handledAt <= 0L) {
             return false;
         }
-        long ageMs = System.currentTimeMillis() - handledAt;
+        return transportSettlePending(System.currentTimeMillis() - handledAt,
+                Rs2Player.getWorldLocation(),
+                routeState.lastTransportDestinationLocation,
+                Rs2Player.isMoving(),
+                Rs2Player.isAnimating());
+    }
+
+    /**
+     * Pure settle decision after a handled transport. Settling ends as soon as the player is confirmed
+     * ARRIVED — standing at/next to the transport's planned destination, neither moving nor animating —
+     * after a one-tick floor for post-action state flux; {@link #TRANSPORT_POST_INTERACT_SETTLE_MS} is
+     * only the ceiling for when arrival never confirms (unknown destination, drawn-out travel). The old
+     * check compared against where the player stood when the transport was MARKED handled, which after
+     * landing is always true while standing still — so the settle could only ever end by timeout, a fixed
+     * ~900ms freeze after every single transport.
+     */
+    static boolean transportSettlePending(long ageMs, WorldPoint now, WorldPoint plannedDestination,
+                                          boolean moving, boolean animating) {
         if (ageMs < 0L || ageMs > TRANSPORT_POST_INTERACT_SETTLE_MS) {
             return false;
         }
-        WorldPoint now = Rs2Player.getWorldLocation();
-        WorldPoint landedAt = routeState.lastTransportHandledAtLocation;
-        if (now == null || landedAt == null) {
+        if (ageMs < POST_INTERACT_SETTLE_MIN_MS) {
+            return true;
+        }
+        if (now == null || plannedDestination == null) {
             return ageMs <= TRANSPORT_POST_INTERACT_SETTLE_MS / 2;
         }
-        return now.getPlane() == landedAt.getPlane()
-                && now.distanceTo2D(landedAt) <= 1
-                && !Rs2Player.isMoving();
+        boolean arrivedIdle = now.getPlane() == plannedDestination.getPlane()
+                && now.distanceTo2D(plannedDestination) <= 1
+                && !moving && !animating;
+        return !arrivedIdle;
     }
 
     private static boolean isDoorEdgePassSkipCoolingDown() {
@@ -6455,8 +6502,12 @@ public class Rs2Walker {
         return System.currentTimeMillis() - routeState.lastUnreachableRecoveryClickAtMs < RECOVERY_MOVEMENT_IN_FLIGHT_MS;
     }
 
-    private static void markDoorInteractionSettling() {
-        doorInteractionSettleUntilMs = System.currentTimeMillis() + DOOR_POST_INTERACT_SETTLE_MS;
+    /** Starts the door settle window, remembering the far-side tile so it can end when the edge opens. */
+    private static void markDoorInteractionSettling(WorldPoint farSideWp) {
+        long now = System.currentTimeMillis();
+        doorInteractionSettleStartedAtMs = now;
+        doorInteractionSettleUntilMs = now + DOOR_POST_INTERACT_SETTLE_MS;
+        doorSettleFarSideWp = farSideWp;
     }
 
     private static void markGlobalDoorInteractionCooldown() {
@@ -7426,7 +7477,7 @@ public class Rs2Walker {
             }
 			return false;
 		}
-        markDoorInteractionSettling();
+        markDoorInteractionSettling(bestTo);
 		waitForDoorInteractionProgress(bestFrom, bestTo);
 		WorldPoint posAfter = Rs2Player.getWorldLocation();
 		boolean traversed = didTraverseInteractedDoor(posBefore, posAfter, bestLoc, bestFrom, bestTo);
