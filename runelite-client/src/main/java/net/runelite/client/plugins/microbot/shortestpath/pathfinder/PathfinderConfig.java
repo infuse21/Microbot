@@ -202,10 +202,21 @@ public class PathfinderConfig {
     private static final Skill[] SKILLS = Skill.values();
 
     /**
-     * Memo of last {@link #refreshTransports} result when {@link #computeTransportRefreshCacheKeyHash} and
-     * verification (boosted skills + transport varbits/varplayers) match. Cleared by {@link #invalidateTransportRefreshCache()}.
+     * Memo of recent {@link #refreshTransports} results, keyed by {@link #computeTransportRefreshCacheKeyHash}
+     * and guarded by the verification hash (boosted skills + transport varbits/varplayers). BOUNDED and
+     * multi-entry: the banked-walk compare alternates between two config states (bank-leg vs direct), so a
+     * single-slot memo missed on EVERY flip and each miss was a full ~2.5s re-filter of all 12k transports —
+     * four in a row per banked walk start. A tiny LRU keeps both states (plus a couple more) warm.
+     * Cleared by {@link #invalidateTransportRefreshCache()}.
      */
-    private volatile TransportRefreshSnapshot transportRefreshSnapshot;
+    private static final int TRANSPORT_REFRESH_SNAPSHOT_CACHE_SIZE = 4;
+    private final Map<Integer, TransportRefreshSnapshot> transportRefreshSnapshots =
+            Collections.synchronizedMap(new java.util.LinkedHashMap<Integer, TransportRefreshSnapshot>(8, 0.75f, true) {
+                @Override
+                protected boolean removeEldestEntry(Map.Entry<Integer, TransportRefreshSnapshot> eldest) {
+                    return size() > TRANSPORT_REFRESH_SNAPSHOT_CACHE_SIZE;
+                }
+            });
 
     public PathfinderConfig(SplitFlagMap mapData, Map<WorldPoint, Set<Transport>> transports,
                             List<Restriction> restrictions,
@@ -416,8 +427,8 @@ public class PathfinderConfig {
         final Rs2LeaguesTransport.LeaguesContext leaguesCtx = Rs2LeaguesTransport.leaguesContext();
         final int refreshCacheKeyHash = computeTransportRefreshCacheKeyHash(target, leaguesCtx);
 
-        TransportRefreshSnapshot snap = transportRefreshSnapshot;
-        if (snap != null && snap.cacheKeyHash == refreshCacheKeyHash && client != null) {
+        TransportRefreshSnapshot snap = transportRefreshSnapshots.get(refreshCacheKeyHash);
+        if (snap != null && client != null) {
             int[] boostedProbe = new int[SKILLS.length];
             final int[] probeOrdinals = snap.sortedSkillOrdinals;
             Microbot.getClientThread().runOnClientThreadOptional(() -> {
@@ -464,13 +475,13 @@ public class PathfinderConfig {
         // walker blocks on. Attribute it: "key" means the cache key changed (items/coins/toggles),
         // "verify" means items were identical but game state moved (skills/varbits/varplayers/quests).
         // invFp vs prevInvFp isolates the common case of spending coins on a fare or toll.
-        String cacheMissReason = transportRefreshSnapshot == null
+        String cacheMissReason = transportRefreshSnapshots.isEmpty()
                 ? "no_snapshot"
-                : (transportRefreshSnapshot.cacheKeyHash != refreshCacheKeyHash ? "key" : "verify");
+                : (snap == null ? "key" : "verify");
         WebWalkLog.cfgSlow("refresh_transports cache_miss reason={} key={} prevKey={} invFp={} prevInvFp={} invChanged={}{}",
                 cacheMissReason,
                 refreshCacheKeyHash,
-                transportRefreshSnapshot == null ? 0 : transportRefreshSnapshot.cacheKeyHash,
+                snap == null ? 0 : snap.cacheKeyHash,
                 lastComputedInvFingerprint,
                 previousRefreshInvFingerprint,
                 lastComputedInvFingerprint != previousRefreshInvFingerprint,
@@ -616,10 +627,10 @@ public class PathfinderConfig {
                 sortedVarbitConditions, sortedVarplayerConditions, sortedQuestIds);
         int[] verificationComponents = computeTransportRefreshVerificationComponents(refreshBoostedLevels,
                 sortedSkillOrdinals, sortedVarbitConditions, sortedVarplayerConditions, sortedQuestIds);
-        transportRefreshSnapshot = TransportRefreshSnapshot.capture(
+        transportRefreshSnapshots.put(refreshCacheKeyHash, TransportRefreshSnapshot.capture(
                 refreshCacheKeyHash, verificationHash, verificationComponents,
                 sortedSkillOrdinals, sortedVarbitConditions, sortedVarplayerConditions, sortedQuestIds,
-                transports, usableTeleports);
+                transports, usableTeleports));
 
         long similarStart = System.currentTimeMillis();
         if (useBankItems && config.maxSimilarTransportDistance() > 0) {
@@ -919,11 +930,11 @@ public class PathfinderConfig {
     }
 
     /**
-     * Drop {@link #transportRefreshSnapshot} so the next {@link #refresh(WorldPoint)} rebuilds transport maps
+     * Drop the transport-refresh snapshot cache so the next {@link #refresh(WorldPoint)} rebuilds transport maps
      * (inventory/quest/varbit changes that are not captured by the memo key, script-driven transport mutations, etc.).
      */
     public void invalidateTransportRefreshCache() {
-        transportRefreshSnapshot = null;
+        transportRefreshSnapshots.clear();
     }
 
     /**
