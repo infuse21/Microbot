@@ -72,6 +72,22 @@ public final class WalkerRouteState {
     /** Wall-clock ms of the last active-route idle nudge. */
     public volatile long lastActiveRouteIdleNudgeAtMs = 0L;
 
+    // ---- stuck detection / movement tracking: the processWalk loop's evidence that the player is
+    // actually moving, plus the cooldowns recovery uses when it is not. ----
+
+    /** Consecutive stuck-check hits without movement; reset on any walker-issued click. */
+    public volatile int stuckCount = 0;
+    /** Player tile at the last stuck-check sample. */
+    public volatile WorldPoint lastPosition = null;
+    /** Wall-clock ms the player last changed tiles (or a click granted grace). */
+    public volatile long lastMovedTimeMs = 0L;
+    /** Rising-edge detection for animation progress without tile delta in the stuck check. */
+    public volatile boolean prevAnimatingForStuckCheck = false;
+    /** Wall-clock ms of the last walled-recovery replan (cooldown selects replan vs wait). */
+    public volatile long lastWalledRecoveryReplanAtMs = 0L;
+    /** Cooldown so partial-segment in-transit path recalculation does not spam. */
+    public volatile long lastPartialTransRecalcMs = 0L;
+
     // ---- door interaction: settle windows, focused-door raw-scan state, attempt tracking and
     // cooldowns shared by the door cascade, the recovery block and the movement-ownership check. ----
 
