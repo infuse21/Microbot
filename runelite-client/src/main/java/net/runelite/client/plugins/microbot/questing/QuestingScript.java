@@ -57,6 +57,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -716,7 +717,14 @@ public class QuestingScript extends Script {
 						}
 					}
 				}
-				return all;
+				// Only trust the section scan when it actually found something. A handful of quests
+				// (Desert Treasure II, Pandemonium, RFD Final, Shield of Arrav) attach their items to the
+				// quest and not to any section, and `new PanelDetails(header, steps...)` leaves the
+				// section requirements empty. Returning that empty list told the caller there was nothing
+				// to gather, which disabled buying for the entire quest.
+				if (!all.isEmpty()) {
+					return all;
+				}
 			}
 		}
 
@@ -1283,12 +1291,15 @@ public class QuestingScript extends Script {
 		if (cached != null) {
 			return cached;
 		}
-		boolean tradable = computeItemRequirementTradable(itemRequirement);
-		TRADABLE_CACHE.put(key, tradable);
-		return tradable;
+		// Only remember a real answer. runOnClientThreadOptional yields an empty Optional when the
+		// lookup times out or throws, and caching that as "untradeable" is permanent for the session:
+		// the caller marks such items exhausted and never tries to buy them again.
+		Optional<Boolean> tradable = computeItemRequirementTradable(itemRequirement);
+		tradable.ifPresent(value -> TRADABLE_CACHE.put(key, value));
+		return tradable.orElse(false);
 	}
 
-	private boolean computeItemRequirementTradable(ItemRequirement itemRequirement) {
+	private Optional<Boolean> computeItemRequirementTradable(ItemRequirement itemRequirement) {
 		return Microbot.getClientThread().runOnClientThreadOptional(() -> {
 			for (Integer id : itemRequirement.getAllIds()) {
 				if (id == null || id <= 0) {
@@ -1300,7 +1311,7 @@ public class QuestingScript extends Script {
 				}
 			}
 			return false;
-		}).orElse(false);
+		});
 	}
 
 	private int tradablePrimaryId(ItemRequirement itemRequirement) {
@@ -2457,6 +2468,7 @@ public class QuestingScript extends Script {
         String learned = LearnedDialogue.recall(questId, options);
 
         String choice = null;
+        boolean fromCorpus = false;
         if (learned != null && !learned.isBlank() && options.contains(learned)) {
             choice = learned;
         } else if (!LearnedDialogue.guessingAllowed(questId)) {
@@ -2485,31 +2497,46 @@ public class QuestingScript extends Script {
                 }
             }
 
+            // What the game actually offers, from the wiki transcripts: which options belong to this
+            // quest, and which are shop or small-talk options that merely look plausible.
+            String questName = quest != null && quest.getQuest() != null ? quest.getQuest().getName() : null;
+            String documented = QuestDialogueCorpus.answerForMenu(questName, options);
+            if (documented != null
+                    && (negatives.contains(documented) || LearnedDialogue.isDangerousOption(documented))) {
+                documented = null;
+            }
+
             if (authored.size() == 1) {
                 choice = authored.get(0);
             } else if (!LearnedDialogue.guessingAllowed(questId)) {
                 Microbot.status = "Quest helper: ambiguous dialogue in a permanent-choice quest — needs a human";
                 return;
+            } else if (documented != null) {
+                // this exact menu is documented and has exactly one quest option, so it isn't a branch
+                choice = documented;
+                fromCorpus = true;
             } else if (!authored.isEmpty()) {
                 choice = authored.get(0);
             } else {
-                for (String option : options) {
-                    if (negatives.contains(option) || LearnedDialogue.isDangerousOption(option)) {
-                        continue;
-                    }
-                    choice = option;
-                    break;
-                }
+                choice = bestDocumentedGuess(questName, options, negatives);
+                fromCorpus = choice != null;
             }
         }
 
         if (choice == null) {
             Microbot.status = "Quest helper: no safe dialogue option to pick";
+            if (System.currentTimeMillis() - lastDialogueDiagLog > 5000) {
+                lastDialogueDiagLog = System.currentTimeMillis();
+                Microbot.log("[QuestHelper] every option here is either known-wrong or documented as "
+                        + "unrelated to the quest — not clicking blindly. Options: "
+                        + String.join(" | ", options), Level.WARN);
+            }
             return;
         }
 
         int index = options.indexOf(choice) + 1;
-        Microbot.log("[QuestHelper] " + (choice.equals(learned) ? "using learned" : "trying")
+        String source = choice.equals(learned) ? "using learned" : fromCorpus ? "using documented" : "trying";
+        Microbot.log("[QuestHelper] " + source
                 + " dialogue option " + index + ": \"" + choice + "\"", Level.WARN);
 
         pendingDialogueQuestId = questId;
@@ -2521,6 +2548,33 @@ public class QuestingScript extends Script {
 
         Rs2Dialogue.keyPressForDialogueOption(index);
         sleep(900, 1400);
+    }
+
+    /**
+     * A guess, but an informed one: pick only from options the wiki records as belonging to this
+     * quest, and never pick one it records as a shop or small-talk option.
+     *
+     * <p>This replaces "click the first thing that doesn't look dangerous", which on a shopkeeper
+     * reliably picked the option that opens the shop. When the corpus has nothing to say about the
+     * quest we still fall back to the old behaviour, minus any option documented as unrelated.
+     *
+     * @return the option to click, or null if nothing here is safe to pick
+     */
+    private String bestDocumentedGuess(String questName, List<String> options, Set<String> negatives) {
+        for (String option : QuestDialogueCorpus.questRelatedOptions(questName, options)) {
+            if (!negatives.contains(option) && !LearnedDialogue.isDangerousOption(option)) {
+                return option;
+            }
+        }
+        for (String option : options) {
+            if (negatives.contains(option)
+                    || LearnedDialogue.isDangerousOption(option)
+                    || QuestDialogueCorpus.isNonQuestOption(questName, option)) {
+                continue;
+            }
+            return option;
+        }
+        return null;
     }
 
     /**
