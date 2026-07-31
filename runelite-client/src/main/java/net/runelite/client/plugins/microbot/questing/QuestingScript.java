@@ -1432,13 +1432,13 @@ public class QuestingScript extends Script {
 
 		int questId = selectedQuest.getQuest().getId();
 		if (questId != heldTrackingQuestId) {
-			heldTrackingQuestId = questId;
 			everHeldItemRequirementIds.clear();
-			QuestState startState = null;
-			try {
-				startState = selectedQuest.getQuest().getState(Microbot.getClient());
-			} catch (Exception ignored) {
-			}
+			// Quest.getState runs a client script, so it belongs on the client thread. Off it, the
+			// injected client throws AssertionError("must be called on client thread") — an Error, which
+			// the `catch (Exception)` that used to guard this could never catch, so it escaped the tick
+			// and (before the tick guard caught Throwable) silently killed the schedule for good.
+			QuestState startState = Microbot.getClientThread().runOnClientThreadOptional(
+					() -> selectedQuest.getQuest().getState(Microbot.getClient())).orElse(null);
 			if (startState == QuestState.NOT_STARTED) {
 				// Fresh playthrough — forget what a previous run obtained.
 				AcquiredItemMemory.clearQuest(questId);
@@ -1447,6 +1447,11 @@ public class QuestingScript extends Script {
 				// (Prince Ali's 3 balls of wool) reads as missing again and gets re-bought.
 				everHeldItemRequirementIds.addAll(AcquiredItemMemory.forQuest(questId));
 			}
+			// Claim the quest only once the load has actually happened. Claiming it first meant a throw
+			// in between left the set cleared but the id already updated, so this block never ran again:
+			// the quest's obtained-item record stayed unread for the rest of the session, everything read
+			// as missing, and the executor hunted for a bank every tick.
+			heldTrackingQuestId = questId;
 			// NOTE: joining an IN_PROGRESS quest used to pre-mark EVERY quest-level requirement as
 			// "already held", which made collectAllItemRequirements skip all of them — so mid-quest
 			// nothing was ever acquired (answering "yes" to obtain missing items did nothing at all).
