@@ -10140,6 +10140,44 @@ public class Rs2Walker {
     }
 
     /**
+     * Of these candidate tiles, the one the pathfinder can actually reach most cheaply — or null when
+     * none of them is reachable.
+     *
+     * <p>Choosing somewhere to stand by proximity is wrong whenever a wall or a closed door separates
+     * the nearest tile from the player. A local reachability BFS does not rescue it either: the BFS
+     * stops at the door, so the tile on the far side — often the only usable one — is invisible to it.
+     * The pathfinder is the component that knows doors and transports, and it takes a whole set of
+     * targets natively, so asking it once answers the question that actually matters: <em>which of
+     * these can I get to?</em>
+     *
+     * <p>Worked case: approaching the Black Knights' Fortress ladder from (3024,3512), the tiles beside
+     * it are walkable and adjacent but walled off, while the usable approach is east through a Sturdy
+     * door. Proximity picks a walled tile every time; this picks the one with a route.
+     *
+     * @param start      where we are pathing from
+     * @param candidates tiles worth standing on, in no particular order
+     * @return the reachable candidate, or null if the pathfinder cannot reach any of them
+     */
+    public static WorldPoint nearestReachable(WorldPoint start, Collection<WorldPoint> candidates) {
+        if (start == null || candidates == null || candidates.isEmpty()) {
+            return null;
+        }
+        Set<WorldPoint> targets = new HashSet<>(candidates);
+        if (targets.contains(start)) {
+            return start;
+        }
+        Pathfinder pathfinder = new Pathfinder(Rs2PathApi.getPathfinderConfig(), start, targets);
+        pathfinder.run();
+        List<WorldPoint> path = pathfinder.getPath();
+        if (path == null || path.isEmpty()) {
+            return null;
+        }
+        // A partial path ends somewhere that is NOT a target; only trust an endpoint we asked for.
+        WorldPoint endpoint = path.get(path.size() - 1);
+        return targets.contains(endpoint) ? endpoint : null;
+    }
+
+    /**
      * Checks the distance between startpoint and endpoint using ShortestPath
      *
      * @param startpoint
