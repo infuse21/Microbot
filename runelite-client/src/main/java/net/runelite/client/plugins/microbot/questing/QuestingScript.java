@@ -284,6 +284,16 @@ public class QuestingScript extends Script {
                 }
                 if (!config.startStopQuestHelper()) return; // re-check: the toggle may have flipped mid-tick
 
+                // Notice what we are holding, every tick. This is the only thing that records a quest
+                // item as obtained, and acquisition later trusts that record to avoid re-buying a
+                // consumable it already supplied. It used to be buried inside collectAllItemRequirements,
+                // which only runs for non-interaction DetailedQuestSteps — so across an NpcStep- or
+                // ObjectStep-heavy quest it barely ran, and the GE bought the same items again. Cheap:
+                // a short list, and ids already known are skipped.
+                if (getQuestHelperPlugin().getSelectedQuest() != null) {
+                    updateEverHeldItemTracking(getQuestHelperPlugin().getSelectedQuest());
+                }
+
                 // Buy the quest's shopping list before starting it, so a full-auto run isn't interrupted
                 // by a shopping trip at every step. No-op once gathered, mid-quest, or when disabled.
                 if (shouldObtainMissingItems()
@@ -1387,8 +1397,8 @@ public class QuestingScript extends Script {
 
 		QuestHelper selectedQuest = getQuestHelperPlugin().getSelectedQuest();
 		if (selectedQuest != null) {
-			updateEverHeldItemTracking(selectedQuest);
-
+			// Tracking happens per tick now, not here — this method is only consulted when a step is
+			// blocked, which is far too rare to keep an accurate record of what we have held.
 			List<ItemRequirement> questLevel = selectedQuest.getItemRequirements();
 			if (questLevel != null) {
 				for (ItemRequirement ir : questLevel) {
