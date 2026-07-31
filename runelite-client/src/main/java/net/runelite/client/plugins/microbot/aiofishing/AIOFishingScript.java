@@ -11,6 +11,7 @@ import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.aiofishing.enums.AIOFishingDebugMode;
+import net.runelite.client.plugins.microbot.aiofishing.enums.CatchProcessing;
 import net.runelite.client.plugins.microbot.aiofishing.enums.AIOFishingState;
 import net.runelite.client.plugins.microbot.aiofishing.enums.FishingLocation;
 import net.runelite.client.plugins.microbot.aiofishing.enums.FishingShop;
@@ -18,7 +19,16 @@ import net.runelite.client.plugins.microbot.aiofishing.enums.FishingStage;
 import net.runelite.client.plugins.microbot.aiofishing.enums.GeSellPricing;
 import net.runelite.client.plugins.microbot.aiofishing.enums.HarpoonType;
 import net.runelite.client.plugins.microbot.api.npc.models.Rs2NpcModel;
+import net.runelite.api.gameval.ItemID;
+import net.runelite.api.gameval.NpcID;
+import net.runelite.client.plugins.microbot.aiofishing.enums.AnglerGear;
+import net.runelite.client.plugins.microbot.aiofishing.enums.FishStorage;
+import net.runelite.client.plugins.microbot.aiofishing.enums.RadasBlessing;
+import net.runelite.client.plugins.microbot.aiofishing.enums.AerialCatch;
+import net.runelite.client.plugins.microbot.aiofishing.enums.FishingActivity;
+import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2Antiban;
+import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
 import net.runelite.client.plugins.microbot.util.combat.Rs2Combat;
@@ -61,11 +71,28 @@ public class AIOFishingScript extends Script {
     private static final int SPOT_DISCOVERY_RANGE = 32;
     /** Curated points are safe land-side destinations, so approach them closely. */
     private static final int FISHING_AREA_WALK_TOLERANCE = 8;
+    /**
+     * How close to a curated point counts as being in that fishing area. Used to stop a
+     * long walk finishing at an unrelated spot of the same type that it merely passes.
+     *
+     * <p>Kept tight enough to separate the closest pair of curated points (Al Kharid and
+     * Lumbridge Swamp are 30 apart) while staying well above the walk tolerance of 8.</p>
+     */
+    private static final int FISHING_AREA_RADIUS = 20;
     /** How close counts as "in" a pinned location's area. */
     private static final int PINNED_RADIUS = 30;
+    /** How close to the Molch Island shore tile counts as in position. */
+    private static final int AERIAL_SPOT_RADIUS = 12;
     /** Shop NPC readiness radius; the fallback destination remains tighter than this. */
     private static final int SHOP_INTERACT_RANGE = 10;
     private static final int SHOP_WALK_TOLERANCE = 4;
+    /**
+     * How close to a shop's own location counts as being at that shop. Needed because the
+     * shop lookup matches NPC names as a substring and is not tied to a location, so a
+     * generically-named shopkeeper ("Fish monger") could otherwise satisfy the walk's
+     * early-finish somewhere else entirely.
+     */
+    private static final int SHOP_AREA_RADIUS = 20;
     /**
      * A bank can enter the entity cache before it is close enough for a reliable interaction.
      * Keep this at canvas interaction range; using the cache's wider discovery radius makes
@@ -79,8 +106,21 @@ public class AIOFishingScript extends Script {
     private static final Set<Integer> GRAND_EXCHANGE_BOOTH_IDS = Set.of(10060, 30389);
     /** Give up on a GE buy after this many price escalations, rather than looping. */
     private static final int MAX_BUY_ATTEMPTS = 5;
+    /**
+     * Abandon a GE sale after this many failed attempts. Without a cap, an item the
+     * price lookup cannot value (or that the GE keeps rejecting) leaves pendingSaleItem
+     * set, so determineState() returns SELLING forever and the script retries on every
+     * tick instead of getting on with fishing.
+     */
+    private static final int MAX_SELL_ATTEMPTS = 4;
     /** How long to wait for a buy offer to fill before escalating the price. */
     private static final int BUY_FILL_TIMEOUT_MS = 90000;
+    /**
+     * Give up on knife/hammer processing after this many passes that consumed nothing.
+     * Without it an unexpected interface (or a catch the tool won't act on) would leave a
+     * full inventory that never drains, and the loop would retry forever.
+     */
+    private static final int MAX_PROCESSING_STALLS = 3;
 
     private AIOFishingConfig config;
     private HarpoonType selectedHarpoon = HarpoonType.NONE;
@@ -113,6 +153,8 @@ public class AIOFishingScript extends Script {
     private volatile boolean pendingViaGe;
     /** Per-item failed buy count, used to escalate the offer price. */
     private final Map<String, Integer> buyAttempts = new HashMap<>();
+    /** Consecutive processing passes that consumed nothing; see MAX_PROCESSING_STALLS. */
+    private int processingStalls;
     /**
      * Non-null once something unrecoverable happened (no bait and no way to buy it, etc).
      * determineState() is recomputed every tick, so a handler setting state = STOPPED is
@@ -125,6 +167,8 @@ public class AIOFishingScript extends Script {
     private volatile String pendingSaleItem;
     /** Per-item failed listing count, used to undercut progressively. */
     private final Map<String, Integer> sellAttempts = new HashMap<>();
+    /** Catch items we gave up selling - don't re-withdraw them every bank trip. */
+    private final Set<String> unsellable = new HashSet<>();
     /** Last applied debug override, used to initialise forced workflows exactly once. */
     @Getter
     private volatile AIOFishingDebugMode activeDebugMode = AIOFishingDebugMode.AUTOMATIC;
@@ -147,9 +191,11 @@ public class AIOFishingScript extends Script {
         this.pendingPurchases.clear();
         this.pendingShop = null;
         this.pendingViaGe = false;
+        this.processingStalls = 0;
         this.buyAttempts.clear();
         this.pendingSaleItem = null;
         this.sellAttempts.clear();
+        this.unsellable.clear();
         this.activeDebugMode = AIOFishingDebugMode.AUTOMATIC;
         this.debugBlockReason = null;
         this.lastSaleScanDiagnostic = null;
@@ -158,6 +204,9 @@ public class AIOFishingScript extends Script {
         this.state = AIOFishingState.IDLE;
 
         Rs2Antiban.resetAntibanSettings();
+        // The template's values are used as-is. In particular takeMicroBreaks stays false:
+        // micro breaks are Break Handler's job, and switching them on from here sets a flag
+        // only BreakHandlerScript clears.
         Rs2Antiban.antibanSetupTemplates.applyFishingSetup();
 
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(
@@ -201,6 +250,16 @@ public class AIOFishingScript extends Script {
 
             activeStage = resolveStage();
             state = determineState();
+            // Honour antiban action cooldowns. The fishing template sets
+            // universalAntiban = false, so the framework does NOT pause us - the script has
+            // to check this itself. Without this the cooldowns were armed on every action and
+            // then completely ignored. AntibanPlugin counts TIMEOUT down and clears the flag
+            // on its own game tick, so this can never deadlock. STOPPED is exempt so a
+            // shutdown is never held up by a cooldown.
+            if (Rs2AntibanSettings.actionCooldownActive && state != AIOFishingState.STOPPED) {
+                Microbot.status = "Antiban cooldown";
+                return;
+            }
             if (debugBlockReason != null) {
                 Microbot.status = debugBlockReason;
                 return;
@@ -245,8 +304,12 @@ public class AIOFishingScript extends Script {
                 case GEARING:    handleGearing();   break;
                 case TRAVELING:  handleTraveling(); break;
                 case FISHING:    handleFishing();   break;
+                case PROCESSING: handleProcessing(); break;
                 case BANKING:    handleBanking();   break;
                 case DROPPING:   handleDropping();  break;
+                case AERIAL_FISHING: handleAerialFishing(); break;
+                case AERIAL_CUTTING: handleAerialCutting(); break;
+                case AERIAL_BAITING: handleAerialBaiting(); break;
                 case STOPPED:    handleStopped();   break;
                 default: break;
             }
@@ -291,8 +354,9 @@ public class AIOFishingScript extends Script {
     private FishingStage resolveStage() {
         if (config.autoProgress()) {
             int level = Rs2Player.getRealSkillLevel(Skill.FISHING);
-            return FishingStage.bestFor(level, config.membersWorld(),
-                    AIOFishingPlugin.QUEST_STATES, AIOFishingPlugin.SKILL_LEVELS);
+            return FishingStage.bestFor(level, AIOFishingPlugin.isMembersWorld(config),
+                    AIOFishingPlugin.QUEST_STATES, AIOFishingPlugin.SKILL_LEVELS,
+                    AIOFishingPlugin.VARBIT_VALUES);
         }
         return config.manualStage();
     }
@@ -312,11 +376,17 @@ public class AIOFishingScript extends Script {
             requestStop("Target level " + config.targetLevel() + " reached");
             return AIOFishingState.STOPPED;
         }
+        // Aerial fishing shares none of the stage/tool/bank pipeline below, so it branches
+        // out here into its own small loop.
+        if (config.activity() == FishingActivity.AERIAL) {
+            return determineAerialState();
+        }
 
         // Verify quest/level/members gates BEFORE any walking, so a locked stage can never
         // send us looping around an area we can't actually fish in.
-        String lock = activeStage.lockReason(level, config.membersWorld(),
-                AIOFishingPlugin.QUEST_STATES, AIOFishingPlugin.SKILL_LEVELS);
+        String lock = activeStage.lockReason(level, AIOFishingPlugin.isMembersWorld(config),
+                AIOFishingPlugin.QUEST_STATES, AIOFishingPlugin.SKILL_LEVELS,
+                AIOFishingPlugin.VARBIT_VALUES);
         if (lock != null) {
             requestStop("Cannot fish " + activeStage.getDisplayName() + ": " + lock);
             return AIOFishingState.STOPPED;
@@ -331,6 +401,13 @@ public class AIOFishingScript extends Script {
             return AIOFishingState.SELLING;
         }
         if (Rs2Inventory.isFull()) {
+            // Sacred/infernal eels are worthless uncracked, and their output stacks - so a
+            // full inventory is processed rather than banked, which frees the slots and
+            // lets fishing resume without a trip. Banking still happens once the
+            // non-stackable oddments (clue bottles, bolt tips) fill up again.
+            if (needsProcessing()) {
+                return AIOFishingState.PROCESSING;
+            }
             return config.useBank() ? AIOFishingState.BANKING : AIOFishingState.DROPPING;
         }
         if (!hasGear(activeStage)) {
@@ -351,6 +428,7 @@ public class AIOFishingScript extends Script {
             buyAttempts.clear();
             pendingSaleItem = null;
             sellAttempts.clear();
+            unsellable.clear();
             debugBlockReason = null;
             lastSaleScanDiagnostic = null;
             activeDebugMode = configuredMode;
@@ -417,7 +495,7 @@ public class AIOFishingScript extends Script {
 
         FishingShop shop = null;
         if (!useGrandExchange) {
-            shop = FishingShop.findNearest(itemName, config.membersWorld(),
+            shop = FishingShop.findNearest(itemName, AIOFishingPlugin.isMembersWorld(config),
                     AIOFishingPlugin.QUEST_STATES, AIOFishingPlugin.SKILL_LEVELS,
                     Rs2Player.getWorldLocation(), AIOFishingScript::pathTiles);
             if (shop == null) {
@@ -441,11 +519,23 @@ public class AIOFishingScript extends Script {
             }
         }
         for (String tool : requiredTools(activeStage)) {
-            if (!Rs2Inventory.hasItem(tool) && !Rs2Equipment.isWearing(tool)) {
+            if (!hasToolAvailable(tool)) {
                 return tool;
             }
         }
         return null;
+    }
+
+    /**
+     * Whether a tool is usable: carried, worn, or - with the tackle box enabled - stored in
+     * the box. The box keeps fishing gear in one slot, so without this the script would keep
+     * withdrawing duplicates of tools it already owns.
+     */
+    private boolean hasToolAvailable(String tool) {
+        if (Rs2Inventory.hasItem(tool) || Rs2Equipment.isWearing(tool)) {
+            return true;
+        }
+        return config.useTackleBox() && Rs2Inventory.hasItem(ItemID.TACKLE_BOX);
     }
 
     private void setDebugBlockReason(String reason) {
@@ -465,6 +555,10 @@ public class AIOFishingScript extends Script {
      * loaded spot must never replace the path-aware travel destination.</p>
      */
     private void handleTraveling() {
+        if (config.activity() == FishingActivity.AERIAL) {
+            Rs2Walker.walkTo(AerialFishing.MOLCH_ISLAND_SPOT, 2);
+            return;
+        }
         cachedAction = "";
         WorldPoint player = Rs2Player.getWorldLocation();
         FishingLocation pinned = pinnedLocation();
@@ -479,9 +573,13 @@ public class AIOFishingScript extends Script {
             return;
         }
         // The curated point identifies the fishing area, not a tile the player needs to
-        // stand on. Finish early if a valid fishing spot becomes interactable on approach.
-        if (!walkUntilNotPaused(target.getPoint(), FISHING_AREA_WALK_TOLERANCE,
-                () -> isAtLocation(activeStage))) {
+        // stand on, so finish early once a spot there is interactable. That must be limited
+        // to the destination area: many stages have spots dotted across the map (shrimp alone
+        // has five), and without the proximity guard the walk ends at the first incidental
+        // spot it passes - which was cancelling journeys ~180 tiles short of the target.
+        final WorldPoint destination = target.getPoint();
+        if (!walkUntilNotPaused(destination, FISHING_AREA_WALK_TOLERANCE,
+                () -> isNearArea(destination) && isAtLocation(activeStage))) {
             return;
         }
         if (isAtLocation(activeStage)) {
@@ -501,7 +599,8 @@ public class AIOFishingScript extends Script {
         if (travelTarget != null && travelTargetStage == activeStage) {
             return travelTarget;
         }
-        FishingLocation chosen = activeStage.getFastestLocation(player, AIOFishingScript::pathTiles);
+        FishingLocation chosen = activeStage.getFastestLocation(player, AIOFishingScript::pathTiles,
+                AIOFishingPlugin.isMembersWorld(config));
         travelTarget = chosen;
         travelTargetStage = activeStage;
         log.debug("Travel target for {}: {}", activeStage, chosen.getName());
@@ -535,6 +634,7 @@ public class AIOFishingScript extends Script {
     }
 
     private void handleFishing() {
+        ensureFishStorageOpen();
         Rs2NpcModel spot = findNearestSpot(activeStage);
         if (!isInRange(spot)) {
             return; // determineState() will route us back to TRAVELING next tick
@@ -580,16 +680,60 @@ public class AIOFishingScript extends Script {
         }
     }
 
+    /**
+     * True when the active stage's catch needs a knife/hammer step and we can perform it.
+     *
+     * <p>All three conditions are checked rather than assumed: the user can turn processing
+     * off, the Cooking gate on sacred eels can be unmet, and the tool can have been lost.
+     * Any of those simply falls through to normal banking, so the catch is never stranded.</p>
+     */
+    private boolean needsProcessing() {
+        CatchProcessing processing = activeStage.getProcessing();
+        if (!config.processCatch() || !processing.isUsable(AIOFishingPlugin.SKILL_LEVELS)) {
+            return false;
+        }
+        return Rs2Inventory.hasItem(processing.getToolName())
+                && Rs2Inventory.hasItem(processing.getRawItemName());
+    }
+
+    /**
+     * Turn the raw catch into its reward - knife on sacred eels, hammer on infernal eels.
+     *
+     * <p>One item per pass, re-entered from the state machine, so a combine that silently
+     * does nothing can't wedge the script inside a long blocking sleep. If the count stops
+     * falling the guard below stops the script with a reason instead of spinning.</p>
+     */
+    private void handleProcessing() {
+        CatchProcessing processing = activeStage.getProcessing();
+        String rawName = processing.getRawItemName();
+        Microbot.status = processing.getLabel();
+
+        int before = Rs2Inventory.itemQuantity(rawName);
+        if (before <= 0) {
+            processingStalls = 0;
+            return;
+        }
+        Rs2Inventory.combine(processing.getToolName(), rawName);
+        boolean progressed = sleepUntil(() -> Rs2Inventory.itemQuantity(rawName) < before, 5000);
+        if (progressed) {
+            processingStalls = 0;
+            safeAntibanCooldown();
+            return;
+        }
+        if (++processingStalls >= MAX_PROCESSING_STALLS) {
+            requestStop("Could not " + processing.getToolName().toLowerCase()
+                    + " the " + rawName.toLowerCase() + " - processing made no progress");
+        }
+    }
+
     private void handleBanking() {
         dropUnwantedBigNetBycatch();
         if (!openBankAsSoonAsAvailable()) {
             return;
         }
-        // Fish barrel support: dump its contents first if one is carried.
-        if (Rs2Inventory.hasItem("Fish barrel")) {
-            Rs2Bank.emptyFishBarrel();
-            Rs2Inventory.waitForInventoryChanges(1000);
-        }
+        // Dump the configured barrel first so its fish are banked with the rest. Handles the
+        // fish sack barrel too, which Rs2Bank.emptyFishBarrel() does not cover.
+        emptyFishStorage();
         Rs2Bank.depositAllExcept(itemsToKeep(activeStage).toArray(new String[0]));
         Rs2Inventory.waitForInventoryChanges(1800);
         sleepUntil(() -> !Rs2Inventory.isFull(), 5000);
@@ -618,6 +762,9 @@ public class AIOFishingScript extends Script {
         // Keep only what this stage needs; deposit last stage's leftovers and any catch.
         Rs2Bank.depositAllExcept(itemsToKeep(activeStage).toArray(new String[0]));
         Rs2Inventory.waitForInventoryChanges(1200);
+
+        // Optional bonus gear first: outfit / blessing / barrel. Best-effort, never fatal.
+        equipBonusGear();
 
         // Withdraw & equip the reusable tools.
         for (String tool : requiredTools(activeStage)) {
@@ -684,7 +831,7 @@ public class AIOFishingScript extends Script {
             return "buying is off";
         }
         // Decide the shop once, here at the bank - findNearest runs pathfinds.
-        FishingShop shop = FishingShop.findNearest(itemName, config.membersWorld(),
+        FishingShop shop = FishingShop.findNearest(itemName, AIOFishingPlugin.isMembersWorld(config),
                 AIOFishingPlugin.QUEST_STATES, AIOFishingPlugin.SKILL_LEVELS,
                 Rs2Player.getWorldLocation(), AIOFishingScript::pathTiles);
         boolean viaGe = false;
@@ -727,20 +874,23 @@ public class AIOFishingScript extends Script {
 
         FishingShop shop = pendingShop != null
                 ? pendingShop
-                : FishingShop.findFor(itemName, config.membersWorld(),
+                : FishingShop.findFor(itemName, AIOFishingPlugin.isMembersWorld(config),
                         AIOFishingPlugin.QUEST_STATES, AIOFishingPlugin.SKILL_LEVELS);
         if (shop == null) {
             pendingPurchases.remove(itemName);
             return;
         }
 
-        if (!isShopNpcInteractable(shop.getNpcName())) {
+        // Bind readiness to this shop's location as well as its NPC name: the name match is
+        // a substring and location-agnostic, so a same-named trader elsewhere would otherwise
+        // end the walk early - the same defect that was cancelling fishing journeys.
+        if (!isAtShop(shop)) {
             if (!walkUntilNotPaused(shop.getLocation(), SHOP_WALK_TOLERANCE,
-                    () -> isShopNpcInteractable(shop.getNpcName()))) {
+                    () -> isAtShop(shop))) {
                 return;
             }
         }
-        if (!isShopNpcInteractable(shop.getNpcName())) {
+        if (!isAtShop(shop)) {
             return;
         }
 
@@ -790,6 +940,10 @@ public class AIOFishingScript extends Script {
         String rejection = "no active-stage catch found in the bank";
         for (String name : activeStage.getCatchItemNames()) {
             if (name.toLowerCase().contains("burnt")) {
+                continue;
+            }
+            if (unsellable.contains(name.toLowerCase())) {
+                rejection = name + " was abandoned earlier after repeated listing failures";
                 continue;
             }
             Rs2ItemModel item = Rs2Bank.getBankItem(name, true);
@@ -903,6 +1057,17 @@ public class AIOFishingScript extends Script {
         sleep(600);
 
         int attempt = sellAttempts.getOrDefault(pendingSaleItem, 0);
+        // Every failure path (unpriceable item, full GE, rejected listing) funnels through
+        // this counter, so a sale can never retry indefinitely.
+        if (attempt >= MAX_SELL_ATTEMPTS) {
+            log.warn("Giving up selling {} after {} attempts - leaving the stack banked.",
+                    pendingSaleItem, attempt);
+            unsellable.add(pendingSaleItem.toLowerCase());
+            sellAttempts.remove(pendingSaleItem);
+            pendingSaleItem = null;
+            Rs2GrandExchange.closeExchange();
+            return;
+        }
         if (Rs2GrandExchange.getAvailableSlotsCount() <= 0) {
             // Most likely our own unsold offer holds the slot - pull it and relist lower.
             log.info("No free GE slot; aborting stale offer for {} and relisting.", pendingSaleItem);
@@ -923,7 +1088,8 @@ public class AIOFishingScript extends Script {
             pendingSaleItem = null;
         } else {
             sellAttempts.put(pendingSaleItem, attempt + 1);
-            log.warn("Failed to list {} - will retry lower.", pendingSaleItem);
+            log.warn("Failed to list {} (no price or listing rejected) - attempt {} of {}.",
+                    pendingSaleItem, attempt + 1, MAX_SELL_ATTEMPTS);
         }
         Rs2GrandExchange.closeExchange();
         safeAntibanCooldown();
@@ -1066,6 +1232,109 @@ public class AIOFishingScript extends Script {
         pendingViaGe = false;
     }
 
+    // ------------------------------------------------------- aerial fishing
+
+    /**
+     * Aerial state: verify readiness once, then alternate between throwing the cormorant
+     * and knifing the catch into offcuts. Readiness failures stop with a reason rather than
+     * silently idling, because none of them can be fixed by waiting.
+     */
+    private AIOFishingState determineAerialState() {
+        String unmet = AerialFishing.unmetReason(AIOFishingPlugin.SKILL_LEVELS);
+        if (unmet != null) {
+            requestStop("Aerial fishing: " + unmet);
+            return AIOFishingState.STOPPED;
+        }
+        // Cut when there is no room left to receive another fish. One slot has to stay free
+        // for the incoming catch, so cut at <=1 free rather than waiting for a full pack.
+        if (AerialFishing.hasUncutCatch()
+                && (Rs2Inventory.isFull() || Rs2Inventory.emptySlotCount() <= 1)) {
+            return AIOFishingState.AERIAL_CUTTING;
+        }
+        WorldPoint player = Rs2Player.getWorldLocation();
+        if (player == null || player.distanceTo(AerialFishing.MOLCH_ISLAND_SPOT) > AERIAL_SPOT_RADIUS) {
+            return AIOFishingState.TRAVELING;
+        }
+        // Out of bait: gather king worms off the ground rather than banking for them. Only
+        // needed to bootstrap - after the first catch the knifed offcuts are the bait.
+        if (!AerialFishing.hasBait() && !AerialFishing.hasUncutCatch()) {
+            return AIOFishingState.AERIAL_BAITING;
+        }
+        return AIOFishingState.AERIAL_FISHING;
+    }
+
+    /** Throw the cormorant at the nearest pool and wait for it to come back with a fish. */
+    private void handleAerialFishing() {
+        if (AerialFishing.birdIsOut() || Rs2Player.isInteracting()) {
+            return; // catch already in flight
+        }
+        Rs2NpcModel pool = Microbot.getRs2NpcCache().query()
+                .withId(NpcID.FISHING_SPOT_AERIAL)
+                .nearest();
+        if (pool == null) {
+            return;
+        }
+        // The pool has to be on screen to be clicked; turn the camera if it is not. Note
+        // Rs2Npc.validateInteractable takes a different Rs2NpcModel class (util.npc, not
+        // api.npc.models) and also walks, so turn the camera directly instead.
+        if (pool.getNpc() != null && !Rs2Camera.isTileOnScreen(pool.getNpc().getLocalLocation())) {
+            Rs2Camera.turnTo(pool.getNpc());
+        }
+        if (pool.click()) {
+            // The glove id flips while the bird is away, which is a cleaner "in progress"
+            // signal than an animation check.
+            sleepUntil(AerialFishing::birdIsOut, 1500);
+            sleepUntil(() -> !AerialFishing.birdIsOut(), 6000);
+            safeAntibanCooldown();
+        }
+    }
+
+    /**
+     * Pick king worms off the ground to start the bait cycle. Stops only if there are none
+     * left to take, since without bait the cormorant cannot be sent.
+     */
+    private void handleAerialBaiting() {
+        if (Rs2Inventory.itemQuantity(AerialFishing.GROUND_BAIT_NAME) >= config.wormsToPickUp()) {
+            return; // enough gathered; determineAerialState moves on next tick
+        }
+        var worm = Microbot.getRs2TileItemCache().query()
+                .withName(AerialFishing.GROUND_BAIT_NAME)
+                .nearestOnClientThread(AerialFishing.GROUND_BAIT_RANGE);
+        if (worm == null) {
+            if (!AerialFishing.hasBait()) {
+                requestStop("Aerial fishing: no king worms on the ground - wait for a respawn"
+                        + " or bring bait");
+            }
+            return;
+        }
+        // click() does not walk, so close the gap first (same trap as the fishing spots).
+        WorldPoint wormTile = worm.getWorldLocation();
+        WorldPoint player = Rs2Player.getWorldLocation();
+        if (wormTile != null && player != null && player.distanceTo(wormTile) > 4) {
+            Rs2Walker.walkTo(wormTile, 1);
+            return;
+        }
+        if (worm.click("Take")) {
+            Rs2Inventory.waitForInventoryChanges(1500);
+        }
+    }
+
+    /** Knife the catch into stackable offcuts, which double as the next lot of bait. */
+    private void handleAerialCutting() {
+        Rs2ItemModel knife = Rs2Inventory.get(ItemID.KNIFE);
+        if (knife == null) {
+            requestStop("Aerial fishing: carry a knife to cut the catch");
+            return;
+        }
+        Rs2ItemModel fish = Rs2Inventory.getRandom(AerialCatch.rawItemIds());
+        if (fish == null) {
+            return; // nothing left to cut
+        }
+        Rs2Inventory.combine(knife, fish);
+        sleepUntil(() -> !AerialFishing.hasUncutCatch(), 60000);
+        safeAntibanCooldown();
+    }
+
     private void handleStopped() {
         log.info("AIOFishing stopping (target reached or requirement missing).");
         if (Rs2Bank.isOpen()) {
@@ -1132,6 +1401,13 @@ public class AIOFishingScript extends Script {
                 BankLocation.GRAND_EXCHANGE.getWorldPoint(),
                 BANK_WALK_TOLERANCE,
                 Rs2GrandExchange::isOpen);
+    }
+
+    /** At the intended shop: its keeper is interactable AND we are at its location. */
+    private boolean isAtShop(FishingShop shop) {
+        return shop != null
+                && isNearArea(shop.getLocation(), SHOP_AREA_RADIUS)
+                && isShopNpcInteractable(shop.getNpcName());
     }
 
     private boolean isShopNpcInteractable(String npcName) {
@@ -1214,16 +1490,148 @@ public class AIOFishingScript extends Script {
      */
     private List<String> requiredTools(FishingStage stage) {
         List<String> tools = new ArrayList<>(stage.getMethod().getTools());
+        // The knife/hammer is only a requirement while the step can actually run: a
+        // sub-72-Cooking account banks sacred eels whole and has no use for a knife.
+        CatchProcessing processing = stage.getProcessing();
+        if (config.processCatch() && processing.isUsable(AIOFishingPlugin.SKILL_LEVELS)) {
+            tools.add(processing.getToolName());
+        }
+        // Mor Ul Rek's guard accepts an infernal cape too. Players who earned one have
+        // usually long since dropped the fire cape, so honour what they actually carry
+        // rather than demanding a cape they no longer own.
+        if (tools.contains("Fire cape")
+                && (Rs2Equipment.isWearing("Infernal cape") || Rs2Inventory.hasItem("Infernal cape"))) {
+            tools.replaceAll(t -> t.equalsIgnoreCase("Fire cape") ? "Infernal cape" : t);
+        }
+        // Bare-handed fishing needs no equipment at all, so a harpoon stops being a
+        // requirement (and the weapon slot stays free). Checked before the spec-harpoon
+        // substitution below, which would otherwise reinstate it under a different name.
+        if (isBareHandedActive()) {
+            tools.removeIf(t -> t.equalsIgnoreCase("Harpoon"));
+            return tools;
+        }
         if (selectedHarpoon != HarpoonType.NONE) {
             tools.replaceAll(t -> t.equalsIgnoreCase("Harpoon") ? selectedHarpoon.getItemName() : t);
         }
         return tools;
     }
 
+    /** True when the user asked for bare-handed fishing and Otto has actually taught it. */
+    private boolean isBareHandedActive() {
+        return config.bareHandedFishing()
+                && BareHandedFishing.isAvailable(AIOFishingPlugin.SKILL_LEVELS,
+                        AIOFishingPlugin.VARBIT_VALUES);
+    }
+
+    /**
+     * Optional bonus gear: the Angler's outfit, a Rada's blessing and a fish barrel.
+     *
+     * <p>Deliberately best-effort. None of it is required to fish, so a missing piece is
+     * skipped rather than treated as a reason to stop - otherwise enabling a nice-to-have
+     * would strand the script. Assumes the bank is already open.</p>
+     */
+    private void equipBonusGear() {
+        if (config.equipAnglerOutfit()) {
+            for (AnglerGear piece : AnglerGear.values()) {
+                if (Rs2Equipment.isWearing(piece.getItemIds())) {
+                    continue;
+                }
+                Integer owned = firstOwnedId(piece.getItemIds());
+                if (owned == null) {
+                    continue; // not owned - nothing to do
+                }
+                if (!Rs2Inventory.hasItem(owned)) {
+                    Rs2Bank.withdrawItem(owned);
+                    sleepUntil(() -> Rs2Inventory.hasItem(owned), 2000);
+                }
+                if (Rs2Inventory.hasItem(owned)) {
+                    Rs2Inventory.wield(owned);
+                    sleepUntil(() -> Rs2Equipment.isWearing(owned), 1500);
+                }
+            }
+        }
+
+        RadasBlessing blessing = config.radasBlessing();
+        if (blessing.isEnabled() && !Rs2Equipment.isWearing(blessing.getItemId())) {
+            int id = blessing.getItemId();
+            if (!Rs2Inventory.hasItem(id) && Rs2Bank.hasBankItem(id, 1)) {
+                Rs2Bank.withdrawItem(id);
+                sleepUntil(() -> Rs2Inventory.hasItem(id), 2000);
+            }
+            if (Rs2Inventory.hasItem(id)) {
+                Rs2Inventory.wield(id);
+                sleepUntil(() -> Rs2Equipment.isWearing(id), 1500);
+            }
+        }
+
+        FishStorage storage = config.fishStorage();
+        if (storage.isEnabled() && !Rs2Inventory.hasItem(storage.getItemIds())) {
+            Integer owned = firstOwnedId(storage.getItemIds());
+            if (owned != null) {
+                Rs2Bank.withdrawItem(owned);
+                sleepUntil(() -> Rs2Inventory.hasItem(owned), 2000);
+            }
+        }
+    }
+
+    /** First of these ids held in the inventory, worn, or sitting in the open bank. */
+    private Integer firstOwnedId(int... ids) {
+        for (int id : ids) {
+            if (Rs2Inventory.hasItem(id) || Rs2Equipment.isWearing(id)
+                    || Rs2Bank.hasBankItem(id, 1)) {
+                return id;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Open a carried barrel so it starts absorbing the catch.
+     *
+     * <p>A shut barrel collects nothing, so this is the whole of the "use a barrel" feature -
+     * no filling and no counting. Checked from the fishing state rather than only after a
+     * bank trip, so it is also correct when the script starts with a closed barrel already
+     * in the inventory.</p>
+     */
+    private void ensureFishStorageOpen() {
+        FishStorage storage = config.fishStorage();
+        if (!storage.isEnabled()) {
+            return;
+        }
+        Rs2ItemModel closed = Rs2Inventory.get(storage.getClosedId());
+        if (closed == null) {
+            return; // absent, or already open
+        }
+        if (Rs2Inventory.interact(closed, "Open")) {
+            sleepUntil(() -> Rs2Inventory.hasItem(storage.getOpenId()), 2000);
+        }
+    }
+
+    /** Empty a carried barrel so its fish are banked along with the inventory. */
+    private void emptyFishStorage() {
+        FishStorage storage = config.fishStorage();
+        if (!storage.isEnabled()) {
+            return;
+        }
+        Rs2ItemModel barrel = Rs2Inventory.get(storage.getItemIds());
+        if (barrel != null) {
+            Rs2Inventory.interact(barrel, "Empty");
+            Rs2Inventory.waitForInventoryChanges(1200);
+        }
+    }
+
     private List<String> itemsToKeep(FishingStage stage) {
         Set<String> keep = new HashSet<>(requiredTools(stage));
         keep.addAll(stage.getMethod().getConsumables());
+        // Names are matched as substrings, so "Fish barrel" covers both the closed and open
+        // ids, and also protects a fish sack barrel from being deposited.
         keep.add("Fish barrel");
+        if (config.fishStorage() == FishStorage.FISH_SACK_BARREL) {
+            keep.add("Fish sack barrel");
+        }
+        if (config.useTackleBox()) {
+            keep.add("Tackle box");
+        }
         return new ArrayList<>(keep);
     }
 
@@ -1260,7 +1668,11 @@ public class AIOFishingScript extends Script {
 
     private boolean isWieldable(String tool) {
         String lower = tool.toLowerCase();
-        return lower.contains("rod") || lower.contains("harpoon");
+        // Gloves and capes are here for infernal eels: ice gloves stop the catch burning
+        // your hands and the fire cape has to be *worn* for the guard to accept it, so
+        // neither works sitting in the inventory.
+        return lower.contains("rod") || lower.contains("harpoon")
+                || lower.contains("gloves") || lower.contains("cape");
     }
 
     /**
@@ -1270,16 +1682,37 @@ public class AIOFishingScript extends Script {
      * <p>When a location is pinned we additionally require being in that area, otherwise a
      * pin would be ignored whenever any valid spot happened to be loaded elsewhere.</p>
      */
+    /**
+     * "Arrived": a spot for this stage is interactable <em>and</em> we are in one of the
+     * stage's curated areas.
+     *
+     * <p>The area check is not redundant. Several stages have spots scattered across the map,
+     * so a bare "is a spot in range" test also passes at any incidental spot the player
+     * happens to stand near - which made the script settle wherever a walk was interrupted
+     * instead of at the bank-adjacent location it chose.</p>
+     */
     private boolean isAtLocation(FishingStage stage) {
         if (!isInRange(findNearestSpot(stage))) {
             return false;
         }
         FishingLocation pinned = pinnedLocation();
-        if (pinned == null) {
-            return true;
+        if (pinned != null) {
+            WorldPoint player = Rs2Player.getWorldLocation();
+            return player != null && player.distanceTo(pinned.getPoint()) <= PINNED_RADIUS;
         }
+        FishingLocation nearest = stage.getClosestLocation(Rs2Player.getWorldLocation(),
+                AIOFishingPlugin.isMembersWorld(config));
+        return nearest == null || isNearArea(nearest.getPoint());
+    }
+
+    /** True when the player is inside the given fishing area, not merely near some spot. */
+    private boolean isNearArea(WorldPoint area) {
+        return isNearArea(area, FISHING_AREA_RADIUS);
+    }
+
+    private boolean isNearArea(WorldPoint area, int radius) {
         WorldPoint player = Rs2Player.getWorldLocation();
-        return player != null && player.distanceTo(pinned.getPoint()) <= PINNED_RADIUS;
+        return player != null && area != null && player.distanceTo(area) <= radius;
     }
 
     private boolean isInRange(Rs2NpcModel spot) {
@@ -1346,10 +1779,19 @@ public class AIOFishingScript extends Script {
         }
     }
 
+    /**
+     * Start the post-action cooldown. Deliberately does <em>not</em> trigger micro breaks.
+     *
+     * <p>{@code takeMicroBreakByChance()} only raises {@code microBreakActive}; the flag is
+     * cleared by BreakHandlerScript, so calling it without the Break Handler plugin running
+     * leaves a latch nobody lowers. That is also why the fishing template sets
+     * {@code takeMicroBreaks = false} - breaks are opt-in through Break Handler, not
+     * something a script switches on behalf of the user. This method owns only the action
+     * cooldown, which the loop self-gates on via {@code actionCooldownActive}.</p>
+     */
     private void safeAntibanCooldown() {
         try {
             Rs2Antiban.actionCooldown();
-            Rs2Antiban.takeMicroBreakByChance();
         } catch (IllegalArgumentException e) {
             log.warn("Antiban cooldown skipped: {}", e.getMessage());
         }

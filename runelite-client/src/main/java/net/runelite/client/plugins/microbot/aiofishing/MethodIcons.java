@@ -37,8 +37,13 @@ public final class MethodIcons {
     private static final Color POT_DARK = new Color(140, 120, 165);
     private static final Color VESSEL = new Color(205, 175, 120);
     private static final Color BARB_ACCENT = new Color(225, 175, 90);
+    private static final Color STRIPY = new Color(235, 195, 105);
+    private static final Color ICE = new Color(150, 215, 245);
 
     private static final Map<FishingMethod, ImageIcon> CACHE = new EnumMap<>(FishingMethod.class);
+    private static final Map<FishingMethod, ImageIcon> DIMMED = new EnumMap<>(FishingMethod.class);
+    /** Alpha applied to icons that are filtered out. */
+    private static final float DIM_ALPHA = 0.30f;
 
     private MethodIcons() {
     }
@@ -46,6 +51,25 @@ public final class MethodIcons {
     /** Cached icon for a method. Safe to call repeatedly while rebuilding the panel. */
     public static synchronized ImageIcon of(FishingMethod method) {
         return CACHE.computeIfAbsent(method, m -> new ImageIcon(draw(m)));
+    }
+
+    /** Faded variant, used for legend icons that the active filter excludes. */
+    public static synchronized ImageIcon dimmed(FishingMethod method) {
+        return DIMMED.computeIfAbsent(method, m -> new ImageIcon(fade(draw(m))));
+    }
+
+    private static BufferedImage fade(BufferedImage source) {
+        BufferedImage faded = new BufferedImage(
+                source.getWidth(), source.getHeight(), BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g = faded.createGraphics();
+        try {
+            g.setComposite(java.awt.AlphaComposite.getInstance(
+                    java.awt.AlphaComposite.SRC_OVER, DIM_ALPHA));
+            g.drawImage(source, 0, 0, null);
+        } finally {
+            g.dispose();
+        }
+        return faded;
     }
 
     private static BufferedImage draw(FishingMethod method) {
@@ -59,7 +83,11 @@ public final class MethodIcons {
                 case BIG_NET:        bigNet(g); break;
                 case BAIT:           rod(g, BAIT_BROWN, false, false); break;
                 case LURE:           rod(g, FEATHER, true, false); break;
+                // Same fly rod, different feather colour - the bait is the only thing that
+                // separates rainbow fish from trout/salmon, so the icons mirror that.
+                case LURE_STRIPY:    rod(g, STRIPY, true, false); break;
                 case OILY_ROD:       rod(g, OIL, false, false); break;
+                case OILY_ROD_ICE:   oilyRodIced(g); break;
                 case SANDWORMS:      rod(g, WORM, false, false); break;
                 case BARBARIAN_ROD:  rod(g, BARB_ACCENT, true, true); break;
                 case CAGE:           cage(g, POT_ORANGE); break;
@@ -157,6 +185,21 @@ public final class MethodIcons {
             g.drawLine(x, y, x - 3, y + 1); // left barbs
             g.drawLine(x, y, x + 2, y - 1); // right barbs
         }
+    }
+
+    /**
+     * The oily rod with a frost mark in the corner - infernal eels need ice gloves, and the
+     * plain oily rod icon already means "oily rod + bait" for lava eels.
+     */
+    private static void oilyRodIced(Graphics2D g) {
+        rod(g, OIL, false, false);
+        g.setStroke(new BasicStroke(1f));
+        g.setColor(ICE);
+        // Small snowflake, top-left, clear of the rod's diagonal.
+        g.drawLine(3, 1, 3, 7);
+        g.drawLine(0, 4, 6, 4);
+        g.drawLine(1, 2, 5, 6);
+        g.drawLine(5, 2, 1, 6);
     }
 
     /** A domed trap with bars - lobster pot family. */

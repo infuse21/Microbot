@@ -33,6 +33,7 @@ import net.runelite.client.ui.overlay.OverlayManager;
 
 @PluginDescriptor(
 	name = PluginDescriptor.Default + "AIO Hunting",
+	enabledByDefault = false,
 	description = "All-in-one Hunter progression with routing, trap safety and banking",
 	tags = {"hunter", "hunting", "skilling", "aio", "progression"},
 	authors = {"Infuse"},

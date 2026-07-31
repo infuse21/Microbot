@@ -15,10 +15,18 @@ public enum AIOFishingState {
     TRAVELING,
     /** Actively clicking fishing spots. */
     FISHING,
+    /** Inventory full and the catch needs a knife/hammer step before it is worth anything. */
+    PROCESSING,
     /** Inventory full and banking enabled; deposit the catch. */
     BANKING,
     /** Inventory full and banking disabled; drop the catch. */
     DROPPING,
+    /** Aerial fishing: sending the cormorant at a Molch Island pool. */
+    AERIAL_FISHING,
+    /** Aerial fishing: knifing the catch into stackable offcuts, which become the next bait. */
+    AERIAL_CUTTING,
+    /** Aerial fishing: picking king worms off the ground to bootstrap the bait cycle. */
+    AERIAL_BAITING,
     /** Target level reached or an unrecoverable requirement is missing. */
     STOPPED
 }

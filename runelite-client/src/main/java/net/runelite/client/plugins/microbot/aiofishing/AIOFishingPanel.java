@@ -1,7 +1,10 @@
 package net.runelite.client.plugins.microbot.aiofishing;
 
 import net.runelite.client.config.ConfigManager;
+import net.runelite.client.plugins.microbot.aiofishing.enums.AerialCatch;
+import net.runelite.client.plugins.microbot.aiofishing.enums.FishingActivity;
 import net.runelite.client.plugins.microbot.aiofishing.enums.FishingLocation;
+import net.runelite.client.plugins.microbot.aiofishing.enums.FishingMethod;
 import net.runelite.client.plugins.microbot.aiofishing.enums.FishingStage;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.DynamicGridLayout;
@@ -50,6 +53,14 @@ public class AIOFishingPanel extends PluginPanel {
     private final ConfigManager configManager;
 
     private final JPanel stageList = new JPanel(new DynamicGridLayout(0, 1, 0, 6));
+    /** Method-icon key, shown in manual mode between the status card and the stage list. */
+    private final JPanel legendRow = new JPanel(new java.awt.GridLayout(0, 6, 2, 2));
+    /** Top-level activity tabs: Progression | Aerial. */
+    private final JPanel activityRow = new JPanel(new DynamicGridLayout(1, 2, 4, 0));
+    private final JLabel progressionTab = new JLabel("Progression", SwingConstants.CENTER);
+    private final JLabel aerialTab = new JLabel("Aerial", SwingConstants.CENTER);
+    /** Everything specific to the aerial activity; swapped in place of the ladder. */
+    private final JPanel aerialPage = new JPanel(new DynamicGridLayout(0, 1, 0, 6));
     private final JPanel modeRow = new JPanel(new DynamicGridLayout(1, 2, 4, 0));
     private final JLabel autoTab = new JLabel("Auto", SwingConstants.CENTER);
     private final JLabel manualTab = new JLabel("Manual", SwingConstants.CENTER);
@@ -58,6 +69,17 @@ public class AIOFishingPanel extends PluginPanel {
     private final JLabel activeValue = new JLabel("-");
     private final JLabel nextValue = new JLabel("-");
     private final ProgressBar progress = new ProgressBar();
+    /**
+     * Exactly one page is mounted at a time.
+     *
+     * <p>DynamicGridLayout sizes rows from getComponentCount() and never checks isVisible(),
+     * so merely hiding the other page's widgets would still reserve their rows and push the
+     * mounted page off-screen. Swapping the child is the only thing that actually works.</p>
+     */
+    private final JPanel pageHolder = new JPanel(new DynamicGridLayout(0, 1, 0, 3));
+    private final JPanel progressionBody = new JPanel(new DynamicGridLayout(0, 1, 0, 3));
+    private JPanel statusCard;
+    private JLabel progressionLabel;
 
     private int fishingLevel = 1;
     private FishingStage activeStage = FishingStage.SHRIMP;
@@ -67,6 +89,17 @@ public class AIOFishingPanel extends PluginPanel {
     private Map<FishingStage, String> lockReasons = Collections.emptyMap();
     /** Location name pinned for the manual fish; empty means "use nearest". */
     private String pinnedLocation = "";
+    /**
+     * Method the legend is filtering the list by, or null for "show everything".
+     *
+     * <p>Deliberately not persisted to config: it is a way of looking at the catalogue, not a
+     * setting, and a filter silently surviving a restart would look like missing fish.</p>
+     */
+    private FishingMethod methodFilter;
+    private FishingActivity activity = FishingActivity.PROGRESSION;
+    /** Aerial readiness reason from the plugin; null when good to go. */
+    private String aerialUnmet;
+    private int hunterLevel = 1;
 
     @Inject
     public AIOFishingPanel(ConfigManager configManager) {
@@ -76,12 +109,24 @@ public class AIOFishingPanel extends PluginPanel {
         setBackground(ColorScheme.DARK_GRAY_COLOR);
 
         add(buildHeader());
-        add(buildModeToggle());
-        add(buildStatusCard());
-        add(sectionLabel("PROGRESSION"));
+        add(buildActivityTabs());
 
+        progressionBody.setBackground(ColorScheme.DARK_GRAY_COLOR);
+        progressionBody.add(buildModeToggle());
+        statusCard = buildStatusCard();
+        progressionBody.add(statusCard);
+        legendRow.setBackground(ColorScheme.DARK_GRAY_COLOR);
+        legendRow.setBorder(new EmptyBorder(6, 2, 0, 2));
+        progressionBody.add(legendRow);
+        progressionLabel = sectionLabel("PROGRESSION");
+        progressionBody.add(progressionLabel);
         stageList.setBackground(ColorScheme.DARK_GRAY_COLOR);
-        add(stageList);
+        progressionBody.add(stageList);
+
+        aerialPage.setBackground(ColorScheme.DARK_GRAY_COLOR);
+
+        pageHolder.setBackground(ColorScheme.DARK_GRAY_COLOR);
+        add(pageHolder);
 
         rebuild();
     }
@@ -90,6 +135,17 @@ public class AIOFishingPanel extends PluginPanel {
     public void update(int fishingLevel, FishingStage activeStage, boolean membersWorld,
                        boolean autoProgress, Map<FishingStage, String> lockReasons,
                        String pinnedLocation) {
+        update(fishingLevel, activeStage, membersWorld, autoProgress, lockReasons,
+                pinnedLocation, FishingActivity.PROGRESSION, 1, null);
+    }
+
+    public void update(int fishingLevel, FishingStage activeStage, boolean membersWorld,
+                       boolean autoProgress, Map<FishingStage, String> lockReasons,
+                       String pinnedLocation, FishingActivity activity, int hunterLevel,
+                       String aerialUnmet) {
+        this.activity = activity == null ? FishingActivity.PROGRESSION : activity;
+        this.hunterLevel = hunterLevel;
+        this.aerialUnmet = aerialUnmet;
         this.fishingLevel = fishingLevel;
         this.activeStage = activeStage;
         this.membersWorld = membersWorld;
@@ -117,6 +173,39 @@ public class AIOFishingPanel extends PluginPanel {
         header.add(title, BorderLayout.NORTH);
         header.add(subtitle, BorderLayout.CENTER);
         return header;
+    }
+
+    /** Segmented Progression | Aerial control - the plugin's top-level activity. */
+    private JPanel buildActivityTabs() {
+        activityRow.setBackground(ColorScheme.DARK_GRAY_COLOR);
+        activityRow.setBorder(new EmptyBorder(0, 0, 6, 0));
+        styleActivityTab(progressionTab, FishingActivity.PROGRESSION);
+        styleActivityTab(aerialTab, FishingActivity.AERIAL);
+        activityRow.add(progressionTab);
+        activityRow.add(aerialTab);
+        return activityRow;
+    }
+
+    private void styleActivityTab(JLabel tab, FishingActivity target) {
+        tab.setFont(FontManager.getRunescapeBoldFont());
+        tab.setOpaque(true);
+        tab.setBorder(new EmptyBorder(6, 0, 6, 0));
+        tab.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        tab.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                setActivity(target);
+            }
+        });
+    }
+
+    private void setActivity(FishingActivity target) {
+        if (target == activity) {
+            return;
+        }
+        activity = target;
+        configManager.setConfiguration(CONFIG_GROUP, "activity", target);
+        rebuild();
     }
 
     /** Segmented Auto | Manual control. */
@@ -260,6 +349,25 @@ public class AIOFishingPanel extends PluginPanel {
     // ------------------------------------------------------------- dynamic body
 
     private void rebuild() {
+        boolean aerial = activity == FishingActivity.AERIAL;
+        paintTab(progressionTab, !aerial);
+        paintTab(aerialTab, aerial);
+
+        // Mount the page for this activity. The status card is all stage/next talk, so it
+        // travels with the progression body rather than being shared.
+        JPanel wanted = aerial ? aerialPage : progressionBody;
+        if (pageHolder.getComponentCount() != 1 || pageHolder.getComponent(0) != wanted) {
+            pageHolder.removeAll();
+            pageHolder.add(wanted);
+        }
+        if (aerial) {
+            buildAerialPage();
+            pageHolder.revalidate();
+            revalidate();
+            repaint();
+            return;
+        }
+
         // Mode tabs
         paintTab(autoTab, autoProgress);
         paintTab(manualTab, !autoProgress);
@@ -282,21 +390,38 @@ public class AIOFishingPanel extends PluginPanel {
             progress.setFraction(span <= 0 ? 1f : Math.max(0f, Math.min(1f, (float) done / span)));
         }
 
+        buildLegend();
+
         stageList.removeAll();
         JLabel hint = new JLabel(autoProgress
                 ? "Auto ladder - switches as you level"
-                : "Click a fish to select it");
+                : methodFilter != null
+                        ? "Filtered: " + methodFilter.getDisplayName() + " (click icon to clear)"
+                        : "Click a fish to select it");
         hint.setFont(FontManager.getRunescapeSmallFont());
         hint.setForeground(autoProgress ? MUTED : UNLOCKED);
         hint.setBorder(new EmptyBorder(0, 2, 4, 0));
         stageList.add(hint);
 
         // Auto mode shows only the lean ladder; manual mode shows the full catalogue.
+        int shown = 0;
         for (FishingStage stage : FishingStage.values()) {
             if (autoProgress && !stage.isAutoStage(membersWorld)) {
                 continue;
             }
+            // The filter is a manual-mode tool; auto mode shows its own short ladder.
+            if (!autoProgress && methodFilter != null && stage.getMethod() != methodFilter) {
+                continue;
+            }
             stageList.add(buildStageCard(stage));
+            shown++;
+        }
+        if (shown == 0) {
+            JLabel empty = new JLabel("No fish use that method");
+            empty.setFont(FontManager.getRunescapeSmallFont());
+            empty.setForeground(LOCKED);
+            empty.setBorder(new EmptyBorder(4, 2, 0, 0));
+            stageList.add(empty);
         }
         stageList.revalidate();
         stageList.repaint();
@@ -328,11 +453,12 @@ public class AIOFishingPanel extends PluginPanel {
         // Title row: name + level badge
         JPanel titleRow = new JPanel(new BorderLayout());
         titleRow.setBackground(CARD_BG);
-        JLabel name = new JLabel((isActive ? "▶ " : "") + stage.getDisplayName());
-        name.setFont(FontManager.getRunescapeBoldFont());
-        name.setForeground(nameColor);
-        JLabel badge = new JLabel(badgeText(stage, isActive, lock));
+        String badgeString = badgeText(stage, isActive, lock);
+        JLabel badge = new JLabel(badgeString);
         badge.setFont(FontManager.getRunescapeSmallFont());
+        JLabel name = fittedLabel((isActive ? "▶ " : "") + stage.getDisplayName(),
+                badge.getFontMetrics(badge.getFont()).stringWidth(badgeString) + 8);
+        name.setForeground(nameColor);
         badge.setForeground(isActive ? ACTIVE : (unlocked ? MUTED : LOCKED));
         badge.setHorizontalAlignment(SwingConstants.RIGHT);
         titleRow.add(name, BorderLayout.WEST);
@@ -344,13 +470,17 @@ public class AIOFishingPanel extends PluginPanel {
         if (stage.isMembersOnly()) {
             meta.append("  ·  members");
         }
-        JLabel method = new JLabel(meta.toString());
-        method.setFont(FontManager.getRunescapeSmallFont());
+        // Reserve the icon's width so a long "method · members" string is truncated with a
+        // tooltip rather than being clipped mid-word by the panel edge.
+        JLabel method = fittedLabel(meta.toString(), FontManager.getRunescapeSmallFont(), 24);
+        method.setIcon(MethodIcons.of(stage.getMethod()));
+        method.setIconTextGap(4);
         method.setForeground(unlocked ? MUTED : LOCKED);
         card.add(method);
 
-        // Explain quest/skill gates rather than just greying the card out.
-        if (lock != null && stage.getRequirement().hasQuest()) {
+        // Explain unlock gates (quest or miniquest-chapter varbit) rather than just greying
+        // the card out - otherwise barbarian fishing shows as locked with no reason why.
+        if (lock != null && stage.getRequirement().hasUnlockGate()) {
             // ASCII only - the RuneScape pixel font has no glyph for symbols like key/lock.
             JLabel questRow = new JLabel("! " + lock);
             questRow.setFont(FontManager.getRunescapeSmallFont());
@@ -365,8 +495,9 @@ public class AIOFishingPanel extends PluginPanel {
             card.add(locationPickRow("Nearest", "auto", "".equals(pinnedLocation), ""));
         }
 
-        // Locations
-        for (FishingLocation location : stage.getLocations()) {
+        // Locations. Filtered by world type so a free-to-play account is never shown - or
+        // worse, allowed to pin - a members spot it could never walk to.
+        for (FishingLocation location : stage.availableLocations(membersWorld)) {
             if (pickable) {
                 card.add(locationPickRow(location.getName(),
                         location.hasNote() ? location.getNote() : "",
@@ -401,8 +532,8 @@ public class AIOFishingPanel extends PluginPanel {
             return autoProgress ? "ACTIVE" : "SELECTED";
         }
         if (lock != null) {
-            // Quest gates get their own row below, so keep the badge to the level.
-            return stage.getRequirement().hasQuest() ? "Lv " + stage.getMinLevel() : lock;
+            // Unlock gates get their own row below, so keep the badge to the level.
+            return stage.getRequirement().hasUnlockGate() ? "Lv " + stage.getMinLevel() : lock;
         }
         return autoProgress ? "Lv " + stage.getMinLevel() : "select";
     }
@@ -451,6 +582,157 @@ public class AIOFishingPanel extends PluginPanel {
             }
         }
         card.repaint();
+    }
+
+    /**
+     * The aerial page: a readiness line, then the catch table.
+     *
+     * <p>There is nothing to choose here - which fish the cormorant brings back is rolled
+     * from your Fishing and Hunter levels - so the page reports state rather than offering
+     * selections.</p>
+     */
+    private void buildAerialPage() {
+        aerialPage.removeAll();
+
+        boolean ready = aerialUnmet == null;
+        JPanel status = new JPanel(new DynamicGridLayout(0, 1, 0, 3));
+        status.setBackground(CARD_BG);
+        status.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 3, 0, 0, ready ? ACTIVE : ColorScheme.PROGRESS_ERROR_COLOR),
+                new EmptyBorder(7, 8, 7, 8)));
+
+        JLabel title = new JLabel(ready ? "Ready" : "Not ready");
+        title.setFont(FontManager.getRunescapeBoldFont());
+        title.setForeground(ready ? ACTIVE : ColorScheme.PROGRESS_ERROR_COLOR);
+        status.add(title);
+
+        JLabel detail = fittedLabel(ready ? "Lake Molch - cormorant fishing"
+                : "! " + aerialUnmet, FontManager.getRunescapeSmallFont(), 4);
+        detail.setForeground(ready ? MUTED : ColorScheme.PROGRESS_ERROR_COLOR);
+        status.add(detail);
+
+        JLabel levels = new JLabel("Fishing " + fishingLevel + "  ·  Hunter " + hunterLevel);
+        levels.setFont(FontManager.getRunescapeSmallFont());
+        levels.setForeground(MUTED);
+        status.add(levels);
+        aerialPage.add(status);
+
+        aerialPage.add(sectionLabel("CATCHES"));
+        JLabel hint = new JLabel("Rolled from Fishing + Hunter");
+        hint.setFont(FontManager.getRunescapeSmallFont());
+        hint.setForeground(MUTED);
+        hint.setBorder(new EmptyBorder(0, 2, 4, 0));
+        aerialPage.add(hint);
+
+        for (AerialCatch catchType : AerialCatch.values()) {
+            boolean unlocked = fishingLevel >= catchType.getFishingLevel()
+                    && hunterLevel >= catchType.getHunterLevel();
+            JPanel card = new JPanel(new BorderLayout());
+            card.setBackground(CARD_BG);
+            card.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createMatteBorder(0, 3, 0, 0, unlocked ? UNLOCKED : LOCKED),
+                    new EmptyBorder(6, 8, 6, 8)));
+
+            JLabel name = new JLabel(catchType.getDisplayName());
+            name.setFont(FontManager.getRunescapeBoldFont());
+            name.setForeground(unlocked ? Color.WHITE : LOCKED);
+
+            JLabel req = new JLabel(catchType.getFishingLevel() + " Fish / "
+                    + catchType.getHunterLevel() + " Hunt");
+            req.setFont(FontManager.getRunescapeSmallFont());
+            req.setForeground(unlocked ? MUTED : LOCKED);
+            req.setHorizontalAlignment(SwingConstants.RIGHT);
+
+            card.add(name, BorderLayout.WEST);
+            card.add(req, BorderLayout.EAST);
+            aerialPage.add(card);
+        }
+
+        JLabel note = new JLabel("Catch is knifed into offcuts, reused as bait.");
+        note.setFont(FontManager.getRunescapeSmallFont());
+        note.setForeground(LOCKED);
+        note.setBorder(new EmptyBorder(6, 2, 0, 0));
+        aerialPage.add(note);
+
+        aerialPage.revalidate();
+        aerialPage.repaint();
+    }
+
+    /**
+     * Rebuilds the method-icon key. Only shown in manual mode, where the full catalogue is
+     * listed and the icons are the quickest way to tell the methods apart; in auto mode the
+     * ladder is short and the extra row would just be noise.
+     */
+    private void buildLegend() {
+        legendRow.removeAll();
+        legendRow.setVisible(!autoProgress);
+        if (autoProgress) {
+            return;
+        }
+        for (FishingMethod method : FishingMethod.values()) {
+            boolean selected = method == methodFilter;
+            boolean dimmed = methodFilter != null && !selected;
+
+            JLabel cell = new JLabel(MethodIcons.of(method));
+            cell.setHorizontalAlignment(SwingConstants.CENTER);
+            cell.setToolTipText(selected
+                    ? method.getDisplayName() + " - click to clear filter"
+                    : "Show only " + method.getDisplayName());
+            cell.setCursor(new Cursor(Cursor.HAND_CURSOR));
+            cell.setOpaque(selected);
+            if (selected) {
+                cell.setBackground(CARD_HOVER_BG);
+                cell.setBorder(BorderFactory.createLineBorder(UNLOCKED));
+            } else {
+                cell.setBorder(BorderFactory.createEmptyBorder(1, 1, 1, 1));
+            }
+            // Unselected icons fade while a filter is active, so the chosen one stands out
+            // against ten near-identical shapes.
+            if (dimmed) {
+                cell.setIcon(MethodIcons.dimmed(method));
+            }
+            cell.addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseClicked(MouseEvent e) {
+                    setMethodFilter(selected ? null : method);
+                }
+            });
+            legendRow.add(cell);
+        }
+    }
+
+    /** Clicking a legend icon narrows the list; clicking the active one clears it. */
+    private void setMethodFilter(FishingMethod method) {
+        methodFilter = method;
+        rebuild();
+    }
+
+    /**
+     * A label that will not overrun a sibling in the same BorderLayout row.
+     *
+     * <p>BorderLayout gives WEST its full preferred width, so a long stage name used to draw
+     * straight over the EAST badge. Truncating to the space actually left over keeps any
+     * future name safe without having to police the data.</p>
+     */
+    private static JLabel fittedLabel(String text, int reservedForSibling) {
+        return fittedLabel(text, FontManager.getRunescapeBoldFont(), reservedForSibling);
+    }
+
+    private static JLabel fittedLabel(String text, Font font, int reservedForSibling) {
+        JLabel label = new JLabel(text);
+        label.setFont(font);
+        int available = PluginPanel.PANEL_WIDTH - 34 - reservedForSibling;
+        java.awt.FontMetrics fm = label.getFontMetrics(label.getFont());
+        if (fm.stringWidth(text) <= available) {
+            return label;
+        }
+        String truncated = text;
+        while (truncated.length() > 1 && fm.stringWidth(truncated + "..") > available) {
+            truncated = truncated.substring(0, truncated.length() - 1);
+        }
+        label.setText(truncated + "..");
+        label.setToolTipText(text);
+        return label;
     }
 
     /** Slim rounded progress bar showing how far through the current stage you are. */

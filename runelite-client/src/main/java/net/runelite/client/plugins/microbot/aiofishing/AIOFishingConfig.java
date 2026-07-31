@@ -6,9 +6,13 @@ import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.ConfigSection;
 import net.runelite.client.config.Range;
 import net.runelite.client.plugins.microbot.aiofishing.enums.AIOFishingDebugMode;
+import net.runelite.client.plugins.microbot.aiofishing.enums.FishStorage;
+import net.runelite.client.plugins.microbot.aiofishing.enums.RadasBlessing;
+import net.runelite.client.plugins.microbot.aiofishing.enums.FishingActivity;
 import net.runelite.client.plugins.microbot.aiofishing.enums.FishingStage;
 import net.runelite.client.plugins.microbot.aiofishing.enums.GeSellPricing;
 import net.runelite.client.plugins.microbot.aiofishing.enums.HarpoonType;
+import net.runelite.client.plugins.microbot.aiofishing.enums.WorldMode;
 
 @ConfigGroup("AIOFishing")
 public interface AIOFishingConfig extends Config {
@@ -44,9 +48,25 @@ public interface AIOFishingConfig extends Config {
     String GE_SECTION = "grandexchange";
 
     @ConfigSection(
+            name = "Equipment",
+            description = "Outfit, blessing and fish storage",
+            position = 4,
+            closedByDefault = true
+    )
+    String EQUIPMENT_SECTION = "equipment";
+
+    @ConfigSection(
+            name = "Aerial",
+            description = "Aerial fishing at Lake Molch",
+            position = 5,
+            closedByDefault = true
+    )
+    String AERIAL_SECTION = "aerial";
+
+    @ConfigSection(
             name = "Debug",
             description = "Force a workflow for live testing",
-            position = 4,
+            position = 6,
             closedByDefault = true
     )
     String DEBUG_SECTION = "debug";
@@ -55,6 +75,18 @@ public interface AIOFishingConfig extends Config {
 
     // Mode and fish selection live in the sidebar panel (fish icon in the toolbar), not
     // here - these stay declared so the values persist, but are hidden from the config UI.
+
+    @ConfigItem(
+            keyName = "activity",
+            name = "Activity",
+            description = "Which activity to run; chosen with the sidebar tabs",
+            position = 0,
+            section = PROGRESSION_SECTION,
+            hidden = true
+    )
+    default FishingActivity activity() {
+        return FishingActivity.PROGRESSION;
+    }
 
     @ConfigItem(
             keyName = "autoProgress",
@@ -93,14 +125,17 @@ public interface AIOFishingConfig extends Config {
     }
 
     @ConfigItem(
-            keyName = "membersWorld",
-            name = "Members world",
-            description = "Allow members-only stages (lobster, monkfish, shark...). Turn off on F2P",
+            keyName = "worldMode",
+            name = "World type",
+            description = "Which progression ladder to follow. Auto reads the world you are logged "
+                    + "into, so hopping between free and members worlds switches ladder by itself. "
+                    + "F2P runs Shrimp > Trout > Lobster > Swordfish; members run "
+                    + "Shrimp > Big Net > Lobster > Swordfish > Monkfish > Shark.",
             position = 2,
             section = PROGRESSION_SECTION
     )
-    default boolean membersWorld() {
-        return true;
+    default WorldMode worldMode() {
+        return WorldMode.AUTO;
     }
 
     @Range(min = 2, max = 99)
@@ -228,6 +263,20 @@ public interface AIOFishingConfig extends Config {
         return false;
     }
 
+    @ConfigItem(
+            keyName = "processCatch",
+            name = "Process the catch",
+            description = "Dissect sacred eels with a knife for Zulrah's scales (needs 72 Cooking) and "
+                    + "crack infernal eels with a hammer for tokkul. Both produce stackable output, so "
+                    + "processing a full inventory frees the slots without a bank trip. "
+                    + "Turn this off to bank the eels whole.",
+            position = 5,
+            section = INVENTORY_SECTION
+    )
+    default boolean processCatch() {
+        return true;
+    }
+
     // ---- Grand Exchange ----
 
     @ConfigItem(
@@ -316,5 +365,82 @@ public interface AIOFishingConfig extends Config {
     )
     default AIOFishingDebugMode debugMode() {
         return AIOFishingDebugMode.AUTOMATIC;
+    }
+
+    // ---- Equipment ----
+
+    @ConfigItem(
+            keyName = "equipAnglerOutfit",
+            name = "Wear Angler's outfit",
+            description = "Withdraw and wear any Angler's outfit pieces you own (2.5% Fishing xp "
+                    + "for the full set). Spirit angler pieces count. Missing pieces are skipped.",
+            position = 0,
+            section = EQUIPMENT_SECTION
+    )
+    default boolean equipAnglerOutfit() {
+        return false;
+    }
+
+    @ConfigItem(
+            keyName = "radasBlessing",
+            name = "Rada's blessing",
+            description = "Wear this Rada's blessing for a chance at an extra fish "
+                    + "(2/4/6/8% by tier). Ammo slot, so it never clashes with your gear.",
+            position = 1,
+            section = EQUIPMENT_SECTION
+    )
+    default RadasBlessing radasBlessing() {
+        return RadasBlessing.NONE;
+    }
+
+    @ConfigItem(
+            keyName = "fishStorage",
+            name = "Fish storage",
+            description = "Carry a barrel to hold 28 extra fish, roughly doubling trip length. "
+                    + "Emptied at the bank alongside the catch.",
+            position = 2,
+            section = EQUIPMENT_SECTION
+    )
+    default FishStorage fishStorage() {
+        return FishStorage.NONE;
+    }
+
+    @ConfigItem(
+            keyName = "useTackleBox",
+            name = "Use tackle box",
+            description = "Treat fishing tools stored in a tackle box as available, so the "
+                    + "script does not try to withdraw duplicates.",
+            position = 3,
+            section = EQUIPMENT_SECTION
+    )
+    default boolean useTackleBox() {
+        return false;
+    }
+
+    @ConfigItem(
+            keyName = "bareHandedFishing",
+            name = "Bare-handed fishing",
+            description = "If Otto has taught it (55 Fishing / 35 Strength), catch harpoon fish "
+                    + "by hand - no harpoon needed at all.",
+            position = 4,
+            section = EQUIPMENT_SECTION
+    )
+    default boolean bareHandedFishing() {
+        return false;
+    }
+
+    // ---- Aerial ----
+
+    @Range(min = 1, max = 28)
+    @ConfigItem(
+            keyName = "wormsToPickUp",
+            name = "Worms to pick up",
+            description = "How many king worms to gather off the ground to start the bait cycle. "
+                    + "Only needed once - after the first catch the knifed offcuts are the bait.",
+            position = 0,
+            section = AERIAL_SECTION
+    )
+    default int wormsToPickUp() {
+        return 5;
     }
 }

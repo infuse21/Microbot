@@ -5,12 +5,14 @@ import net.runelite.api.Quest;
 import net.runelite.api.QuestState;
 import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.gameval.VarbitID;
 import net.runelite.client.game.FishingSpot;
 
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
+import java.util.function.IntUnaryOperator;
 import java.util.function.ToIntBiFunction;
 
 /**
@@ -27,13 +29,22 @@ import java.util.function.ToIntBiFunction;
  * travelling, so a locked stage never causes the bot to walk to an area it can't fish -
  * auto progression skips it, and manual mode refuses to start.
  *
- * <p>Free-to-play stages deliberately list only free-to-play locations, so that
- * {@link #getClosestLocation} can never send an F2P account to a members area.</p>
+ * <h2>World awareness</h2>
+ * Two things vary by world type and are held as separate data on purpose:
+ * <ul>
+ *   <li>{@link #membersOnly} - whether the fish can be caught at all. Hard gate.</li>
+ *   <li>{@link AutoLadder} - which auto ladder the stage sits on, so free and members
+ *       accounts follow genuinely different routes rather than one list with holes in it.</li>
+ * </ul>
+ * Locations carry their own {@link FishingLocation#isMembersOnly()} flag, because several
+ * stages are catchable on both world types from different places - lobsters and swordfish
+ * are free-to-play at Musa Point and members-only everywhere else. {@link #getClosestLocation}
+ * filters on it, so an F2P account can never be routed into a members area.
  */
 @Getter
 public enum FishingStage {
 
-    SHRIMP("Shrimp / Anchovies", 1, FishingMethod.NET, FishingSpot.SHRIMP, false, true,
+    SHRIMP("Shrimp / Anchovies", 1, FishingMethod.NET, FishingSpot.SHRIMP, false, AutoLadder.BOTH,
             StageRequirement.NONE,
             new FishingLocation[]{
                     FishingLocation.of("Draynor Village", 3084, 3228, "bank north"),
@@ -44,7 +55,7 @@ public enum FishingStage {
             },
             "Raw shrimps", "Shrimps", "Burnt shrimp", "Raw anchovies", "Anchovies", "Burnt fish"),
 
-    SARDINE_HERRING("Sardine / Herring", 5, FishingMethod.BAIT, FishingSpot.SHRIMP, false, false,
+    SARDINE_HERRING("Sardine / Herring", 5, FishingMethod.BAIT, FishingSpot.SHRIMP, false, AutoLadder.NONE,
             StageRequirement.NONE,
             new FishingLocation[]{
                     FishingLocation.of("Draynor Village", 3084, 3228, "bank north"),
@@ -54,18 +65,33 @@ public enum FishingStage {
             },
             "Raw sardine", "Sardine", "Raw herring", "Herring", "Burnt fish"),
 
+    /**
+     * Karambwanji from the Holy Lake south of Tai Bwo Wannai. The XP is poor, but this is
+     * the <em>only</em> way to obtain karambwan bait: raw karambwanji are untradeable, so
+     * neither a shop trip nor the GE fallback can supply {@link #KARAMBWAN} without it.
+     *
+     * <p>They stack, so the inventory never fills and no banking trip is ever triggered -
+     * the run ends on the configured target level.</p>
+     */
+    KARAMBWANJI("Karambwanji", 5, FishingMethod.NET, FishingSpot.KARAMBWANJI, true, AutoLadder.NONE,
+            StageRequirement.NONE,
+            new FishingLocation[]{
+                    FishingLocation.of("Holy Lake", 2806, 3014, "fairy ring CKR"),
+            },
+            "Raw karambwanji"),
+
     // Big-net spots are the same NPCs as the shark spots - they offer "Big Net" alongside
     // "Harpoon". The Fishing Guild is deliberately NOT listed here: it needs 68 Fishing and
     // this stage unlocks at 16, so nearest-location picking must never route there.
-    BIG_NET("Big net: Mackerel / Cod / Bass", 16, FishingMethod.BIG_NET, FishingSpot.SHARK, true, true,
+    BIG_NET("Mackerel / Cod / Bass", 16, FishingMethod.BIG_NET, FishingSpot.SHARK, true, AutoLadder.P2P,
             StageRequirement.NONE,
             new FishingLocation[]{
-                    FishingLocation.of("Catherby", 2853, 3423, "bank west"),
-                    FishingLocation.of("Rellekka", 2649, 3708),
+                    FishingLocation.members("Catherby", 2853, 3423, "bank west"),
+                    FishingLocation.members("Rellekka", 2649, 3708),
             },
             "Raw mackerel", "Mackerel", "Raw cod", "Cod", "Raw bass", "Bass", "Burnt fish"),
 
-    TROUT_SALMON("Trout / Salmon", 20, FishingMethod.LURE, FishingSpot.SALMON, false, true,
+    TROUT_SALMON("Trout / Salmon", 20, FishingMethod.LURE, FishingSpot.SALMON, false, AutoLadder.F2P,
             StageRequirement.NONE,
             new FishingLocation[]{
                     FishingLocation.of("Barbarian Village", 3103, 3424),
@@ -73,7 +99,7 @@ public enum FishingStage {
             },
             "Raw trout", "Trout", "Raw salmon", "Salmon", "Burnt fish"),
 
-    PIKE("Pike", 25, FishingMethod.BAIT, FishingSpot.SALMON, false, false,
+    PIKE("Pike", 25, FishingMethod.BAIT, FishingSpot.SALMON, false, AutoLadder.NONE,
             StageRequirement.NONE,
             new FishingLocation[]{
                     FishingLocation.of("Barbarian Village", 3103, 3424),
@@ -81,7 +107,7 @@ public enum FishingStage {
             },
             "Raw pike", "Pike", "Burnt fish"),
 
-    SLIMY_EEL("Slimy eel", 28, FishingMethod.BAIT, FishingSpot.SLIMY_EEL, true, false,
+    SLIMY_EEL("Slimy eel", 28, FishingMethod.BAIT, FishingSpot.SLIMY_EEL, true, AutoLadder.NONE,
             StageRequirement.quest(Quest.NATURE_SPIRIT), // Mort Myre access
             new FishingLocation[]{
                     FishingLocation.of("Mort'ton", 3439, 3273),
@@ -89,16 +115,18 @@ public enum FishingStage {
             },
             "Slimy eel", "Burnt eel"),
 
-    TUNA("Tuna", 35, FishingMethod.HARPOON, FishingSpot.LOBSTER, true, false,
+    // Free-to-play from Musa Point on Karamja - the Catherby and Piscarilius spots are the
+    // members-only alternatives, which is why this stage is world-mixed rather than P2P.
+    TUNA("Tuna", 35, FishingMethod.HARPOON, FishingSpot.LOBSTER, false, AutoLadder.NONE,
             StageRequirement.NONE,
             new FishingLocation[]{
-                    FishingLocation.of("Catherby", 2844, 3429, "bank west"),
+                    FishingLocation.members("Catherby", 2844, 3429, "bank west"),
                     FishingLocation.of("Musa Point", 2925, 3179, "bank close"),
-                    FishingLocation.of("Port Piscarilius", 1762, 3796, "bank close"),
+                    FishingLocation.members("Port Piscarilius", 1762, 3796, "bank close"),
             },
             "Raw tuna", "Tuna", "Burnt fish"),
 
-    CAVE_EEL("Cave eel", 38, FishingMethod.BAIT, FishingSpot.CAVE_EEL, true, false,
+    CAVE_EEL("Cave eel", 38, FishingMethod.BAIT, FishingSpot.CAVE_EEL, true, AutoLadder.NONE,
             StageRequirement.NONE,
             new FishingLocation[]{
                     FishingLocation.of("Lumbridge caves E", 3244, 9570, "light source"),
@@ -106,27 +134,73 @@ public enum FishingStage {
             },
             "Raw cave eel", "Cave eel", "Burnt eel"),
 
-    LOBSTER("Lobster", 40, FishingMethod.CAGE, FishingSpot.LOBSTER, true, true,
+    /**
+     * Rainbow fish. These share the ordinary river lure spots with trout and salmon - the
+     * bait is what decides the catch, so no special location is involved.
+     *
+     * <p>Shilo Village is the other well-known spot but is deliberately left out: it sits
+     * behind the Shilo Village quest, and {@link FishingLocation} carries no unlock flag, so
+     * listing it would let nearest-location picking route an unqualified account there.
+     * Barbarian Village and the Lumbridge river need nothing.</p>
+     */
+    RAINBOW_FISH("Rainbow fish", 38, FishingMethod.LURE_STRIPY, FishingSpot.SALMON, true, AutoLadder.NONE,
             StageRequirement.NONE,
             new FishingLocation[]{
-                    FishingLocation.of("Catherby", 2844, 3429, "bank west"),
+                    FishingLocation.of("Barbarian Village", 3103, 3424, "stripy feathers"),
+                    FishingLocation.of("Lumbridge river", 3238, 3241, "stripy feathers"),
+            },
+            "Raw rainbow fish", "Rainbow fish", "Burnt fish"),
+
+    /**
+     * Lobsters are on <em>both</em> ladders. Musa Point on Karamja is free-to-play, which is
+     * what carries an F2P account from trout at 20 all the way to swordfish at 50; Catherby,
+     * Piscarilius and Rellekka are the members alternatives.
+     */
+    LOBSTER("Lobster", 40, FishingMethod.CAGE, FishingSpot.LOBSTER, false, AutoLadder.BOTH,
+            StageRequirement.NONE,
+            new FishingLocation[]{
+                    FishingLocation.members("Catherby", 2844, 3429, "bank west"),
                     FishingLocation.of("Musa Point", 2925, 3179, "bank close"),
-                    FishingLocation.of("Port Piscarilius", 1762, 3796, "bank close"),
-                    FishingLocation.of("Rellekka", 2641, 3696),
+                    FishingLocation.members("Port Piscarilius", 1762, 3796, "bank close"),
+                    FishingLocation.members("Rellekka", 2641, 3696),
             },
             "Raw lobster", "Lobster", "Burnt lobster"),
 
-    SWORDFISH("Swordfish / Tuna", 50, FishingMethod.HARPOON, FishingSpot.LOBSTER, true, true,
+    /**
+     * Barbarian fishing (Barbarian Training miniquest). One spot yields progressively better
+     * fish as levels rise - leaping trout at 48/15/15, salmon at 58/30/30, sturgeon at
+     * 70/45/45 - so this is modelled as a single stage gated on the lowest set.
+     *
+     * <p>Gated on the chapter varbit rather than the miniquest's {@link QuestState}: Otto has
+     * to have taught the rod technique specifically, and completing an unrelated chapter
+     * (e.g. firemaking) would otherwise make the miniquest look started while fishing is
+     * still locked.</p>
+     *
+     * <p>Manual-only: it needs an unlock the plugin can't perform, and there is no bank
+     * beside either location, so it suits power-fishing (Drop) rather than the auto ladder.</p>
+     */
+    BARBARIAN_FISH("Leaping fish", 48, FishingMethod.BARBARIAN_ROD,
+            FishingSpot.BARB_FISH, true, AutoLadder.NONE,
+            StageRequirement.varbitAndSkills(VarbitID.BRUT_FISHING_R, 1,
+                    "Learn barb fishing from Otto", Skill.AGILITY, 15, Skill.STRENGTH, 15),
+            new FishingLocation[]{
+                    FishingLocation.of("Otto's Grotto", 2500, 3510, "no bank"),
+                    FishingLocation.of("Mount Quidamortem", 1265, 3541, "no bank"),
+            },
+            "Leaping trout", "Leaping salmon", "Leaping sturgeon"),
+
+    /** Free-to-play from Musa Point, and the top of the F2P ladder - nothing above it. */
+    SWORDFISH("Swordfish / Tuna", 50, FishingMethod.HARPOON, FishingSpot.LOBSTER, false, AutoLadder.BOTH,
             StageRequirement.NONE,
             new FishingLocation[]{
-                    FishingLocation.of("Catherby", 2844, 3429, "bank west"),
+                    FishingLocation.members("Catherby", 2844, 3429, "bank west"),
                     FishingLocation.of("Musa Point", 2925, 3179, "bank close"),
-                    FishingLocation.of("Port Piscarilius", 1762, 3796, "bank close"),
-                    FishingLocation.of("Rellekka", 2641, 3696),
+                    FishingLocation.members("Port Piscarilius", 1762, 3796, "bank close"),
+                    FishingLocation.members("Rellekka", 2641, 3696),
             },
             "Raw swordfish", "Swordfish", "Burnt swordfish", "Raw tuna", "Tuna", "Burnt fish"),
 
-    LAVA_EEL("Lava eel", 53, FishingMethod.OILY_ROD, FishingSpot.LAVA_EEL, true, false,
+    LAVA_EEL("Lava eel", 53, FishingMethod.OILY_ROD, FishingSpot.LAVA_EEL, true, AutoLadder.NONE,
             StageRequirement.questStarted(Quest.HEROES_QUEST),
             new FishingLocation[]{
                     FishingLocation.of("Taverley Dungeon", 2893, 9764),
@@ -134,64 +208,110 @@ public enum FishingStage {
             },
             "Lava eel", "Burnt fish"),
 
-    MONKFISH("Monkfish", 62, FishingMethod.NET, FishingSpot.MONKFISH, true, true,
+    MONKFISH("Monkfish", 62, FishingMethod.NET, FishingSpot.MONKFISH, true, AutoLadder.P2P,
             StageRequirement.questStarted(Quest.SWAN_SONG),
             new FishingLocation[]{
-                    FishingLocation.of("Piscatoris", 2310, 3696, "bank close"),
+                    FishingLocation.members("Piscatoris", 2310, 3696, "bank close"),
             },
             "Raw monkfish", "Monkfish", "Burnt monkfish"),
 
-    KARAMBWAN("Karambwan", 65, FishingMethod.KARAMBWAN_VESSEL, FishingSpot.KARAMBWAN, true, false,
+    KARAMBWAN("Karambwan", 65, FishingMethod.KARAMBWAN_VESSEL, FishingSpot.KARAMBWAN, true, AutoLadder.NONE,
             StageRequirement.quest(Quest.TAI_BWO_WANNAI_TRIO),
             new FishingLocation[]{
                     FishingLocation.of("Brimhaven", 2898, 3119, "fairy ring DKP"),
             },
             "Raw karambwan", "Cooked karambwan", "Burnt karambwan"),
 
-    SHARK("Shark", 76, FishingMethod.HARPOON, FishingSpot.SHARK, true, true,
+    SHARK("Shark", 76, FishingMethod.HARPOON, FishingSpot.SHARK, true, AutoLadder.P2P,
             StageRequirement.NONE,
             new FishingLocation[]{
-                    FishingLocation.of("Fishing Guild", 2605, 3417, "68 Fishing"),
-                    FishingLocation.of("Catherby", 2853, 3423),
-                    FishingLocation.of("Rellekka", 2649, 3708),
+                    FishingLocation.members("Fishing Guild", 2605, 3417, "68 Fishing"),
+                    FishingLocation.members("Catherby", 2853, 3423),
+                    FishingLocation.members("Rellekka", 2649, 3708),
             },
             "Raw shark", "Shark", "Burnt shark"),
 
-    ANGLERFISH("Anglerfish", 82, FishingMethod.SANDWORMS, FishingSpot.ANGLERFISH, true, false,
+    /**
+     * Infernal eels in Mor Ul Rek. Access needs a fire cape shown to the TzHaar guard and
+     * the eels burn bare hands, so both the cape and ice gloves are demanded as tools by
+     * {@link FishingMethod#OILY_ROD_ICE} - gearing refuses at the bank with a named reason
+     * rather than walking to a city we cannot enter.
+     *
+     * <p>The catch is worthless until cracked with a hammer, which {@link CatchProcessing}
+     * handles; the output stacks, so a full inventory clears itself without banking.</p>
+     */
+    INFERNAL_EEL("Infernal eel", 80, FishingMethod.OILY_ROD_ICE, FishingSpot.INFERNAL_EEL,
+            true, AutoLadder.NONE, StageRequirement.NONE, CatchProcessing.CRACK,
+            new FishingLocation[]{
+                    FishingLocation.of("Mor Ul Rek W", 2443, 5104, "fire cape"),
+                    FishingLocation.of("Mor Ul Rek S", 2476, 5077, "fire cape"),
+                    FishingLocation.of("Mor Ul Rek E", 2537, 5086, "fire cape"),
+            },
+            "Infernal eel"),
+
+    ANGLERFISH("Anglerfish", 82, FishingMethod.SANDWORMS, FishingSpot.ANGLERFISH, true, AutoLadder.NONE,
             StageRequirement.NONE,
             new FishingLocation[]{
                     FishingLocation.of("Port Piscarilius", 1831, 3773, "bank close"),
             },
             "Raw anglerfish", "Anglerfish", "Burnt anglerfish"),
 
-    DARK_CRAB("Dark crab", 85, FishingMethod.DARK_CRAB_CAGE, FishingSpot.DARK_CRAB, true, false,
+    DARK_CRAB("Dark crab", 85, FishingMethod.DARK_CRAB_CAGE, FishingSpot.DARK_CRAB, true, AutoLadder.NONE,
             StageRequirement.NONE,
             new FishingLocation[]{
                     FishingLocation.of("Resource Area", 3186, 3925, "wilderness"),
             },
-            "Raw dark crab", "Dark crab", "Burnt dark crab");
+            "Raw dark crab", "Dark crab", "Burnt dark crab"),
+
+    /**
+     * Sacred eels at Zul-Andra. Regicide is required to reach Tirannwn at all, and the
+     * High Priestess has to be spoken to once before the worshippers allow fishing - the
+     * plugin cannot do that itself, so it is called out in the location note.
+     *
+     * <p>Dissecting with a knife yields Zulrah's scales but needs 72 Cooking. That gate sits
+     * on {@link CatchProcessing#DISSECT} rather than on this stage, so a lower-Cooking
+     * account still fishes them and banks them whole instead of being refused outright.</p>
+     */
+    SACRED_EEL("Sacred eel", 87, FishingMethod.BAIT, FishingSpot.SACRED_EEL, true, AutoLadder.NONE,
+            StageRequirement.quest(Quest.REGICIDE), CatchProcessing.DISSECT,
+            new FishingLocation[]{
+                    FishingLocation.of("Zul-Andra W", 2183, 3068, "talk to priestess first"),
+                    FishingLocation.of("Zul-Andra E", 2195, 3067, "talk to priestess first"),
+            },
+            "Sacred eel");
 
     private final String displayName;
     private final int minLevel;
     private final FishingMethod method;
     private final FishingSpot spot;
     private final boolean membersOnly;
-    /** Whether auto progression considers this stage. Kept small to avoid churn. */
-    private final boolean inAutoLadder;
+    /** Which auto-progression ladder this belongs to. Kept small to avoid churn. */
+    private final AutoLadder ladder;
     private final StageRequirement requirement;
+    /** In-inventory step the catch needs before it is worth anything. Never null. */
+    private final CatchProcessing processing;
     private final List<FishingLocation> locations;
     private final List<String> catchItemNames;
 
     FishingStage(String displayName, int minLevel, FishingMethod method, FishingSpot spot,
-                 boolean membersOnly, boolean inAutoLadder, StageRequirement requirement,
+                 boolean membersOnly, AutoLadder ladder, StageRequirement requirement,
                  FishingLocation[] locations, String... catchItemNames) {
+        this(displayName, minLevel, method, spot, membersOnly, ladder, requirement,
+                CatchProcessing.NONE, locations, catchItemNames);
+    }
+
+    FishingStage(String displayName, int minLevel, FishingMethod method, FishingSpot spot,
+                 boolean membersOnly, AutoLadder ladder, StageRequirement requirement,
+                 CatchProcessing processing, FishingLocation[] locations,
+                 String... catchItemNames) {
         this.displayName = displayName;
         this.minLevel = minLevel;
         this.method = method;
         this.spot = spot;
         this.membersOnly = membersOnly;
-        this.inAutoLadder = inAutoLadder;
+        this.ladder = ladder;
         this.requirement = requirement;
+        this.processing = processing;
         this.locations = Collections.unmodifiableList(Arrays.asList(locations));
         this.catchItemNames = Arrays.asList(catchItemNames);
     }
@@ -200,9 +320,38 @@ public enum FishingStage {
         return spot.getIds();
     }
 
+    /**
+     * Locations reachable on this world type.
+     *
+     * <p>Several stages are catchable on both - lobsters and swordfish are free-to-play at
+     * Musa Point but members-only at Catherby, Piscarilius and Rellekka. Filtering here is
+     * what stops nearest-location picking from routing a free account into a members area.</p>
+     *
+     * <p>If filtering leaves nothing the full list is returned rather than an empty one, so
+     * a caller always gets somewhere to aim at; the stage's own {@code membersOnly} gate is
+     * what refuses the trip in that case.</p>
+     */
+    public List<FishingLocation> availableLocations(boolean membersWorld) {
+        if (membersWorld) {
+            return locations;
+        }
+        List<FishingLocation> free = new java.util.ArrayList<>();
+        for (FishingLocation location : locations) {
+            if (!location.isMembersOnly()) {
+                free.add(location);
+            }
+        }
+        return free.isEmpty() ? locations : free;
+    }
+
     /** Primary (first-listed) location, used as a fallback when the player position is unknown. */
     public FishingLocation getDefaultLocation() {
         return locations.get(0);
+    }
+
+    /** Primary location reachable on this world type. */
+    public FishingLocation getDefaultLocation(boolean membersWorld) {
+        return availableLocations(membersWorld).get(0);
     }
 
     /** Look up one of this stage's locations by name, or null if it has no such location. */
@@ -233,15 +382,22 @@ public enum FishingStage {
      * @param pathTiles measures travel tiles between two points; may return Integer.MAX_VALUE
      */
     public FishingLocation getFastestLocation(WorldPoint from, ToIntBiFunction<WorldPoint, WorldPoint> pathTiles) {
-        if (locations.size() == 1) {
-            return getDefaultLocation();
+        return getFastestLocation(from, pathTiles, true);
+    }
+
+    public FishingLocation getFastestLocation(WorldPoint from,
+                                              ToIntBiFunction<WorldPoint, WorldPoint> pathTiles,
+                                              boolean membersWorld) {
+        List<FishingLocation> usable = availableLocations(membersWorld);
+        if (usable.size() == 1) {
+            return usable.get(0);
         }
         if (from == null || pathTiles == null) {
-            return getClosestLocation(from);
+            return getClosestLocation(from, membersWorld);
         }
         FishingLocation best = null;
         int bestTiles = Integer.MAX_VALUE;
-        for (FishingLocation candidate : locations) {
+        for (FishingLocation candidate : usable) {
             int tiles = pathTiles.applyAsInt(from, candidate.getPoint());
             if (tiles < bestTiles) {
                 bestTiles = tiles;
@@ -249,7 +405,7 @@ public enum FishingStage {
             }
         }
         // Everything unreachable (or pathfinder unavailable) -> fall back to straight line.
-        return best == null ? getClosestLocation(from) : best;
+        return best == null ? getClosestLocation(from, membersWorld) : best;
     }
 
     /**
@@ -257,12 +413,16 @@ public enum FishingStage {
      * anywhere a path-aware measure would be too expensive (e.g. overlay rendering).
      */
     public FishingLocation getClosestLocation(WorldPoint from) {
+        return getClosestLocation(from, true);
+    }
+
+    public FishingLocation getClosestLocation(WorldPoint from, boolean membersWorld) {
         if (from == null) {
-            return getDefaultLocation();
+            return getDefaultLocation(membersWorld);
         }
-        FishingLocation closest = getDefaultLocation();
+        FishingLocation closest = getDefaultLocation(membersWorld);
         int best = Integer.MAX_VALUE;
-        for (FishingLocation candidate : locations) {
+        for (FishingLocation candidate : availableLocations(membersWorld)) {
             // distanceTo returns MAX_VALUE across planes/regions; guard keeps the default.
             int distance = from.distanceTo(candidate.getPoint());
             if (distance < best) {
@@ -280,37 +440,56 @@ public enum FishingStage {
     public String lockReason(int fishingLevel, boolean membersWorld,
                              Function<Quest, QuestState> questStates,
                              Function<Skill, Integer> skillLevels) {
+        return lockReason(fishingLevel, membersWorld, questStates, skillLevels, null);
+    }
+
+    /**
+     * @param varbitValues resolves a varbit id to its value, for stages gated on a miniquest
+     *                     chapter varbit. Null means "cannot read", which locks such stages
+     *                     so we fail safe rather than travelling to an area we can't use.
+     */
+    public String lockReason(int fishingLevel, boolean membersWorld,
+                             Function<Quest, QuestState> questStates,
+                             Function<Skill, Integer> skillLevels,
+                             IntUnaryOperator varbitValues) {
         if (membersOnly && !membersWorld) {
             return "P2P only";
         }
         if (fishingLevel < minLevel) {
             return "Lv " + minLevel;
         }
-        return requirement.unmetReason(questStates, skillLevels);
+        return requirement.unmetReason(questStates, skillLevels, varbitValues);
     }
 
     public boolean isAvailable(int fishingLevel, boolean membersWorld,
                                Function<Quest, QuestState> questStates,
                                Function<Skill, Integer> skillLevels) {
-        return lockReason(fishingLevel, membersWorld, questStates, skillLevels) == null;
+        return isAvailable(fishingLevel, membersWorld, questStates, skillLevels, null);
+    }
+
+    public boolean isAvailable(int fishingLevel, boolean membersWorld,
+                               Function<Quest, QuestState> questStates,
+                               Function<Skill, Integer> skillLevels,
+                               IntUnaryOperator varbitValues) {
+        return lockReason(fishingLevel, membersWorld, questStates, skillLevels, varbitValues) == null;
     }
 
     /**
      * Whether this stage belongs to the progression ladder for the current world type.
      *
-     * <p>Members use Big Net from 16 until Lobster at 40. Switching to Trout at 20 would
-     * require another tool and cross-map trip after only four levels, then send the player
-     * back to the coast at 40. F2P cannot use Big Net, so Trout remains its long-running
-     * alternative.</p>
+     * <p>The two ladders are:</p>
+     * <pre>
+     * P2P: Shrimp 1 -&gt; Big Net 16 -&gt; Lobster 40 -&gt; Swordfish 50 -&gt; Monkfish 62 -&gt; Shark 76
+     * F2P: Shrimp 1 -&gt; Trout 20   -&gt; Lobster 40 -&gt; Swordfish 50 (top)
+     * </pre>
+     *
+     * <p>Members use Big Net from 16 until Lobster at 40. Switching to Trout at 20 would mean
+     * another tool and a cross-map trip for four levels, then back to the coast at 40. F2P
+     * cannot use Big Net at all, so Trout is its long-running alternative - and from 40 both
+     * ladders converge on the Karamja cage and harpoon spots, which are free-to-play.</p>
      */
     public boolean isAutoStage(boolean membersWorld) {
-        if (this == BIG_NET) {
-            return membersWorld;
-        }
-        if (this == TROUT_SALMON) {
-            return !membersWorld;
-        }
-        return inAutoLadder;
+        return ladder.appliesTo(membersWorld);
     }
 
     /**
@@ -320,12 +499,19 @@ public enum FishingStage {
     public static FishingStage bestFor(int fishingLevel, boolean membersWorld,
                                        Function<Quest, QuestState> questStates,
                                        Function<Skill, Integer> skillLevels) {
+        return bestFor(fishingLevel, membersWorld, questStates, skillLevels, null);
+    }
+
+    public static FishingStage bestFor(int fishingLevel, boolean membersWorld,
+                                       Function<Quest, QuestState> questStates,
+                                       Function<Skill, Integer> skillLevels,
+                                       IntUnaryOperator varbitValues) {
         FishingStage best = SHRIMP;
         for (FishingStage stage : values()) {
             if (!stage.isAutoStage(membersWorld) || stage.minLevel < best.minLevel) {
                 continue;
             }
-            if (stage.isAvailable(fishingLevel, membersWorld, questStates, skillLevels)) {
+            if (stage.isAvailable(fishingLevel, membersWorld, questStates, skillLevels, varbitValues)) {
                 best = stage;
             }
         }

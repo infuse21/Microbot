@@ -3,11 +3,13 @@ package net.runelite.client.plugins.microbot.aiofishing;
 import com.google.inject.Provides;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.Client;
 import net.runelite.api.Item;
 import net.runelite.api.ItemContainer;
 import net.runelite.api.Quest;
 import net.runelite.api.QuestState;
 import net.runelite.api.Skill;
+import net.runelite.api.WorldType;
 import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.api.events.StatChanged;
 import net.runelite.api.gameval.InventoryID;
@@ -21,6 +23,7 @@ import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.aiofishing.enums.FishingStage;
+import net.runelite.client.plugins.microbot.aiofishing.enums.WorldMode;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
@@ -35,6 +38,7 @@ import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.util.Collections;
 import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Locale;
@@ -42,11 +46,14 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BooleanSupplier;
 import java.util.function.Function;
+import java.util.function.IntUnaryOperator;
 import java.util.stream.Collectors;
 
 @PluginDescriptor(
         name = PluginDescriptor.Default + "AIO Fishing",
+        enabledByDefault = false,
         description = "All-in-one fishing with automatic level progression, banking and dropping",
         tags = {"fishing", "skilling", "aio", "progression"},
         authors = {"Infuse"},
@@ -57,7 +64,7 @@ import java.util.stream.Collectors;
 )
 @Slf4j
 public class AIOFishingPlugin extends Plugin {
-    public static final String version = "1.0.18";
+    public static final String version = "1.4.0";
 
     @Inject
     @Getter
@@ -216,6 +223,27 @@ public class AIOFishingPlugin extends Plugin {
         startTime = System.currentTimeMillis();
     }
 
+    /**
+     * Reads the world we are actually logged into, for {@link WorldMode#AUTO}.
+     *
+     * <p>The world type is a plain flag set on login, so this stays correct across a hop
+     * without any subscription - which is the whole point of preferring it to a tickbox the
+     * user has to remember to flip.</p>
+     */
+    public static final BooleanSupplier MEMBER_WORLD = () -> {
+        Client client = Microbot.getClient();
+        if (client == null) {
+            return false;
+        }
+        EnumSet<WorldType> types = client.getWorldType();
+        return types != null && types.contains(WorldType.MEMBERS);
+    };
+
+    /** The configured ladder resolved to a plain members/free answer. */
+    public static boolean isMembersWorld(AIOFishingConfig config) {
+        return config.worldMode().isMembersWorld(MEMBER_WORLD);
+    }
+
     /** Live quest lookup, shared by the script and UI. Cached by Rs2PlayerStateCache. */
     public static final Function<Quest, QuestState> QUEST_STATES = quest -> {
         try {
@@ -234,10 +262,23 @@ public class AIOFishingPlugin extends Plugin {
         }
     };
 
+    /**
+     * Live varbit lookup for stages gated on a miniquest chapter (barbarian fishing).
+     * Cache-backed via Rs2PlayerStateCache, so it is safe off the client thread.
+     */
+    public static final IntUnaryOperator VARBIT_VALUES = varbitId -> {
+        try {
+            return Microbot.getVarbitValue(varbitId);
+        } catch (Exception e) {
+            return -1; // unreadable -> treated as locked, the safe direction
+        }
+    };
+
     /** The stage the overlay/sidebar should display, whether or not the script is running. */
     public FishingStage resolveDisplayStage(int fishingLevel) {
         return config.autoProgress()
-                ? FishingStage.bestFor(fishingLevel, config.membersWorld(), QUEST_STATES, SKILL_LEVELS)
+                ? FishingStage.bestFor(fishingLevel, isMembersWorld(config),
+                        QUEST_STATES, SKILL_LEVELS, VARBIT_VALUES)
                 : config.manualStage();
     }
 
@@ -245,8 +286,8 @@ public class AIOFishingPlugin extends Plugin {
     private Map<FishingStage, String> lockReasons(int fishingLevel) {
         Map<FishingStage, String> reasons = new EnumMap<>(FishingStage.class);
         for (FishingStage stage : FishingStage.values()) {
-            String reason = stage.lockReason(fishingLevel, config.membersWorld(),
-                    QUEST_STATES, SKILL_LEVELS);
+            String reason = stage.lockReason(fishingLevel, isMembersWorld(config),
+                    QUEST_STATES, SKILL_LEVELS, VARBIT_VALUES);
             if (reason != null) {
                 reasons.put(stage, reason);
             }
@@ -303,8 +344,10 @@ public class AIOFishingPlugin extends Plugin {
             return;
         }
         int level = Rs2Player.getRealSkillLevel(Skill.FISHING);
-        panel.update(level, resolveDisplayStage(level), config.membersWorld(),
-                config.autoProgress(), lockReasons(level), config.manualLocation());
+        panel.update(level, resolveDisplayStage(level), isMembersWorld(config),
+                config.autoProgress(), lockReasons(level), config.manualLocation(),
+                config.activity(), Rs2Player.getRealSkillLevel(Skill.HUNTER),
+                AerialFishing.unmetReason(SKILL_LEVELS));
     }
 
     // -------------------------------------------------------------------- stats

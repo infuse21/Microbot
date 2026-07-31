@@ -396,7 +396,8 @@ public class AIOFishingOverlay extends Overlay {
             // straight-line pick; never pathfind here, this runs on the client thread.
             FishingLocation chosen = plugin.getScript().getDisplayLocation();
             if (chosen == null) {
-                chosen = stage.getClosestLocation(Rs2Player.getWorldLocation());
+                chosen = stage.getClosestLocation(Rs2Player.getWorldLocation(),
+                        AIOFishingPlugin.isMembersWorld(plugin.getConfig()));
             }
             return chosen == null ? "-" : chosen.getName();
         } catch (Exception e) {
