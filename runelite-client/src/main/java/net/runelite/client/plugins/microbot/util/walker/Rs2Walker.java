@@ -11538,7 +11538,8 @@ public class Rs2Walker {
             return WalkerState.MOVING;
 
         boolean bankTripWhenCacheUnavailable = config == null || config.bankTripWhenCacheUnavailable();
-        if (!forceBanking && bankTripWhenCacheUnavailable && Rs2Bank.getBankLiveEpoch() <= 0) {
+        if (!forceBanking && bankTripWhenCacheUnavailable && Rs2Bank.getBankLiveEpoch() <= 0
+                && System.currentTimeMillis() - lastBankBootstrapMissAtMs > BANK_BOOTSTRAP_MISS_COOLDOWN_MS) {
             WalkerState bootstrapState = bootstrapBankMirrorForBankedPathing(distance);
             if (bootstrapState == WalkerState.EXIT || bootstrapState == WalkerState.UNREACHABLE) {
                 return bootstrapState;
@@ -11632,6 +11633,13 @@ public class Rs2Walker {
         return Math.max(60, chebyshevDistance * 3);
     }
 
+    /**
+     * When the last bootstrap attempt found no bank it is pointless — and expensive, it runs a
+     * pathfind — to retry on the very next walk. Back off instead of doing it every tick.
+     */
+    private static long lastBankBootstrapMissAtMs = 0;
+    private static final long BANK_BOOTSTRAP_MISS_COOLDOWN_MS = 60_000;
+
     private static WalkerState bootstrapBankMirrorForBankedPathing(int distance) {
         WorldPoint start = Rs2Player.getWorldLocation();
         if (start == null) {
@@ -11639,8 +11647,14 @@ public class Rs2Walker {
         }
         BankLocation nearestBank = Rs2Bank.getNearestBank(start);
         if (nearestBank == null || nearestBank.getWorldPoint() == null) {
-            WebWalkLog.spWarn("bank_cache_bootstrap | no_nearest_bank start={}", start);
-            return WalkerState.EXIT;
+            // No bank we recognise from here. That is a gap in BankLocation coverage, not a reason to
+            // refuse to walk: the bank mirror only unlocks transports that need banked items, and the
+            // ordinary route is usually fine without it. Returning EXIT aborted the whole walk, so the
+            // caller re-ran this every tick and the character never went anywhere — observed near
+            // (3025,3508), where the nearest-bank search returns a point matching no BankLocation.
+            lastBankBootstrapMissAtMs = System.currentTimeMillis();
+            WebWalkLog.spWarn("bank_cache_bootstrap | no_nearest_bank start={} — continuing unbanked", start);
+            return WalkerState.MOVING;
         }
 
         WorldPoint bankLocation = nearestBank.getWorldPoint();
