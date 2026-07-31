@@ -54,13 +54,13 @@ import java.util.stream.Collectors;
 @PluginDescriptor(
         name = PluginDescriptor.Default + "AIO Fishing",
         enabledByDefault = false,
-        description = "All-in-one fishing with automatic level progression, banking and dropping",
+        description = "All-in-one fishing with automatic level progression, banking and dropping , GE selling",
         tags = {"fishing", "skilling", "aio", "progression"},
         authors = {"Infuse"},
         version = AIOFishingPlugin.version,
         minClientVersion = "1.9.8",
         iconUrl = "https://chsami.github.io/Microbot-Hub/AIOFishingPlugin/assets/icon.png",
-        cardUrl = "https://chsami.github.io/Microbot-Hub/AIOFishingPlugin/assets/card.png"
+        cardUrl = "https://chsami.github.io/Microbot-Hub/AIOFishingPlugin/assets/card.jpg"
 )
 @Slf4j
 public class AIOFishingPlugin extends Plugin {
