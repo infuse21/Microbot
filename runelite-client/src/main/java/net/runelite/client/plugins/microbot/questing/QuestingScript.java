@@ -2472,9 +2472,14 @@ public class QuestingScript extends Script {
      * Word-prefix (not contains) so data "No." can never match inside "...I know it...".
      */
     /**
-     * A populated options menu the quest data doesn't recognise. Order of preference:
-     * previously-learned answer, then a cautious guess — and for quests where a wrong choice is
-     * permanent, no guess at all: it stops and asks for a human.
+     * A populated options menu the quest data doesn't recognise. Answered from the wiki transcripts,
+     * which document this exact menu and which of its options belong to the quest — not guessed.
+     *
+     * <p>Order of preference: the documented answer for this menu, then a single unambiguous
+     * author-written answer, then a single option the wiki records as quest-related. Anything less
+     * certain stops and says so. For quests where a wrong choice is permanent, only the author-written
+     * answer is accepted at all — the transcripts document <em>a</em> path through a branch, and taking
+     * one automatically is the decision that cannot be undone.
      */
     private void handleUnmatchedDialogueOptions() {
         QuestHelper quest = getQuestHelperPlugin().getSelectedQuest();
@@ -2500,61 +2505,57 @@ public class QuestingScript extends Script {
         }
 
         Set<String> negatives = LearnedDialogue.negatives(questId, options);
-        String learned = LearnedDialogue.recall(questId, options);
+        String questName = quest != null && quest.getQuest() != null ? quest.getQuest().getName() : null;
 
+        // An option the quest itself declares somewhere. Useful, but weaker than it looks: the
+        // vocabulary spans EVERY step of the quest, so a string authored for a different conversation
+        // can fuzzily match an option in this one.
+        List<String> authored = new ArrayList<>();
+        for (String option : options) {
+            if (negatives.contains(option)) {
+                continue;
+            }
+            for (String known : questDialogueVocabulary(quest)) {
+                if (dialogueChoiceMatches(option, known)) {
+                    authored.add(option);
+                    break;
+                }
+            }
+        }
+
+        // The wiki transcripts record what this exact menu offers and which option belongs to the
+        // quest. That is an answer, not a hint, so it outranks the authored heuristic — which is
+        // precisely the bug this ordering fixes: a stale string from another step matched option 1,
+        // satisfied `authored.size() == 1`, and won over the documented answer for the menu on screen.
+        String documented = QuestDialogueCorpus.answerForMenu(questName, options);
+        if (documented != null
+                && (negatives.contains(documented) || LearnedDialogue.isDangerousOption(documented))) {
+            documented = null;
+        }
+
+        // No special case for "permanent choice" quests. Quest Helper models a branch as two separate
+        // helpers over one quest id — SHIELD_OF_ARRAV_PHOENIX_GANG and SHIELD_OF_ARRAV_BLACK_ARM_GANG
+        // both carry Quest.SHIELD_OF_ARRAV.getId() — so the side is already chosen by whichever helper
+        // is selected, and the dialogue that follows just executes it. Blocking on quest id could not
+        // tell the two apart anyway: it refused both, including the one the user had explicitly picked.
         String choice = null;
         boolean fromCorpus = false;
-        if (learned != null && !learned.isBlank() && options.contains(learned)) {
-            choice = learned;
-        } else if (!LearnedDialogue.guessingAllowed(questId)) {
-            Microbot.status = "Quest helper: unknown dialogue in a permanent-choice quest — needs a human";
-            if (System.currentTimeMillis() - lastDialogueDiagLog > 5000) {
-                lastDialogueDiagLog = System.currentTimeMillis();
-                Microbot.log("[QuestHelper] unrecognised dialogue options in a quest with permanent "
-                        + "consequences; refusing to guess. Options: " + String.join(" | ", options), Level.ERROR);
-            }
-            return;
+        if (documented != null) {
+            choice = documented;
+            fromCorpus = true;
+        } else if (authored.size() == 1) {
+            choice = authored.get(0);
         } else {
-            // Prefer an option the quest itself declares somewhere — an author-written answer beats a
-            // guess. In permanent-choice quests this is allowed ONLY when exactly one option matches:
-            // several matches means an intentional branch (which gang, which reward) that must not be
-            // decided automatically.
-            List<String> authored = new ArrayList<>();
-            for (String option : options) {
-                if (negatives.contains(option)) {
-                    continue;
-                }
-                for (String known : questDialogueVocabulary(quest)) {
-                    if (dialogueChoiceMatches(option, known)) {
-                        authored.add(option);
-                        break;
-                    }
-                }
-            }
-
-            // What the game actually offers, from the wiki transcripts: which options belong to this
-            // quest, and which are shop or small-talk options that merely look plausible.
-            String questName = quest != null && quest.getQuest() != null ? quest.getQuest().getName() : null;
-            String documented = QuestDialogueCorpus.answerForMenu(questName, options);
-            if (documented != null
-                    && (negatives.contains(documented) || LearnedDialogue.isDangerousOption(documented))) {
-                documented = null;
-            }
-
-            if (authored.size() == 1) {
-                choice = authored.get(0);
-            } else if (!LearnedDialogue.guessingAllowed(questId)) {
-                Microbot.status = "Quest helper: ambiguous dialogue in a permanent-choice quest — needs a human";
-                return;
-            } else if (documented != null) {
-                // this exact menu is documented and has exactly one quest option, so it isn't a branch
-                choice = documented;
+            // Undocumented menu. Narrow to options the wiki records as belonging to this quest and take
+            // it only when exactly one survives — several means a branch. No blind fallback: guessing
+            // was what picked "Yes please." and opened a shop, and with the transcripts loaded there is
+            // no longer any reason to. An unanswerable menu stops and says so.
+            List<String> questRelated = QuestDialogueCorpus.questRelatedOptions(questName, options).stream()
+                    .filter(o -> !negatives.contains(o) && !LearnedDialogue.isDangerousOption(o))
+                    .collect(Collectors.toList());
+            if (questRelated.size() == 1) {
+                choice = questRelated.get(0);
                 fromCorpus = true;
-            } else if (!authored.isEmpty()) {
-                choice = authored.get(0);
-            } else {
-                choice = bestDocumentedGuess(questName, options, negatives);
-                fromCorpus = choice != null;
             }
         }
 
@@ -2569,8 +2570,30 @@ public class QuestingScript extends Script {
             return;
         }
 
+        // The index has to be a position in the menu ON SCREEN, and indexOf demands exact equality.
+        // Every source above returns a live option today, so this is a cheap assertion rather than a
+        // fix — but it is worth keeping: a source that ever hands back a near-miss would make indexOf
+        // return -1, and the old arithmetic pressed key "0", selecting nothing while the bookkeeping
+        // below recorded a perfectly good answer as a negative.
+        if (!options.contains(choice)) {
+            final String picked = choice;
+            String live = options.stream()
+                    .filter(o -> dialogueChoiceMatches(o, picked))
+                    .findFirst()
+                    .orElse(null);
+            if (live == null) {
+                if (System.currentTimeMillis() - lastDialogueDiagLog > 5000) {
+                    lastDialogueDiagLog = System.currentTimeMillis();
+                    Microbot.log("[QuestHelper] chose \"" + picked + "\" but it is not one of the options on"
+                            + " screen — not pressing a key. Options: " + String.join(" | ", options), Level.WARN);
+                }
+                return;
+            }
+            choice = live;
+        }
+
         int index = options.indexOf(choice) + 1;
-        String source = choice.equals(learned) ? "using learned" : fromCorpus ? "using documented" : "trying";
+        String source = fromCorpus ? "using documented" : "using quest-authored";
         Microbot.log("[QuestHelper] " + source
                 + " dialogue option " + index + ": \"" + choice + "\"", Level.WARN);
 
@@ -2585,32 +2608,6 @@ public class QuestingScript extends Script {
         sleep(900, 1400);
     }
 
-    /**
-     * A guess, but an informed one: pick only from options the wiki records as belonging to this
-     * quest, and never pick one it records as a shop or small-talk option.
-     *
-     * <p>This replaces "click the first thing that doesn't look dangerous", which on a shopkeeper
-     * reliably picked the option that opens the shop. When the corpus has nothing to say about the
-     * quest we still fall back to the old behaviour, minus any option documented as unrelated.
-     *
-     * @return the option to click, or null if nothing here is safe to pick
-     */
-    private String bestDocumentedGuess(String questName, List<String> options, Set<String> negatives) {
-        for (String option : QuestDialogueCorpus.questRelatedOptions(questName, options)) {
-            if (!negatives.contains(option) && !LearnedDialogue.isDangerousOption(option)) {
-                return option;
-            }
-        }
-        for (String option : options) {
-            if (negatives.contains(option)
-                    || LearnedDialogue.isDangerousOption(option)
-                    || QuestDialogueCorpus.isNonQuestOption(questName, option)) {
-                continue;
-            }
-            return option;
-        }
-        return null;
-    }
 
     /**
      * Every dialogue option the selected quest declares anywhere — not just on the active step.
