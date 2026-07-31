@@ -160,7 +160,6 @@ net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue#getDialogueOptio
 net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue#getQuestion(): String  ->  net.runelite.api.widgets.Widget#getDynamicChildren(): Widget[]
 net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue#getQuestion(): String  ->  net.runelite.api.widgets.Widget#getText(): String
 net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue#getStrippedWidgetText(int, int): String  ->  net.runelite.api.widgets.Widget#getText(): String
-net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue#handleQuestOptionDialogueSelection(): boolean  ->  net.runelite.api.widgets.Widget#getIndex(): int
 net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue#handleQuestOptionDialogueSelection(): boolean  ->  net.runelite.api.widgets.Widget#getText(): String
 net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue#hasDialogueOptionTitle(String, boolean): boolean  ->  net.runelite.api.widgets.Widget#getDynamicChildren(): Widget[]
 net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue#hasDialogueOptionTitle(String, boolean): boolean  ->  net.runelite.api.widgets.Widget#getText(): String
