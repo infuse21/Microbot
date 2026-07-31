@@ -31,10 +31,10 @@ import java.util.stream.Collectors;
  * <p>The file is a human-editable TSV under {@code <runelite>/microbot/}, so learned answers are
  * inspectable, diffable, portable between installs, and can be shipped as a starter set.
  *
- * <p><b>Safety.</b> Guessing is never allowed to be reckless: quests whose dialogue makes permanent,
- * irreversible account decisions are excluded entirely (see {@link #GUESS_BLOCKED_QUEST_IDS}), and
- * options whose text suggests a destructive or committing action are never auto-picked. Only picks
- * that demonstrably advanced the quest are ever recorded.
+ * <p><b>Safety.</b> Options whose text suggests a destructive or committing action are never
+ * auto-picked. The per-quest guess block that used to sit here is gone: Quest Helper models a branch
+ * as two helpers over a single quest id, so blocking by id could not tell the sides apart and refused
+ * both — including the one deliberately selected.
  */
 @Slf4j
 public final class LearnedDialogue {
@@ -58,24 +58,6 @@ public final class LearnedDialogue {
 			this.optionsDisplay = optionsDisplay;
 		}
 	}
-
-	/**
-	 * Quests where a dialogue choice permanently changes the account and can never be undone, so a
-	 * wrong guess is unacceptable: gang choice (Shield of Arrav / Hero's Quest), missable content
-	 * (A Kingdom Divided, Cold War), item deletion (Regicide), jail/damage/teleport punishments
-	 * (The Tourist Trap, Underground Pass, Contact!). In these, an unmatched menu stops and asks for a
-	 * human instead of experimenting.
-	 */
-	private static final Set<Integer> GUESS_BLOCKED_QUEST_IDS = new HashSet<>(Arrays.asList(
-			net.runelite.api.Quest.SHIELD_OF_ARRAV.getId(),
-			net.runelite.api.Quest.HEROES_QUEST.getId(),
-			net.runelite.api.Quest.A_KINGDOM_DIVIDED.getId(),
-			net.runelite.api.Quest.COLD_WAR.getId(),
-			net.runelite.api.Quest.REGICIDE.getId(),
-			net.runelite.api.Quest.THE_TOURIST_TRAP.getId(),
-			net.runelite.api.Quest.UNDERGROUND_PASS.getId(),
-			net.runelite.api.Quest.CONTACT.getId()
-	));
 
 	/**
 	 * Option text that must never be auto-picked: starting fights, handing things over, destroying or
@@ -176,11 +158,6 @@ public final class LearnedDialogue {
 		ensureLoaded();
 		Entry e = ENTRIES.get(mapKey(questId, optionsKey(options)));
 		return e == null ? Collections.emptySet() : e.negatives;
-	}
-
-	/** Whether guessing is permitted at all for this quest (see {@link #GUESS_BLOCKED_QUEST_IDS}). */
-	public static boolean guessingAllowed(int questId) {
-		return !GUESS_BLOCKED_QUEST_IDS.contains(questId);
 	}
 
 	/** Whether this option is too consequential to pick without being told to. */

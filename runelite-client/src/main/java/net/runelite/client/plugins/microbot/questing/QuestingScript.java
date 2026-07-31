@@ -127,13 +127,6 @@ public class QuestingScript extends Script {
     private final Set<Integer> upfrontGatherExhausted = new HashSet<>();
     /** Since when the visible dialogue-options widget has had no readable option text (0 = n/a). */
     private long emptyOptionsSinceMs = 0;
-    /** Pending learned-dialogue decision, confirmed once the quest visibly advances. */
-    private int pendingDialogueQuestId = -1;
-    private String pendingDialogueKey = null;
-    private String pendingDialogueChoice = null;
-    private List<String> pendingDialogueOptions = null;
-    private String pendingDialogueStepText = null;
-    private long pendingDialogueAtMs = 0;
     /** Quest-authored dialogue options, indexed once per quest. */
     private Integer vocabularyQuestId = null;
     private Set<String> dialogueVocabulary = Collections.emptySet();
@@ -180,7 +173,6 @@ public class QuestingScript extends Script {
                 }
                 wasEnabled = true;
                 if (!Microbot.isLoggedIn()) return;
-                resolvePendingDialogue();
                 if (!super.run()) return;
                 if (getQuestHelperPlugin().getSelectedQuest() == null) return;
                 if (getQuestHelperPlugin().getSelectedQuest().getCurrentStep() == null) return;
@@ -2493,18 +2485,6 @@ public class QuestingScript extends Script {
             return;
         }
 
-        // A pending pick that left this same menu on screen was the wrong answer — remember that.
-        if (pendingDialogueKey != null
-                && pendingDialogueKey.equals(LearnedDialogue.optionsKey(options))
-                && pendingDialogueChoice != null
-                && System.currentTimeMillis() - pendingDialogueAtMs > 3000) {
-            LearnedDialogue.reject(questId, options, pendingDialogueChoice);
-            Microbot.log("[QuestHelper] \"" + pendingDialogueChoice + "\" did not advance the quest — won't retry it",
-                    Level.WARN);
-            clearPendingDialogue();
-        }
-
-        Set<String> negatives = LearnedDialogue.negatives(questId, options);
         String questName = quest != null && quest.getQuest() != null ? quest.getQuest().getName() : null;
 
         // An option the quest itself declares somewhere. Useful, but weaker than it looks: the
@@ -2512,9 +2492,6 @@ public class QuestingScript extends Script {
         // can fuzzily match an option in this one.
         List<String> authored = new ArrayList<>();
         for (String option : options) {
-            if (negatives.contains(option)) {
-                continue;
-            }
             for (String known : questDialogueVocabulary(quest)) {
                 if (dialogueChoiceMatches(option, known)) {
                     authored.add(option);
@@ -2528,8 +2505,7 @@ public class QuestingScript extends Script {
         // precisely the bug this ordering fixes: a stale string from another step matched option 1,
         // satisfied `authored.size() == 1`, and won over the documented answer for the menu on screen.
         String documented = QuestDialogueCorpus.answerForMenu(questName, options);
-        if (documented != null
-                && (negatives.contains(documented) || LearnedDialogue.isDangerousOption(documented))) {
+        if (documented != null && LearnedDialogue.isDangerousOption(documented)) {
             documented = null;
         }
 
@@ -2551,7 +2527,7 @@ public class QuestingScript extends Script {
             // was what picked "Yes please." and opened a shop, and with the transcripts loaded there is
             // no longer any reason to. An unanswerable menu stops and says so.
             List<String> questRelated = QuestDialogueCorpus.questRelatedOptions(questName, options).stream()
-                    .filter(o -> !negatives.contains(o) && !LearnedDialogue.isDangerousOption(o))
+                    .filter(o -> !LearnedDialogue.isDangerousOption(o))
                     .collect(Collectors.toList());
             if (questRelated.size() == 1) {
                 choice = questRelated.get(0);
@@ -2596,13 +2572,6 @@ public class QuestingScript extends Script {
         String source = fromCorpus ? "using documented" : "using quest-authored";
         Microbot.log("[QuestHelper] " + source
                 + " dialogue option " + index + ": \"" + choice + "\"", Level.WARN);
-
-        pendingDialogueQuestId = questId;
-        pendingDialogueOptions = new ArrayList<>(options);
-        pendingDialogueKey = LearnedDialogue.optionsKey(options);
-        pendingDialogueChoice = choice;
-        pendingDialogueStepText = activeStepText();
-        pendingDialogueAtMs = System.currentTimeMillis();
 
         Rs2Dialogue.keyPressForDialogueOption(index);
         sleep(900, 1400);
@@ -2664,30 +2633,6 @@ public class QuestingScript extends Script {
         for (QuestStep substep : step.getSubsteps()) {
             collectStepChoices(substep, into);
         }
-    }
-
-    /** Confirms a pending dialogue pick once the quest has visibly moved on. */
-    private void resolvePendingDialogue() {
-        if (pendingDialogueChoice == null) {
-            return;
-        }
-        if (System.currentTimeMillis() - pendingDialogueAtMs > 25_000) {
-            clearPendingDialogue(); // never resolved either way — don't learn from it
-            return;
-        }
-        String now = activeStepText();
-        if (now != null && pendingDialogueStepText != null && !now.equals(pendingDialogueStepText)) {
-            LearnedDialogue.confirm(pendingDialogueQuestId, pendingDialogueOptions, pendingDialogueChoice);
-            clearPendingDialogue();
-        }
-    }
-
-    private void clearPendingDialogue() {
-        pendingDialogueChoice = null;
-        pendingDialogueKey = null;
-        pendingDialogueOptions = null;
-        pendingDialogueStepText = null;
-        pendingDialogueAtMs = 0;
     }
 
     private String activeStepText() {
