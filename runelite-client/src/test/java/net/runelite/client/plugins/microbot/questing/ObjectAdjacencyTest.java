@@ -1,9 +1,11 @@
 package net.runelite.client.plugins.microbot.questing;
 
+import net.runelite.api.CollisionDataFlag;
 import net.runelite.api.coords.WorldArea;
 import net.runelite.api.coords.WorldPoint;
 import org.junit.Test;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -63,6 +65,60 @@ public class ObjectAdjacencyTest
 	public void rejectsAnotherPlane()
 	{
 		assertFalse(against(3219, 3395, 0, CHEST));
+	}
+
+	/**
+	 * The edge test is what separates "adjacent and usable" from "adjacent through a wall". A wall sets
+	 * a directional sight bit on the edge it occupies; a solid object — chest, crate, ladder — blocks
+	 * movement only, so its own tile carries no such bit.
+	 */
+	@Test
+	public void wallOnTheSharedEdgeBlocksSightFromEitherSide()
+	{
+		int north = CollisionDataFlag.BLOCK_LINE_OF_SIGHT_NORTH;
+		int south = CollisionDataFlag.BLOCK_LINE_OF_SIGHT_SOUTH;
+
+		// wall recorded on the tile we stand on, facing the object
+		assertTrue(QuestingScript.edgeBlocksSight(north, 0, 0, 1));
+		// same wall recorded on the object's tile instead
+		assertTrue(QuestingScript.edgeBlocksSight(0, south, 0, 1));
+		// nothing on this edge — a solid object we are simply pressed against
+		assertFalse(QuestingScript.edgeBlocksSight(0, 0, 0, 1));
+	}
+
+	/** A bit for a different edge must not be mistaken for this one. */
+	@Test
+	public void doesNotConfuseOneEdgeForAnother()
+	{
+		int east = CollisionDataFlag.BLOCK_LINE_OF_SIGHT_EAST;
+		assertFalse("east wall says nothing about the northern edge",
+				QuestingScript.edgeBlocksSight(east, 0, 0, 1));
+		assertTrue("east wall does block the eastern edge",
+				QuestingScript.edgeBlocksSight(east, 0, 1, 0));
+	}
+
+	/**
+	 * BLOCK_LINE_OF_SIGHT_FULL is deliberately ignored: a large object can set it on its own tile, and
+	 * rejecting a target for being solid is the mistake this whole test replaces.
+	 */
+	@Test
+	public void ignoresTheFullSightBlockOnTheTargetTile()
+	{
+		assertFalse(QuestingScript.edgeBlocksSight(0, CollisionDataFlag.BLOCK_LINE_OF_SIGHT_FULL, 0, 1));
+	}
+
+	@Test
+	public void nearestFootprintTileIsTheOneWeInteractAcross()
+	{
+		// two-tile chest, approached from below its western half
+		assertEquals(new WorldPoint(3219, 3396, 1),
+				QuestingScript.nearestFootprintTile(new WorldPoint(3219, 3395, 1), CHEST));
+		// ...and from below its eastern half
+		assertEquals(new WorldPoint(3220, 3396, 1),
+				QuestingScript.nearestFootprintTile(new WorldPoint(3220, 3395, 1), CHEST));
+		// from the west end, the nearest tile is the western one
+		assertEquals(new WorldPoint(3219, 3396, 1),
+				QuestingScript.nearestFootprintTile(new WorldPoint(3218, 3396, 1), CHEST));
 	}
 
 	@Test

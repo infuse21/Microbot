@@ -1,6 +1,9 @@
 package net.runelite.client.plugins.microbot.questing;
 
 import net.runelite.api.*;
+import net.runelite.api.CollisionData;
+import net.runelite.api.CollisionDataFlag;
+import net.runelite.api.WorldView;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.ChatMessage;
@@ -50,6 +53,7 @@ import net.runelite.client.plugins.microbot.api.tileitem.models.Rs2TileItemModel
 import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -2251,6 +2255,7 @@ public class QuestingScript extends Script {
             // Resolved once — getFootprint() costs a client-thread hop and this loop can run several
             // times per tick.
             final WorldArea targetFootprint = object == null ? null : object.getFootprint();
+            final boolean wallLikeTarget = object != null && object.getTileObjectType() == TileObjectType.WALL;
             int radius = 0;
             while (targetTile == null) {
                 if (mainScheduledFuture.isCancelled())
@@ -2261,7 +2266,7 @@ public class QuestingScript extends Script {
                 // somewhere it can never click from. Line of sight alone rejects the tiles pressed up
                 // against a solid object — it cannot see INTO the tile the object fills — which is how
                 // a staircase's only two usable tiles got filtered out and a spot three tiles away won.
-                List<WorldPoint> withLineOfSight = Rs2Tile.getWalkableTilesAroundTile(stepLocation, radius)
+                List<WorldPoint> walkableNearby = Rs2Tile.getWalkableTilesAroundTile(stepLocation, radius)
                         .stream()
                         .filter(x -> !unreachableClickTiles.contains(x))
                         // The walker pre-flights its destination against the collision map and rejects
@@ -2269,7 +2274,33 @@ public class QuestingScript extends Script {
                         // walkable but the map does not takes the whole step down with it — exactly what
                         // (2531,2834) did at the Corsair Cove stairs.
                         .filter(Rs2Walker::isWalkableInCollisionMap)
-                        .filter(x -> isOrthogonallyAgainst(x, targetFootprint) || hasLineOfSightFrom(x, finalObject))
+                        .collect(Collectors.toList());
+
+                // Adjacency alone used to be enough here, which is why the first pick was so often the
+                // tile on the wrong side of a wall: walkable, adjacent, nearest, and useless. Drop the
+                // ones a wall separates from the object so the pathfinder branch below gets its chance
+                // on the FIRST pass rather than after a failed click and a blacklisting.
+                //
+                // Skipped when the target is itself wall-like: a door records the very edge you have to
+                // stand at, so testing it would reject the door's own approach.
+                List<WorldPoint> adjacent = walkableNearby.stream()
+                        .filter(x -> isOrthogonallyAgainst(x, targetFootprint))
+                        .collect(Collectors.toList());
+                Set<WorldPoint> adjacentUsable = wallLikeTarget
+                        ? new HashSet<>(adjacent)
+                        : withoutWallToFootprint(adjacent, targetFootprint);
+                if (adjacent.size() != adjacentUsable.size()
+                        && System.currentTimeMillis() - lastApproachWarnLog > 3000) {
+                    lastApproachWarnLog = System.currentTimeMillis();
+                    Microbot.log("[Questing] discarded " + (adjacent.size() - adjacentUsable.size())
+                            + " of " + adjacent.size() + " adjacent tiles with a wall to object id="
+                            + step.getObjectID(), Level.WARN);
+                }
+
+                List<WorldPoint> withLineOfSight = walkableNearby.stream()
+                        .filter(x -> isOrthogonallyAgainst(x, targetFootprint)
+                                ? adjacentUsable.contains(x)
+                                : hasLineOfSightFrom(x, finalObject))
                         .sorted(Comparator.comparing(x -> x.distanceTo(Rs2Player.getWorldLocation())))
                         .collect(Collectors.toList());
 
@@ -2818,16 +2849,118 @@ public class QuestingScript extends Script {
         // blocked edge at (3219,3395)->north is the chest, while the identical-looking blocked edge at
         // (3008,3207)->east is a shop wall.
         //
-        // Being permissive here is safe because it is self-correcting: a click through a wall answers
-        // "I can't reach that!", which blacklists this tile above and forces the approach search to try
-        // elsewhere. One wasted click beats a permanent stall.
+        // Adjacency is what the game requires — but only when nothing stands in the edge between us. The
+        // line-of-sight FLAG on that single edge distinguishes the two: a wall sets it, a solid object
+        // does not. This used to be left permissive, on the grounds that a through-wall click answers
+        // "I can't reach that!" and self-corrects; it does, but only after visibly walking to a wall and
+        // clicking it, which is the tell that gave the whole approach away.
         // Resolved once: getFootprint() hops to the client thread, and this runs several times a tick.
         WorldArea footprint = object.getFootprint();
         if (isOrthogonallyAgainst(player, footprint)) {
-            return true;
+            boolean wallLike = object.getTileObjectType() == TileObjectType.WALL;
+            return wallLike || withoutWallToFootprint(Collections.singletonList(player), footprint).contains(player);
         }
         // Further away, line of sight is still the right test — it rejects a target behind a wall.
         return hasLineOfSightToArea(footprint);
+    }
+
+    /**
+     * Of these tiles, those with no wall standing between them and the object's footprint.
+     *
+     * <p>Movement flags cannot answer this — the edge into a chest's tile and the edge into a walled-off
+     * tile both read "blocked" — which is why adjacency was left deliberately permissive and a wasted
+     * click through a wall was accepted as the cost of finding out. Line-of-sight flags can answer it:
+     * a wall sets {@code BLOCK_LINE_OF_SIGHT_*} on the edge it occupies, while a solid object like a
+     * crate, chest or ladder blocks movement only. Testing the single shared EDGE is also a narrower
+     * question than {@link WorldArea#hasLineOfSightTo}, which traces a line into the target area and
+     * fails whenever the destination tile is itself filled — the reason line of sight was abandoned
+     * here in the first place.
+     *
+     * <p>Deliberately permissive on failure: anything unreadable (no world view, off-scene, an instance)
+     * counts as "no wall", so this can only ever remove candidates it is confident about and never
+     * starves the search. One client-thread hop for the whole batch, not one per tile.
+     */
+    private Set<WorldPoint> withoutWallToFootprint(Collection<WorldPoint> candidates, WorldArea footprint) {
+        if (candidates.isEmpty() || footprint == null) {
+            return new HashSet<>(candidates);
+        }
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            WorldView wv = Microbot.getClient().getTopLevelWorldView();
+            CollisionData[] maps = wv == null ? null : wv.getCollisionMaps();
+            int[][] flags = maps == null || maps[wv.getPlane()] == null ? null : maps[wv.getPlane()].getFlags();
+            if (flags == null) {
+                return new HashSet<>(candidates);
+            }
+            Set<WorldPoint> keep = new HashSet<>();
+            for (WorldPoint candidate : candidates) {
+                if (!wallBetween(flags, wv, candidate, nearestFootprintTile(candidate, footprint))) {
+                    keep.add(candidate);
+                }
+            }
+            return keep;
+        }).orElseGet(() -> new HashSet<>(candidates));
+    }
+
+    /** The footprint tile closest to {@code from} — the one it would interact across. */
+    static WorldPoint nearestFootprintTile(WorldPoint from, WorldArea area) {
+        int x = Math.min(Math.max(from.getX(), area.getX()), area.getX() + area.getWidth() - 1);
+        int y = Math.min(Math.max(from.getY(), area.getY()), area.getY() + area.getHeight() - 1);
+        return new WorldPoint(x, y, from.getPlane());
+    }
+
+    /**
+     * Whether a wall occupies the edge between two orthogonally adjacent tiles. Checks the bit from both
+     * sides, since collision records the edge on the tile the wall sits on. Only the directional bits are
+     * consulted, never {@code BLOCK_LINE_OF_SIGHT_FULL} — a large object can set that on its own tile,
+     * and rejecting the target for being solid is exactly the mistake this replaces.
+     */
+    private static boolean wallBetween(int[][] flags, WorldView wv, WorldPoint from, WorldPoint to) {
+        int dx = to.getX() - from.getX();
+        int dy = to.getY() - from.getY();
+        if (Math.abs(dx) + Math.abs(dy) != 1) {
+            return false; // not a shared edge — nothing to say
+        }
+        LocalPoint lFrom = LocalPoint.fromWorld(wv, from);
+        LocalPoint lTo = LocalPoint.fromWorld(wv, to);
+        if (lFrom == null || lTo == null) {
+            return false;
+        }
+        Integer fromFlag = flagAt(flags, lFrom.getSceneX(), lFrom.getSceneY());
+        Integer toFlag = flagAt(flags, lTo.getSceneX(), lTo.getSceneY());
+        return fromFlag != null && toFlag != null && edgeBlocksSight(fromFlag, toFlag, dx, dy);
+    }
+
+    /**
+     * Whether the sight-blocking bit is set on the edge between two adjacent tiles, from either side.
+     *
+     * @param dx {@code to.x - from.x}, and {@code dy} likewise; exactly one is +/-1
+     */
+    static boolean edgeBlocksSight(int fromFlag, int toFlag, int dx, int dy) {
+        int outward;
+        int inward;
+        if (dy == 1) {
+            outward = CollisionDataFlag.BLOCK_LINE_OF_SIGHT_NORTH;
+            inward = CollisionDataFlag.BLOCK_LINE_OF_SIGHT_SOUTH;
+        } else if (dy == -1) {
+            outward = CollisionDataFlag.BLOCK_LINE_OF_SIGHT_SOUTH;
+            inward = CollisionDataFlag.BLOCK_LINE_OF_SIGHT_NORTH;
+        } else if (dx == 1) {
+            outward = CollisionDataFlag.BLOCK_LINE_OF_SIGHT_EAST;
+            inward = CollisionDataFlag.BLOCK_LINE_OF_SIGHT_WEST;
+        } else if (dx == -1) {
+            outward = CollisionDataFlag.BLOCK_LINE_OF_SIGHT_WEST;
+            inward = CollisionDataFlag.BLOCK_LINE_OF_SIGHT_EAST;
+        } else {
+            return false;
+        }
+        return (fromFlag & outward) != 0 || (toFlag & inward) != 0;
+    }
+
+    private static Integer flagAt(int[][] flags, int sceneX, int sceneY) {
+        if (sceneX < 0 || sceneY < 0 || sceneX >= flags.length || sceneY >= flags[sceneX].length) {
+            return null;
+        }
+        return flags[sceneX][sceneY];
     }
 
     /** Whether {@code point} is directly north/south/east/west of the area (not diagonal, not inside). */
