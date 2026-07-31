@@ -21,12 +21,24 @@ public final class LiveCollisionConflicts {
         public final int liveOpensStatic;
         /** Edges the live scene says are blocked where the shipped map says walkable (new obstacle / closed door). */
         public final int liveBlocksStatic;
+        /**
+         * Live-walkable edges on tiles the shipped map seals on ALL four sides. Overwhelmingly these are
+         * tiles the static map simply has no data for — {@code SplitFlagMap.get} returns false for those,
+         * so a floorless upper plane reads as solid wall while the live scene's empty collision flags read
+         * as open. Two planes of that noise (~43k edges) drowned the real signal in the first data set, so
+         * it gets its own bucket instead of inflating {@link #liveOpensStatic}. A genuinely sealed tile
+         * that live says is open — the "falsely locked" rockfall case — also lands here, which is why the
+         * bucket is reported rather than discarded.
+         */
+        public final int liveOpensSealed;
 
-        Tally(int liveOpensStatic, int liveBlocksStatic) {
+        Tally(int liveOpensStatic, int liveBlocksStatic, int liveOpensSealed) {
             this.liveOpensStatic = liveOpensStatic;
             this.liveBlocksStatic = liveBlocksStatic;
+            this.liveOpensSealed = liveOpensSealed;
         }
 
+        /** True when nothing INTERPRETABLE was found; the sealed bucket alone is not worth logging. */
         public boolean isEmpty() {
             return liveOpensStatic == 0 && liveBlocksStatic == 0;
         }
@@ -42,10 +54,11 @@ public final class LiveCollisionConflicts {
      */
     public static Tally tally(LiveCollisionSnapshot snapshot, SplitFlagMap staticMap) {
         if (snapshot == null || staticMap == null) {
-            return new Tally(0, 0);
+            return new Tally(0, 0, 0);
         }
         int liveOpensStatic = 0;
         int liveBlocksStatic = 0;
+        int liveOpensSealed = 0;
         final int baseX = snapshot.getBaseX();
         final int baseY = snapshot.getBaseY();
         for (int z = 0; z < snapshot.getPlaneCount(); z++) {
@@ -62,15 +75,29 @@ public final class LiveCollisionConflicts {
                         if (live == statik) {
                             continue;
                         }
-                        if (live) {
-                            liveOpensStatic++;
-                        } else {
+                        if (!live) {
                             liveBlocksStatic++;
+                        } else if (staticTileSealed(staticMap, x, y, z)) {
+                            liveOpensSealed++;
+                        } else {
+                            liveOpensStatic++;
                         }
                     }
                 }
             }
         }
-        return new Tally(liveOpensStatic, liveBlocksStatic);
+        return new Tally(liveOpensStatic, liveBlocksStatic, liveOpensSealed);
+    }
+
+    /**
+     * Whether the shipped map blocks all four sides of {@code (x, y, z)} — i.e. the tile is either solid
+     * or (far more often) simply absent from the map data. Checked lazily, only for edges that already
+     * disagree, so the extra lookups stay off the common path.
+     */
+    private static boolean staticTileSealed(SplitFlagMap staticMap, int x, int y, int z) {
+        return !staticMap.get(x, y, z, LiveCollisionSnapshot.FLAG_NORTH)          // north
+                && !staticMap.get(x, y - 1, z, LiveCollisionSnapshot.FLAG_NORTH)  // south
+                && !staticMap.get(x, y, z, LiveCollisionSnapshot.FLAG_EAST)       // east
+                && !staticMap.get(x - 1, y, z, LiveCollisionSnapshot.FLAG_EAST);  // west
     }
 }

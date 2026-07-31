@@ -672,8 +672,9 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
             return;
         }
         lastCollisionConflictLogAtMs = now;
-        WebWalkLog.spInfo("collision_conflict | liveOpensStatic={} liveBlocksStatic={} base={},{} — live scene disagrees with the shipped map",
-                tally.liveOpensStatic, tally.liveBlocksStatic, snapshot.getBaseX(), snapshot.getBaseY());
+        WebWalkLog.spInfo("collision_conflict | liveOpensStatic={} liveBlocksStatic={} sealedOpens={} base={},{} — live scene disagrees with the shipped map",
+                tally.liveOpensStatic, tally.liveBlocksStatic, tally.liveOpensSealed,
+                snapshot.getBaseX(), snapshot.getBaseY());
     }
 
     private void resetLearnedCollision() {

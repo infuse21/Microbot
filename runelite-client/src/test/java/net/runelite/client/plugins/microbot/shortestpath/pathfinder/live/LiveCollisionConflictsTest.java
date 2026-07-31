@@ -56,12 +56,40 @@ public class LiveCollisionConflictsTest {
         boolean statik = staticMap.get(PROBE_X, PROBE_Y, 0, LiveCollisionSnapshot.FLAG_NORTH);
         LiveCollisionConflicts.Tally tally =
                 LiveCollisionConflicts.tally(snapshotWithNorthEdge(!statik), staticMap);
-        assertEquals(1, tally.liveOpensStatic + tally.liveBlocksStatic);
+        assertEquals(1, tally.liveOpensStatic + tally.liveBlocksStatic + tally.liveOpensSealed);
         if (statik) {
             assertEquals("live=blocked where static=open is liveBlocksStatic", 1, tally.liveBlocksStatic);
         } else {
-            assertEquals("live=open where static=blocked is liveOpensStatic", 1, tally.liveOpensStatic);
+            assertEquals("live=open on a partially-open static tile is liveOpensStatic",
+                    1, tally.liveOpensStatic);
         }
+    }
+
+    /**
+     * The first live data set was ~44k "conflicts" in EVERY scene — about two planes' worth — because a
+     * floorless upper plane has no static data, SplitFlagMap.get returns false for it (reads as solid
+     * wall), and the live scene's empty collision flags read as open. That noise must land in the sealed
+     * bucket, leaving the interpretable counts at zero so the log line is suppressed entirely.
+     */
+    @Test
+    public void floorlessUpperPlaneNoiseIsBucketedSeparately() {
+        int emptyPlane = 3;
+        assertTrue("precondition: the shipped map has no data for an empty upper plane here",
+                !staticMap.get(PROBE_X, PROBE_Y, emptyPlane, LiveCollisionSnapshot.FLAG_NORTH));
+
+        BitSet northKnown = new BitSet();
+        BitSet northValue = new BitSet();
+        int index = emptyPlane * SCENE_SIZE * SCENE_SIZE
+                + (PROBE_Y - BASE_Y) * SCENE_SIZE + (PROBE_X - BASE_X);
+        northKnown.set(index);
+        northValue.set(index); // live: walkable, as empty collision flags always are
+        LiveCollisionSnapshot snapshot = new LiveCollisionSnapshot(BASE_X, BASE_Y, 4,
+                northKnown, northValue, new BitSet(), new BitSet());
+
+        LiveCollisionConflicts.Tally tally = LiveCollisionConflicts.tally(snapshot, staticMap);
+        assertEquals("no-data tiles must not inflate the real conflict count", 0, tally.liveOpensStatic);
+        assertEquals(1, tally.liveOpensSealed);
+        assertTrue("a sealed-only tally is noise, so nothing gets logged", tally.isEmpty());
     }
 
     @Test
