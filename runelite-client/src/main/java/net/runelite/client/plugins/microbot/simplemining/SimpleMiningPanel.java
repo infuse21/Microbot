@@ -1,8 +1,8 @@
-package net.runelite.client.plugins.microbot.simplewoodcutting;
+package net.runelite.client.plugins.microbot.simplemining;
 
 import net.runelite.client.config.ConfigManager;
-import net.runelite.client.plugins.microbot.simplewoodcutting.enums.TreeLocation;
-import net.runelite.client.plugins.microbot.simplewoodcutting.enums.TreeStage;
+import net.runelite.client.plugins.microbot.simplemining.enums.MiningLocation;
+import net.runelite.client.plugins.microbot.simplemining.enums.OreStage;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.DynamicGridLayout;
 import net.runelite.client.ui.FontManager;
@@ -29,16 +29,16 @@ import java.util.Collections;
 import java.util.Map;
 
 /**
- * Sidebar panel showing the woodcutting progression ladder: every stage, where you can
- * chop it, and which one you're on right now.
+ * Sidebar panel showing the mining progression ladder: every stage, where you can
+ * mine it, and which one you're on right now.
  *
  * <p>It is also the control surface for the plugin's mode: the Auto/Manual toggle and,
- * in manual mode, the tree selection. Both write straight back to the config group, so
+ * in manual mode, the ore selection. Both write straight back to the config group, so
  * the script (which reads config every loop) picks changes up live.</p>
  */
-public class SimpleWoodcuttingPanel extends PluginPanel {
+public class SimpleMiningPanel extends PluginPanel {
 
-    static final String CONFIG_GROUP = "SimpleWoodcutting";
+    static final String CONFIG_GROUP = "SimpleMining";
 
     private static final Color ACTIVE = ColorScheme.PROGRESS_COMPLETE_COLOR;
     private static final Color UNLOCKED = ColorScheme.BRAND_ORANGE;
@@ -59,17 +59,17 @@ public class SimpleWoodcuttingPanel extends PluginPanel {
     private final JLabel nextValue = new JLabel("-");
     private final ProgressBar progress = new ProgressBar();
 
-    private int woodcuttingLevel = 1;
-    private TreeStage activeStage = TreeStage.TREE;
+    private int miningLevel = 1;
+    private OreStage activeStage = OreStage.COPPER;
     private boolean membersWorld = true;
     private boolean autoProgress = true;
     /** Stage -> why it's locked. Absent means available. */
-    private Map<TreeStage, String> lockReasons = Collections.emptyMap();
-    /** Location name pinned for the manual tree; empty means "use nearest". */
+    private Map<OreStage, String> lockReasons = Collections.emptyMap();
+    /** Mine name pinned for the manual ore; empty means "use nearest". */
     private String pinnedLocation = "";
 
     @Inject
-    public SimpleWoodcuttingPanel(ConfigManager configManager) {
+    public SimpleMiningPanel(ConfigManager configManager) {
         this.configManager = configManager;
 
         setBorder(new EmptyBorder(10, 8, 10, 8));
@@ -87,10 +87,10 @@ public class SimpleWoodcuttingPanel extends PluginPanel {
     }
 
     /** Push fresh game/config state in from the plugin (called on the client thread). */
-    public void update(int woodcuttingLevel, TreeStage activeStage, boolean membersWorld,
-                       boolean autoProgress, Map<TreeStage, String> lockReasons,
+    public void update(int miningLevel, OreStage activeStage, boolean membersWorld,
+                       boolean autoProgress, Map<OreStage, String> lockReasons,
                        String pinnedLocation) {
-        this.woodcuttingLevel = woodcuttingLevel;
+        this.miningLevel = miningLevel;
         this.activeStage = activeStage;
         this.membersWorld = membersWorld;
         this.autoProgress = autoProgress;
@@ -106,11 +106,11 @@ public class SimpleWoodcuttingPanel extends PluginPanel {
         header.setBackground(ColorScheme.DARK_GRAY_COLOR);
         header.setBorder(new EmptyBorder(0, 0, 8, 0));
 
-        JLabel title = new JLabel("SIMPLE WC");
+        JLabel title = new JLabel("SIMPLE MINING");
         title.setFont(FontManager.getRunescapeBoldFont().deriveFont(Font.BOLD, 16f));
         title.setForeground(UNLOCKED);
 
-        JLabel subtitle = new JLabel("Trees · locations");
+        JLabel subtitle = new JLabel("Ores · mines");
         subtitle.setFont(FontManager.getRunescapeSmallFont());
         subtitle.setForeground(MUTED);
 
@@ -152,7 +152,7 @@ public class SimpleWoodcuttingPanel extends PluginPanel {
 
         JPanel levelRow = new JPanel(new BorderLayout());
         levelRow.setBackground(CARD_BG);
-        JLabel levelCaption = new JLabel("WOODCUTTING LEVEL");
+        JLabel levelCaption = new JLabel("MINING LEVEL");
         levelCaption.setFont(FontManager.getRunescapeSmallFont());
         levelCaption.setForeground(MUTED);
         levelValue.setFont(FontManager.getRunescapeBoldFont().deriveFont(Font.BOLD, 20f));
@@ -163,7 +163,7 @@ public class SimpleWoodcuttingPanel extends PluginPanel {
 
         card.add(levelRow);
         card.add(progress);
-        card.add(kvRow("Chopping", activeValue, ACTIVE));
+        card.add(kvRow("Mining", activeValue, ACTIVE));
         card.add(kvRow("Next", nextValue, MUTED));
         return card;
     }
@@ -201,9 +201,9 @@ public class SimpleWoodcuttingPanel extends PluginPanel {
         rebuild();
     }
 
-    private void selectStage(TreeStage stage) {
+    private void selectStage(OreStage stage) {
         configManager.setConfiguration(CONFIG_GROUP, "manualStage", stage);
-        // Location names are per-stage, so a pin from the previous tree is meaningless.
+        // Mine names are per-stage, so a pin from the previous ore is meaningless.
         configManager.setConfiguration(CONFIG_GROUP, "manualLocation", "");
         pinnedLocation = "";
         activeStage = stage;
@@ -263,12 +263,12 @@ public class SimpleWoodcuttingPanel extends PluginPanel {
         // Mode tabs
         paintTab(autoTab, autoProgress);
         paintTab(manualTab, !autoProgress);
-        hintLabel.setText(autoProgress ? "Best tree picked for your level" : "Pick a tree below");
+        hintLabel.setText(autoProgress ? "Best ore picked for your level" : "Pick an ore below");
 
-        levelValue.setText(String.valueOf(woodcuttingLevel));
+        levelValue.setText(String.valueOf(miningLevel));
         activeValue.setText(activeStage.getDisplayName());
 
-        TreeStage next = autoProgress ? activeStage.next(membersWorld) : null;
+        OreStage next = autoProgress ? activeStage.next(membersWorld) : null;
         if (!autoProgress) {
             nextValue.setText("manual");
             progress.setFraction(1f);
@@ -278,21 +278,21 @@ public class SimpleWoodcuttingPanel extends PluginPanel {
         } else {
             nextValue.setText(next.getDisplayName() + " @ " + next.getMinLevel());
             int span = next.getMinLevel() - activeStage.getMinLevel();
-            int done = woodcuttingLevel - activeStage.getMinLevel();
+            int done = miningLevel - activeStage.getMinLevel();
             progress.setFraction(span <= 0 ? 1f : Math.max(0f, Math.min(1f, (float) done / span)));
         }
 
         stageList.removeAll();
         JLabel hint = new JLabel(autoProgress
                 ? "Auto ladder - switches as you level"
-                : "Click a tree to select it");
+                : "Click an ore to select it");
         hint.setFont(FontManager.getRunescapeSmallFont());
         hint.setForeground(autoProgress ? MUTED : UNLOCKED);
         hint.setBorder(new EmptyBorder(0, 2, 4, 0));
         stageList.add(hint);
 
         // Auto mode shows only the lean ladder; manual mode shows the full catalogue.
-        for (TreeStage stage : TreeStage.values()) {
+        for (OreStage stage : OreStage.values()) {
             if (autoProgress && !stage.isInAutoLadder()) {
                 continue;
             }
@@ -309,7 +309,7 @@ public class SimpleWoodcuttingPanel extends PluginPanel {
         tab.setForeground(selected ? Color.BLACK : MUTED);
     }
 
-    private JPanel buildStageCard(TreeStage stage) {
+    private JPanel buildStageCard(OreStage stage) {
         boolean isActive = stage == activeStage;
         String lock = lockReasons.get(stage);
         boolean unlocked = lock == null;
@@ -340,7 +340,12 @@ public class SimpleWoodcuttingPanel extends PluginPanel {
         card.add(titleRow);
 
         // Method row
-        StringBuilder meta = new StringBuilder(stage.getAction());
+        String productLabel = stage == OreStage.GEM_ROCKS
+                ? "Uncut gems"
+                : stage == OreStage.INFERNAL_SHALE
+                ? "Crushed infernal shale"
+                : stage.getOreName();
+        StringBuilder meta = new StringBuilder(productLabel);
         if (stage.isMembersOnly()) {
             meta.append("  ·  members");
         }
@@ -358,16 +363,15 @@ public class SimpleWoodcuttingPanel extends PluginPanel {
             card.add(questRow);
         }
 
-        // On the selected manual tree the locations become a picker: choose exactly where
-        // to chop instead of letting nearest-wins decide.
+        // On the selected manual ore the mines become a picker: choose exactly where
+        // to mine instead of letting nearest-wins decide.
         boolean pickable = !autoProgress && isActive && unlocked;
         if (pickable) {
             card.add(locationPickRow("Nearest", "auto", "".equals(pinnedLocation), ""));
         }
 
-        // Locations. Filtered by world type so a free-to-play account is never shown - or
-        // worse, allowed to pin - a patch it could never walk to.
-        for (TreeLocation location : stage.availableLocations(membersWorld)) {
+        // Locations
+        for (MiningLocation location : stage.availableLocations(membersWorld)) {
             if (pickable) {
                 card.add(locationPickRow(location.getName(),
                         location.hasNote() ? location.getNote() : "",
@@ -397,7 +401,7 @@ public class SimpleWoodcuttingPanel extends PluginPanel {
         return card;
     }
 
-    private String badgeText(TreeStage stage, boolean isActive, String lock) {
+    private String badgeText(OreStage stage, boolean isActive, String lock) {
         if (isActive) {
             return autoProgress ? "ACTIVE" : "SELECTED";
         }
@@ -409,7 +413,7 @@ public class SimpleWoodcuttingPanel extends PluginPanel {
     }
 
     /** Makes a whole card behave as one clickable target, including its children. */
-    private void attachSelection(JPanel card, TreeStage stage) {
+    private void attachSelection(JPanel card, OreStage stage) {
         card.setCursor(new Cursor(Cursor.HAND_CURSOR));
         MouseAdapter adapter = new MouseAdapter() {
             @Override

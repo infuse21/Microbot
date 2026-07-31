@@ -1,12 +1,11 @@
-package net.runelite.client.plugins.microbot.simplewoodcutting;
+package net.runelite.client.plugins.microbot.simplemining;
 
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Experience;
 import net.runelite.api.Skill;
 import net.runelite.client.plugins.microbot.Microbot;
-import net.runelite.client.plugins.microbot.simplewoodcutting.enums.ForestryEvents;
-import net.runelite.client.plugins.microbot.simplewoodcutting.enums.TreeLocation;
-import net.runelite.client.plugins.microbot.simplewoodcutting.enums.TreeStage;
+import net.runelite.client.plugins.microbot.simplemining.enums.MiningLocation;
+import net.runelite.client.plugins.microbot.simplemining.enums.OreStage;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.ui.FontManager;
@@ -32,7 +31,7 @@ import java.text.NumberFormat;
  * {@link #onClick(Point)} hit-tests them against the overlay's rendered bounds.
  */
 @Slf4j
-public class SimpleWoodcuttingOverlay extends Overlay {
+public class SimpleMiningOverlay extends Overlay {
 
     private static final int WIDTH = 236;
     private static final int PAD = 9;
@@ -52,7 +51,7 @@ public class SimpleWoodcuttingOverlay extends Overlay {
 
     private static final NumberFormat NUM = NumberFormat.getIntegerInstance();
 
-    private final SimpleWoodcuttingPlugin plugin;
+    private final SimpleMiningPlugin plugin;
 
     /** Button rects in overlay-local coordinates, refreshed every render. */
     private final Rectangle runButton = new Rectangle();
@@ -60,7 +59,7 @@ public class SimpleWoodcuttingOverlay extends Overlay {
     private int hovered = -1; // 0 = run, 1 = pause
 
     @Inject
-    SimpleWoodcuttingOverlay(SimpleWoodcuttingPlugin plugin) {
+    SimpleMiningOverlay(SimpleMiningPlugin plugin) {
         this.plugin = plugin;
         setPosition(OverlayPosition.TOP_LEFT);
         setLayer(OverlayLayer.ABOVE_WIDGETS);
@@ -77,7 +76,7 @@ public class SimpleWoodcuttingOverlay extends Overlay {
         public boolean paused;
         public String task = "-";
         public String mode = "-";
-        public String tree = "-";
+        public String ore = "-";
         public String method = "-";
         public String location = "-";
         public int level = 1;
@@ -87,7 +86,6 @@ public class SimpleWoodcuttingOverlay extends Overlay {
         public int xpPerHour = 0;
         public String timeToLevel = "-";
         public String inventory = "-";
-        public String forestry = "Off";
         public String runtime = "00:00:00";
     }
 
@@ -96,7 +94,7 @@ public class SimpleWoodcuttingOverlay extends Overlay {
         try {
             return paint(g, gather());
         } catch (Exception ex) {
-            log.debug("SimpleWoodcuttingOverlay render error", ex);
+            log.debug("SimpleMiningOverlay render error", ex);
             return new Dimension(WIDTH, 40);
         }
     }
@@ -107,8 +105,8 @@ public class SimpleWoodcuttingOverlay extends Overlay {
         s.running = plugin.isScriptRunning();
         s.paused = plugin.isScriptPaused();
 
-        int level = Rs2Player.getRealSkillLevel(Skill.WOODCUTTING);
-        TreeStage stage = plugin.resolveDisplayStage(level);
+        int level = Rs2Player.getRealSkillLevel(Skill.MINING);
+        OreStage stage = plugin.resolveDisplayStage(level);
 
         // When stopped, show WHY rather than a bare dash.
         String stopReason = plugin.getScript().getStopReason();
@@ -116,8 +114,8 @@ public class SimpleWoodcuttingOverlay extends Overlay {
                 ? plugin.getScript().getState().name()
                 : (stopReason != null ? stopReason : "-");
         s.mode = plugin.getConfig().autoProgress() ? "Auto progression" : "Manual";
-        s.tree = stage.getDisplayName();
-        s.method = stage.getAction();
+        s.ore = stage.getDisplayName();
+        s.method = stage.getDisplayName();
         s.location = locationName(stage);
         s.level = level;
         s.levelFraction = levelFraction(level);
@@ -126,12 +124,6 @@ public class SimpleWoodcuttingOverlay extends Overlay {
         s.xpPerHour = plugin.getXpPerHour();
         s.timeToLevel = timeToLevel(level);
         s.inventory = inventoryText();
-        ForestryEvents forestryEvent = plugin.getCurrentForestryEvent();
-        s.forestry = !plugin.getConfig().enableForestry()
-                ? "Off"
-                : forestryEvent != ForestryEvents.NONE
-                        ? forestryEvent.name().replace('_', ' ')
-                        : plugin.getCompletedForestryEventCount() + " completed";
         s.runtime = plugin.getFormattedRuntime();
         return s;
     }
@@ -154,7 +146,7 @@ public class SimpleWoodcuttingOverlay extends Overlay {
         // --- Task block ---
         y = row(g, y, "Task", s.task, VALUE);
         y = row(g, y, "Mode", s.mode, VALUE);
-        y = row(g, y, "Tree", s.tree, ACCENT);
+        y = row(g, y, "Ore", s.ore, ACCENT);
         y = row(g, y, "Action", s.method, VALUE);
         y = row(g, y, "Location", s.location, VALUE);
         y = divider(g, y);
@@ -169,7 +161,6 @@ public class SimpleWoodcuttingOverlay extends Overlay {
 
         // --- Session block ---
         y = row(g, y, "Inventory", s.inventory, VALUE);
-        y = row(g, y, "Forestry", s.forestry, VALUE);
         y = row(g, y, "Runtime", s.runtime, VALUE);
 
         // --- Buttons ---
@@ -194,7 +185,7 @@ public class SimpleWoodcuttingOverlay extends Overlay {
     private int drawTitle(Graphics2D g, int y, boolean running, boolean paused) {
         g.setFont(FontManager.getRunescapeBoldFont());
         g.setColor(ACCENT);
-        g.drawString("SIMPLE WC", PAD, y);
+        g.drawString("SIMPLE MINING", PAD, y);
 
         String status = !running ? "STOPPED" : (paused ? "PAUSED" : "RUNNING");
         Color statusColor = !running ? RED : (paused ? ORANGE : GREEN);
@@ -309,7 +300,7 @@ public class SimpleWoodcuttingOverlay extends Overlay {
         if (level >= 99) {
             return 1f;
         }
-        int current = Microbot.getClient().getSkillExperience(Skill.WOODCUTTING);
+        int current = Microbot.getClient().getSkillExperience(Skill.MINING);
         int start = Experience.getXpForLevel(level);
         int end = Experience.getXpForLevel(level + 1);
         if (end <= start) {
@@ -323,7 +314,7 @@ public class SimpleWoodcuttingOverlay extends Overlay {
             return 0;
         }
         return Math.max(0, Experience.getXpForLevel(level + 1)
-                - Microbot.getClient().getSkillExperience(Skill.WOODCUTTING));
+                - Microbot.getClient().getSkillExperience(Skill.MINING));
     }
 
     private String timeToLevel(int level) {
@@ -348,14 +339,13 @@ public class SimpleWoodcuttingOverlay extends Overlay {
         }
     }
 
-    private String locationName(TreeStage stage) {
+    private String locationName(OreStage stage) {
         try {
             // Prefer the script's cached decision - it's path-aware. Fall back to the cheap
             // straight-line pick; never pathfind here, this runs on the client thread.
-            TreeLocation chosen = plugin.getScript().getDisplayLocation();
+            MiningLocation chosen = plugin.getScript().getDisplayLocation();
             if (chosen == null) {
-                chosen = stage.getClosestLocation(Rs2Player.getWorldLocation(),
-                        SimpleWoodcuttingPlugin.isMembersWorld(plugin.getConfig()));
+                chosen = stage.getClosestLocation(Rs2Player.getWorldLocation());
             }
             return chosen == null ? "-" : chosen.getName();
         } catch (Exception e) {

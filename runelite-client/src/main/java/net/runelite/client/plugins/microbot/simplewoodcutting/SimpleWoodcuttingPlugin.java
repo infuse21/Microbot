@@ -8,7 +8,9 @@ import net.runelite.api.GameObject;
 import net.runelite.api.NPC;
 import net.runelite.api.Quest;
 import net.runelite.api.QuestState;
+import net.runelite.api.Client;
 import net.runelite.api.Skill;
+import net.runelite.api.WorldType;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.GameObjectDespawned;
 import net.runelite.api.events.GameObjectSpawned;
@@ -26,6 +28,7 @@ import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.api.npc.models.Rs2NpcModel;
+import net.runelite.client.plugins.microbot.simplewoodcutting.enums.WorldMode;
 import net.runelite.client.plugins.microbot.simplewoodcutting.enums.ForestryEvents;
 import net.runelite.client.plugins.microbot.simplewoodcutting.enums.TreeStage;
 import net.runelite.client.plugins.microbot.simplewoodcutting.forestry.EggEvent;
@@ -52,11 +55,13 @@ import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 
@@ -64,6 +69,7 @@ import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
 
 @PluginDescriptor(
         name = PluginDescriptor.Default + "Simple Woodcutting",
+        enabledByDefault = false,
         description = "All-in-one woodcutting with progression, Forestry, looting, banking, "
                 + "firemaking, fletching and GE selling",
         tags = {"woodcutting", "skilling", "forestry", "aio", "progression"},
@@ -75,7 +81,7 @@ import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
 )
 @Slf4j
 public class SimpleWoodcuttingPlugin extends Plugin {
-    public static final String version = "1.1.1";
+    public static final String version = "1.2.0";
 
     private static final Pattern SAPLING_MESSAGE =
             Pattern.compile("^The sapling seems to love the (first|second|third).*$");
@@ -237,6 +243,27 @@ public class SimpleWoodcuttingPlugin extends Plugin {
         startTime = System.currentTimeMillis();
     }
 
+    /**
+     * Reads the world we are actually logged into, for {@link WorldMode#AUTO}.
+     *
+     * <p>The world type is a plain flag set on login, so this stays correct across a hop
+     * without any subscription - which is why it beats a tickbox the user has to remember
+     * to flip after hopping.</p>
+     */
+    public static final BooleanSupplier MEMBER_WORLD = () -> {
+        Client client = Microbot.getClient();
+        if (client == null) {
+            return false;
+        }
+        EnumSet<WorldType> types = client.getWorldType();
+        return types != null && types.contains(WorldType.MEMBERS);
+    };
+
+    /** The configured world mode resolved to a plain members/free answer. */
+    public static boolean isMembersWorld(SimpleWoodcuttingConfig config) {
+        return config.worldMode().isMembersWorld(MEMBER_WORLD);
+    }
+
     public static final Function<Quest, QuestState> QUEST_STATES = quest -> {
         try {
             return Rs2Player.getQuestState(quest);
@@ -255,14 +282,14 @@ public class SimpleWoodcuttingPlugin extends Plugin {
 
     public TreeStage resolveDisplayStage(int wcLevel) {
         return config.autoProgress()
-                ? TreeStage.bestFor(wcLevel, config.membersWorld(), QUEST_STATES, SKILL_LEVELS)
+                ? TreeStage.bestFor(wcLevel, isMembersWorld(config), QUEST_STATES, SKILL_LEVELS)
                 : config.manualStage();
     }
 
     private Map<TreeStage, String> lockReasons(int wcLevel) {
         Map<TreeStage, String> reasons = new EnumMap<>(TreeStage.class);
         for (TreeStage stage : TreeStage.values()) {
-            String reason = stage.lockReason(wcLevel, config.membersWorld(), QUEST_STATES, SKILL_LEVELS);
+            String reason = stage.lockReason(wcLevel, isMembersWorld(config), QUEST_STATES, SKILL_LEVELS);
             if (reason != null) {
                 reasons.put(stage, reason);
             }
@@ -572,7 +599,7 @@ public class SimpleWoodcuttingPlugin extends Plugin {
             return;
         }
         int level = Rs2Player.getRealSkillLevel(Skill.WOODCUTTING);
-        panel.update(level, resolveDisplayStage(level), config.membersWorld(),
+        panel.update(level, resolveDisplayStage(level), isMembersWorld(config),
                 config.autoProgress(), lockReasons(level), config.manualLocation());
     }
 

@@ -5,6 +5,7 @@ import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.ConfigSection;
 import net.runelite.client.config.Range;
+import net.runelite.client.plugins.microbot.simplewoodcutting.enums.WorldMode;
 import net.runelite.client.plugins.microbot.simplewoodcutting.enums.GeSellPricing;
 import net.runelite.client.plugins.microbot.simplewoodcutting.enums.FletchingDisposition;
 import net.runelite.client.plugins.microbot.simplewoodcutting.enums.InventoryMode;
@@ -58,11 +59,14 @@ public interface SimpleWoodcuttingConfig extends Config {
         return "";
     }
 
-    @ConfigItem(keyName = "membersWorld", name = "Members world",
-            description = "Allow members-only trees (maple, magic, redwood...). Turn off on F2P",
+    @ConfigItem(keyName = "worldMode", name = "World type",
+            description = "Which trees and patches to consider. Auto reads the world you are logged "
+                    + "into, so hopping between free and members worlds adapts by itself. F2P runs "
+                    + "Tree > Oak > Willow > Yew and never routes to the Barbarian Outpost or the "
+                    + "Woodcutting Guild.",
             position = 3, section = PROGRESSION_SECTION)
-    default boolean membersWorld() {
-        return true;
+    default WorldMode worldMode() {
+        return WorldMode.AUTO;
     }
 
     @Range(min = 2, max = 99)
@@ -130,6 +134,17 @@ public interface SimpleWoodcuttingConfig extends Config {
             position = 7, section = INVENTORY_SECTION)
     default WalkBackMode walkBackMode() {
         return WalkBackMode.CURATED_LOCATION;
+    }
+
+    @Range(min = 0, max = 64)
+    @ConfigItem(keyName = "workAreaRadius", name = "Work area radius",
+            description = "Only chop trees within this many tiles of the spot you picked, so the bot "
+                    + "stays put instead of drifting toward whatever cluster happens to be nearest. "
+                    + "The centre is the location you travelled to, or where you started the script. "
+                    + "Set 0 to disable and chop the nearest tree anywhere.",
+            position = 8, section = INVENTORY_SECTION)
+    default int workAreaRadius() {
+        return 15;
     }
 
     // ---- Safety and looting ----

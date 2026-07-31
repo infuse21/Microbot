@@ -37,6 +37,13 @@ public enum TreeStage {
                     TreeLocation.of("Varrock West", 3162, 3411),
             }),
 
+    ACHEY("Achey", "Achey tree", "Achey tree logs", 1, "Chop", true, false,
+            StageRequirement.NONE,
+            new TreeLocation[]{
+                    TreeLocation.of("South of Castle Wars", 2440, 3061, "bank walk"),
+                    TreeLocation.of("Feldip Hills", 2626, 2975, "remote"),
+            }),
+
     OAK("Oak", "oak tree", "Oak logs", 15, "Chop down", false, true,
             StageRequirement.NONE,
             new TreeLocation[]{
@@ -50,7 +57,7 @@ public enum TreeStage {
             new TreeLocation[]{
                     TreeLocation.of("Draynor Village", 3088, 3235, "bank close"),
                     TreeLocation.of("Port Sarim", 3059, 3253),
-                    TreeLocation.of("Barbarian Outpost", 2532, 3565),
+                    TreeLocation.members("Barbarian Outpost", 2532, 3565),
             }),
 
     TEAK("Teak", "teak tree", "Teak logs", 35, "Chop down", true, false,
@@ -58,6 +65,13 @@ public enum TreeStage {
             new TreeLocation[]{
                     TreeLocation.of("Fossil Island", 3714, 3835, "Bone Voyage"),
                     TreeLocation.of("Ape Atoll", 2765, 2704, "members"),
+            }),
+
+    JUNIPER("Juniper", "Mature juniper tree", "Juniper logs", 42, "Chop down", true, false,
+            StageRequirement.NONE,
+            new TreeLocation[]{
+                    TreeLocation.of("Hosidius Farms", 1714, 3535),
+                    TreeLocation.of("Hosidius Vinery", 1794, 3556),
             }),
 
     MAPLE("Maple", "maple tree", "Maple logs", 45, "Chop down", true, true,
@@ -74,12 +88,21 @@ public enum TreeStage {
                     TreeLocation.of("Ape Atoll", 2765, 2704, "members"),
             }),
 
+    // Only the Neitiznot spawns are quest-gated, so the stage itself stays unlocked and the
+    // Rellekka cluster (listed first) is the safe default for an account without the quest.
+    ARCTIC_PINE("Arctic pine", "Arctic pine tree", "Arctic pine logs", 54, "Cut down", true, false,
+            StageRequirement.NONE,
+            new TreeLocation[]{
+                    TreeLocation.of("SW of Rellekka", 2607, 3635),
+                    TreeLocation.of("Neitiznot", 2340, 3809, "Fremennik Isles"),
+            }),
+
     YEW("Yew", "yew tree", "Yew logs", 60, "Chop down", false, true,
             StageRequirement.NONE,
             new TreeLocation[]{
                     TreeLocation.of("Varrock Castle", 3225, 3459),
                     TreeLocation.of("Falador", 3052, 3272),
-                    TreeLocation.of("Woodcutting Guild", 1591, 3483, "60% Hosidius"),
+                    TreeLocation.members("Woodcutting Guild", 1591, 3483, "60% Hosidius"),
                     TreeLocation.of("Lumbridge", 3165, 3220),
             }),
 
@@ -140,6 +163,31 @@ public enum TreeStage {
         return locations.get(0);
     }
 
+    /**
+     * Patches reachable on this world type. Willows and yews grow in both free and members
+     * areas, so filtering here is what stops nearest-location picking from routing a free
+     * account to the Barbarian Outpost or the Woodcutting Guild.
+     *
+     * <p>Falls back to the full list rather than an empty one; the stage's own
+     * {@code membersOnly} gate is what refuses the trip in that case.</p>
+     */
+    public List<TreeLocation> availableLocations(boolean membersWorld) {
+        if (membersWorld) {
+            return locations;
+        }
+        List<TreeLocation> free = new java.util.ArrayList<>();
+        for (TreeLocation location : locations) {
+            if (!location.isMembersOnly()) {
+                free.add(location);
+            }
+        }
+        return free.isEmpty() ? locations : free;
+    }
+
+    public TreeLocation getDefaultLocation(boolean membersWorld) {
+        return availableLocations(membersWorld).get(0);
+    }
+
     public TreeLocation findLocation(String name) {
         if (name == null || name.isEmpty()) {
             return null;
@@ -154,12 +202,16 @@ public enum TreeStage {
 
     /** Closest curated location by straight-line distance; cheap fallback. */
     public TreeLocation getClosestLocation(WorldPoint from) {
+        return getClosestLocation(from, true);
+    }
+
+    public TreeLocation getClosestLocation(WorldPoint from, boolean membersWorld) {
         if (from == null) {
-            return getDefaultLocation();
+            return getDefaultLocation(membersWorld);
         }
-        TreeLocation closest = getDefaultLocation();
+        TreeLocation closest = getDefaultLocation(membersWorld);
         int best = Integer.MAX_VALUE;
-        for (TreeLocation candidate : locations) {
+        for (TreeLocation candidate : availableLocations(membersWorld)) {
             int distance = from.distanceTo(candidate.getPoint());
             if (distance < best) {
                 best = distance;
@@ -176,22 +228,29 @@ public enum TreeStage {
      */
     public TreeLocation getFastestLocation(WorldPoint from,
                                            java.util.function.ToIntBiFunction<WorldPoint, WorldPoint> pathTiles) {
-        if (locations.size() == 1) {
-            return getDefaultLocation();
+        return getFastestLocation(from, pathTiles, true);
+    }
+
+    public TreeLocation getFastestLocation(WorldPoint from,
+                                           java.util.function.ToIntBiFunction<WorldPoint, WorldPoint> pathTiles,
+                                           boolean membersWorld) {
+        List<TreeLocation> usable = availableLocations(membersWorld);
+        if (usable.size() == 1) {
+            return usable.get(0);
         }
         if (from == null || pathTiles == null) {
-            return getClosestLocation(from);
+            return getClosestLocation(from, membersWorld);
         }
         TreeLocation best = null;
         int bestTiles = Integer.MAX_VALUE;
-        for (TreeLocation candidate : locations) {
+        for (TreeLocation candidate : usable) {
             int tiles = pathTiles.applyAsInt(from, candidate.getPoint());
             if (tiles < bestTiles) {
                 bestTiles = tiles;
                 best = candidate;
             }
         }
-        return best == null ? getClosestLocation(from) : best;
+        return best == null ? getClosestLocation(from, membersWorld) : best;
     }
 
     /** Why this stage can't be trained now, or null when it's good to go. */

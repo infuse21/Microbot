@@ -58,6 +58,11 @@ public class SimpleWoodcuttingScript extends Script {
     private static final int TREE_AREA_WALK_TOLERANCE = 8;
     /** How close counts as "in" a pinned location's area. */
     private static final int PINNED_RADIUS = 30;
+    /**
+     * How long the work area may stay empty of the target tree before we call it a bad
+     * setup. Comfortably above every tree's respawn time, so a normal wait never trips it.
+     */
+    private static final long WORK_AREA_EMPTY_TIMEOUT_MS = 240000;
     private static final int BANK_DISCOVERY_RANGE = 20;
     private static final int BANK_INTERACT_RANGE = 4;
     private static final int BANK_WALK_TOLERANCE = 4;
@@ -191,7 +196,7 @@ public class SimpleWoodcuttingScript extends Script {
     private TreeStage resolveStage() {
         if (config.autoProgress()) {
             int level = Rs2Player.getRealSkillLevel(Skill.WOODCUTTING);
-            return TreeStage.bestFor(level, config.membersWorld(),
+            return TreeStage.bestFor(level, SimpleWoodcuttingPlugin.isMembersWorld(config),
                     SimpleWoodcuttingPlugin.QUEST_STATES, SimpleWoodcuttingPlugin.SKILL_LEVELS);
         }
         return config.manualStage();
@@ -208,7 +213,7 @@ public class SimpleWoodcuttingScript extends Script {
         }
 
         // Gate check before any walking.
-        String lock = activeStage.lockReason(level, config.membersWorld(),
+        String lock = activeStage.lockReason(level, SimpleWoodcuttingPlugin.isMembersWorld(config),
                 SimpleWoodcuttingPlugin.QUEST_STATES, SimpleWoodcuttingPlugin.SKILL_LEVELS);
         if (lock != null) {
             requestStop("Cannot chop " + activeStage.getDisplayName() + ": " + lock);
@@ -298,6 +303,20 @@ public class SimpleWoodcuttingScript extends Script {
 
     private void handleChopping() {
         Rs2TileObjectModel tree = findNearestTree(activeStage);
+        if (tree == null) {
+            // An empty patch is normal - trees despawn when chopped. Only complain once it
+            // has stayed empty for far longer than any respawn, which means the work area is
+            // too tight or centred somewhere this tree does not grow.
+            if (config.workAreaRadius() > 0 && lastTreeLocation != null
+                    && System.currentTimeMillis() - lastChopTime > WORK_AREA_EMPTY_TIMEOUT_MS) {
+                requestStop("No " + activeStage.getDisplayName() + " tree within "
+                        + config.workAreaRadius() + " tiles of the work area"
+                        + " - widen the radius or restart on the patch");
+                return;
+            }
+            Microbot.status = "Waiting for a respawn";
+            return;
+        }
         if (!isInRange(tree)) {
             return; // routed back to TRAVELING next tick
         }
@@ -940,7 +959,8 @@ public class SimpleWoodcuttingScript extends Script {
         if (travelTarget != null && travelTargetStage == activeStage) {
             return travelTarget;
         }
-        TreeLocation chosen = activeStage.getFastestLocation(player, SimpleWoodcuttingScript::pathTiles);
+        TreeLocation chosen = activeStage.getFastestLocation(player, SimpleWoodcuttingScript::pathTiles,
+                SimpleWoodcuttingPlugin.isMembersWorld(config));
         travelTarget = chosen;
         travelTargetStage = activeStage;
         return chosen;
@@ -960,6 +980,18 @@ public class SimpleWoodcuttingScript extends Script {
     }
 
     private boolean isAtLocation(TreeStage stage) {
+        WorldPoint player = Rs2Player.getWorldLocation();
+        // Once we have actually chopped here, standing inside the work area counts as
+        // arrived even when every tree is a stump. Trees despawn the instant they are
+        // chopped, so an empty patch is the normal case - without this the script would
+        // pace back to the curated point and out again while waiting for a respawn.
+        // Gated on having chopped at least once so that starting at a bank still travels.
+        int radius = config.workAreaRadius();
+        WorldPoint centre = workAreaCentre();
+        if (radius > 0 && centre != null && player != null && lastTreeLocation != null
+                && player.distanceTo(centre) <= radius) {
+            return true;
+        }
         if (!isInRange(findNearestTree(stage))) {
             return false;
         }
@@ -967,34 +999,65 @@ public class SimpleWoodcuttingScript extends Script {
         if (pinned == null) {
             return true;
         }
-        WorldPoint player = Rs2Player.getWorldLocation();
         return player != null && player.distanceTo(pinned.getPoint()) <= PINNED_RADIUS;
     }
 
+    /**
+     * Whether a tree is close enough to click. Distance only - deliberately no line of sight.
+     *
+     * <p>A line-of-sight test here is always false and stalls the whole script. {@code
+     * WorldArea.hasLineOfSightTo} walks the tiles between the two points and rejects any that
+     * carries {@code BLOCK_LINE_OF_SIGHT_FULL}, and it checks the destination tile too - but a
+     * tree <em>is</em> a solid object filling its own tile, so it always sets that flag. The
+     * result is that even a tree you are pressed up against fails the test, {@code
+     * isAtLocation} never becomes true, and the script sits in TRAVELING forever without ever
+     * chopping. (The same trap is documented in QuestingScript, where a chest you were
+     * standing against never became "clickable".)</p>
+     *
+     * <p>Distance alone is safe here: clicking a scenery object makes the game walk to it, and
+     * a click that genuinely cannot be reached answers "I can't reach that!" rather than
+     * hanging - so being permissive self-corrects, while being strict deadlocks.</p>
+     */
     private boolean isInRange(Rs2TileObjectModel tree) {
         if (tree == null) {
             return false;
         }
         WorldPoint player = Rs2Player.getWorldLocation();
         WorldPoint treeLoc = tree.getWorldLocation();
-        if (player == null || treeLoc == null
-                || player.distanceTo(treeLoc) > TREE_INTERACT_RANGE) {
-            return false;
-        }
-        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
-            var localPlayer = Microbot.getClient().getLocalPlayer();
-            return localPlayer != null
-                    && localPlayer.getWorldArea().hasLineOfSightTo(
-                            Microbot.getClient().getTopLevelWorldView(),
-                            treeLoc.toWorldArea());
-        }).orElse(false);
+        return player != null && treeLoc != null
+                && player.distanceTo(treeLoc) <= TREE_INTERACT_RANGE;
     }
 
+    /**
+     * Centre of the work area: the spot we actually travelled to, falling back to where the
+     * script was started (which is the right answer when the user began already standing in
+     * the trees, so no travelling happened).
+     */
+    private WorldPoint workAreaCentre() {
+        WorldPoint centre = lastChoppingArea;
+        return centre != null ? centre : startingLocation;
+    }
+
+    /**
+     * Nearest tree of this stage, restricted to the work area when one is configured.
+     *
+     * <p>Without the restriction the search is simply "nearest tree of this type within 32
+     * tiles", which lets the bot creep toward whichever cluster happens to be closest and
+     * gradually abandon the spot the user picked.</p>
+     */
     private Rs2TileObjectModel findNearestTree(TreeStage stage) {
         if (Thread.currentThread().isInterrupted()) {
             return null;
         }
         try {
+            int radius = config.workAreaRadius();
+            WorldPoint centre = workAreaCentre();
+            if (radius > 0 && centre != null) {
+                return Microbot.getRs2TileObjectCache().query()
+                        .withName(stage.getTreeObjectName())
+                        .within(centre, radius)
+                        .nearestOnClientThread(TREE_DISCOVERY_RANGE);
+            }
             return Microbot.getRs2TileObjectCache().query()
                     .withName(stage.getTreeObjectName())
                     .nearestOnClientThread(TREE_DISCOVERY_RANGE);
@@ -1026,10 +1089,18 @@ public class SimpleWoodcuttingScript extends Script {
         return item != null ? item.getId() : -1;
     }
 
+    /**
+     * Start the post-action cooldown. Deliberately does <em>not</em> trigger micro breaks.
+     *
+     * <p>{@code takeMicroBreakByChance()} only raises {@code microBreakActive}; the flag is
+     * cleared by BreakHandlerScript, so calling it without the Break Handler plugin running
+     * leaves a latch nobody lowers. That is also why the woodcutting template sets
+     * {@code takeMicroBreaks = false} - breaks are opt-in through Break Handler, not
+     * something a script switches on behalf of the user.</p>
+     */
     private void safeAntibanCooldown() {
         try {
             Rs2Antiban.actionCooldown();
-            Rs2Antiban.takeMicroBreakByChance();
         } catch (IllegalArgumentException e) {
             log.warn("Antiban cooldown skipped: {}", e.getMessage());
         }
