@@ -2505,9 +2505,6 @@ public class QuestingScript extends Script {
         // precisely the bug this ordering fixes: a stale string from another step matched option 1,
         // satisfied `authored.size() == 1`, and won over the documented answer for the menu on screen.
         String documented = QuestDialogueCorpus.answerForMenu(questName, options);
-        if (documented != null && LearnedDialogue.isDangerousOption(documented)) {
-            documented = null;
-        }
 
         // No special case for "permanent choice" quests. Quest Helper models a branch as two separate
         // helpers over one quest id — SHIELD_OF_ARRAV_PHOENIX_GANG and SHIELD_OF_ARRAV_BLACK_ARM_GANG
@@ -2526,9 +2523,7 @@ public class QuestingScript extends Script {
             // it only when exactly one survives — several means a branch. No blind fallback: guessing
             // was what picked "Yes please." and opened a shop, and with the transcripts loaded there is
             // no longer any reason to. An unanswerable menu stops and says so.
-            List<String> questRelated = QuestDialogueCorpus.questRelatedOptions(questName, options).stream()
-                    .filter(o -> !LearnedDialogue.isDangerousOption(o))
-                    .collect(Collectors.toList());
+            List<String> questRelated = QuestDialogueCorpus.questRelatedOptions(questName, options);
             if (questRelated.size() == 1) {
                 choice = questRelated.get(0);
                 fromCorpus = true;

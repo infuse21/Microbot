@@ -36,8 +36,9 @@ import java.util.TreeSet;
  *       (which gang, which reward) and must not be decided automatically.</li>
  * </ul>
  *
- * <p>This is a hint source, not an authority. It never overrides a learned answer or the quest's own
- * declared choice, and it never bypasses {@link LearnedDialogue#isDangerousOption(String)}.
+ * <p>This is the authority on what a menu offers. A documented answer for the exact menu on screen
+ * outranks the quest's own declared choices, whose vocabulary spans every step and can match a string
+ * authored for a different conversation.
  *
  * <p>Data: {@code quest-dialogue.tsv}, CC BY-NC-SA 3.0, from oldschool.runescape.wiki.
  * Regenerate per {@code docs/quest-dialogue-corpus.md} after a game update rewords dialogue.
