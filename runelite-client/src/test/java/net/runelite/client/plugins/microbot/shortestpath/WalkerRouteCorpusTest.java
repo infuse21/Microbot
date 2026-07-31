@@ -226,4 +226,23 @@ public class WalkerRouteCorpusTest {
                         t.getDestination() != null
                                 && t.getDestination().equals(new WorldPoint(3011, 3204, 0))));
     }
+
+    @Test
+    public void sturdyDoorTransportRows_stayInTheCatalog() {
+        // A door that MOVES you through rather than swinging open (the Al Kharid toll-gate pattern):
+        // measured live via the agent server on plane 1 — standing at (3026,3511) and opening put the
+        // player on (3025,3511), and the reverse held. Collision cannot reveal this one: static and
+        // resolved both report every edge passable there, so without these rows the walker plans
+        // straight through and then has nothing to open. Both directions are pinned because the
+        // measurement covered both.
+        assertTransportEdge(new WorldPoint(3026, 3511, 1), new WorldPoint(3025, 3511, 1));
+        assertTransportEdge(new WorldPoint(3025, 3511, 1), new WorldPoint(3026, 3511, 1));
+    }
+
+    private static void assertTransportEdge(WorldPoint origin, WorldPoint destination) {
+        Set<Transport> at = allTransports.get(origin);
+        assertTrue("transport row " + origin + " -> " + destination + " must exist",
+                at != null && at.stream().anyMatch(t ->
+                        destination.equals(t.getDestination())));
+    }
 }
