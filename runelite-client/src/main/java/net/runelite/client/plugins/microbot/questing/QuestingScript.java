@@ -2281,13 +2281,33 @@ public class QuestingScript extends Script {
                         .sorted(Comparator.comparing(x -> x.distanceTo(Rs2Player.getWorldLocation())))
                         .collect(Collectors.toList());
 
-                // Prefer a tile we can already walk to without crossing anything;;otherwise still accept a
-                // line-of-sight tile behind a door (the shop back room) and let the walker open it en
-                // route. Falling back to the object's own tile instead just parks us outside the wall.
+                // Prefer a tile we can already walk to without crossing anything — cheap, and right
+                // whenever the target stands in the open.
                 targetTile = withLineOfSight.stream()
                         .filter(x -> locallyReachable == null || locallyReachable.containsKey(x))
                         .findFirst()
-                        .orElseGet(() -> withLineOfSight.stream().findFirst().orElse(null));
+                        .orElse(null);
+
+                // Nothing usable nearby. Do NOT fall back to whichever candidate is closest in a
+                // straight line: proximity says nothing about whether a route exists, and the closest
+                // tile is routinely the one on the wrong side of a wall. Black Knights' Fortress is the
+                // second recorded case — the tiles beside the ladder are walkable and adjacent but
+                // walled off, while the only usable approach is east through a Sturdy door, which a
+                // local BFS cannot see because it stops at the door.
+                //
+                // Ask the pathfinder instead. It knows doors and transports, takes the whole candidate
+                // set at once, and answers the question that actually matters: which of these can I get
+                // to. Cost is one pathfind, and only on the branch where the cheap answer failed.
+                if (targetTile == null && !withLineOfSight.isEmpty()) {
+                    targetTile = Rs2Walker.nearestReachable(Rs2Player.getWorldLocation(), withLineOfSight);
+                    if (targetTile != null) {
+                        Microbot.log("[Questing] approach via pathfinder: " + targetTile
+                                + " for object id=" + step.getObjectID() + " (no locally reachable tile)", Level.WARN);
+                    }
+                }
+
+                // Still nothing: widen the radius rather than committing to an unreachable tile. The
+                // loop's own radius > 10 guard below falls back to the object's tile as a last resort.
 
                 if (radius > 10 && targetTile == null)
                     targetTile = stepLocation;
