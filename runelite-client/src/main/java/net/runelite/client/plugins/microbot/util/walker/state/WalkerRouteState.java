@@ -119,6 +119,12 @@ public final class WalkerRouteState {
     public volatile long lastUnreachableRecoveryClickAtMs = 0L;
 
     /**
+     * Wall-clock ms the bank-mirror bootstrap last found no bank at all. The retry backs off from
+     * this: the attempt runs a full pathfind, so repeating it every tick costs as much as it achieves.
+     */
+    public volatile long lastBankBootstrapMissAtMs = 0L;
+
+    /**
      * Last time the recovery block hit the door-recovery-suppressed branch (an unresolved door sits on the
      * blocked route edge but every door handler declined due to settling/cooldowns). While this is recent,
      * the idle nudge must NOT fire: its forward click is not door-aware, so it can select a statically
