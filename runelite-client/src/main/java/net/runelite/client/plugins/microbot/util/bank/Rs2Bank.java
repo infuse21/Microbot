@@ -2350,14 +2350,21 @@ public class Rs2Bank {
                     return accessibleBankArea.intersectsWith2D(nearestTileArea);
                 })
                 .findFirst();
-        BankLocation returnBankLocation = null;
-        if (byPath.isPresent()) {
-            Microbot.log("Found nearest bank (shortest path): " + byPath.get());
-            returnBankLocation = byPath.get();
-        } else {
-            Microbot.log("Nearest bank point " + nearestTile + " did not match any BankLocation");
+        if (!byPath.isPresent()) {
+            // The pathfinder returns its BEST EFFORT, not only complete routes: with no reachable bank
+            // it hands back a partial path that stops short — sometimes one or two tiles from the start,
+            // e.g. when the player is mid-staircase and the start tile itself pathfinds poorly. Taking
+            // that endpoint as a result produced "did not match any BankLocation", which reads like a
+            // gap in the catalog and sent us looking for an entry that already existed (observed at
+            // (3025,3508): the endpoint was 2 tiles away while EDGEVILLE sat 69 tiles east). Report it
+            // as the unreachable/partial route it is, and return nothing so getPathToNearestBank
+            // honours its documented empty-list contract instead of handing callers a stub to walk.
+            Microbot.log("No bank reachable from " + worldPoint + ": pathfinding stopped at " + nearestTile
+                    + " after " + path.size() + " tiles (partial route)");
+            return null;
         }
-        return new AbstractMap.SimpleEntry<>(path, returnBankLocation);
+        Microbot.log("Found nearest bank (shortest path): " + byPath.get());
+        return new AbstractMap.SimpleEntry<>(path, byPath.get());
     }
 
     /**
