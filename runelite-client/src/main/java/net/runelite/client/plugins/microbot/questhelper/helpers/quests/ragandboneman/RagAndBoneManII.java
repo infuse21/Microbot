@@ -863,6 +863,16 @@ public class RagAndBoneManII extends BasicQuestHelper
 		requirements.add(canAccessExperimentCave);
 		requirements.add(new VarbitRequirement(QuestVarbits.QUEST_ZOGRE_FLESH_EATERS.getId(), Operation.GREATER_EQUAL,
 			3, "Partial completion of Zogre Flesh Eaters"));
+
+		// Dagannoth bones need lighthouse access, which the game gates behind Horror from the Deep or
+		// getting far enough into The Fremennik Trials. IN_PROGRESS also matches FINISHED.
+		Conditions canReachDagannoth = new Conditions(LogicType.OR,
+			new QuestRequirement(QuestHelperQuest.HORROR_FROM_THE_DEEP, QuestState.FINISHED),
+			new QuestRequirement(QuestHelperQuest.THE_FREMENNIK_TRIALS, QuestState.IN_PROGRESS)
+		);
+		canReachDagannoth.setText("Horror from the Deep, or partial completion of The Fremennik Trials");
+		requirements.add(canReachDagannoth);
+
 		return requirements;
 	}
 

@@ -528,3 +528,29 @@ tasks.withType<Test> {
 tasks.javadoc {
     title = "RuneLite Client ${project.version} API"
 }
+
+// --- Quest requirement audit -------------------------------------------------------------------
+// Offline maintenance tooling: diffs the quest helper's hardcoded requirements against Jagex's own
+// Quest table in the game cache. It lives in its own source set so the :cache dependency never
+// reaches the client's compile or test classpath. See docs/quest-requirements-audit.md.
+val questAudit: SourceSet by sourceSets.creating
+
+dependencies {
+    "questAuditImplementation"("net.runelite:cache:${project.version}")
+}
+
+tasks.register<JavaExec>("auditQuestRequirements") {
+    group = "verification"
+    description = "Diff quest helper requirements against Jagex's Quest table in the game cache"
+
+    mainClass.set("net.runelite.client.plugins.microbot.questhelper.tools.QuestRequirementAudit")
+    classpath = questAudit.runtimeClasspath
+
+    // -PcachePath=<dir> to point at a cache other than ~/.runelite/jagexcache/oldschool/LIVE
+    argumentProviders.add(CommandLineArgumentProvider {
+        listOf(
+            providers.gradleProperty("cachePath").getOrElse(""),
+            rootProject.projectDir.absolutePath
+        )
+    })
+}

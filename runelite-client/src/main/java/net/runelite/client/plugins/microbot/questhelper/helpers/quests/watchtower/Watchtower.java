@@ -631,7 +631,7 @@ public class Watchtower extends BasicQuestHelper
 	public List<Requirement> getGeneralRequirements()
 	{
 		ArrayList<Requirement> req = new ArrayList<>();
-		req.add(new SkillRequirement(Skill.MAGIC, 15));
+		req.add(new SkillRequirement(Skill.MAGIC, 14));
 		req.add(new SkillRequirement(Skill.THIEVING, 15));
 		req.add(new SkillRequirement(Skill.AGILITY, 25, true));
 		req.add(new SkillRequirement(Skill.HERBLORE, 14, true));
