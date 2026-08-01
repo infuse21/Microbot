@@ -627,6 +627,12 @@ public class Rs2Walker {
      */
     // routeState.suppressTryDirectShortWalkUntilMs migrated to WalkerRouteState (see routeState)
     private static final long POST_DOOR_NUDGE_SUPPRESS_TRY_DIRECT_MS = 2200L;
+    /**
+     * Hold-off when the door opened but no canvas nudge was issued (the mid-route case). Long enough that
+     * the next beat is not on the door interaction's own tick, short enough that the walk does not stall
+     * waiting for a scene click that was never made.
+     */
+    private static final long POST_DOOR_NO_NUDGE_SUPPRESS_TRY_DIRECT_MS = 500L;
 
     /** Max wait after scene canvas / recovery clicks until movement stops (avoids minimap churn while in-flight). */
     private static final int POST_SCENE_WALK_IDLE_WAIT_MS_MAX = 10_000;
@@ -796,38 +802,39 @@ public class Rs2Walker {
         }
     }
 
-    private static void maybeCanvasNudgeAfterDoor(WorldPoint goal, int configuredDistance, List<WorldPoint> path) {
+    /** @return true only when a canvas click was actually issued, so the caller can size its minimap hold-off. */
+    private static boolean maybeCanvasNudgeAfterDoor(WorldPoint goal, int configuredDistance, List<WorldPoint> path) {
         if (goal == null || path == null || path.isEmpty()) {
-            return;
+            return false;
         }
         WorldPoint p = Rs2Player.getWorldLocation();
         if (p == null || goal.getPlane() != p.getPlane()) {
-            return;
+            return false;
         }
         if (isWalkCancelled(goal)) {
-            return;
+            return false;
         }
         WorldPoint pathLast = path.get(path.size() - 1);
         int finishTh = tightFinishThreshold(goal, pathLast, configuredDistance);
         int dGoal = p.distanceTo2D(goal);
         if (dGoal <= finishTh) {
-            return;
+            return false;
         }
         // Only nudge with fast-canvas when we are effectively on the final approach.
         // This avoids immediate scene-click jumps after ordinary mid-route door opens.
         if (dGoal > finishTh + FINAL_ADJACENT_CANVAS_NUDGE_CHEBYSHEV) {
-            return;
+            return false;
         }
         if (dGoal > DOOR_OPEN_CANVAS_NUDGE_MAX_GOAL_DIST) {
-            return;
+            return false;
         }
         LocalPoint goalLocal = LocalPoint.fromWorld(Microbot.getClient().getTopLevelWorldView(), goal);
         if (goalLocal == null || !Rs2Camera.isTileOnScreen(goalLocal)) {
-            return;
+            return false;
         }
         Map<WorldPoint, Integer> around = Rs2Tile.getReachableTilesFromTile(goal, DOOR_OPEN_CANVAS_NUDGE_GOAL_SAMPLE_RADIUS);
         if (around == null || around.isEmpty()) {
-            return;
+            return false;
         }
         List<WorldPoint> candidates = new ArrayList<>();
         for (WorldPoint t : around.keySet()) {
@@ -840,7 +847,7 @@ public class Rs2Walker {
             candidates.add(t);
         }
         if (candidates.isEmpty()) {
-            return;
+            return false;
         }
         // candidates non-empty: index range [0, size-1] is valid for betweenInclusive.
         WorldPoint pick = candidates.get(Rs2Random.betweenInclusive(0, candidates.size() - 1));
@@ -849,7 +856,9 @@ public class Rs2Walker {
             waitUntilIdleAfterSceneWalk(goal, POST_SCENE_WALK_IDLE_WAIT_MS_MAX, goal, finishTh);
             routeState.lastMovedTimeMs = System.currentTimeMillis();
             routeState.stuckCount = 0;
+            return true;
         }
+        return false;
     }
 
     private static void traceProcessWalkExit(String reason, WorldPoint target, int processWalkTail) {
@@ -2895,10 +2904,17 @@ public class Rs2Walker {
             }
 
             if (doorOrTransportResult && shouldCanvasNudgeAfterDoorLikeExit(exitReason)) {
-                maybeCanvasNudgeAfterDoor(target, distance, path);
-                // Arm after nudge returns so the window does not expire during in-nudge waits; covers path-adj
-                // door opens even when canvas nudge had no candidates / failed (still defer tryDirectShortWalk minimap).
-                routeState.suppressTryDirectShortWalkUntilMs = System.currentTimeMillis() + POST_DOOR_NUDGE_SUPPRESS_TRY_DIRECT_MS;
+                boolean canvasNudged = maybeCanvasNudgeAfterDoor(target, distance, path);
+                // Arm after nudge returns so the window does not expire during in-nudge waits. The long
+                // window exists to stop a minimap click landing on the heels of a CANVAS click, so it is
+                // only owed when a canvas click actually happened — and the nudge deliberately declines
+                // mid-route (see its final-approach guard), which is every ordinary door. Arming it
+                // regardless froze movement for 2.2s after each one, and the idle nudge then supplied a
+                // minimap click anyway: slower AND still minimap. Measured at Falador castle, door done
+                // 15:25:46, idle nudge 15:25:48. The short window still keeps the next beat off the same
+                // tick as the door interaction itself.
+                routeState.suppressTryDirectShortWalkUntilMs = System.currentTimeMillis()
+                        + (canvasNudged ? POST_DOOR_NUDGE_SUPPRESS_TRY_DIRECT_MS : POST_DOOR_NO_NUDGE_SUPPRESS_TRY_DIRECT_MS);
                 WorldPoint plAfterDoor = Rs2Player.getWorldLocation();
                 if (!path.isEmpty() && plAfterDoor != null && target != null) {
                     WorldPoint pathLastDoor = path.get(path.size() - 1);
