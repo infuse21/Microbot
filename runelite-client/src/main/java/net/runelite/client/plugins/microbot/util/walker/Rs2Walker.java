@@ -1900,10 +1900,20 @@ public class Rs2Walker {
                         "reason=no_nearby_planned_transport");
             }
             long rawSceneStartAt = System.currentTimeMillis();
-            // After a handled transport, let the main path loop dispatch the next planned transport.
-            // Broad raw transport scans can enter long false-negative waits before returning handled=false.
+            // Transports stay enabled here even inside the post-transport window. The gate above has
+            // already skipped the whole scan unless a planned transport is nearby, so reaching this
+            // line during the window MEANS one is — and disabling transport handling anyway is what
+            // made the walker take one staircase and then ignore the next one two tiles away, until
+            // the idle nudge minimap-clicked onto its origin and the current-tile handler picked it
+            // up. Observed at Falador castle: nudge to (2959,3339) instead of clicking the stairs.
+            //
+            // The original reason for suppressing — "broad raw transport scans can enter long
+            // false-negative waits" — was the 10s object scan (composition lookup per nearby object
+            // on Climb-down), fixed separately. Ranged dispatch also carries a no-progress fallback
+            // and a per-edge cooldown, so a transport that does not respond degrades instead of
+            // looping.
             boolean rawSceneHandled = allowRawSceneScan
-                    && handleNearbyRawPathSceneObjects(rawPath, HANDLER_RANGE, target, !postTransportWindow);
+                    && handleNearbyRawPathSceneObjects(rawPath, HANDLER_RANGE, target, true);
             tmarkPostTransport("post_transport_raw_scene_scan", target,
                     "handled=" + rawSceneHandled + " ms=" + (System.currentTimeMillis() - rawSceneStartAt));
             if (rawSceneHandled) {
