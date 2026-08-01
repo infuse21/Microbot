@@ -226,9 +226,12 @@ public final class Rs2WalkerBankingPlanner {
                                 .orElse(null);
                         int currencyItemId = purchasable == null ? -1 : getCurrencyItemId(purchasable.costCurrencyName);
                         if (currencyItemId > 0) {
-                            itemQuantityMap.merge(currencyItemId, purchasable.costAmount, Integer::sum);
+                            // One fare per required item, not one fare total — a step needing two
+                            // passes was withdrawing enough to buy one.
+                            int fare = purchasable.costAmount * requiredQuantity;
+                            itemQuantityMap.merge(currencyItemId, fare, Integer::sum);
                             log.debug("Transport item {} not banked but purchasable — withdrawing fare {} x{} instead",
-                                    purchasable.itemId, purchasable.costCurrencyName, purchasable.costAmount);
+                                    purchasable.itemId, purchasable.costCurrencyName, fare);
                             break;
                         }
                     }
@@ -461,7 +464,8 @@ public final class Rs2WalkerBankingPlanner {
         return runeRequirements;
     }
 
-    private static boolean isCurrencyBasedTransport(TransportType transportType) {
+    /** Package-private so the planning tests can select the same rows this collector accepts. */
+    static boolean isCurrencyBasedTransport(TransportType transportType) {
         return transportType == TransportType.BOAT
                 || transportType == TransportType.CHARTER_SHIP
                 || transportType == TransportType.SHIP

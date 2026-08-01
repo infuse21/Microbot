@@ -100,6 +100,9 @@ public class BankedTransportItemPlanningTest {
                 .filter(t -> t.getCurrencyAmount() > 0)
                 .filter(t -> "Coins".equalsIgnoreCase(t.getCurrencyName()))
                 .filter(t -> t.getItemIdRequirements() == null || t.getItemIdRequirements().isEmpty())
+                // Match the collector's own type gate, or this can pick a catalog row the collector
+                // never considers and fail for a reason the test is not about.
+                .filter(t -> Rs2WalkerBankingPlanner.isCurrencyBasedTransport(t.getType()))
                 .collect(Collectors.toList());
         assertFalse("precondition: the catalog has pure coin-fare transports (charters etc.)",
                 pureCurrency.isEmpty());

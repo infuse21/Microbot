@@ -41,6 +41,7 @@ net.runelite.client.plugins.microbot.api.player.models.Rs2PlayerModel#getId(): i
 net.runelite.client.plugins.microbot.api.playerstate.Rs2PlayerStateCache#getQuestState(Quest): QuestState  ->  net.runelite.api.Quest#getId(): int
 net.runelite.client.plugins.microbot.api.playerstate.Rs2PlayerStateCache#lambda$updateQuest$1(VarbitChanged, QuestHelperQuest): boolean  ->  net.runelite.api.events.VarbitChanged#getVarbitId(): int
 net.runelite.client.plugins.microbot.api.playerstate.Rs2PlayerStateCache#onGameStateChanged(GameStateChanged): void  ->  net.runelite.api.events.GameStateChanged#getGameState(): GameState
+net.runelite.client.plugins.microbot.api.playerstate.Rs2PlayerStateCache#onVarbitChanged(VarbitChanged): void  ->  net.runelite.api.Client#getGameState(): GameState
 net.runelite.client.plugins.microbot.api.playerstate.Rs2PlayerStateCache#onVarbitChanged(VarbitChanged): void  ->  net.runelite.api.events.VarbitChanged#getValue(): int
 net.runelite.client.plugins.microbot.api.playerstate.Rs2PlayerStateCache#onVarbitChanged(VarbitChanged): void  ->  net.runelite.api.events.VarbitChanged#getVarbitId(): int
 net.runelite.client.plugins.microbot.api.playerstate.Rs2PlayerStateCache#onVarbitChanged(VarbitChanged): void  ->  net.runelite.api.events.VarbitChanged#getVarpId(): int

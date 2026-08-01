@@ -454,7 +454,12 @@ public class Rs2Dialogue {
         // the visible order, which is not something the widget guarantees. Falls back to the digit when
         // the binding can't be read, preserving the previous behaviour.
         List<Widget> options = getDialogueOptions();
-        if (index >= 1 && index <= options.size() && pressDialogueOptionWidget(options.get(index - 1))) {
+        if (index < 1 || index > options.size()) {
+            // Nothing to select — the digit fallback below would press a key for an option that is
+            // not on screen and then report success, so callers never retried.
+            return false;
+        }
+        if (pressDialogueOptionWidget(options.get(index - 1))) {
             return true;
         }
 

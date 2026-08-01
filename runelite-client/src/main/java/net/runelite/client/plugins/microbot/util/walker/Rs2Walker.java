@@ -5345,6 +5345,12 @@ public class Rs2Walker {
                             return true;
                         }
                     }
+                    // Reaching here means the attempt did NOT resolve — handleTransports declined, or
+                    // it reported success without moving us. Either way this transport is still in the
+                    // way, so it must block a ranged dispatch at a later index for exactly the same
+                    // reason a declined one does; otherwise the walker reaches past the obstacle in
+                    // front of it and the server paths around.
+                    sawUndispatchedTransportStep = true;
                     }
                 }
 

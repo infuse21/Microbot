@@ -771,7 +771,7 @@ public interface ShortestPathConfig extends Config {
                     + "range and let the game walk you there, instead of walking to a chosen approach tile "
                     + "first. Only ever applies to the NEXT obstacle on the route, and falls back to the old "
                     + "behaviour for any obstacle the server declines to path to.",
-            position = 5,
+            position = 3,
             section = sectionAdvanced
     )
     default boolean interactWithRouteObstaclesAtRange() {

@@ -86,6 +86,13 @@ public final class Rs2PlayerStateCache {
 		if (questsPopulated) {
 			updateQuest(event);
 		}
+		// Only cache while LOGGED_IN. onGameStateChanged clears both maps on HOPPING /
+		// CONNECTION_LOST because the server re-sends only non-zero varps afterwards, but an event
+		// arriving after that clear and before the next LOGGED_IN would repopulate the very value the
+		// clear existed to discard. Gating the writes closes that window instead of racing it.
+		if (client == null || client.getGameState() != GameState.LOGGED_IN) {
+			return;
+		}
 		if (event.getVarbitId() != -1) {
 			varbits.put(event.getVarbitId(), event.getValue());
 		}

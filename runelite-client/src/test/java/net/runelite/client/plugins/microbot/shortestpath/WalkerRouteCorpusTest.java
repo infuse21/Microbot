@@ -196,9 +196,11 @@ public class WalkerRouteCorpusTest {
     public void shantaySouthbound_withNothing_neverCrossesTheGate() {
         List<WorldPoint> path = route(configWith(WalkerRouteCorpusTest::unrestricted),
                 NORTH_OF_GATE, SOUTH_OF_GATE);
-        boolean crossedGate = visits(path, new WorldPoint(3304, 3117, 0), 0)
-                && visits(path, new WorldPoint(3304, 3115, 0), 0);
-        assertFalse("without a ticket or coins the route must not cross the gate", crossedGate);
+        // Same predicate as the positive tests. The old form required BOTH tiles either side of the
+        // gate at radius 0, so a diagonal step across the gate satisfied neither and the assertion
+        // passed while the route did cross.
+        assertFalse("without a ticket or coins the route must not cross the gate",
+                visits(path, GATE, 2));
     }
 
     // ---- Port Sarim, Wydin's shop (the door-poisoning incident) ------------------------------------

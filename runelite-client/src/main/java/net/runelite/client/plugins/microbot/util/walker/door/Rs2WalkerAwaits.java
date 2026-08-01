@@ -14,6 +14,8 @@ import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
 public final class Rs2WalkerAwaits {
     private static final int DOOR_INTERACTION_START_WAIT_MS = 700;
     private static final int DOOR_TRAVERSAL_PROGRESS_WAIT_MS = 2200;
+    /** Stationary and not animating for longer than this, with the edge unresolved, means the click didn't land. */
+    private static final long DOOR_IDLE_ACCEPT_MIN_MS = 1_200L;
     /** Above this combined wait, say which condition released the door await. */
     private static final long DOOR_AWAIT_SLOW_LOG_MS = 900L;
 
@@ -101,14 +103,28 @@ public final class Rs2WalkerAwaits {
         }
     }
 
+    /**
+     * Whether to stop waiting because nothing is happening.
+     * <p>
+     * This used to end in {@code return edgeResolved}, which made it dead code: the traversal wait
+     * returns early the moment the edge resolves, so by the time this runs {@code edgeResolved} is
+     * always false and the branch could never fire. The wait therefore always ran to its full
+     * {@link #DOOR_TRAVERSAL_PROGRESS_WAIT_MS} budget whenever a door interaction simply did not take.
+     * <p>
+     * An unresolved edge with the player standing still and not animating well past the interaction
+     * tick means the click did not land; the caller re-enters and tries again, which is strictly
+     * better than burning the remaining second. Movement, animation and the minimum elapsed time all
+     * still veto — a resolved edge does not bypass them, it is simply no longer required.
+     * <p>
+     * {@code edgeResolved} is retained in the signature because callers pass their own observation
+     * and it keeps the decision table explicit about the case that used to be the only one accepted.
+     */
+    @SuppressWarnings("unused")
     static boolean shouldAcceptIdleDoorAwait(boolean moving, boolean animating, long elapsedMs, boolean edgeResolved) {
         if (moving || animating) {
             return false;
         }
-        if (elapsedMs <= 1_200L) {
-            return false;
-        }
-        return edgeResolved;
+        return elapsedMs > DOOR_IDLE_ACCEPT_MIN_MS;
     }
 
     public static DoorResolution awaitDoorEdgeResolution(WorldPoint fromWp, WorldPoint toWp, int timeoutMs) {

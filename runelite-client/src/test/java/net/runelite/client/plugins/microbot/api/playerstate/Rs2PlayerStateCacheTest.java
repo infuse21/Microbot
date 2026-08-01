@@ -138,6 +138,28 @@ public class Rs2PlayerStateCacheTest
 		assertEquals(0, cache.getVarpValue(VARP_ID));
 	}
 
+	/**
+	 * The hop flush clears both maps, but a VarbitChanged arriving after that clear and before the
+	 * next LOGGED_IN would repopulate the very value the flush existed to discard — and being cached,
+	 * it would then be served instead of re-reading the new world's value.
+	 */
+	@Test
+	public void varbitChangedDuringHoppingIsNotCached()
+	{
+		setGameState(GameState.HOPPING);
+
+		VarbitChanged event = new VarbitChanged();
+		event.setVarpId(VARP_ID);
+		event.setValue(42);
+		cache.onVarbitChanged(event);
+
+		setGameState(GameState.LOGGED_IN);
+		when(client.getVarpValue(VARP_ID)).thenReturn(0);
+
+		assertEquals(0, cache.getVarpValue(VARP_ID));
+		verify(client, times(1)).getVarpValue(VARP_ID);
+	}
+
 	@Test
 	public void loginScreenFlushesVarbitAndVarpCaches()
 	{

@@ -262,7 +262,7 @@ public class ShortestPathCoreTest {
 			if (t.getDestination() == null || t.getDestination().getY() >= origin.getY()) continue;
 			if (t.getItemIdRequirements() != null && !t.getItemIdRequirements().isEmpty()) {
 				hasTicketVariant = true;
-			} else if (t.getCurrencyAmount() > 0) {
+			} else if (t.getCurrencyAmount() == 5 && "Coins".equalsIgnoreCase(t.getCurrencyName())) {
 				hasCoinVariant = true;
 			}
 		}
