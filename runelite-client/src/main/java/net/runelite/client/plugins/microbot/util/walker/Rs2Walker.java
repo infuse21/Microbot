@@ -2065,16 +2065,9 @@ public class Rs2Walker {
                             || (nearestSegmentDoor && doorInteractionWhileApproachingEnabled());
                     if (!startupImmediateTransportOnly
                             && doorMovementGateOk && !isDoorInteractionSettling() && !isRecoveryMovementInFlight()) {
-                        // Scoped to this segment only: the interaction sites carry their own moving
-                        // checks, and they must relax for the nearest door and nothing else.
-                        routeState.doorApproachInteractionAllowed = nearestSegmentDoor;
-                        try {
-                            doorOrTransportResult = handleDoorsInRawSegment(rawPath, rawI, rawEnd,
-                                    obstaclePolicy.segmentDoorTimeoutMs(), doorEdgesAttemptedThisTail,
-                                    reachableTilesCache);
-                        } finally {
-                            routeState.doorApproachInteractionAllowed = false;
-                        }
+                        doorOrTransportResult = handleDoorsInRawSegment(rawPath, rawI, rawEnd,
+                                obstaclePolicy.segmentDoorTimeoutMs(), doorEdgesAttemptedThisTail,
+                                reachableTilesCache);
                     }
                     if (doorOrTransportResult) {
                         tmarkPostTransport("post_transport_segment_handler", target,
@@ -9321,16 +9314,19 @@ public class Rs2Walker {
      * Whether a door interaction must wait because the player is moving.
      * <p>
      * Relaxing only the caller-side gate was not enough: the interaction sites carry their own
-     * {@code isMoving()} checks, so the handler ran during the approach and then declined anyway
-     * ({@code door_interact_deferred | reason=moving} five times at the Falador castle doors while
-     * the walk completed around them). While the walker is approaching the NEAREST route door, the
-     * click is meant to supersede our own walk — the server walks us to the door either way.
+     * {@code isMoving()} checks, so the handler ran during the approach and then declined anyway.
+     * <p>
+     * Scoping the permission to the segment loop was ALSO not enough — door handling is reached from
+     * the recovery path and the raw scene scan as well, and a Falador castle run on the fixed build
+     * still logged {@code door_interact_deferred | reason=moving mode=segment-door} from the
+     * reachability-miss recovery. Those entry points each act on the door blocking the route RIGHT
+     * NOW, so there is no ordering left to protect at this level: the only question here is whether
+     * the walker is allowed to interrupt its own walk, which is exactly what the feature is for.
+     * Route ordering is enforced where it belongs — the segment loop, which iterates many segments
+     * and still only lets the nearest one act while moving.
      */
     private static boolean doorInteractionDeferredForMovement() {
-        if (!Rs2Player.isMoving()) {
-            return false;
-        }
-        return !(routeState.doorApproachInteractionAllowed && doorInteractionWhileApproachingEnabled());
+        return Rs2Player.isMoving() && !doorInteractionWhileApproachingEnabled();
     }
 
     /** Ranged dispatch attempts that produced no movement, keyed by origin→destination edge. */

@@ -117,12 +117,6 @@ public final class WalkerRouteState {
      * such hold-off is active. Bounds the wait so an unanswered conversation cannot stall the walk.
      */
     public volatile long doorDialogueDeferSinceMs = 0L;
-    /**
-     * Set for the duration of the NEAREST route segment's door handling, permitting the interaction
-     * sites to click while the player is still moving. Scoped to that one segment so a door further
-     * along the route can never be opened ahead of the obstacle in front of the player.
-     */
-    public volatile boolean doorApproachInteractionAllowed = false;
 
     // ---- misc per-walk-session timers / flags. ----
 
