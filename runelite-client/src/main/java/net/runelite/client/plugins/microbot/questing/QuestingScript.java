@@ -2286,10 +2286,25 @@ public class QuestingScript extends Script {
                 List<WorldPoint> adjacent = walkableNearby.stream()
                         .filter(x -> isOrthogonallyAgainst(x, targetFootprint))
                         .collect(Collectors.toList());
-                Set<WorldPoint> adjacentUsable = wallLikeTarget
+                final Set<WorldPoint> adjacentUsable = wallLikeTarget
                         ? new HashSet<>(adjacent)
-                        : withoutWallToFootprint(adjacent, targetFootprint);
-                if (adjacent.size() != adjacentUsable.size()
+                        : new HashSet<>(withoutWallToFootprint(adjacent, targetFootprint));
+                // A PREFERENCE, never a veto. The sight-bit test is a good guess at "a wall is in the
+                // way" and a guess is all it is: Falador castle's staircase carries directional sight
+                // bits on the edge to (2955,3337), the one tile you can actually climb it from, so a hard
+                // filter discarded 1 of 1 and sent the search seven tiles west to somewhere with a clean
+                // sightline and no way to reach the object. Keeping the walled tiles when nothing else
+                // survives costs at most the wasted click this was meant to avoid, and the "I can't reach
+                // that!" blacklist still cleans up after it.
+                if (adjacentUsable.isEmpty() && !adjacent.isEmpty()) {
+                    if (System.currentTimeMillis() - lastApproachWarnLog > 3000) {
+                        lastApproachWarnLog = System.currentTimeMillis();
+                        Microbot.log("[Questing] every adjacent tile reads walled for object id="
+                                + step.getObjectID() + " — keeping them anyway rather than approaching"
+                                + " from somewhere unusable", Level.WARN);
+                    }
+                    adjacentUsable.addAll(adjacent);
+                } else if (adjacent.size() != adjacentUsable.size()
                         && System.currentTimeMillis() - lastApproachWarnLog > 3000) {
                     lastApproachWarnLog = System.currentTimeMillis();
                     Microbot.log("[Questing] discarded " + (adjacent.size() - adjacentUsable.size())
@@ -2875,8 +2890,12 @@ public class QuestingScript extends Script {
         // Resolved once: getFootprint() hops to the client thread, and this runs several times a tick.
         WorldArea footprint = object.getFootprint();
         if (isOrthogonallyAgainst(player, footprint)) {
-            boolean wallLike = object.getTileObjectType() == TileObjectType.WALL;
-            return wallLike || withoutWallToFootprint(Collections.singletonList(player), footprint).contains(player);
+            // Standing against it is enough. The sight-bit test that decides WHERE to approach from is
+            // deliberately not repeated here: it is a preference, and it is sometimes wrong (Falador
+            // castle's staircase reads walled from the only tile it can be climbed from). Refusing to
+            // click once we are already standing there converts a good guess into a dead stop, whereas a
+            // wrong click just answers "I can't reach that!" and blacklists the tile.
+            return true;
         }
         // Further away, line of sight is still the right test — it rejects a target behind a wall.
         return hasLineOfSightToArea(footprint);
