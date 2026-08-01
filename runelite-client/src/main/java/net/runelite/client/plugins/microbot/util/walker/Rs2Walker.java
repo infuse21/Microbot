@@ -1572,7 +1572,10 @@ public class Rs2Walker {
         }
         lastHeartbeatAtMs = now;
         WorldPoint playerLoc = Rs2Player.getWorldLocation();
-        WebWalkLog.spInfo("walker_heartbeat | tail={} at={} goal={} moving={} animating={} interim={} interimAgeMs={} sinceMovedMs={} sinceDoorSettleMs={}",
+        // DEBUG, not INFO: this fires every second for the whole of every walk, and it exists to
+        // diagnose stalls, not to narrate healthy ones. Behind the verbose toggle it costs nothing
+        // until someone is actually chasing a silent stretch in the log.
+        WebWalkLog.spDebug("walker_heartbeat | tail={} at={} goal={} moving={} animating={} interim={} interimAgeMs={} sinceMovedMs={} sinceDoorSettleMs={}",
                 processWalkTail,
                 compactWorldPoint(playerLoc), compactWorldPoint(target),
                 Rs2Player.isMoving(), Rs2Player.isAnimating(),
