@@ -638,6 +638,10 @@ public class Rs2Walker {
 
     /** Max wait after scene canvas / recovery clicks until movement stops (avoids minimap churn while in-flight). */
     private static final int POST_SCENE_WALK_IDLE_WAIT_MS_MAX = 10_000;
+    /** Arrival tolerance when waiting out a scene walk against the tile we actually clicked. */
+    private static final int POST_SCENE_WALK_ARRIVAL_CHEBYSHEV = 1;
+    /** Above this, say which condition ended the scene-walk idle wait. */
+    private static final long SCENE_WALK_IDLE_WAIT_SLOW_LOG_MS = 1_500L;
 
     /** If phase 1 exits on arrival distance while still moving, wait briefly for idle-only (reduces tail churn). */
     private static final int POST_SCENE_WALK_IDLE_SECOND_PHASE_MS_MAX = 4_000;
@@ -660,18 +664,36 @@ public class Rs2Walker {
             WorldPoint arrivalGoal, int arrivalMaxChebyshev) {
         assert cancelGoal != null;
         assert timeoutMs > 0;
+        // Which condition ends this wait is the difference between a brisk walk and a ten-second
+        // freeze: the arrival escape is plane-gated, so when the arrival goal sits on another storey
+        // it can never fire and only !isMoving() or the full timeout is left. Naming the winner is
+        // what turned "the walker pauses between stairs and doors" into a one-line diagnosis.
+        final String[] endedBy = {"timeout"};
+        long waitStartedAtMs = System.currentTimeMillis();
         sleepUntil(() -> {
             if (isWalkCancelled(cancelGoal)) {
+                endedBy[0] = "cancelled";
                 return true;
             }
             WorldPoint pl = Rs2Player.getWorldLocation();
             if (arrivalGoal != null && arrivalMaxChebyshev >= 0 && pl != null
                     && arrivalGoal.getPlane() == pl.getPlane()
                     && pl.distanceTo2D(arrivalGoal) <= arrivalMaxChebyshev) {
+                endedBy[0] = "arrived";
                 return true;
             }
-            return !Rs2Player.isMoving();
+            if (!Rs2Player.isMoving()) {
+                endedBy[0] = "idle";
+                return true;
+            }
+            return false;
         }, timeoutMs);
+        long waitMs = System.currentTimeMillis() - waitStartedAtMs;
+        if (waitMs >= SCENE_WALK_IDLE_WAIT_SLOW_LOG_MS) {
+            WebWalkLog.spInfo("scene_walk_idle_wait | endedBy={} waitMs={} arrivalGoal={} tolerance={} player={}",
+                    endedBy[0], waitMs, compactWorldPoint(arrivalGoal), arrivalMaxChebyshev,
+                    compactWorldPoint(Rs2Player.getWorldLocation()));
+        }
         // Sample player once after phase 1 — rare tick skew vs isMoving(); phase 2 only refines idle after arrival exit.
         WorldPoint plAfter = Rs2Player.getWorldLocation();
         boolean withinArrival = arrivalGoal != null && arrivalMaxChebyshev >= 0 && plAfter != null
@@ -2996,7 +3018,15 @@ public class Rs2Walker {
                             finalClick = Rs2Walker.walkFastCanvas(canvasClickWp);
                         }
                         if (finalClick) {
-                            waitUntilIdleAfterSceneWalk(target, POST_SCENE_WALK_IDLE_WAIT_MS_MAX, target, finishTh);
+                            // Wait on the walk we just ISSUED, not on the route's final target. The
+                            // arrival escape only fires on the player's own plane, so passing a target
+                            // one storey up disabled it entirely and left the full 10s timeout as the
+                            // only exit — measured as a ten-second freeze at (2982,3348,p2) with the
+                            // goal on p3, immediately before a ladder. The clicked tile is on our plane
+                            // by construction, so the escape works again; the helper still plane-gates
+                            // internally, so a mismatch degrades to exactly today's behaviour.
+                            waitUntilIdleAfterSceneWalk(target, POST_SCENE_WALK_IDLE_WAIT_MS_MAX,
+                                    canvasClickWp, POST_SCENE_WALK_ARRIVAL_CHEBYSHEV);
                             if (walkCancelledDiag(target, "processWalk:after-final-canvas-wait", processWalkTail)) {
                                 return WalkerState.EXIT;
                             }
