@@ -1,6 +1,7 @@
 package net.runelite.client.plugins.microbot.util.walker.door;
 
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.tile.Rs2Tile;
 import net.runelite.client.plugins.microbot.util.walker.door.model.AwaitTicket;
@@ -20,12 +21,23 @@ public final class Rs2WalkerAwaits {
         return new AwaitTicket(System.currentTimeMillis(), Rs2Player.getWorldLocation());
     }
 
+    /**
+     * A door that answered with a conversation is never going to move us while we stand here waiting
+     * for movement, so waiting out the full budget just burns the window in which the menu could be
+     * answered — measured at up to ~2.2s per attempt, which is why answering a guarded door used to
+     * take two or three tries to catch. Reads a cached, client-thread-refreshed flag, so polling it
+     * costs nothing here.
+     */
+    private static boolean conversationOpened() {
+        return Rs2Dialogue.hasSelectAnOption();
+    }
+
     public static void awaitDoorInteractionProgress(AwaitTicket ticket, WorldPoint fromWp, WorldPoint toWp) {
         if (ticket == null) {
             return;
         }
         sleepUntil(() -> {
-            if (Thread.currentThread().isInterrupted()) {
+            if (Thread.currentThread().isInterrupted() || conversationOpened()) {
                 return true;
             }
             WorldPoint now = Rs2Player.getWorldLocation();
@@ -35,7 +47,7 @@ public final class Rs2WalkerAwaits {
             return Rs2Player.isMoving() || Rs2Player.isAnimating() || isDoorEdgeResolved(fromWp, toWp);
         }, DOOR_INTERACTION_START_WAIT_MS);
         sleepUntil(() -> {
-            if (Thread.currentThread().isInterrupted()) {
+            if (Thread.currentThread().isInterrupted() || conversationOpened()) {
                 return true;
             }
             WorldPoint now = Rs2Player.getWorldLocation();

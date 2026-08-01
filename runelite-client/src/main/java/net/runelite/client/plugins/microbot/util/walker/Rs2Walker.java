@@ -165,6 +165,8 @@ public class Rs2Walker {
     private static final int RAW_SCAN_DOOR_FOCUS_MAX_ATTEMPTS = 3;
     private static final long DOOR_POST_INTERACT_SETTLE_MS = 900L;
     private static final long DOOR_EDGE_SKIP_COOLDOWN_MS = 700L;
+    /** Longest the walker will hold off re-clicking a door while an unanswered option menu is up. */
+    private static final long DOOR_DIALOGUE_DEFER_MAX_MS = 5_000L;
     private static final long RECOVERY_MOVEMENT_IN_FLIGHT_MS = 3_500L;
     private static final long DOOR_TRAVERSAL_RECOVERY_BLOCK_MS = 2_200L;
     private static final long POST_DOOR_NUDGE_RECENT_ATTEMPT_MS = 6_000L;
@@ -6464,7 +6466,41 @@ public class Rs2Walker {
     }
 
     private static boolean shouldThrottleGlobalDoorInteraction() {
-        return Rs2DoorHandler.shouldThrottleGlobalDoorInteraction(routeState.nextDoorInteractionAllowedAtMs);
+        return Rs2DoorHandler.shouldThrottleGlobalDoorInteraction(routeState.nextDoorInteractionAllowedAtMs)
+                || shouldDeferDoorInteractionForDialogue();
+    }
+
+    /**
+     * A guarded door answers with a conversation instead of opening ("you can't go in there"). The
+     * walker reads the lack of movement as "no progress, retry" and clicks again — and that click
+     * CANCELS the menu the previous click just opened, destroying the only thing that can get us
+     * through. Whatever answers dialogue (the questing layer) then never sees a menu that survives
+     * long enough to act on, so the walk livelocks at the door.
+     *
+     * <p>Deferring is BOUNDED: if nothing answers within {@link #DOOR_DIALOGUE_DEFER_MAX_MS} the
+     * walker resumes clicking, so a stray conversation with no handler cannot stall a plain walk
+     * that has no dialogue logic behind it.
+     */
+    private static boolean shouldDeferDoorInteractionForDialogue() {
+        if (!Rs2Dialogue.hasSelectAnOption()) {
+            routeState.doorDialogueDeferSinceMs = 0L;
+            return false;
+        }
+        long now = System.currentTimeMillis();
+        if (routeState.doorDialogueDeferSinceMs == 0L) {
+            routeState.doorDialogueDeferSinceMs = now;
+            WebWalkLog.spInfo("door_dialogue_defer | an option menu is open — not re-clicking the door");
+        }
+        return doorDialogueDeferActive(routeState.doorDialogueDeferSinceMs, now, DOOR_DIALOGUE_DEFER_MAX_MS);
+    }
+
+    /**
+     * Pure half of the dialogue hold-off: defer only while the menu has been up for less than
+     * {@code maxDeferMs}. Split out because an unbounded version of this gate would trade a livelock
+     * at a guarded door for a permanent stall at any unanswered conversation.
+     */
+    static boolean doorDialogueDeferActive(long deferSinceMs, long nowMs, long maxDeferMs) {
+        return deferSinceMs > 0L && nowMs - deferSinceMs < maxDeferMs;
     }
 
     private static boolean isDoorInteractionSettling() {

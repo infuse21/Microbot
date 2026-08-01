@@ -112,6 +112,11 @@ public final class WalkerRouteState {
     public volatile long lastDoorAttemptAtMs = 0L;
     /** Global door-interaction throttle: no door interaction may fire before this wall-clock ms. */
     public volatile long nextDoorInteractionAllowedAtMs = 0L;
+    /**
+     * When the walker first held off a door interaction because an option menu was open; 0 when no
+     * such hold-off is active. Bounds the wait so an unanswered conversation cannot stall the walk.
+     */
+    public volatile long doorDialogueDeferSinceMs = 0L;
 
     // ---- misc per-walk-session timers / flags. ----
 

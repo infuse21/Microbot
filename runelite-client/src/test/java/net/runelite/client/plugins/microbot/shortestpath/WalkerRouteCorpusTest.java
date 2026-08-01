@@ -239,6 +239,33 @@ public class WalkerRouteCorpusTest {
         assertTransportEdge(new WorldPoint(3025, 3511, 1), new WorldPoint(3026, 3511, 1));
     }
 
+    /**
+     * The Black Knights' Fortress ladder (object 17148 at 3025,3513,p1) sits behind the Sturdy door.
+     * From inside the west room the ladder's own tile is NOT walkable and cannot be reached — the
+     * quester stood one tile south of it, got "can't reach", then asked for another equally walled
+     * tile. The usable approach is east of the ladder, and reaching it requires the door transport.
+     * <p>
+     * This pins the walker half of that incident: the route through the door exists. The remaining
+     * half is the quester choosing an approach tile by proximity rather than by reachability.
+     */
+    @Test
+    public void bkfLadderApproachIsReachableOnlyThroughTheSturdyDoor() {
+        WorldPoint insideWestRoom = new WorldPoint(3024, 3512, 1);
+        PathfinderConfig cfg = configWith(WalkerRouteCorpusTest::unrestricted);
+
+        WorldPoint ladderTile = new WorldPoint(3025, 3513, 1);
+        assertFalse("the ladder's own tile is an object tile and must stay unreachable",
+                arrives(route(cfg, insideWestRoom, ladderTile), ladderTile, 0));
+
+        WorldPoint eastOfLadder = new WorldPoint(3026, 3513, 1);
+        assertTrue("the usable approach east of the ladder must be reachable through the door",
+                arrives(route(cfg, insideWestRoom, eastOfLadder), eastOfLadder, 0));
+
+        WorldPoint doorFarSide = new WorldPoint(3026, 3511, 1);
+        assertTrue("the door's far side must be reachable, i.e. the transport row is doing its job",
+                arrives(route(cfg, insideWestRoom, doorFarSide), doorFarSide, 0));
+    }
+
     private static void assertTransportEdge(WorldPoint origin, WorldPoint destination) {
         Set<Transport> at = allTransports.get(origin);
         assertTrue("transport row " + origin + " -> " + destination + " must exist",

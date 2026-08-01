@@ -1079,6 +1079,26 @@ public class Rs2WalkerUnitTest {
         assertEquals(300, Rs2Walker.shortWalkDirectPathCeiling(100));
     }
 
+    /**
+     * A guarded door replies with a conversation instead of opening; re-clicking it cancels that menu,
+     * so whatever answers dialogue never gets a menu that survives long enough to act on and the walk
+     * livelocks at the door. The walker holds off while a menu is up — but the hold-off must be
+     * BOUNDED, or a plain walk with no dialogue logic behind it would stall forever on any stray
+     * conversation.
+     */
+    @Test
+    public void doorDialogueDeferActive_holdsOffButAlwaysReleases() {
+        long max = 5_000L;
+        assertTrue("hold off while the menu is fresh",
+                Rs2Walker.doorDialogueDeferActive(10_000L, 10_500L, max));
+        assertTrue("still holding just inside the bound",
+                Rs2Walker.doorDialogueDeferActive(10_000L, 14_999L, max));
+        assertFalse("nothing answered it — resume clicking rather than stall the walk",
+                Rs2Walker.doorDialogueDeferActive(10_000L, 15_000L, max));
+        assertFalse("no hold-off recorded means no deferral",
+                Rs2Walker.doorDialogueDeferActive(0L, 99_999L, max));
+    }
+
     @Test
     public void offPathRecalcDeferredWaitMs_isBounded() {
         assertEquals(1200, Rs2Walker.offPathRecalcDeferredWaitMs(
