@@ -2353,8 +2353,26 @@ public class QuestingScript extends Script {
             // The object's own tile stays at 1, since that fallback target is unwalkable by definition
             // and demanding it exactly could never arrive.
             int acceptance = targetTile.equals(stepLocation) ? 1 : 0;
+            // Also bail the instant a conversation opens. The walker's door pipeline clicks doors on the
+            // way, and some of them are guarded — Black Knights' Fortress answers with "you can't go in
+            // there", which needs option 2. The walker has no idea a menu exists, so it clicks the door
+            // again, and the click cancels the menu: the walk never ends, the tick never returns, and the
+            // dialogue handling at the top of the loop never gets to run. The result is a door hammered
+            // forever with the options menu flickering and not one dialogue line logged.
+            //
+            // The completion is polled inside the walker's own loop, so this ends the walk within a beat
+            // of the menu appearing and the next tick answers it.
             WalkerState approachState = Rs2Walker.walkWithStateUntil(targetTile, acceptance,
-                    () -> canInteractWithObject(approachTarget, step.getObjectID()));
+                    () -> canInteractWithObject(approachTarget, step.getObjectID())
+                            || Rs2Dialogue.hasSelectAnOption());
+            if (Rs2Dialogue.hasSelectAnOption()) {
+                if (System.currentTimeMillis() - lastApproachWarnLog > 3000) {
+                    lastApproachWarnLog = System.currentTimeMillis();
+                    Microbot.log("[Questing] a conversation opened while approaching object id="
+                            + step.getObjectID() + " — yielding so it can be answered", Level.WARN);
+                }
+                return false;
+            }
             // ARRIVED means we're as close as the approach can get — often INSTANTLY, with no log or
             // movement, when we already stand within acceptance of the chosen tile (e.g. 2 tiles from a
             // staircase whose own tile is canReach=false). Returning here re-ran this block forever in
