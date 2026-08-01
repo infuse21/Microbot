@@ -8780,21 +8780,33 @@ public class Rs2Walker {
                     // the suspicion is N scans rather than one. Time it and say how many candidates
                     // were queued, so the next run distinguishes "one slow scan" from "many scans".
                     long objectScanStartedAt = System.currentTimeMillis();
-                    List<TileObject> objects = Rs2GameObject.getAll(o -> {
-                        if (o.getId() == transportObjectId) return true;
-                        if (allowAlKharidTollGateVariant && isAlKharidTollGateObjectId(o.getId())) return true;
-                        Integer legacyClosed = OPEN_TO_CLOSED_MAPPINGS.get(transportObjectId);
-                        if (legacyClosed != null && o.getId() == legacyClosed) return true;
-                        if (!allowClosedVariant) return false;
-                        ObjectComposition comp = Rs2GameObject.convertToObjectComposition(o);
-                        if (comp == null || comp.getActions() == null) return false;
-                        String nm = comp.getName() == null ? "" : comp.getName().toLowerCase();
-                        boolean nameMatches = nm.contains("trapdoor") || nm.contains("manhole")
-                                || nm.contains("grate") || nm.contains("hatch");
-                        if (!nameMatches) return false;
-                        return Arrays.stream(comp.getActions()).filter(Objects::nonNull)
-                                .anyMatch(a -> a.equalsIgnoreCase("Open"));
-                    }, transport.getOrigin(), 10).stream()
+                    final Integer legacyClosedId = OPEN_TO_CLOSED_MAPPINGS.get(transportObjectId);
+                    // Id-only first: these are plain field reads, no composition resolution.
+                    List<TileObject> matched = Rs2GameObject.getAll(o -> {
+                        int id = o.getId();
+                        if (id == transportObjectId) return true;
+                        if (allowAlKharidTollGateVariant && isAlKharidTollGateObjectId(id)) return true;
+                        return legacyClosedId != null && id == legacyClosedId;
+                    }, transport.getOrigin(), 10);
+                    if (matched.isEmpty() && allowClosedVariant) {
+                        // Only now pay for compositions, and only on the transport's own tile: a closed
+                        // variant (trapdoor/manhole/grate/hatch) sits where the transport is, never ten
+                        // tiles away. Previously this ran for EVERY object within 10 tiles whenever the
+                        // action was Climb-down, one client-thread hop each — measured at 5.5-10.9
+                        // SECONDS for a single scan inside Falador castle, and the reason descending
+                        // stairs was slow while ascending was not.
+                        matched = Rs2GameObject.getAll(o -> {
+                            ObjectComposition comp = Rs2GameObject.convertToObjectComposition(o);
+                            if (comp == null || comp.getActions() == null) return false;
+                            String nm = comp.getName() == null ? "" : comp.getName().toLowerCase();
+                            boolean nameMatches = nm.contains("trapdoor") || nm.contains("manhole")
+                                    || nm.contains("grate") || nm.contains("hatch");
+                            if (!nameMatches) return false;
+                            return Arrays.stream(comp.getActions()).filter(Objects::nonNull)
+                                    .anyMatch(a -> a.equalsIgnoreCase("Open"));
+                        }, transport.getOrigin(), 2);
+                    }
+                    List<TileObject> objects = matched.stream()
                             .sorted(Comparator
                                     .comparingInt((TileObject o) -> resolveTransportObjectAction(o, transportActions).isPresent() ? 0 : 1)
                                     .thenComparingInt(o -> o.getWorldLocation().distanceTo(transport.getOrigin())))
