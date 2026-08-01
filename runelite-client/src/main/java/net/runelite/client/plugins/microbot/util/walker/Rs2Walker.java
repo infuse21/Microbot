@@ -178,8 +178,6 @@ public class Rs2Walker {
     private static final int PATHFINDER_DONE_RETRY_SLEEP_MIN_MS = 120;
     private static final int PATHFINDER_DONE_RETRY_SLEEP_MAX_MS = 220;
     private static final int POST_DOOR_FAST_CLICK_MAX_EUCLIDEAN = 13;
-    /** How far down the route to look for a click target once a door edge is confirmed open. */
-    private static final int POST_DOOR_CROSS_ROUTE_LOOKAHEAD = 8;
     private static final int POST_DOOR_EDGE_NUDGE_MAX_FROM_PLAYER = 3;
     private static final int POST_DOOR_EDGE_NUDGE_WAIT_MS = 1200;
     private static final int HANDLER_RANGE = 13;
@@ -6313,51 +6311,6 @@ public class Rs2Walker {
         return clicked;
     }
 
-    /**
-     * Where to click to get through a door we just opened.
-     * <p>
-     * Clicking the single tile on the far side is a tell: no human opens a door and then clicks one
-     * tile through it, waits, and clicks again — they click on down the route, or the next door if it
-     * is rendered. It also costs two round trips (click + wait, then the route's own click + wait) to
-     * cross one doorway.
-     * <p>
-     * The reason it was a single tile is real, though: clicking beyond a door that is still SHUT makes
-     * the server path around the whole building, which is what {@code b317648ec8} exists to stop. The
-     * confirmation is what makes the longer click safe — once the edge is observed open we are no
-     * longer guessing, so we reach as far down the route as minimap range and reachability allow, and
-     * fall back to the adjacent tile whenever that confirmation is missing.
-     */
-    private static WorldPoint doorCrossClickTarget(WorldPoint fromWp, WorldPoint toWp, WorldPoint before) {
-        if (!Rs2WalkerAwaits.isDoorEdgeResolved(fromWp, toWp)) {
-            return toWp;
-        }
-        Pathfinder pathfinder = Rs2PathApi.getPathfinder();
-        List<WorldPoint> route = pathfinder == null ? null : pathfinder.getPath();
-        if (route == null || route.isEmpty()) {
-            return toWp;
-        }
-        int toIdx = route.indexOf(toWp);
-        if (toIdx < 0) {
-            return toWp;
-        }
-        WorldPoint best = toWp;
-        int lastIdx = Math.min(route.size() - 1, toIdx + POST_DOOR_CROSS_ROUTE_LOOKAHEAD);
-        for (int i = toIdx + 1; i <= lastIdx; i++) {
-            WorldPoint wp = route.get(i);
-            if (wp == null || wp.getPlane() != before.getPlane()) {
-                break;
-            }
-            if (euclideanSq(wp, before) > POST_DOOR_FAST_CLICK_MAX_EUCLIDEAN * POST_DOOR_FAST_CLICK_MAX_EUCLIDEAN) {
-                break;
-            }
-            if (!Rs2Tile.isTileReachable(wp)) {
-                continue;
-            }
-            best = wp;
-        }
-        return best;
-    }
-
     private static boolean tryDoorEdgeCrossNudge(WorldPoint fromWp, WorldPoint toWp, WorldPoint target) {
         if (fromWp == null || toWp == null || fromWp.getPlane() != toWp.getPlane()) {
             return false;
@@ -6376,31 +6329,15 @@ public class Rs2Walker {
             return false;
         }
 
-        WorldPoint clickWp = doorCrossClickTarget(fromWp, toWp, before);
-        boolean reachedPastDoor = !clickWp.equals(toWp);
-        boolean clicked = walkFastCanvas(clickWp);
+        boolean clicked = walkFastCanvas(toWp);
         if (!clicked) {
-            clicked = walkMiniMapToward(clickWp, before, POST_DOOR_FAST_CLICK_MAX_EUCLIDEAN - 1);
-        }
-        if (!clicked && reachedPastDoor) {
-            // The longer click could not be issued (off-screen canvas, out of minimap reach); the
-            // adjacent tile still gets us through the doorway.
-            clickWp = toWp;
-            reachedPastDoor = false;
-            clicked = walkFastCanvas(toWp);
-            if (!clicked) {
-                clicked = walkMiniMapToward(toWp, before, POST_DOOR_FAST_CLICK_MAX_EUCLIDEAN - 1);
-            }
+            clicked = walkMiniMapToward(toWp, before, POST_DOOR_FAST_CLICK_MAX_EUCLIDEAN - 1);
         }
         if (!clicked) {
             return false;
         }
-        if (reachedPastDoor) {
-            WebWalkLog.spInfo("door_cross_route_click | to={} instead of {} dist={}",
-                    compactWorldPoint(clickWp), compactWorldPoint(toWp), before.distanceTo2D(clickWp));
-        }
 
-        markFirstMovementClick("first_door_edge_nudge", target, before, "to=" + compactWorldPoint(clickWp));
+        markFirstMovementClick("first_door_edge_nudge", target, before, "to=" + compactWorldPoint(toWp));
         sleepUntil(() -> {
             if (isWalkCancelled(target)) {
                 return true;
