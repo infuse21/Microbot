@@ -1912,8 +1912,11 @@ public class Rs2Walker {
             // on Climb-down), fixed separately. Ranged dispatch also carries a no-progress fallback
             // and a per-edge cooldown, so a transport that does not respond degrades instead of
             // looping.
+            lastRawScanEarlyReturn = "not-attempted";
             boolean rawSceneHandled = allowRawSceneScan
                     && handleNearbyRawPathSceneObjects(rawPath, HANDLER_RANGE, target, true);
+            tmarkPostTransport("post_transport_raw_scene_scan_why", target,
+                    "why=" + lastRawScanEarlyReturn + " handled=" + rawSceneHandled);
             tmarkPostTransport("post_transport_raw_scene_scan", target,
                     "handled=" + rawSceneHandled + " ms=" + (System.currentTimeMillis() - rawSceneStartAt));
             if (rawSceneHandled) {
@@ -5055,6 +5058,14 @@ public class Rs2Walker {
                 () -> getClosestTileIndex(rawPath));
     }
 
+    /**
+     * Why the last raw scene scan returned without scanning. The scan bails at several guards before
+     * it captures its snapshot, so a {@code handled=false ms=0} tmark says nothing about WHICH guard
+     * stopped it — and that is exactly the gap that left the second staircase unhandled while the
+     * idle nudge walked onto its origin instead.
+     */
+    private static volatile String lastRawScanEarlyReturn = "none";
+
     private static boolean handleNearbyRawPathSceneObjects(List<WorldPoint> rawPath, int handlerRange, WorldPoint target) {
         return handleNearbyRawPathSceneObjects(rawPath, handlerRange, target, true);
     }
@@ -5068,26 +5079,31 @@ public class Rs2Walker {
         }
 
         if (isRecoveryMovementInFlight()) {
+            lastRawScanEarlyReturn = "recovery-move-in-flight";
             return false;
         }
 
         if (routeState.interimTargetWp != null) {
             clearRawScanDoorFocus("interim-active");
+            lastRawScanEarlyReturn = "interim-active";
             return false;
         }
 
         if (Rs2Player.isMoving()) {
+            lastRawScanEarlyReturn = "moving";
             return false;
         }
 
         WorldPoint playerLoc = Rs2Player.getWorldLocation();
         if (playerLoc == null) {
+            lastRawScanEarlyReturn = "player-null";
             return false;
         }
 
         int rawStart = getClosestTileIndex(rawPath, playerLoc);
         if (rawStart < 0) {
             clearRawScanDoorFocus("raw-start-missing");
+            lastRawScanEarlyReturn = "raw-start-missing";
             return false;
         }
 
@@ -5111,8 +5127,10 @@ public class Rs2Walker {
         if (lastEmptyRawScanAtMs > 0L
                 && rawScanNowMs - lastEmptyRawScanAtMs < EMPTY_RAW_SCAN_COOLDOWN_MS
                 && playerLoc.equals(lastEmptyRawScanPlayerLoc)) {
+            lastRawScanEarlyReturn = "empty-scan-cooldown";
             return false;
         }
+        lastRawScanEarlyReturn = "ran";
 
         int start = Math.max(0, rawStart - 2);
         int endExclusive = Math.min(rawPath.size() - 1, rawStart + 12);
