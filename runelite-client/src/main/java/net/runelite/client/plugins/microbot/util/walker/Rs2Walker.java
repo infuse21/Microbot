@@ -167,6 +167,8 @@ public class Rs2Walker {
     private static final long DOOR_EDGE_SKIP_COOLDOWN_MS = 700L;
     /** Longest the walker will hold off re-clicking a door while an unanswered option menu is up. */
     private static final long DOOR_DIALOGUE_DEFER_MAX_MS = 5_000L;
+    /** Above this, a single transport object scan is worth naming in the log. */
+    private static final long TRANSPORT_OBJECT_SCAN_SLOW_MS = 400L;
     private static final long RECOVERY_MOVEMENT_IN_FLIGHT_MS = 3_500L;
     private static final long DOOR_TRAVERSAL_RECOVERY_BLOCK_MS = 2_200L;
     private static final long POST_DOOR_NUDGE_RECENT_ATTEMPT_MS = 6_000L;
@@ -8771,6 +8773,13 @@ public class Rs2Walker {
                             || "Climb down".equalsIgnoreCase(transportAction);
 
                     final boolean allowAlKharidTollGateVariant = isAlKharidTollGateObjectId(transportObjectId);
+                    // The FIRST transport of a walk costs ~12.7s in the segment handler while the same
+                    // transport mid-route costs ~1.8s, and the plane-change waits account for only
+                    // ~1.5s of it (measured over three Falador castle runs). This scan runs once per
+                    // CANDIDATE transport at the tile, and a staircase tile carries several rows, so
+                    // the suspicion is N scans rather than one. Time it and say how many candidates
+                    // were queued, so the next run distinguishes "one slow scan" from "many scans".
+                    long objectScanStartedAt = System.currentTimeMillis();
                     List<TileObject> objects = Rs2GameObject.getAll(o -> {
                         if (o.getId() == transportObjectId) return true;
                         if (allowAlKharidTollGateVariant && isAlKharidTollGateObjectId(o.getId())) return true;
@@ -8791,6 +8800,12 @@ public class Rs2Walker {
                                     .thenComparingInt(o -> o.getWorldLocation().distanceTo(transport.getOrigin())))
                             .collect(Collectors.toList());
 
+                    long objectScanMs = System.currentTimeMillis() - objectScanStartedAt;
+                    if (objectScanMs >= TRANSPORT_OBJECT_SCAN_SLOW_MS) {
+                        WebWalkLog.spInfo("transport_object_scan | slow scanMs={} objectId={} candidatesAtTile={} matches={} origin={}",
+                                objectScanMs, transportObjectId, orderedTransports.size(), objects.size(),
+                                compactWorldPoint(transport.getOrigin()));
+                    }
                     TileObject object = objects.stream().findFirst().orElse(null);
                     if (object instanceof GroundObject) {
                         object = objects.stream()
