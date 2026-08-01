@@ -2042,6 +2042,12 @@ public class Rs2Walker {
             // the first one to reach the obstacle handlers is the nearest. Only that one may act while
             // we are still moving; anything further waits until it becomes the nearest.
             boolean segmentHandlersRanThisPass = false;
+            /**
+             * Whether any EARLIER segment was skipped this pass. A skipped segment was never examined,
+             * so a door on it is neither resolved nor ruled out, and the first segment that actually
+             * runs is not the nearest unresolved obstacle just because it is the first one handled.
+             */
+            boolean segmentSkippedThisPass = false;
             for (int i = indexOfStartPoint; !doorOrTransportResult && i < path.size(); i++) {
                 WorldPoint currentWorldPoint = path.get(i);
                 if (currentWorldPoint.getPlane() != currentPlayerPlane) {
@@ -2145,6 +2151,7 @@ public class Rs2Walker {
                             isDoorInteractionSettling(),
                             isRecoveryMovementInFlight());
                     if (skipPostTransportSegmentHandlers || skipStartupPreclickSegmentHandlers) {
+                        segmentSkippedThisPass = true;
                         if (skipStartupPreclickSegmentHandlers) {
                             markStartupPhase("preclick_segment_handler_skip", target,
                                     "i=" + i + " reason=startup_before_first_click");
@@ -2165,7 +2172,21 @@ public class Rs2Walker {
                     // interrupting it is the point, and the server walks us to the door either way.
                     // Everything further along still waits until it is the nearest segment, so route
                     // order holds. Settle windows and in-flight recovery still block, unchanged.
-                    boolean nearestSegmentDoor = !segmentHandlersRanThisPass;
+                    // "First handler to run this pass" is NOT the same as "nearest unresolved obstacle
+                    // on the route", and only the latter may be clicked at range. When an earlier
+                    // segment was SKIPPED — post-transport window, startup pre-click — it was never
+                    // examined, so a door on it is neither resolved nor ruled out, and reaching past it
+                    // is exactly the failure the interact-at-range rule exists to prevent.
+                    //
+                    // Measured at Falador: segments 11 and 12 skipped with no_nearby_planned_transport,
+                    // then the door at (2985,3341) clicked from range while the door at (2981,3340) was
+                    // still shut between us and it. The server began routing AROUND the building — the
+                    // player was dragged south to (2960,3330) — and the traversal wait it could never
+                    // satisfy timed out at 2275ms. Roughly ten seconds and a U-turn.
+                    //
+                    // With an earlier segment skipped, doors fall back to the stationary requirement,
+                    // which is the behaviour from before ranged door dispatch existed.
+                    boolean nearestSegmentDoor = !segmentHandlersRanThisPass && !segmentSkippedThisPass;
                     segmentHandlersRanThisPass = true;
                     boolean doorMovementGateOk = !Rs2Player.isMoving()
                             || (nearestSegmentDoor && doorInteractionWhileApproachingEnabled());
