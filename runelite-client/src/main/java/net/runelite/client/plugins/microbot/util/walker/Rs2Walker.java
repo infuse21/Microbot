@@ -1560,14 +1560,15 @@ public class Rs2Walker {
      * lines appear across the gap the loop is spinning without acting and the state here says why, and
      * if they stop the thread is blocked inside a wait and the last line says which pass entered it.
      */
-    private static void walkerHeartbeat(WorldPoint target) {
+    private static void walkerHeartbeat(WorldPoint target, int processWalkTail) {
         long now = System.currentTimeMillis();
         if (now - lastHeartbeatAtMs < WALKER_HEARTBEAT_INTERVAL_MS) {
             return;
         }
         lastHeartbeatAtMs = now;
         WorldPoint playerLoc = Rs2Player.getWorldLocation();
-        WebWalkLog.spInfo("walker_heartbeat | at={} goal={} moving={} animating={} interim={} interimAgeMs={} sinceMovedMs={} sinceDoorSettleMs={}",
+        WebWalkLog.spInfo("walker_heartbeat | tail={} at={} goal={} moving={} animating={} interim={} interimAgeMs={} sinceMovedMs={} sinceDoorSettleMs={}",
+                processWalkTail,
                 compactWorldPoint(playerLoc), compactWorldPoint(target),
                 Rs2Player.isMoving(), Rs2Player.isAnimating(),
                 compactWorldPoint(routeState.interimTargetWp),
@@ -1604,10 +1605,6 @@ public class Rs2Walker {
         if (debug) {
             return WalkerState.EXIT;
         }
-        // This is the per-pass entry point — the 2-arg overload delegates here once and this recurses
-        // for partial retries, so a heartbeat on the 2-arg version printed exactly once for an entire
-        // 35-second walk and told us nothing.
-        walkerHeartbeat(target);
         // Pre-flight: a destination with no walkable tile within the arrival distance can never be
         // reached, so reject it here rather than after a full route ending at the nearest wall.
         PathfinderConfig preflightConfig = Rs2PathApi.getPathfinderConfig();
@@ -1636,6 +1633,7 @@ public class Rs2Walker {
         Map<WorldPoint, Integer> reachableTilesCache = null;
         WorldPoint reachableTilesCacheOrigin = null;
         for (int processWalkTail = 0; processWalkTail < MAX_PROCESS_WALK_TAIL_ITERATIONS; processWalkTail++) {
+        walkerHeartbeat(target, processWalkTail);
         try {
             walkerDiag("tail iteration begin idx=%d/%d target=%s current=%s interim=%s partialRetries=%d",
                     processWalkTail,
