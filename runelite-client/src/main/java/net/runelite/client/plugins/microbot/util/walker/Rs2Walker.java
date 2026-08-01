@@ -2420,6 +2420,25 @@ public class Rs2Walker {
                             // like a human clicking the furthest visible tile. We trust the server path
                             // (no reachability gate on the click); isKnownWalkableOrUnloaded only keeps
                             // us from clicking into a known wall, it is NOT the bounded BFS check.
+                            // Everything below decides recovery against playerLoc, which was read at the
+                            // TOP of this pass — before the door/transport cascade above, which blocks for
+                            // seconds inside interaction awaits. Measured at Falador castle: recovery
+                            // reported player=(2974,3339) while the player actually stood at (2985,3340),
+                            // eleven tiles and eight seconds later, declared the target walled, and threw
+                            // the route away with a full recalculatePath().
+                            //
+                            // Refreshing playerLoc alone would be worse than leaving it: the unreachability
+                            // verdict for currentWorldPoint, the route index i and the reachable-tile cache
+                            // were all derived from the OLD position, so a fresh position here would pair
+                            // with stale analysis. Abandon the pass and re-derive from where we actually are
+                            // — the loop re-enters immediately, exactly as every other break here does.
+                            WorldPoint playerLocNow = Rs2Player.getWorldLocation();
+                            if (playerLocNow != null && !playerLocNow.equals(playerLoc)) {
+                                WebWalkLog.spInfo("recovery_position_stale | was={} now={} idx={} re-evaluating",
+                                        compactWorldPoint(playerLoc), compactWorldPoint(playerLocNow), i);
+                                exitReason = "recovery-position-stale";
+                                break;
+                            }
                             final int recoveryMinimapReach = STALL_RECOVERY_MINIMAP_REACH_EUCLIDEAN;
                             int recoverIdx = findForwardReachableRecoveryIndex(path, i, playerLoc,
                                     recoveryMinimapReach);
