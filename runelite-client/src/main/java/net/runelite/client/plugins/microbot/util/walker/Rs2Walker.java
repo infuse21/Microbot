@@ -169,6 +169,8 @@ public class Rs2Walker {
     private static final long DOOR_DIALOGUE_DEFER_MAX_MS = 5_000L;
     /** Above this, a single transport object scan is worth naming in the log. */
     private static final long TRANSPORT_OBJECT_SCAN_SLOW_MS = 400L;
+    /** Furthest a door may be and still be opened while the player is mid-walk toward it. */
+    private static final int DOOR_APPROACH_INTERACT_MAX_TILES = 4;
     private static final long RECOVERY_MOVEMENT_IN_FLIGHT_MS = 3_500L;
     private static final long DOOR_TRAVERSAL_RECOVERY_BLOCK_MS = 2_200L;
     private static final long POST_DOOR_NUDGE_RECENT_ATTEMPT_MS = 6_000L;
@@ -5851,7 +5853,7 @@ public class Rs2Walker {
                                     compactWorldPoint(probe), compactWorldPoint(fromWp), compactWorldPoint(toWp));
                             return false;
                         }
-                        if (doorInteractionDeferredForMovement()) {
+                        if (doorInteractionDeferredForMovement(probe)) {
                             WebWalkLog.spInfo("door_interact_deferred | reason=moving mode=segment-door probe={} from={} to={}",
                                     compactWorldPoint(probe), compactWorldPoint(fromWp), compactWorldPoint(toWp));
                             return false;
@@ -5988,7 +5990,7 @@ public class Rs2Walker {
                     compactWorldPoint(probe), compactWorldPoint(fromWp), compactWorldPoint(toWp));
             return false;
         }
-        if (doorInteractionDeferredForMovement()) {
+        if (doorInteractionDeferredForMovement(probe)) {
             WebWalkLog.spInfo("door_interact_deferred | reason=moving mode=segment-probe probe={} from={} to={}",
                     compactWorldPoint(probe), compactWorldPoint(fromWp), compactWorldPoint(toWp));
             return false;
@@ -9461,8 +9463,24 @@ public class Rs2Walker {
      * Route ordering is enforced where it belongs — the segment loop, which iterates many segments
      * and still only lets the nearest one act while moving.
      */
-    private static boolean doorInteractionDeferredForMovement() {
-        return Rs2Player.isMoving() && !doorInteractionWhileApproachingEnabled();
+    private static boolean doorInteractionDeferredForMovement(WorldPoint doorTile) {
+        if (!Rs2Player.isMoving()) {
+            return false;
+        }
+        if (!doorInteractionWhileApproachingEnabled()) {
+            return true;
+        }
+        // While MOVING, only act on a door we are practically standing at. The probe searches ten
+        // tiles, which was harmless while interaction required standing still — arriving implied
+        // proximity. Acting mid-walk removed that implication, and the walker opened the door at
+        // (2985,3341) from nine tiles out while (2981,3340) was still shut in front of it: the
+        // interaction timed out against the closed near door, the player drifted backwards, and the
+        // walk lost ~15s to recovery clicks before the real blocker was handled.
+        WorldPoint playerLoc = Rs2Player.getWorldLocation();
+        return playerLoc == null
+                || doorTile == null
+                || doorTile.getPlane() != playerLoc.getPlane()
+                || doorTile.distanceTo2D(playerLoc) > DOOR_APPROACH_INTERACT_MAX_TILES;
     }
 
     /** Ranged dispatch attempts that produced no movement, keyed by origin→destination edge. */
