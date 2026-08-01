@@ -1885,7 +1885,9 @@ public class Rs2Walker {
 
             boolean postTransportWindow = routeState.lastTransportHandledAtMs > 0
                     && System.currentTimeMillis() - routeState.lastTransportHandledAtMs <= POST_TRANSPORT_PATH_TMARK_WINDOW_MS;
-            boolean allowRawSceneScan = startupPolicy.allowBroadRawHandlers() && rawPath != null && path != null;
+            boolean allowRawSceneScan = rawPath != null && path != null
+                    && (startupPolicy.allowBroadRawHandlers()
+                    || hasImmediateRawTransportStepNearPlayer(rawPath));
             int rawScanTransportLookaheadStartIdx = postTransportWindow
                     ? Math.min(path.size() - 1, Math.max(0, indexOfStartPoint + 1))
                     : indexOfStartPoint;
@@ -1914,7 +1916,9 @@ public class Rs2Walker {
             // on Climb-down), fixed separately. Ranged dispatch also carries a no-progress fallback
             // and a per-edge cooldown, so a transport that does not respond degrades instead of
             // looping.
-            lastRawScanEarlyReturn = "not-attempted";
+            lastRawScanEarlyReturn = allowRawSceneScan
+                    ? "not-attempted"
+                    : (startupPolicy.allowBroadRawHandlers() ? "gated-outer" : "policy-startup");
             boolean rawSceneHandled = allowRawSceneScan
                     && handleNearbyRawPathSceneObjects(rawPath, HANDLER_RANGE, target, true);
             tmarkPostTransport("post_transport_raw_scene_scan_why", target,
@@ -6734,6 +6738,35 @@ public class Rs2Walker {
             return false;
         }
         return matchesDirectedTransportCatalogEdge(path.get(index), path.get(index + 1));
+    }
+
+    /**
+     * Whether a planned transport origin sits essentially under the player's feet on the RAW path.
+     * <p>
+     * The startup phase suppresses broad raw handlers until the first movement click — but the first
+     * transport of a walk is routinely taken with no click at all (the player already stands on its
+     * origin), so the phase stays STARTUP straight through the NEXT transport. With the raw scan
+     * disabled, nothing dispatches it: the walker idles until the idle nudge minimap-clicks onto the
+     * origin, which is the "runs the four tiles instead of clicking the stairs" report. The segment
+     * loop already carves out exactly this case; this is the raw scan's equivalent, and it is
+     * deliberately as narrow — an origin within the near band, nothing else.
+     */
+    private static boolean hasImmediateRawTransportStepNearPlayer(List<WorldPoint> rawPath) {
+        WorldPoint playerLoc = Rs2Player.getWorldLocation();
+        if (rawPath == null || rawPath.size() < 2 || playerLoc == null) {
+            return false;
+        }
+        int rawIdx = getClosestTileIndex(rawPath, playerLoc);
+        if (rawIdx < 0) {
+            return false;
+        }
+        int lastIdx = Math.min(rawPath.size() - 2, rawIdx + RAW_TRANSPORT_DISPATCH_MAX_DISTANCE);
+        for (int ri = Math.max(0, rawIdx); ri <= lastIdx; ri++) {
+            if (hasImmediatePlannedTransportStep(rawPath, ri, playerLoc)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static boolean hasImmediatePlannedTransportStep(List<WorldPoint> path,
