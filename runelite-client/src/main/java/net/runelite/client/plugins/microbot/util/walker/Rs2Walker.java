@@ -511,6 +511,17 @@ public class Rs2Walker {
         if (routeState.firstMovementClickMarked) {
             return WalkerPhase.STEADY;
         }
+        // Taking a transport IS the walker acting. The startup phase holds the broad handlers back
+        // until the walker has committed to the route, but it only ever advanced on a MOVEMENT CLICK
+        // — so a walk that begins standing on a staircase origin never clicks, never leaves STARTUP,
+        // and keeps the broad handlers suppressed through every FURTHER transport. Measured: at
+        // (2958,3337,p2), two tiles from the next staircase origin, the raw scan reported
+        // why=policy-startup three passes running until the idle nudge walked onto the origin.
+        // Scoped to this walk session, since lastTransportHandledAtMs deliberately outlives it.
+        long sessionStartedAtMs = routeState.walkSessionStartedAtMs;
+        if (sessionStartedAtMs > 0L && routeState.lastTransportHandledAtMs >= sessionStartedAtMs) {
+            return WalkerPhase.STEADY;
+        }
         return WalkerPhase.STARTUP;
     }
 
