@@ -429,8 +429,11 @@ public class Rs2Dialogue {
         Widget dialogueOption = getDialogueOption(text, exact);
         if (dialogueOption == null) return false;
 
-        Rs2Keyboard.keyPress(dialogueOption.getOnKeyListener()[7].toString().charAt(0));
-        return true;
+        // Delegate rather than repeat the raw getOnKeyListener()[7] access. Unguarded it throws
+        // (null listener array, fewer than 8 entries, null or empty token) where the shared helper
+        // reports false — and this overload is what clickOption(String...) calls, so an unreadable
+        // binding took the caller's whole retry path down with an exception instead of failing over.
+        return pressDialogueOptionWidget(dialogueOption);
     }
 
     /**
