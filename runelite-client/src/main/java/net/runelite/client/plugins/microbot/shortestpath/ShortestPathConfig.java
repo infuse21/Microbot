@@ -765,6 +765,20 @@ public interface ShortestPathConfig extends Config {
         }
 
     @ConfigItem(
+            keyName = "interactWithRouteObstaclesAtRange",
+            name = "Interact with obstacles at range",
+            description = "Click stairs, ladders and door transports on the route as soon as they are in "
+                    + "range and let the game walk you there, instead of walking to a chosen approach tile "
+                    + "first. Only ever applies to the NEXT obstacle on the route, and falls back to the old "
+                    + "behaviour for any obstacle the server declines to path to.",
+            position = 5,
+            section = sectionAdvanced
+    )
+    default boolean interactWithRouteObstaclesAtRange() {
+        return true;
+    }
+
+    @ConfigItem(
             keyName = "maxSimilarTransportDistance",
             name = "Max similar transport distance (tiles)",
             description = "Maximum distance between spell and consumable item teleport destinations to prefer spells over items.<br>" +

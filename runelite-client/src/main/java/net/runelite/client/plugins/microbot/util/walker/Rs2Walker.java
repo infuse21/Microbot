@@ -1932,6 +1932,10 @@ public class Rs2Walker {
             reachableTilesCacheOrigin = currentPlayerLoc;
             final int currentPlayerPlane = currentPlayerLoc != null ? currentPlayerLoc.getPlane() : -1;
 
+            // Route order for interact-at-range: the loop walks segments outward from the player, so
+            // the first one to reach the obstacle handlers is the nearest. Only that one may act while
+            // we are still moving; anything further waits until it becomes the nearest.
+            boolean segmentHandlersRanThisPass = false;
             for (int i = indexOfStartPoint; !doorOrTransportResult && i < path.size(); i++) {
                 WorldPoint currentWorldPoint = path.get(i);
                 if (currentWorldPoint.getPlane() != currentPlayerPlane) {
@@ -2049,8 +2053,18 @@ public class Rs2Walker {
                     int rawI = (i < smoothedToRaw.length) ? smoothedToRaw[i] : 0;
                     int rawEnd = rawEndForSmoothedIndex(i, smoothedToRaw, rawPath, path);
                     boolean startupImmediateTransportOnly = startupBeforeFirstClick && immediateSegmentTransportStep;
+                    // The stationary requirement is why doors only ever opened AFTER the approach walk
+                    // finished: the handler was skipped for the whole journey and ran on arrival. For the
+                    // NEXT segment on the route the door click should simply supersede our own walk —
+                    // interrupting it is the point, and the server walks us to the door either way.
+                    // Everything further along still waits until it is the nearest segment, so route
+                    // order holds. Settle windows and in-flight recovery still block, unchanged.
+                    boolean nearestSegmentDoor = !segmentHandlersRanThisPass;
+                    segmentHandlersRanThisPass = true;
+                    boolean doorMovementGateOk = !Rs2Player.isMoving()
+                            || (nearestSegmentDoor && doorInteractionWhileApproachingEnabled());
                     if (!startupImmediateTransportOnly
-                            && !Rs2Player.isMoving() && !isDoorInteractionSettling() && !isRecoveryMovementInFlight()) {
+                            && doorMovementGateOk && !isDoorInteractionSettling() && !isRecoveryMovementInFlight()) {
                         doorOrTransportResult = handleDoorsInRawSegment(rawPath, rawI, rawEnd,
                                 obstaclePolicy.segmentDoorTimeoutMs(), doorEdgesAttemptedThisTail,
                                 reachableTilesCache);
@@ -5109,6 +5123,12 @@ public class Rs2Walker {
         rawScanDoorCompositionCache = new IdentityHashMap<>();
         rawScanDoorSegmentCache = new HashMap<>();
         rawScanDoorInteractionWaitMs = 0L;
+        // Route order guard for ranged transport dispatch: set once a transport step is passed over,
+        // so nothing further along the route can be actioned ahead of the obstacle in front of us.
+        boolean sawUndispatchedTransportStep = false;
+        final boolean inInstanceScan = Microbot.getClientThread()
+                .runOnClientThreadOptional(() -> Microbot.getClient().getTopLevelWorldView().isInstance())
+                .orElse(Boolean.TRUE);
         try {
             for (int i = start; i < endExclusive; i++) {
                 WorldPoint currentWorldPoint = rawPath.get(i);
@@ -5119,13 +5139,36 @@ public class Rs2Walker {
                 }
                 scannedIdx++;
 
-                if (allowTransportHandlers
-                        && hasExplicitTransportStep(rawPath, i)
-                        && isRawTransportOriginNearPlayer(
-                        rawPath, i, playerLoc, RAW_TRANSPORT_DISPATCH_MAX_DISTANCE)) {
+                if (allowTransportHandlers && hasExplicitTransportStep(rawPath, i)) {
+                    WorldPoint routeOrigin = rawPath.get(i);
+                    WorldPoint expectedDest = i + 1 < rawPath.size() ? rawPath.get(i + 1) : null;
+                    int originDistance = routeOrigin != null && routeOrigin.getPlane() == playerLoc.getPlane()
+                            ? routeOrigin.distanceTo2D(playerLoc)
+                            : -1;
+                    boolean rangedAllowed = shouldDispatchTransportAtRange(
+                            originDistance,
+                            RAW_TRANSPORT_DISPATCH_MAX_DISTANCE,
+                            handlerRange,
+                            !sawUndispatchedTransportStep,
+                            isObjectInteractionTransportStep(rawPath, i),
+                            inInstanceScan,
+                            isDoorInteractionSettling() || isTransportInteractionSettling(),
+                            rangedTransportEdgeFailedRecently(routeOrigin, expectedDest),
+                            rangedTransportDispatchEnabled());
+                    if (!rangedAllowed) {
+                        // Declining here must not let a FURTHER transport be actioned first, or the
+                        // walker skips the obstacle in front of it. Later indices lose the ranged branch.
+                        sawUndispatchedTransportStep = true;
+                    }
+                    if (rangedAllowed) {
+                    boolean ranged = originDistance > RAW_TRANSPORT_DISPATCH_MAX_DISTANCE;
                     WorldPoint before = Rs2Player.getWorldLocation();
-                    WorldPoint expectedDestination = i + 1 < rawPath.size() ? rawPath.get(i + 1) : null;
+                    WorldPoint expectedDestination = expectedDest;
                     long t = System.currentTimeMillis();
+                    if (ranged) {
+                        WebWalkLog.spInfo("ranged_transport_dispatch | origin={} dist={} — clicking from range, server walks us",
+                                compactWorldPoint(routeOrigin), originDistance);
+                    }
                     boolean handledTransport = handleTransports(rawPath, i);
                     transportMs += System.currentTimeMillis() - t;
                     if (handledTransport) {
@@ -5133,11 +5176,15 @@ public class Rs2Walker {
                             WebWalkLog.spInfo("raw_path_transport_no_progress",
                                     "at=%s expected=%s target=%s",
                                     before, expectedDestination, target);
+                            if (ranged) {
+                                markRangedTransportEdgeFailed(routeOrigin, expectedDestination);
+                            }
                         } else {
                             log.info("[Walker] Raw path transport handler resolved obstacle near {}", playerLoc);
                             resolved = true;
                             return true;
                         }
+                    }
                     }
                 }
 
@@ -9170,6 +9217,56 @@ public class Rs2Walker {
         return false;
     }
 
+    /**
+     * Whether a planned transport may be interacted with from RANGE instead of stepping onto its
+     * origin tile first.
+     * <p>
+     * Clicking an object makes the SERVER path the player to a valid interaction tile and perform the
+     * action; it owns the collision data, so it is strictly better at choosing that tile than any
+     * approach heuristic of ours. The walker already spots obstacles {@code HANDLER_RANGE} tiles out
+     * but would only act within {@link #RAW_TRANSPORT_DISPATCH_MAX_DISTANCE}, so it walked to a tile
+     * it had guessed at and only then clicked — and the guess is what failed at the Black Knights'
+     * ladder, the Falador castle staircase and the guarded door, never the interaction itself.
+     * <p>
+     * ROUTE ORDER is the one thing this must not break: clicking a door twelve tiles ahead when a
+     * closed gate sits between walks the player into the gate. Only the FIRST unresolved obstacle on
+     * the route may be actioned at range, which {@code firstObstacleOnRoute} carries.
+     *
+     * @param originDistance          tiles from the player to the transport origin
+     * @param maxNearDistance         the legacy on-the-origin band; always dispatchable, unchanged
+     * @param maxRangedDistance       furthest the ranged branch may reach (the scan's handler range)
+     * @param firstObstacleOnRoute    no earlier unresolved obstacle sits between player and origin
+     * @param objectInteractionTransport the row is handled by the generic object click, not a
+     *                                dialogue/widget flow that gains nothing from this
+     * @param inInstance              instances keep the legacy band: raw coords make "on route" unreliable
+     * @param settling                a door/transport settle window is still open
+     * @param rangedAttemptFailedRecently a previous ranged attempt on this edge produced no movement
+     * @param enabled                 config kill switch
+     */
+    static boolean shouldDispatchTransportAtRange(int originDistance,
+                                                  int maxNearDistance,
+                                                  int maxRangedDistance,
+                                                  boolean firstObstacleOnRoute,
+                                                  boolean objectInteractionTransport,
+                                                  boolean inInstance,
+                                                  boolean settling,
+                                                  boolean rangedAttemptFailedRecently,
+                                                  boolean enabled) {
+        if (originDistance < 0) {
+            return false;
+        }
+        if (originDistance <= maxNearDistance) {
+            return true; // legacy behaviour, untouched
+        }
+        return enabled
+                && !inInstance
+                && !settling
+                && !rangedAttemptFailedRecently
+                && objectInteractionTransport
+                && firstObstacleOnRoute
+                && originDistance <= maxRangedDistance;
+    }
+
     static boolean isRawTransportOriginNearPlayer(List<WorldPoint> rawPath,
                                                    int transportIndex,
                                                    WorldPoint playerLoc,
@@ -9180,6 +9277,61 @@ public class Rs2Walker {
         }
         WorldPoint routeOrigin = rawPath.get(transportIndex);
         return isTransportOriginNearPlayer(routeOrigin, playerLoc, maxDistance);
+    }
+
+    /**
+     * True when every transport planned at {@code rawPath[index]} is one the generic object click
+     * handles (doors, stairs, ladders, gates). Dialogue and widget flows — boats, canoes, gliders,
+     * fairy rings, minecarts, teleports — are excluded: the server will not walk the player into a
+     * conversation, so ranged dispatch buys them nothing and risks firing them early. Agility
+     * shortcuts are excluded too; they need the exact origin tile (the stepping-stone case).
+     */
+    private static boolean isObjectInteractionTransportStep(List<WorldPoint> rawPath, int index) {
+        if (rawPath == null || index < 0 || index >= rawPath.size() - 1) {
+            return false;
+        }
+        Set<Transport> transports = Rs2PathApi.getTransports().get(rawPath.get(index));
+        if (transports == null || transports.isEmpty()) {
+            return false;
+        }
+        WorldPoint next = rawPath.get(index + 1);
+        return transports.stream()
+                .filter(t -> t != null && Objects.equals(t.getDestination(), next))
+                .anyMatch(t -> t.getType() == TransportType.TRANSPORT);
+    }
+
+    /** Config kill switch for ranged transport dispatch; on when the config is unavailable. */
+    private static boolean rangedTransportDispatchEnabled() {
+        return config == null || config.interactWithRouteObstaclesAtRange();
+    }
+
+    /** Same switch, for opening the nearest route door without waiting out the approach walk. */
+    private static boolean doorInteractionWhileApproachingEnabled() {
+        return rangedTransportDispatchEnabled();
+    }
+
+    /** Ranged dispatch attempts that produced no movement, keyed by origin→destination edge. */
+    private static final Map<String, Long> failedRangedTransportEdges = new ConcurrentHashMap<>();
+    private static final long RANGED_TRANSPORT_RETRY_COOLDOWN_MS = 30_000L;
+
+    private static String rangedTransportEdgeKey(WorldPoint from, WorldPoint to) {
+        return compactWorldPoint(from) + ">" + compactWorldPoint(to);
+    }
+
+    private static boolean rangedTransportEdgeFailedRecently(WorldPoint from, WorldPoint to) {
+        Long at = failedRangedTransportEdges.get(rangedTransportEdgeKey(from, to));
+        return at != null && System.currentTimeMillis() - at < RANGED_TRANSPORT_RETRY_COOLDOWN_MS;
+    }
+
+    /**
+     * Records that a ranged attempt on this edge produced nothing, so the walker falls back to
+     * walking onto the origin for it. That is the unreachable case — the server declined to path —
+     * and it must degrade to the legacy behaviour rather than re-click from range forever.
+     */
+    private static void markRangedTransportEdgeFailed(WorldPoint from, WorldPoint to) {
+        failedRangedTransportEdges.put(rangedTransportEdgeKey(from, to), System.currentTimeMillis());
+        WebWalkLog.spInfo("ranged_transport_no_progress | {} -> {} — falling back to walking onto the origin",
+                compactWorldPoint(from), compactWorldPoint(to));
     }
 
     private static boolean isTransportOriginNearPlayer(WorldPoint routeOrigin,

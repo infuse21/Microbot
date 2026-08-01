@@ -1086,6 +1086,56 @@ public class Rs2WalkerUnitTest {
      * BOUNDED, or a plain walk with no dialogue logic behind it would stall forever on any stray
      * conversation.
      */
+    /**
+     * Ranged obstacle dispatch: click the stairs/door from where we stand and let the SERVER walk us,
+     * instead of walking to an approach tile we guessed at. The guess is what failed at the Black
+     * Knights' ladder, the Falador staircase and the guarded door — never the interaction.
+     * <p>
+     * The contract that must not slip is ROUTE ORDER: a further obstacle may never be actioned before
+     * the one in front of the player.
+     */
+    @Test
+    public void shouldDispatchTransportAtRange_decisionTable() {
+        int near = 2;
+        int far = 13;
+
+        // Legacy band is untouched — always dispatchable, whatever else is true.
+        assertTrue("standing on the origin still dispatches",
+                Rs2Walker.shouldDispatchTransportAtRange(0, near, far,
+                        false, false, true, true, true, false));
+        assertTrue(Rs2Walker.shouldDispatchTransportAtRange(2, near, far,
+                false, false, true, true, true, false));
+
+        // The new band.
+        assertTrue("first obstacle, object transport, in range — click it from here",
+                Rs2Walker.shouldDispatchTransportAtRange(7, near, far,
+                        true, true, false, false, false, true));
+        assertFalse("route order: something unresolved is closer",
+                Rs2Walker.shouldDispatchTransportAtRange(7, near, far,
+                        false, true, false, false, false, true));
+        assertFalse("dialogue/widget transports gain nothing and must not fire early",
+                Rs2Walker.shouldDispatchTransportAtRange(7, near, far,
+                        true, false, false, false, false, true));
+        assertFalse("beyond the scan's reach",
+                Rs2Walker.shouldDispatchTransportAtRange(14, near, far,
+                        true, true, false, false, false, true));
+        assertFalse("instances keep the legacy band — raw coords make 'on route' unreliable",
+                Rs2Walker.shouldDispatchTransportAtRange(7, near, far,
+                        true, true, true, false, false, true));
+        assertFalse("never interrupt a settle window",
+                Rs2Walker.shouldDispatchTransportAtRange(7, near, far,
+                        true, true, false, true, false, true));
+        assertFalse("the server declined this edge before — walk onto the origin instead",
+                Rs2Walker.shouldDispatchTransportAtRange(7, near, far,
+                        true, true, false, false, true, true));
+        assertFalse("kill switch off restores the old behaviour exactly",
+                Rs2Walker.shouldDispatchTransportAtRange(7, near, far,
+                        true, true, false, false, false, false));
+        assertFalse("a negative distance (different plane) never dispatches",
+                Rs2Walker.shouldDispatchTransportAtRange(-1, near, far,
+                        true, true, false, false, false, true));
+    }
+
     @Test
     public void doorDialogueDeferActive_holdsOffButAlwaysReleases() {
         long max = 5_000L;
