@@ -108,16 +108,40 @@ public final class Rs2DoorProbe {
             return false;
         }
         WorldPoint loc = objectLocation;
+        // Cheap, player-relative checks first — these depend on where the player is standing, so they
+        // stay live rather than memoised.
         if (loc.getPlane() != playerLoc.getPlane()
                 || loc.distanceTo2D(playerLoc) > searchDistance
                 || blacklist.contains(loc)
-                || (!(object instanceof WallObject) && !(object instanceof GameObject))
-                || (isCatalogTransportObject(object) && !Rs2DoorDetection.isDoorLikeSceneObject(object))
-                || !Rs2DoorGeometry.isDoorOnSegment(object, fromWp, toWp)) {
+                || (!(object instanceof WallObject) && !(object instanceof GameObject))) {
+            return false;
+        }
+        if (isNonDoorCatalogTransport(ctx, object)) {
+            return false;
+        }
+        if (!Rs2DoorGeometry.isDoorOnSegment(object, fromWp, toWp)) {
             return false;
         }
         ObjectComposition comp = resolveDoorComposition(ctx, object);
         return Rs2DoorClassifier.isDoorComposition(comp, doorActions);
+    }
+
+    /**
+     * "A catalog transport that is not itself door-like" — the expensive, segment-independent half of
+     * the candidate test, memoised for the scan via {@link DoorProbeContext#objectEligibilityCache()}.
+     * <p>
+     * The answer depends only on the object (id, location, composition), yet the probe re-evaluated it
+     * for every route segment against the entire snapshot, paying a {@code getWorldLocation()}, nine
+     * transport-map lookups and an uncached composition resolve each time. With no cache available the
+     * behaviour is unchanged, just uncached.
+     */
+    private static boolean isNonDoorCatalogTransport(DoorProbeContext ctx, TileObject object) {
+        Map<TileObject, Boolean> cache = ctx == null ? null : ctx.objectEligibilityCache();
+        if (cache == null) {
+            return isCatalogTransportObject(object) && !Rs2DoorDetection.isDoorLikeSceneObject(object);
+        }
+        return cache.computeIfAbsent(object,
+                o -> isCatalogTransportObject(o) && !Rs2DoorDetection.isDoorLikeSceneObject(o));
     }
 
     /** Nearest walk-through door lying on the {@code fromWp -> toWp} segment, using scan snapshots when present. */

@@ -5122,6 +5122,7 @@ public class Rs2Walker {
         snapshotMs = System.currentTimeMillis() - snapshotStartedAt;
         rawScanDoorCompositionCache = new IdentityHashMap<>();
         rawScanDoorSegmentCache = new HashMap<>();
+        rawScanDoorEligibilityCache = new IdentityHashMap<>();
         rawScanDoorInteractionWaitMs = 0L;
         // Route order guard for ranged transport dispatch: set once a transport step is passed over,
         // so nothing further along the route can be actioned ahead of the obstacle in front of us.
@@ -5231,6 +5232,7 @@ public class Rs2Walker {
             rawScanDoorLocationSnapshot = null;
             rawScanDoorCompositionCache = null;
             rawScanDoorSegmentCache = null;
+            rawScanDoorEligibilityCache = null;
             long totalMs = System.currentTimeMillis() - scanStartMs;
             if (totalMs >= SLOW_RAW_SCENE_SCAN_LOG_MS) {
                 long doorWaitMs = rawScanDoorInteractionWaitMs;
@@ -5269,11 +5271,14 @@ public class Rs2Walker {
     /** Object definitions and segment matches are stable for one immutable scene snapshot. */
     private static Map<TileObject, Optional<ObjectComposition>> rawScanDoorCompositionCache = null;
     private static Map<String, Optional<TileObject>> rawScanDoorSegmentCache = null;
+    /** Scan-scoped memo for the segment-independent door-candidate test (see DoorProbeContext). */
+    private static Map<TileObject, Boolean> rawScanDoorEligibilityCache = null;
 
     /** Wraps the current scan-scoped probe caches for the extracted door-probe logic. */
     private static DoorProbeContext doorProbeContext() {
         return new DoorProbeContext(rawScanWallSnapshot, rawScanGameObjectSnapshot,
-                rawScanDoorLocationSnapshot, rawScanDoorCompositionCache, rawScanDoorSegmentCache);
+                rawScanDoorLocationSnapshot, rawScanDoorCompositionCache, rawScanDoorSegmentCache,
+                rawScanDoorEligibilityCache);
     }
     /** Interaction/edge-resolution wait contained inside {@link #handleDoors}; excluded from probe cost. */
     private static volatile long rawScanDoorInteractionWaitMs = 0L;
