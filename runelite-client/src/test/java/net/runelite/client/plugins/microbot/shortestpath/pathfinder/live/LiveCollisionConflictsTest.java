@@ -59,10 +59,28 @@ public class LiveCollisionConflictsTest {
         assertEquals(1, tally.liveOpensStatic + tally.liveBlocksStatic + tally.liveOpensSealed);
         if (statik) {
             assertEquals("live=blocked where static=open is liveBlocksStatic", 1, tally.liveBlocksStatic);
+        } else if (probeTileSealedInStatic()) {
+            // static=blocked on EVERY edge is the floorless/unmapped case, which is deliberately
+            // bucketed apart so it cannot drown the interpretable counts.
+            assertEquals("live=open on a sealed static tile is liveOpensSealed",
+                    1, tally.liveOpensSealed);
         } else {
             assertEquals("live=open on a partially-open static tile is liveOpensStatic",
                     1, tally.liveOpensStatic);
         }
+    }
+
+    /**
+     * Mirrors {@code LiveCollisionConflicts.staticTileSealed}. A blocked north edge alone does NOT
+     * imply the tile is merely partially open — if all four edges are blocked the disagreement is
+     * bucketed as sealed, so asserting liveOpensStatic off {@code statik == false} could fail on a
+     * perfectly correct result.
+     */
+    private static boolean probeTileSealedInStatic() {
+        return !staticMap.get(PROBE_X, PROBE_Y, 0, LiveCollisionSnapshot.FLAG_NORTH)
+                && !staticMap.get(PROBE_X, PROBE_Y - 1, 0, LiveCollisionSnapshot.FLAG_NORTH)
+                && !staticMap.get(PROBE_X, PROBE_Y, 0, LiveCollisionSnapshot.FLAG_EAST)
+                && !staticMap.get(PROBE_X - 1, PROBE_Y, 0, LiveCollisionSnapshot.FLAG_EAST);
     }
 
     /**
