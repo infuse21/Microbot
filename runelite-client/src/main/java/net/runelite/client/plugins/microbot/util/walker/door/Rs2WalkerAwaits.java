@@ -6,6 +6,7 @@ import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.tile.Rs2Tile;
 import net.runelite.client.plugins.microbot.util.walker.door.model.AwaitTicket;
 import net.runelite.client.plugins.microbot.util.walker.door.model.DoorResolution;
+import net.runelite.client.plugins.microbot.util.walker.WebWalkLog;
 import net.runelite.client.plugins.microbot.util.walker.shared.Rs2WalkerProgress;
 
 import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
@@ -13,6 +14,8 @@ import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
 public final class Rs2WalkerAwaits {
     private static final int DOOR_INTERACTION_START_WAIT_MS = 700;
     private static final int DOOR_TRAVERSAL_PROGRESS_WAIT_MS = 2200;
+    /** Above this combined wait, say which condition released the door await. */
+    private static final long DOOR_AWAIT_SLOW_LOG_MS = 900L;
 
     private Rs2WalkerAwaits() {
     }
@@ -36,6 +39,7 @@ public final class Rs2WalkerAwaits {
         if (ticket == null) {
             return;
         }
+        long startPhaseAt = System.currentTimeMillis();
         sleepUntil(() -> {
             if (Thread.currentThread().isInterrupted() || conversationOpened()) {
                 return true;
@@ -46,8 +50,19 @@ public final class Rs2WalkerAwaits {
             }
             return Rs2Player.isMoving() || Rs2Player.isAnimating() || isDoorEdgeResolved(fromWp, toWp);
         }, DOOR_INTERACTION_START_WAIT_MS);
+        long startWaitMs = System.currentTimeMillis() - startPhaseAt;
+
+        // Which condition releases the traversal wait is the whole question for door latency: it
+        // already returns the moment the door EDGE resolves, so a wait that runs to its 2200ms cap
+        // means the edge is not being observed quickly (the live overlay needs a scene recapture
+        // before it sees the door open) rather than the door being slow. Naming the winner turns
+        // "doors feel slow" into a specific target — the same play that took the transport problem
+        // from four rounds of guessing to a one-shot fix.
+        final String[] releasedBy = {"timeout"};
+        long traversalPhaseAt = System.currentTimeMillis();
         sleepUntil(() -> {
             if (Thread.currentThread().isInterrupted() || conversationOpened()) {
+                releasedBy[0] = "conversation-or-interrupt";
                 return true;
             }
             WorldPoint now = Rs2Player.getWorldLocation();
@@ -56,21 +71,34 @@ public final class Rs2WalkerAwaits {
             }
             boolean edgeResolved = isDoorEdgeResolved(fromWp, toWp);
             if (edgeResolved) {
+                releasedBy[0] = "edge-resolved";
                 return true;
             }
             if (Rs2WalkerProgress.isWithinChebyshev(now, toWp, 1)) {
+                releasedBy[0] = "arrived-far-side";
                 return true;
             }
             if (hasMeaningfulDoorProgress(ticket.beforePosition(), now, fromWp, toWp)) {
+                releasedBy[0] = "progress";
                 return true;
             }
             long elapsedMs = System.currentTimeMillis() - ticket.startedAtMs();
-            return shouldAcceptIdleDoorAwait(
+            boolean idleAccepted = shouldAcceptIdleDoorAwait(
                     Rs2Player.isMoving(),
                     Rs2Player.isAnimating(),
                     elapsedMs,
                     edgeResolved);
+            if (idleAccepted) {
+                releasedBy[0] = "idle-accepted";
+            }
+            return idleAccepted;
         }, DOOR_TRAVERSAL_PROGRESS_WAIT_MS);
+        long traversalWaitMs = System.currentTimeMillis() - traversalPhaseAt;
+
+        if (startWaitMs + traversalWaitMs >= DOOR_AWAIT_SLOW_LOG_MS) {
+            WebWalkLog.spInfo("door_await | releasedBy={} startWaitMs={} traversalWaitMs={} from={} to={}",
+                    releasedBy[0], startWaitMs, traversalWaitMs, fromWp, toWp);
+        }
     }
 
     static boolean shouldAcceptIdleDoorAwait(boolean moving, boolean animating, long elapsedMs, boolean edgeResolved) {
