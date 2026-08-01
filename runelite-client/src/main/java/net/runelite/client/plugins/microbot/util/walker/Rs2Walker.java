@@ -5305,6 +5305,8 @@ public class Rs2Walker {
         rawScanDoorSegmentCache = new HashMap<>();
         rawScanDoorEligibilityCache = new IdentityHashMap<>();
         rawScanDoorInteractionWaitMs = 0L;
+        rawScanDoorEdgeWaitMs = 0L;
+        rawScanDoorFindMs = 0L;
         // Route order guard for ranged transport dispatch: set once a transport step is passed over,
         // so nothing further along the route can be actioned ahead of the obstacle in front of us.
         boolean sawUndispatchedTransportStep = false;
@@ -5417,12 +5419,18 @@ public class Rs2Walker {
             long totalMs = System.currentTimeMillis() - scanStartMs;
             if (totalMs >= SLOW_RAW_SCENE_SCAN_LOG_MS) {
                 long doorWaitMs = rawScanDoorInteractionWaitMs;
-                long doorProbeMs = Math.max(0L, doorMs - doorWaitMs);
-                log.info("[Walker] slow raw scene scan: total={}ms idx={} snapshot={}ms doorProbe={}ms doorWait={}ms doorCand={}ms rockfall={}ms transports={}ms resolved={} allowTransports={}",
-                        totalMs, scannedIdx, snapshotMs, doorProbeMs, doorWaitMs, doorCandidateMs, rockfallMs, transportMs,
+                long doorEdgeWaitMs = rawScanDoorEdgeWaitMs;
+                long doorFindMs = rawScanDoorFindMs;
+                // What is left after the probe and both waits: the menu interaction and the
+                // post-interaction verification. Previously all of this was reported as "doorProbe".
+                long doorOtherMs = Math.max(0L, doorMs - doorWaitMs - doorEdgeWaitMs - doorFindMs);
+                log.info("[Walker] slow raw scene scan: total={}ms idx={} snapshot={}ms doorFind={}ms doorEdgeWait={}ms doorOther={}ms doorWait={}ms doorCand={}ms rockfall={}ms transports={}ms resolved={} allowTransports={}",
+                        totalMs, scannedIdx, snapshotMs, doorFindMs, doorEdgeWaitMs, doorOtherMs, doorWaitMs, doorCandidateMs, rockfallMs, transportMs,
                         resolved, allowTransportHandlers);
             }
             rawScanDoorInteractionWaitMs = 0L;
+            rawScanDoorEdgeWaitMs = 0L;
+            rawScanDoorFindMs = 0L;
         }
     }
 
@@ -5463,6 +5471,28 @@ public class Rs2Walker {
     }
     /** Interaction/edge-resolution wait contained inside {@link #handleDoors}; excluded from probe cost. */
     private static volatile long rawScanDoorInteractionWaitMs = 0L;
+    /** Time inside {@link #waitForDoorEdgeResolution} during a raw scan (a wait, not probe work). */
+    private static volatile long rawScanDoorEdgeWaitMs = 0L;
+    /** Time inside the door segment probe during a raw scan (the actual geometry/snapshot work). */
+    private static volatile long rawScanDoorFindMs = 0L;
+
+    /**
+     * The door segment probe, timed. "doorProbe" in the slow-scan line is a RESIDUAL — the whole
+     * handleDoors call minus the interaction wait — so it silently absorbed the edge-resolution wait,
+     * the menu interaction and the post-interaction verification too. Attributing the probe itself is
+     * the only way to tell an expensive scan from an expensive wait, and they want opposite fixes.
+     */
+    private static TileObject findDoorNearSegmentTimed(WorldPoint fromWp, WorldPoint toWp, List<String> doorActions) {
+        long startedAt = System.currentTimeMillis();
+        try {
+            return Rs2DoorProbe.findDoorNearSegment(doorProbeContext(), sessionBlacklistedDoors,
+                    recentlyOpenedStationaryDoors, STATIONARY_DOOR_SUPPRESS_MS, fromWp, toWp, doorActions);
+        } finally {
+            if (rawScanWallSnapshot != null || rawScanGameObjectSnapshot != null) {
+                rawScanDoorFindMs += System.currentTimeMillis() - startedAt;
+            }
+        }
+    }
 
     private static Map<TileObject, WorldPoint> captureRawScanDoorLocationsOnClientThread() {
         Map<TileObject, WorldPoint> locations = new IdentityHashMap<>();
@@ -5563,7 +5593,7 @@ public class Rs2Walker {
             return false;
         }
         List<String> doorActions = List.of("pay-toll", "pick-lock", "walk-through", "go-through", "open", "pass");
-        return Rs2DoorProbe.findDoorNearSegment(doorProbeContext(), sessionBlacklistedDoors, recentlyOpenedStationaryDoors, STATIONARY_DOOR_SUPPRESS_MS, fromWp, toWp, doorActions) != null;
+        return findDoorNearSegmentTimed(fromWp, toWp, doorActions) != null;
     }
 
     private static void setRawScanDoorFocus(int index) {
@@ -5883,7 +5913,7 @@ public class Rs2Walker {
         // requested the same object definitions on the client thread for adjacent raw edges.
         if (allowSegmentProbe
                 && (rawScanWallSnapshot != null || rawScanGameObjectSnapshot != null)) {
-            TileObject snapshotDoor = Rs2DoorProbe.findDoorNearSegment(doorProbeContext(), sessionBlacklistedDoors, recentlyOpenedStationaryDoors, STATIONARY_DOOR_SUPPRESS_MS, fromWp, toWp, doorActions);
+            TileObject snapshotDoor = findDoorNearSegmentTimed(fromWp, toWp, doorActions);
             if (snapshotDoor == null) {
                 return false;
             }
@@ -6071,7 +6101,7 @@ public class Rs2Walker {
             }
         }
 
-        TileObject nearbyDoor = allowSegmentProbe ? Rs2DoorProbe.findDoorNearSegment(doorProbeContext(), sessionBlacklistedDoors, recentlyOpenedStationaryDoors, STATIONARY_DOOR_SUPPRESS_MS, fromWp, toWp, doorActions) : null;
+        TileObject nearbyDoor = allowSegmentProbe ? findDoorNearSegmentTimed(fromWp, toWp, doorActions) : null;
         if (nearbyDoor != null && tryHandleDoorObject(nearbyDoor, nearbyDoor.getWorldLocation(), fromWp, toWp, doorActions, true)) {
             return true;
         }
@@ -7111,7 +7141,13 @@ public class Rs2Walker {
     private static boolean waitForDoorEdgeResolution(WorldPoint fromWp, WorldPoint toWp, int timeoutMs) {
         long startedAt = System.currentTimeMillis();
         DoorResolution resolution = Rs2WalkerAwaits.awaitDoorEdgeResolution(fromWp, toWp, timeoutMs);
-        WebWalkLog.tmark("door_edge_wait_done", System.currentTimeMillis() - startedAt, currentTarget,
+        long elapsed = System.currentTimeMillis() - startedAt;
+        // Counted separately or it lands in the scan's doorProbe residual and reads as probe cost —
+        // this wait alone has been measured at 1897ms (FAILED_TIMEOUT).
+        if (rawScanWallSnapshot != null || rawScanGameObjectSnapshot != null) {
+            rawScanDoorEdgeWaitMs += elapsed;
+        }
+        WebWalkLog.tmark("door_edge_wait_done", elapsed, currentTarget,
                 Rs2Player.getWorldLocation(),
                 "result=" + resolution + " from=" + compactWorldPoint(fromWp) + " to=" + compactWorldPoint(toWp));
         return resolution == DoorResolution.RESOLVED;
