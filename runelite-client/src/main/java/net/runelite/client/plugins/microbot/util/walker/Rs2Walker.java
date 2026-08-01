@@ -9126,13 +9126,20 @@ public class Rs2Walker {
                 return false;
             }
             int z = plZ.getPlane();
+            // Instrumentation: the FIRST plane-change transport of a walk consistently costs ~9.5s
+            // while the same kind mid-route costs ~2.2s (measured across two Falador castle runs).
+            // The waits below bound at 1800 + 5000 + jitter, and a failed start returns false and is
+            // retried, so two attempts would explain it — but that is inference. These timings say
+            // which of start-detection, plane-detection or retry actually burns the seconds.
+            long planeChangeStartedAt = System.currentTimeMillis();
             boolean started = sleepUntil(() -> {
                 WorldPoint p = Rs2Player.getWorldLocation();
                 return p != null && (p.getPlane() != z || Rs2Player.isMoving() || Rs2Player.isAnimating());
             }, 1800);
+            long startWaitMs = System.currentTimeMillis() - planeChangeStartedAt;
             if (!started) {
-                log.debug("[Walker] {} transport click on {} produced no movement/animation; retrying",
-                        transport.getAction(), tileObject.getId());
+                WebWalkLog.spInfo("transport_plane_change | no_start startWaitMs={} obj={} action={} — returning for retry",
+                        startWaitMs, tileObject.getId(), transport.getAction());
                 return false;
             }
             WorldPoint plAfterStart = Rs2Player.getWorldLocation();
@@ -9141,9 +9148,13 @@ public class Rs2Walker {
                         WorldPoint p = Rs2Player.getWorldLocation();
                         return p != null && p.getPlane() != z;
                     }, 5000);
+            long planeWaitMs = System.currentTimeMillis() - planeChangeStartedAt - startWaitMs;
             if (planeChanged) {
                 sleep((int) Rs2Random.gaussRand(300.0, 120.0));
             }
+            WebWalkLog.spInfo("transport_plane_change | changed={} startWaitMs={} planeWaitMs={} totalMs={} obj={}",
+                    planeChanged, startWaitMs, planeWaitMs,
+                    System.currentTimeMillis() - planeChangeStartedAt, tileObject.getId());
             return planeChanged;
         }
     }
