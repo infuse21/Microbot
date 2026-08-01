@@ -401,7 +401,10 @@ public class Rs2Walker {
         if (elapsed < 0L || elapsed > POST_TRANSPORT_PATH_TMARK_WINDOW_MS) {
             return;
         }
-        WebWalkLog.tmark(phase, elapsed, target, Rs2Player.getWorldLocation(), detail);
+        // These exist to explain a post-transport pass, not to report an outcome, and they fire several
+        // times per pass for the whole 15s window. At INFO they were the bulk of the walker's console
+        // output; the verbose toggle brings them back when someone is actually reading them.
+        WebWalkLog.tmarkDebug(phase, elapsed, target, Rs2Player.getWorldLocation(), detail);
     }
 
     private enum WalkerPhase {
@@ -2275,7 +2278,7 @@ public class Rs2Walker {
                                 }
                                 break;
                             }
-                            log.info("[Walker] local reachability miss near player; checking blockers/recovery: tile={} idx={}/{} player={} target={}",
+                            log.debug("[Walker] local reachability miss near player; checking blockers/recovery: tile={} idx={}/{} player={} target={}",
                                     currentWorldPoint, i, path.size(), playerLoc, target);
 
                             // Anti-end-camping frontier rewind. The near-player reachability check skips
@@ -5974,14 +5977,14 @@ public class Rs2Walker {
                     // merely beside the path. isDoorOnSegment walks the segment against the wall's
                     // real edge, matching the GameObject branch and findDoorNearSegment.
                     if (Rs2DoorGeometry.isDoorOnSegment(object, fromWp, toWp)) {
-                        log.info("Found WallObject door - name {} with action {} at {} - from {} to {}", name, action, probe, fromWp, toWp);
+                        log.debug("Found WallObject door - name {} with action {} at {} - from {} to {}", name, action, probe, fromWp, toWp);
                         found = true;
                     } else {
                         Telemetry.recordDoorReject("orient-mismatch");
                     }
                 } else {
                     if (Rs2DoorGeometry.isDoorOnSegment(object, fromWp, toWp)) {
-                        log.info("Found GameObject door - name {} with action {} at {} - from {} to {}", name, action, probe, fromWp, toWp);
+                        log.debug("Found GameObject door - name {} with action {} at {} - from {} to {}", name, action, probe, fromWp, toWp);
                         found = true;
                     } else {
                         Telemetry.recordDoorReject("gameobject-segment-mismatch");
@@ -6111,12 +6114,12 @@ public class Rs2Walker {
             if (searchNeighborPoint(orientation, probe, fromWp)
                     || searchNeighborPoint(orientation, probe, toWp)
                     || (allowSegmentProbe && Rs2DoorGeometry.wallDoorTouchesSegment((WallObject) object, fromWp, toWp))) {
-                log.info("Found WallObject door - name {} with action {} at {} - from {} to {}", name, action, probe, fromWp, toWp);
+                log.debug("Found WallObject door - name {} with action {} at {} - from {} to {}", name, action, probe, fromWp, toWp);
                 found = true;
             }
         } else if (name != null && name.toLowerCase().contains("door")) {
             if (Rs2DoorGeometry.isDoorOnSegment(object, fromWp, toWp)) {
-                log.info("Found GameObject door - name {} with action {} at {} - from {} to {}", name, action, probe, fromWp, toWp);
+                log.debug("Found GameObject door - name {} with action {} at {} - from {} to {}", name, action, probe, fromWp, toWp);
                 found = true;
             }
         }
@@ -7766,20 +7769,20 @@ public class Rs2Walker {
 			}
 		}
         if (byIdentity.isEmpty()) {
-			log.info("[Walker] path-adj blocker-scan: no candidates (radius={} idx={}/{})", radiusTiles, startIdx, path.size());
+			log.debug("[Walker] path-adj blocker-scan: no candidates (radius={} idx={}/{})", radiusTiles, startIdx, path.size());
 			return false;
 		}
 
         List<PathAdjDoorComponent> components = buildPathAdjDoorComponents(byIdentity.values(), startIdx, playerLoc);
         if (components.isEmpty()) {
-            log.info("[Walker] path-adj blocker-scan: no components (radius={} idx={}/{})", radiusTiles, startIdx, path.size());
+            log.debug("[Walker] path-adj blocker-scan: no components (radius={} idx={}/{})", radiusTiles, startIdx, path.size());
             return false;
         }
         PathAdjDoorComponent bestComponent = components.stream()
                 .min(Comparator.comparingInt(c -> c.score))
                 .orElse(null);
         if (bestComponent == null || bestComponent.best == null) {
-            log.info("[Walker] path-adj blocker-scan: no component winner (radius={} idx={}/{})", radiusTiles, startIdx, path.size());
+            log.debug("[Walker] path-adj blocker-scan: no component winner (radius={} idx={}/{})", radiusTiles, startIdx, path.size());
             return false;
         }
         PathAdjDoorCandidate chosen = bestComponent.best;

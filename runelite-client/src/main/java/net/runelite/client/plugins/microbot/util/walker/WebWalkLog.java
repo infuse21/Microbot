@@ -173,4 +173,14 @@ public final class WebWalkLog {
         LOG.info("[WebWalk] tmark | phase={} elapsed={}ms goal={} at={} detail={}",
                 phase, elapsedMs, goal, at, detail == null ? "-" : detail);
     }
+
+    /**
+     * Phase marker for per-pass investigation rather than an outcome. Same shape as {@link #tmark},
+     * at DEBUG so it appears only under "Verbose console logging" — the post-transport family alone
+     * accounted for 35 of the ~60 INFO lines a single 45-second walk produced.
+     */
+    public static void tmarkDebug(String phase, long elapsedMs, WorldPoint goal, WorldPoint at, String detail) {
+        LOG.debug("[WebWalk] tmark | phase={} elapsed={}ms goal={} at={} detail={}",
+                phase, elapsedMs, goal, at, detail == null ? "-" : detail);
+    }
 }
