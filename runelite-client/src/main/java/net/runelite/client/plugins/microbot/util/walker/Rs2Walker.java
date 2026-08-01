@@ -2115,7 +2115,10 @@ public class Rs2Walker {
                             || upcomingNearbyTransport
                             || immediateSegmentTransportStep;
                     if ((PohTeleports.isInHouse() || !inInstance) && allowSegmentTransportScan) {
-                        doorOrTransportResult = handleTransportsInRawSegment(rawPath, rawI, rawEnd);
+                        // Nearest segment may take its transport from range; anything further along
+                        // waits until it becomes nearest, so route order holds.
+                        doorOrTransportResult = handleTransportsInRawSegment(rawPath, rawI, rawEnd,
+                                nearestSegmentDoor);
                     }
 
                     if (doorOrTransportResult) {
@@ -2359,8 +2362,10 @@ public class Rs2Walker {
                             // server walk the long way around the gap it should have crossed. Taking the
                             // transport first mirrors the segment-handler transport scan (which can be
                             // skipped in the post-transport window) and the door/rockfall handling above.
+                            // Recovery acts on the edge blocking us RIGHT NOW, so it is the nearest
+                            // obstacle by construction and may dispatch from range.
                             if ((PohTeleports.isInHouse() || !inInstance)
-                                    && handleTransportsInRawSegment(rawPath, rawEdgeStart, rawEdgeEnd)) {
+                                    && handleTransportsInRawSegment(rawPath, rawEdgeStart, rawEdgeEnd, true)) {
                                 exitReason = "transport-handled-local-reachability";
                                 break;
                             }
@@ -9247,15 +9252,75 @@ public class Rs2Walker {
 
 
     private static boolean handleTransportsInRawSegment(List<WorldPoint> rawPath, int rawFrom, int rawTo) {
+        return handleTransportsInRawSegment(rawPath, rawFrom, rawTo, false);
+    }
+
+    /**
+     * Dispatches a planned transport on this raw segment.
+     * <p>
+     * This is the path that actually takes stairs and ladders on a normal walk — the raw scene scan's
+     * ranged branch rarely gets there first, because the route click puts the player on the origin
+     * before the scan runs. So gating only the scan left the walker still walking its four tiles to
+     * the foot of the stairs before clicking, which is exactly what interact-at-range was meant to
+     * stop. {@code allowRangedDispatch} lets the caller say "this is the nearest obstacle", and route
+     * order is then held inside the loop: a transport passed over denies the ranged branch to
+     * everything behind it.
+     */
+    private static boolean handleTransportsInRawSegment(List<WorldPoint> rawPath, int rawFrom, int rawTo,
+                                                        boolean allowRangedDispatch) {
+        Boolean inInstance = null;
+        boolean sawUndispatchedTransportStep = false;
         for (int ri = rawFrom; ri < rawTo && ri < rawPath.size() - 1; ri++) {
             WorldPoint playerLoc = Rs2Player.getWorldLocation();
-            if (!isRawTransportOriginNearPlayer(
+            if (isRawTransportOriginNearPlayer(
                     rawPath, ri, playerLoc, RAW_TRANSPORT_DISPATCH_MAX_DISTANCE)) {
+                if (handleTransports(rawPath, ri)) {
+                    return true;
+                }
                 continue;
             }
-            if (handleTransports(rawPath, ri)) {
-                return true;
+            if (!hasExplicitTransportStep(rawPath, ri)) {
+                continue;
             }
+            if (!allowRangedDispatch || sawUndispatchedTransportStep) {
+                sawUndispatchedTransportStep = true;
+                continue;
+            }
+            WorldPoint origin = rawPath.get(ri);
+            WorldPoint dest = rawPath.get(ri + 1);
+            int originDistance = playerLoc != null && origin != null
+                    && origin.getPlane() == playerLoc.getPlane()
+                    ? origin.distanceTo2D(playerLoc)
+                    : -1;
+            if (inInstance == null) {
+                inInstance = Microbot.getClientThread()
+                        .runOnClientThreadOptional(() -> Microbot.getClient().getTopLevelWorldView().isInstance())
+                        .orElse(Boolean.TRUE);
+            }
+            boolean allowed = shouldDispatchTransportAtRange(
+                    originDistance,
+                    RAW_TRANSPORT_DISPATCH_MAX_DISTANCE,
+                    HANDLER_RANGE,
+                    true,
+                    isObjectInteractionTransportStep(rawPath, ri),
+                    inInstance,
+                    isDoorInteractionSettling() || isTransportInteractionSettling(),
+                    rangedTransportEdgeFailedRecently(origin, dest),
+                    rangedTransportDispatchEnabled());
+            if (!allowed) {
+                sawUndispatchedTransportStep = true;
+                continue;
+            }
+            WebWalkLog.spInfo("ranged_transport_dispatch | origin={} dist={} — clicking from range, server walks us",
+                    compactWorldPoint(origin), originDistance);
+            WorldPoint before = Rs2Player.getWorldLocation();
+            if (handleTransports(rawPath, ri)) {
+                if (didCurrentTileTransportProgress(before, dest, currentTarget)) {
+                    return true;
+                }
+                markRangedTransportEdgeFailed(origin, dest);
+            }
+            sawUndispatchedTransportStep = true;
         }
         return false;
     }
