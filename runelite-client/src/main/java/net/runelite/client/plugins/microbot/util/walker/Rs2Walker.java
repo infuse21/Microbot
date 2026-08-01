@@ -224,6 +224,8 @@ public class Rs2Walker {
      */
     private static final long DOOR_SUPPRESS_NUDGE_HOLDOFF_MS = 6_000L;
 	private static final long POST_TRANSPORT_PATH_TMARK_WINDOW_MS = 15_000L;
+	/** Floor for the post-plane-change settle sleep, so an unbounded Gaussian draw cannot go negative. */
+	private static final int MIN_PLANE_CHANGE_SETTLE_MS = 60;
 	private static final int ROUTE_PROGRESS_FORWARD_SEARCH_TILES = 40;
 
 	/**
@@ -9256,7 +9258,12 @@ public class Rs2Walker {
                     }, 5000);
             long planeWaitMs = System.currentTimeMillis() - planeChangeStartedAt - startWaitMs;
             if (planeChanged) {
-                sleep((int) Rs2Random.gaussRand(300.0, 120.0));
+                // gaussRand is an unbounded Box-Muller draw, so mean 300 / dev 120 goes negative past
+                // ~2.5 sigma (about one call in 160) and Thread.sleep throws IllegalArgumentException,
+                // killing the whole walk. Seen live: "timeout value is negative" here aborted a
+                // Falador castle run into ShortestPathScript auto-retry 1/3. Clamping only removes the
+                // impossible tail — the jitter this sleep exists to provide is untouched.
+                sleep(Math.max(MIN_PLANE_CHANGE_SETTLE_MS, (int) Rs2Random.gaussRand(300.0, 120.0)));
             }
             WebWalkLog.spInfo("transport_plane_change | changed={} startWaitMs={} planeWaitMs={} totalMs={} obj={}",
                     planeChanged, startWaitMs, planeWaitMs,
