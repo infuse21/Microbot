@@ -1896,9 +1896,17 @@ public class Rs2Walker {
                 tmarkPostTransport("post_transport_raw_scene_scan_skip", target,
                         "reason=transport_settling");
             }
+            // The lookahead deliberately starts one index PAST the player so the edge just travelled
+            // is not re-detected — but that also skips an edge STARTING at the player's own index,
+            // which is precisely where a chained staircase begins. Observed: standing on
+            // (2959,3339), the origin of the next staircase, this gate still reported
+            // no_nearby_planned_transport and suppressed the scan, so nothing dispatched it and the
+            // idle nudge walked onto the origin instead. A transport origin under our feet always
+            // beats the window suppression.
             if (allowRawSceneScan && postTransportWindow
                     && !hasUpcomingNearbyTransportStep(path, rawScanTransportLookaheadStartIdx, Rs2Player.getWorldLocation(),
-                    POST_TRANSPORT_RAW_SCAN_TRANSPORT_LOOKAHEAD_EDGES, POST_TRANSPORT_RAW_SCAN_TRANSPORT_MAX_DIST)) {
+                    POST_TRANSPORT_RAW_SCAN_TRANSPORT_LOOKAHEAD_EDGES, POST_TRANSPORT_RAW_SCAN_TRANSPORT_MAX_DIST)
+                    && !hasImmediateRawTransportStepNearPlayer(rawPath)) {
                 allowRawSceneScan = false;
                 tmarkPostTransport("post_transport_raw_scene_scan_skip", target,
                         "reason=no_nearby_planned_transport");
