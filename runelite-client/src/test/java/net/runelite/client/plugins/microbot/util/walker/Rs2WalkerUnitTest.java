@@ -1396,6 +1396,46 @@ public class Rs2WalkerUnitTest {
                 5_000L));
     }
 
+    /**
+     * The player has walked well past its closest approach, so the checkpoint is abandoned even though
+     * progress was recorded a moment ago — route-index advance renews that timestamp every pass, which
+     * is exactly how a dead interim survived to its 10s cap while a transport dispatch waited on it.
+     */
+    @Test
+    public void shouldClearInterimTarget_movingAwayFromCheckpoint_returnsTrue() {
+        assertTrue(Rs2Walker.shouldClearInterimTarget(
+                new WorldPoint(2973, 3350, 0),
+                new WorldPoint(2960, 3343, 0),
+                1_000L,
+                4_900L,
+                5_000L,
+                6));
+    }
+
+    /** Rounding a wall costs a few tiles and must not abandon a checkpoint still being approached. */
+    @Test
+    public void shouldClearInterimTarget_detourWithinMargin_returnsFalse() {
+        assertFalse(Rs2Walker.shouldClearInterimTarget(
+                new WorldPoint(2890, 3396, 0),
+                new WorldPoint(2880, 3396, 0),
+                1_000L,
+                4_900L,
+                5_000L,
+                8));
+    }
+
+    /** Unknown best distance leaves the abandon check inert — behaviour matches the 5-arg form. */
+    @Test
+    public void shouldClearInterimTarget_unknownBestDistance_returnsFalse() {
+        assertFalse(Rs2Walker.shouldClearInterimTarget(
+                new WorldPoint(2890, 3396, 0),
+                new WorldPoint(2880, 3396, 0),
+                1_000L,
+                4_900L,
+                5_000L,
+                Integer.MAX_VALUE));
+    }
+
     @Test
     public void shouldYieldForActiveRecoveryInterim_recentProgress_returnsTrue() {
         assertTrue(Rs2Walker.shouldYieldForActiveRecoveryInterim(

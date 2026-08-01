@@ -146,6 +146,11 @@ public class Rs2Walker {
 	private static final int INTERIM_RUN_PRECLICK_TILES = 8;
 	private static final int INTERIM_MOVING_POLL_MS = 450;
 	private static final long INTERIM_PROGRESS_TIMEOUT_MS = 2500L;
+	/**
+	 * How much further than its closest approach the player may get from an interim checkpoint before
+	 * it counts as abandoned. Wide enough to tolerate rounding a wall or a corner on the way to it.
+	 */
+	private static final int INTERIM_ABANDON_MARGIN_TILES = 4;
 	private static final long INTERIM_MAX_AGE_MS = 10_000L;
 	private static final long INTERIM_RETARGET_COOLDOWN_MS = 900L;
     private static final long ROUTE_PROGRESS_STALL_GRACE_MS = 4_000L;
@@ -6458,6 +6463,19 @@ public class Rs2Walker {
                                             long setAtMs,
                                             long lastProgressAtMs,
                                             long nowMs) {
+        return shouldClearInterimTarget(interim, playerLoc, setAtMs, lastProgressAtMs, nowMs, Integer.MAX_VALUE);
+    }
+
+    /**
+     * @param bestDistanceSeen closest the player has been to {@code interim} while holding it, or
+     *                         {@link Integer#MAX_VALUE} when unknown (then the abandon check is inert).
+     */
+    static boolean shouldClearInterimTarget(WorldPoint interim,
+                                            WorldPoint playerLoc,
+                                            long setAtMs,
+                                            long lastProgressAtMs,
+                                            long nowMs,
+                                            int bestDistanceSeen) {
         if (interim == null) {
             return false;
         }
@@ -6465,6 +6483,17 @@ public class Rs2Walker {
             return true;
         }
         if (playerLoc.distanceTo2D(interim) <= INTERIM_CLOSE_TILES) {
+            return true;
+        }
+        // An interim the player is walking AWAY from is dead, and nothing else here notices.
+        // interimLastProgressAtMs is renewed whenever the ROUTE INDEX advances, so a player making
+        // honest progress along the route — in the opposite direction to a checkpoint the route has
+        // since moved past — renews the interim every pass and the stale-progress escape can never
+        // fire. Measured: interim held at (2973,3350) while the player walked 2961,3349 -> 2960,3343,
+        // moving=true throughout, renewed until interimAgeMs=9999 and only then "expired" — with a
+        // transport dispatch waiting behind it the whole time.
+        if (bestDistanceSeen != Integer.MAX_VALUE
+                && playerLoc.distanceTo2D(interim) > bestDistanceSeen + INTERIM_ABANDON_MARGIN_TILES) {
             return true;
         }
         if (lastProgressAtMs > 0L && nowMs - lastProgressAtMs > INTERIM_PROGRESS_TIMEOUT_MS) {
@@ -6531,7 +6560,8 @@ public class Rs2Walker {
                 routeState.interimLastProgressAtMs = nowMs;
             }
         }
-        if (!shouldClearInterimTarget(interim, playerLoc, routeState.interimSetAtMs, routeState.interimLastProgressAtMs, nowMs)) {
+        if (!shouldClearInterimTarget(interim, playerLoc, routeState.interimSetAtMs,
+                routeState.interimLastProgressAtMs, nowMs, routeState.interimLastDistanceToTarget)) {
             return false;
         }
         String reason;
@@ -6539,6 +6569,10 @@ public class Rs2Walker {
             reason = "invalid";
         } else if (playerLoc.distanceTo2D(interim) <= INTERIM_CLOSE_TILES) {
             reason = "close";
+        } else if (routeState.interimLastDistanceToTarget != Integer.MAX_VALUE
+                && playerLoc.distanceTo2D(interim)
+                > routeState.interimLastDistanceToTarget + INTERIM_ABANDON_MARGIN_TILES) {
+            reason = "moving-away";
         } else if (routeState.interimLastProgressAtMs > 0L && nowMs - routeState.interimLastProgressAtMs > INTERIM_PROGRESS_TIMEOUT_MS) {
             reason = "stale-progress";
         } else {
