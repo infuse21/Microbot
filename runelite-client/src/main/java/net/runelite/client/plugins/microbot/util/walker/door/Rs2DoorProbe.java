@@ -119,7 +119,8 @@ public final class Rs2DoorProbe {
         if (isNonDoorCatalogTransport(ctx, object)) {
             return false;
         }
-        if (!Rs2DoorGeometry.isDoorOnSegment(object, fromWp, toWp)) {
+        // Snapshot location, not object.getWorldLocation(): this runs per candidate per segment.
+        if (!Rs2DoorGeometry.isDoorOnSegment(object, loc, fromWp, toWp)) {
             return false;
         }
         ObjectComposition comp = resolveDoorComposition(ctx, object);
