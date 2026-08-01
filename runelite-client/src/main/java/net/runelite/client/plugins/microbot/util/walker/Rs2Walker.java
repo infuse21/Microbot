@@ -1585,7 +1585,6 @@ public class Rs2Walker {
      * @param distance
      */
     private static WalkerState processWalk(WorldPoint target, int distance) {
-        walkerHeartbeat(target);
         // Solve the Draynor basement lever puzzle first if walking to a basement tile, so the
         // door-transports are unlocked before pathfinding. No-op outside the basement. The
         // solver's internal walkTo calls clear currentTarget, so restore it before the real walk.
@@ -1605,6 +1604,10 @@ public class Rs2Walker {
         if (debug) {
             return WalkerState.EXIT;
         }
+        // This is the per-pass entry point — the 2-arg overload delegates here once and this recurses
+        // for partial retries, so a heartbeat on the 2-arg version printed exactly once for an entire
+        // 35-second walk and told us nothing.
+        walkerHeartbeat(target);
         // Pre-flight: a destination with no walkable tile within the arrival distance can never be
         // reached, so reject it here rather than after a full route ending at the nearest wall.
         PathfinderConfig preflightConfig = Rs2PathApi.getPathfinderConfig();
