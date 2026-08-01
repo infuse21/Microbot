@@ -2065,9 +2065,16 @@ public class Rs2Walker {
                             || (nearestSegmentDoor && doorInteractionWhileApproachingEnabled());
                     if (!startupImmediateTransportOnly
                             && doorMovementGateOk && !isDoorInteractionSettling() && !isRecoveryMovementInFlight()) {
-                        doorOrTransportResult = handleDoorsInRawSegment(rawPath, rawI, rawEnd,
-                                obstaclePolicy.segmentDoorTimeoutMs(), doorEdgesAttemptedThisTail,
-                                reachableTilesCache);
+                        // Scoped to this segment only: the interaction sites carry their own moving
+                        // checks, and they must relax for the nearest door and nothing else.
+                        routeState.doorApproachInteractionAllowed = nearestSegmentDoor;
+                        try {
+                            doorOrTransportResult = handleDoorsInRawSegment(rawPath, rawI, rawEnd,
+                                    obstaclePolicy.segmentDoorTimeoutMs(), doorEdgesAttemptedThisTail,
+                                    reachableTilesCache);
+                        } finally {
+                            routeState.doorApproachInteractionAllowed = false;
+                        }
                     }
                     if (doorOrTransportResult) {
                         tmarkPostTransport("post_transport_segment_handler", target,
@@ -5811,7 +5818,7 @@ public class Rs2Walker {
                                     compactWorldPoint(probe), compactWorldPoint(fromWp), compactWorldPoint(toWp));
                             return false;
                         }
-                        if (Rs2Player.isMoving()) {
+                        if (doorInteractionDeferredForMovement()) {
                             WebWalkLog.spInfo("door_interact_deferred | reason=moving mode=segment-door probe={} from={} to={}",
                                     compactWorldPoint(probe), compactWorldPoint(fromWp), compactWorldPoint(toWp));
                             return false;
@@ -5948,7 +5955,7 @@ public class Rs2Walker {
                     compactWorldPoint(probe), compactWorldPoint(fromWp), compactWorldPoint(toWp));
             return false;
         }
-        if (Rs2Player.isMoving()) {
+        if (doorInteractionDeferredForMovement()) {
             WebWalkLog.spInfo("door_interact_deferred | reason=moving mode=segment-probe probe={} from={} to={}",
                     compactWorldPoint(probe), compactWorldPoint(fromWp), compactWorldPoint(toWp));
             return false;
@@ -9308,6 +9315,22 @@ public class Rs2Walker {
     /** Same switch, for opening the nearest route door without waiting out the approach walk. */
     private static boolean doorInteractionWhileApproachingEnabled() {
         return rangedTransportDispatchEnabled();
+    }
+
+    /**
+     * Whether a door interaction must wait because the player is moving.
+     * <p>
+     * Relaxing only the caller-side gate was not enough: the interaction sites carry their own
+     * {@code isMoving()} checks, so the handler ran during the approach and then declined anyway
+     * ({@code door_interact_deferred | reason=moving} five times at the Falador castle doors while
+     * the walk completed around them). While the walker is approaching the NEAREST route door, the
+     * click is meant to supersede our own walk — the server walks us to the door either way.
+     */
+    private static boolean doorInteractionDeferredForMovement() {
+        if (!Rs2Player.isMoving()) {
+            return false;
+        }
+        return !(routeState.doorApproachInteractionAllowed && doorInteractionWhileApproachingEnabled());
     }
 
     /** Ranged dispatch attempts that produced no movement, keyed by origin→destination edge. */
