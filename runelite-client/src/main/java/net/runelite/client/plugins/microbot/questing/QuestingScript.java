@@ -2289,6 +2289,32 @@ public class QuestingScript extends Script {
             }
         }
 
+        // A step can legitimately declare NO location, and then neither the questhelper's scan (which
+        // only inspects a defined tile) nor the fallback above can ever resolve it — the step sits at
+        // scan=0 found=false dp=null forever. Jungle Potion's rogues purse is written that way on
+        // purpose: the cavern holds 36 identical "Fungus covered Cavern wall" objects, any one will do,
+        // and the quest calls setHideWorldArrow(true) because there is no single right one to point at.
+        // Take the nearest of the step's target ids from the live cache.
+        if (object == null && (step.getDefinedPoint() == null || step.getDefinedPoint().getWorldPoint() == null)) {
+            List<Rs2TileObjectModel> anywhere = new ArrayList<>(
+                    Microbot.getRs2TileObjectCache().query().withId(step.getObjectID()).toListOnClientThread());
+            for (Integer altId : step.getAlternateObjectIDs()) {
+                if (altId != null) {
+                    anywhere.addAll(Microbot.getRs2TileObjectCache().query().withId(altId).toListOnClientThread());
+                }
+            }
+            WorldPoint me = Rs2Player.getWorldLocation();
+            object = anywhere.stream()
+                    .filter(o -> o.getWorldLocation() != null)
+                    .min(Comparator.comparing(o -> o.getWorldLocation().distanceTo(me)))
+                    .orElse(null);
+            if (object != null) {
+                Microbot.log("[QuestHelper] no defined point on step object id=" + step.getObjectID()
+                        + " — using nearest of " + anywhere.size() + " at " + object.getWorldLocation(),
+                        Level.WARN);
+            }
+        }
+
         if (System.currentTimeMillis() - lastObjectDiagLog > 1500) {
             lastObjectDiagLog = System.currentTimeMillis();
             WorldPoint diagDp = step.getDefinedPoint() != null ? step.getDefinedPoint().getWorldPoint() : null;
