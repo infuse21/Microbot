@@ -3471,12 +3471,16 @@ public class QuestingScript extends Script {
         if (markers.isEmpty()) {
             return false;
         }
-        if (followStep != step) {
-            followStep = step;
-            followMarkerIndex = 0;
-        }
+        followStep = step;
         followGuardLastLocal = null;
         followGuardMovedAt = System.currentTimeMillis();
+
+        int resumeIndex = resumeIndexFromPosition(markers);
+        if (resumeIndex != followMarkerIndex) {
+            Microbot.log("[Questing] follow step: resuming at cover " + (resumeIndex + 1)
+                    + " (was " + (followMarkerIndex + 1) + ") from position", Level.WARN);
+        }
+        followMarkerIndex = resumeIndex;
 
         final int guardId = npc.getId();
         final String stepTextAtEntry = activeStepText();
@@ -3488,14 +3492,37 @@ public class QuestingScript extends Script {
         boolean guardWasMoving = true;
 
         while (System.currentTimeMillis() < deadline) {
-            // Say WHY on the way out. A run on 2026-08-02 logged "entering follow loop" twice 20s apart
-            // with no exit line between, which means it left through here — and with the three causes
-            // sharing one branch there was no way to tell which, only guesses. Each dropped us back onto
-            // the 5s tick for the gap, which is the very thing this loop exists to avoid.
-            if (paused() || !isRunning() || !Microbot.isLoggedIn()) {
+            if (paused() || !isRunning()) {
                 Microbot.log("[Questing] follow step: leaving follow loop — paused=" + paused()
-                        + " running=" + isRunning() + " loggedIn=" + Microbot.isLoggedIn(), Level.WARN);
+                        + " running=" + isRunning(), Level.WARN);
                 return false;
+            }
+
+            // Being briefly "not logged in" is a LOADING screen, not a reason to abandon the section.
+            // Getting caught teleports you back to the start and the reload showed up here as
+            // loggedIn=false; bailing on it dropped us onto the 5s tick exactly when the section had
+            // restarted and needed the fast loop most. Wait it out, and only give up if it persists.
+            if (!Microbot.isLoggedIn()) {
+                long waitingSince = System.currentTimeMillis();
+                while (!Microbot.isLoggedIn() && System.currentTimeMillis() - waitingSince < FOLLOW_LOADING_GRACE_MS) {
+                    if (paused() || !isRunning()) {
+                        return false;
+                    }
+                    sleep(FOLLOW_POLL_MS);
+                }
+                if (!Microbot.isLoggedIn()) {
+                    Microbot.log("[Questing] follow step: not logged in for "
+                            + (FOLLOW_LOADING_GRACE_MS / 1000) + "s — leaving follow loop", Level.WARN);
+                    return false;
+                }
+                // Back in. Re-derive which cover we are on, since a reload usually means a reset.
+                // Deliberately not a recursive call: sections can reset many times in a session and each
+                // reset would add a frame.
+                followMarkerIndex = resumeIndexFromPosition(markers);
+                followGuardLastLocal = null;
+                followGuardMovedAt = System.currentTimeMillis();
+                guardWasMoving = true;
+                continue;
             }
             // The section ending is what changes the step under us; that is the loop's success exit.
             String stepTextNow = activeStepText();
@@ -3595,18 +3622,36 @@ public class QuestingScript extends Script {
             }
 
             Microbot.status = "Following: moving to cover " + (index + 1) + "/" + markers.size();
-            if (!canvasClickOnly(markers.get(index))) {
-                // Too far to project onto the canvas — cover 3 sits ~14 tiles from cover 2 and simply is
-                // not on screen from there. Stage it: canvas-click a tile part way along, and pick the
-                // cover up on a later poll once it is in range. Handing this to the walker instead is
-                // what produced "Minimap click target was outside clip; used reachable fallback" and a
-                // route march. Interpolating is safe in template space — the marker and
-                // Rs2Player.getWorldLocation are both template, even inside the instance.
-                WorldPoint here = Rs2Player.getWorldLocation();
-                WorldPoint staged = stageToward(here, markers.get(index), FOLLOW_STAGE_TILES);
+
+            // Head for the next waypoint on the step's AUTHORED route, not straight at the cover.
+            //
+            // Interpolating towards the cover is pure geometry and knows nothing about walls, so it
+            // staged us onto a tile inside a shop: the server pathed in through the door and out the far
+            // side, leaving us in the open when the guard stopped and turned, and the section reset. The
+            // shipped route exists precisely because the safe path is not a straight line — Children of
+            // the Sun's final segment runs south to (3238,3390), east to (3248,3390), then north to
+            // (3248,3396) to get round that same building.
+            //
+            // Falls back to the old interpolation when a step ships no usable route, which is no worse
+            // than before for such a step.
+            WorldPoint here = Rs2Player.getWorldLocation();
+            WorldPoint target = nextRouteWaypoint(step, markers, index, here);
+            if (target == null) {
+                target = markers.get(index);
+            }
+            if (!canvasClickOnly(target)) {
+                // Still off screen: interpolate towards the WAYPOINT rather than the cover. The route's
+                // legs are straight, so a point part way along one stays on the route.
+                WorldPoint staged = stageToward(here, target, FOLLOW_STAGE_TILES);
                 if (staged == null || !canvasClickOnly(staged)) {
                     Rs2Camera.turnTo(guard);
                 }
+            }
+            if (System.currentTimeMillis() - lastFollowClickLog > 1200) {
+                lastFollowClickLog = System.currentTimeMillis();
+                Microbot.log("[Questing] follow step: cover " + (index + 1) + "/" + markers.size()
+                        + " at " + markers.get(index) + " via waypoint " + target + " from " + here,
+                        Level.WARN);
             }
             sleep(FOLLOW_POLL_MS);
         }
@@ -3636,6 +3681,82 @@ public class QuestingScript extends Script {
                 .runOnClientThreadOptional(() -> Rs2Camera.isTileOnScreen(local))
                 .orElse(false);
         return onScreen && Rs2Walker.walkFastCanvas(tile);
+    }
+
+    private long lastFollowClickLog = 0;
+
+    /**
+     * Which cover we are on, from where we are STANDING rather than from what we remembered.
+     *
+     * <p>Getting caught teleports you back to the start of the section, and that leaves the step object
+     * identical — so a "reset only if the step changed" test kept the stale index, and a run that had
+     * reached cover 3, been caught, and restarted carried on aiming at cover 4 from the section
+     * entrance. That is the "advancing to 3/5" with no preceding 1 to 2 in the logs at 19:06, 19:18,
+     * 20:10 and 21:57. Standing on no cover at all means we are at the beginning.
+     */
+    private int resumeIndexFromPosition(List<WorldPoint> markers) {
+        LocalPoint me = playerLocalPoint();
+        if (me == null) {
+            return 0;
+        }
+        for (int i = 0; i < markers.size(); i++) {
+            LocalPoint lp = localForFollowMarker(markers.get(i));
+            if (lp != null && localDistance(me, lp) <= 1) {
+                return i;
+            }
+        }
+        return 0;
+    }
+
+    /** The player's local point, or null. */
+    private LocalPoint playerLocalPoint() {
+        return Microbot.getClientThread()
+                .runOnClientThreadOptional(() -> Microbot.getClient().getLocalPlayer() == null
+                        ? null : Microbot.getClient().getLocalPlayer().getLocalLocation())
+                .orElse(null);
+    }
+
+    /**
+     * The next waypoint to head for on a follow step's authored route, or null if it ships none.
+     *
+     * <p>{@code linePoints} is one route, null-separated into a segment per marked tile, each segment
+     * ending on its own cover. Segments are matched to covers by that last point rather than by ordinal,
+     * so a step whose route has a different number of segments than it has markers is simply declined
+     * instead of silently walking the wrong one.
+     *
+     * <p>Within the matched segment the target is the first waypoint we have not already reached, which
+     * makes progress along the route monotonic without needing to remember where we were.
+     */
+    private WorldPoint nextRouteWaypoint(NpcStep step, List<WorldPoint> markers, int index,
+                                         WorldPoint here) {
+        List<WorldPoint> route = step.getLinePoints();
+        if (route == null || route.isEmpty() || here == null) {
+            return null;
+        }
+        WorldPoint cover = markers.get(index);
+
+        List<WorldPoint> segment = new ArrayList<>();
+        for (WorldPoint point : route) {
+            if (point == null) {
+                // A null ends the segment. Keep it only if it is the one leading to THIS cover.
+                if (!segment.isEmpty() && cover.equals(segment.get(segment.size() - 1))) {
+                    break;
+                }
+                segment.clear();
+                continue;
+            }
+            segment.add(point);
+        }
+        if (segment.isEmpty() || !cover.equals(segment.get(segment.size() - 1))) {
+            return null;
+        }
+
+        for (WorldPoint waypoint : segment) {
+            if (waypoint.distanceTo(here) > 1) {
+                return waypoint;
+            }
+        }
+        return cover;
     }
 
     /** A point {@code tiles} along the straight line from {@code from} to {@code to}, or null. */
@@ -3672,6 +3793,9 @@ public class QuestingScript extends Script {
 
     /** Facing this far from target facing means a turn is still in progress. */
     private static final int FOLLOW_TURN_SLOP = 64;
+
+    /** How long a loading screen may last before we stop treating it as one. */
+    private static final long FOLLOW_LOADING_GRACE_MS = 30_000;
 
     private LocalPoint followGuardLastLocal = null;
     private long followGuardMovedAt = 0;

@@ -83,6 +83,13 @@ public class DetailedQuestStep extends QuestStep
 
 	protected List<Zone> highlightZones = new ArrayList<>();
 
+	// MICROBOT: exposed so the questing executor can walk a follow step's AUTHORED route rather than
+	// interpolating towards the cover in a straight line. The route is null-separated into one segment
+	// per marked tile, and it dog-legs around buildings on purpose — Children of the Sun's last segment
+	// runs south, east, then north to get round a shop. A straight line cannot express that, and staging
+	// along one put the character inside the shop, out the far side, and in the open when the guard
+	// turned round to look.
+	@Getter
 	@Setter
 	protected List<WorldPoint> linePoints;
 
