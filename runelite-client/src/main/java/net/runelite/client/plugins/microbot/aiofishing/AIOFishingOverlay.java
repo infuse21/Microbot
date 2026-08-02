@@ -90,6 +90,7 @@ public class AIOFishingOverlay extends Overlay {
         public float levelFraction = 0f;
         public int xpToLevel = 0;
         public int xpGained = 0;
+        public int levelsGained = 0;
         public int xpPerHour = 0;
         public final List<CatchStat> catches = new ArrayList<>();
         public String timeToLevel = "-";
@@ -134,6 +135,7 @@ public class AIOFishingOverlay extends Overlay {
         s.levelFraction = levelFraction(level);
         s.xpToLevel = xpToNextLevel(level);
         s.xpGained = plugin.getXpGained();
+        s.levelsGained = plugin.getLevelsGained();
         s.xpPerHour = plugin.getXpPerHour();
         for (Map.Entry<Integer, Integer> caught : plugin.getFishCaughtByItem().entrySet()) {
             CatchStat catchStat = new CatchStat();
@@ -179,6 +181,7 @@ public class AIOFishingOverlay extends Overlay {
         y = drawLevelRow(g, y, s.level, s.levelFraction);
         y = row(g, y, "XP to level", NUM.format(s.xpToLevel), VALUE);
         y = row(g, y, "XP gained", NUM.format(s.xpGained), GREEN);
+        y = row(g, y, "Levels gained", "+" + s.levelsGained, s.levelsGained > 0 ? GREEN : VALUE);
         y = row(g, y, "XP / hour", NUM.format(s.xpPerHour), GREEN);
         y = row(g, y, "Time to level", s.timeToLevel, VALUE);
         y = divider(g, y);
@@ -198,7 +201,7 @@ public class AIOFishingOverlay extends Overlay {
     /** The session block grows by one row for each distinct fish caught. */
     private int measureHeight(Stats s) {
         int catchRows = Math.max(1, s.catches.size());
-        int rows = 12 + catchRows;  // all label/value + level rows
+        int rows = 13 + catchRows;  // all label/value + level rows
         int dividers = 3;
         return PAD + 10 + 6         // title
                 + rows * ROW_H

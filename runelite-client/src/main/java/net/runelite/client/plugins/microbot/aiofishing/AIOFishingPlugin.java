@@ -41,15 +41,12 @@ import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
-import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import java.util.function.IntUnaryOperator;
-import java.util.stream.Collectors;
 
 @PluginDescriptor(
         name = PluginDescriptor.Default + "AIO Fishing",
@@ -64,7 +61,7 @@ import java.util.stream.Collectors;
 )
 @Slf4j
 public class AIOFishingPlugin extends Plugin {
-    public static final String version = "1.4.0";
+    public static final String version = "1.5.0";
 
     @Inject
     @Getter
@@ -90,11 +87,15 @@ public class AIOFishingPlugin extends Plugin {
     private ExecutorService uiExecutor;
 
     private int startXp = 0;
+    private int startLevel = 1;
     private long startTime = 0;
     private final Object catchCounterLock = new Object();
     private Map<Integer, Integer> previousInventory = Collections.emptyMap();
-    /** Actual caught item id -> session count, preserving first-caught display order. */
-    private final Map<Integer, Integer> fishCaughtByItem = new LinkedHashMap<>();
+    /** Estimated catches per stage, in the order the stages were fished. */
+    private final Map<FishingStage, Integer> caughtByStage = new LinkedHashMap<>();
+    /** Stage the XP since { #stageStartXp} belongs to. */
+    private FishingStage countedStage;
+    private int stageStartXp;
 
     @Provides
     AIOFishingConfig provideConfig(ConfigManager configManager) {
@@ -213,12 +214,15 @@ public class AIOFishingPlugin extends Plugin {
 
     private void resetSessionCounters() {
         startXp = Microbot.getClient().getSkillExperience(Skill.FISHING);
+        startLevel = Rs2Player.getRealSkillLevel(Skill.FISHING);
         Map<Integer, Integer> inventory = Microbot.getClientThread().runOnClientThreadOptional(
                         () -> inventoryQuantities(Microbot.getClient().getItemContainer(InventoryID.INV)))
                 .orElse(Collections.emptyMap());
         synchronized (catchCounterLock) {
             previousInventory = inventory;
-            fishCaughtByItem.clear();
+            caughtByStage.clear();
+            countedStage = null;
+            stageStartXp = startXp;
         }
         startTime = System.currentTimeMillis();
     }
@@ -309,25 +313,8 @@ public class AIOFishingPlugin extends Plugin {
         if (event.getContainerId() != InventoryID.INV) {
             return;
         }
-
-        Map<Integer, Integer> current = inventoryQuantities(event.getItemContainer());
         synchronized (catchCounterLock) {
-            if (script.isRunning()
-                    && !script.isPaused()
-                    && script.isFishingInteractionActive()) {
-                Set<String> catchNames = script.getActiveStage().getCatchItemNames().stream()
-                        .map(name -> name.toLowerCase(Locale.ROOT))
-                        .collect(Collectors.toSet());
-                for (Map.Entry<Integer, Integer> entry : current.entrySet()) {
-                    int gained = entry.getValue() - previousInventory.getOrDefault(entry.getKey(), 0);
-                    String itemName = itemManager.getItemComposition(entry.getKey()).getName();
-                    if (gained > 0 && itemName != null
-                            && catchNames.contains(itemName.toLowerCase(Locale.ROOT))) {
-                        fishCaughtByItem.merge(entry.getKey(), gained, Integer::sum);
-                    }
-                }
-            }
-            previousInventory = current;
+            previousInventory = inventoryQuantities(event.getItemContainer());
         }
     }
 
@@ -356,15 +343,57 @@ public class AIOFishingPlugin extends Plugin {
         return Microbot.getClient().getSkillExperience(Skill.FISHING) - startXp;
     }
 
+    /** Fishing levels gained since the script was started. */
+    public int getLevelsGained() {
+        return Math.max(0, Rs2Player.getRealSkillLevel(Skill.FISHING) - startLevel);
+    }
+
     public int getFishCaught() {
         synchronized (catchCounterLock) {
-            return fishCaughtByItem.values().stream().mapToInt(Integer::intValue).sum();
+            settleStageXp();
+            return caughtByStage.values().stream().mapToInt(Integer::intValue).sum();
         }
     }
 
+    /**
+     * Estimated catches per stage, keyed by that stage's fish icon for the overlay.
+     *
+     * <p>Kept per stage rather than as one running total because auto progression switches
+     * fish mid-session: XP earned on shrimp must not be divided by a lobster's XP.</p>
+     */
     public Map<Integer, Integer> getFishCaughtByItem() {
+        Map<Integer, Integer> byItem = new LinkedHashMap<>();
         synchronized (catchCounterLock) {
-            return new LinkedHashMap<>(fishCaughtByItem);
+            settleStageXp();
+            for (Map.Entry<FishingStage, Integer> entry : caughtByStage.entrySet()) {
+                if (entry.getValue() > 0) {
+                    byItem.merge(entry.getKey().getSpot().getFishSpriteId(), entry.getValue(),
+                            Integer::sum);
+                }
+            }
+        }
+        return byItem;
+    }
+
+    /**
+     * Fold the XP earned since the last call into the stage that earned it.
+     *
+     * <p>Called from the accessors rather than from a tick handler so the figure is correct
+     * whenever it is read, without another subscription. Callers hold the lock.</p>
+     */
+    private void settleStageXp() {
+        FishingStage stage = script.getActiveStage();
+        int currentXp = Microbot.getClient().getSkillExperience(Skill.FISHING);
+        if (countedStage != null && currentXp > stageStartXp) {
+            int caught = CatchEstimate.fromXp(countedStage, currentXp - stageStartXp);
+            if (caught > 0) {
+                caughtByStage.merge(countedStage, caught, Integer::sum);
+                stageStartXp = currentXp;
+            }
+        }
+        if (countedStage != stage) {
+            countedStage = stage;
+            stageStartXp = currentXp;
         }
     }
 

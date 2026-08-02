@@ -7,7 +7,6 @@ import net.runelite.client.plugins.microbot.aiofishing.enums.FishStorage;
 import net.runelite.client.plugins.microbot.aiofishing.enums.FishingStage;
 import net.runelite.client.plugins.microbot.aiofishing.enums.HarpoonType;
 import net.runelite.client.plugins.microbot.aiofishing.enums.RadasBlessing;
-import net.runelite.api.gameval.ItemID;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
@@ -18,6 +17,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import static net.runelite.client.plugins.microbot.util.Global.sleep;
 import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
 
 /**
@@ -69,6 +69,16 @@ class AIOFishingGear {
             if (Rs2Inventory.hasItem(tool) || Rs2Equipment.isWearing(tool)) {
                 continue;
             }
+            // The tackle box is checked before the bank: it is the whole reason to carry
+            // one. A boxed tool cannot be used from inside the box, so it has to come out
+            // either way - taking it from here saves withdrawing a duplicate.
+            if (config.useTackleBox() && TackleBox.isCarried() && TackleBox.withdraw(tool)) {
+                if (isWieldable(tool)) {
+                    Rs2Inventory.wield(tool);
+                    sleepUntil(() -> Rs2Equipment.isWearing(tool), 2000);
+                }
+                continue;
+            }
             if (!Rs2Bank.hasBankItem(tool)) {
                 String failure = script.supplies().queuePurchase(tool, 1);
                 if (failure == null) {
@@ -105,6 +115,8 @@ class AIOFishingGear {
             Rs2Inventory.waitForInventoryChanges(1500);
         }
 
+        // Shut the box if we opened it, so it isn't left covering the screen while fishing.
+        TackleBox.close();
         Rs2Bank.closeBank();
         sleepUntil(() -> !Rs2Bank.isOpen(), 3000);
         script.safeAntibanCooldown();
@@ -254,29 +266,45 @@ class AIOFishingGear {
         }
     }
 
-    /** Empty a carried barrel so its fish are banked along with the inventory. */
+    /**
+     * Empty a carried barrel at the bank.
+     *
+     * <p>Emptying sends the fish <em>straight into the bank</em>, not into the inventory -
+     * which is why it only works at a bank, and why this is called before the deposit rather
+     * than after it. It also means there is nothing on the inventory to poll: an earlier
+     * {@code waitForInventoryChanges} here always ran its full timeout even on success,
+     * costing over a second on every banking trip. A brief pause to let the action register
+     * is all that is warranted, and the deposit that follows does its own waiting.</p>
+     */
     void emptyFishStorage() {
         FishStorage storage = script.config().fishStorage();
         if (!storage.isEnabled()) {
             return;
         }
         Rs2ItemModel barrel = Rs2Inventory.get(storage.getItemIds());
-        if (barrel != null) {
-            Rs2Inventory.interact(barrel, "Empty");
-            Rs2Inventory.waitForInventoryChanges(1200);
+        if (barrel != null && Rs2Inventory.interact(barrel, "Empty")) {
+            sleep(300, 600);
         }
     }
 
     /**
-     * Whether a tool is usable: carried, worn, or - with the tackle box enabled - stored in
-     * the box. The box keeps fishing gear in one slot, so without this the script would keep
-     * withdrawing duplicates of tools it already owns.
+     * Whether a tool is <em>obtainable without a bank trip</em> - carried, worn, or stored in
+     * a tackle box we are holding.
+     *
+     * <p>Note this is not the same as "ready to fish with". A boxed tool cannot be used from
+     * inside the box, so {@link #hasGear} deliberately does not consult this - it checks the
+     * inventory and equipment directly. This answers the narrower question the resupply logic
+     * asks: is it worth buying one?</p>
+     *
+     * <p>Reading the box requires opening it, so ownership is inferred from carrying it
+     * rather than by looking inside; gearing does the real lookup when it actually needs
+     * the tool out.</p>
      */
     boolean hasToolAvailable(String tool) {
         if (Rs2Inventory.hasItem(tool) || Rs2Equipment.isWearing(tool)) {
             return true;
         }
-        return script.config().useTackleBox() && Rs2Inventory.hasItem(ItemID.TACKLE_BOX);
+        return script.config().useTackleBox() && TackleBox.isCarried();
     }
 
     List<String> itemsToKeep(FishingStage stage) {
