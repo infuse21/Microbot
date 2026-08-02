@@ -1867,18 +1867,36 @@ public class QuestingScript extends Script {
 		WorldPoint worldPoint = questStep.getDefinedPoint() != null ? questStep.getDefinedPoint().getWorldPoint() : null;
 		int targetItemId = itemRequirement.getAllIds().stream().findFirst().orElse(itemRequirement.getId());
 
-		if (worldPoint != null) {
-			if ((Rs2Walker.canReach(worldPoint) && worldPoint.distanceTo(Rs2Player.getWorldLocation()) < 2)
-					|| worldPoint.toWorldArea().hasLineOfSightTo(Microbot.getClient().getTopLevelWorldView(), Rs2Player.getWorldLocation().toWorldArea())
-					&& Rs2Camera.isTileOnScreen(LocalPoint.fromWorld(Microbot.getClient().getTopLevelWorldView(), worldPoint))) {
-				lootGroundItem(targetItemId, 10);
-			} else {
-				Rs2Walker.walkTo(worldPoint, 2); // full walker (handles transports on long legs)
-			}
-		} else {
-			lootGroundItem(targetItemId, 20);
+		// The only question that matters is whether the item is on the ground nearby — if it is, take
+		// it. The geometry heuristics this replaces (reachable-and-within-2, or line of sight plus
+		// on-screen) were guesses at the same answer, and they deadlocked: the walk fallback used
+		// walkTo(point, 2), which is satisfied AT two tiles, while the pickup gate demanded strictly
+		// less than two — so from exactly two tiles (Plague City's Picture, standing beside the table)
+		// the walk returned instantly, the gate never opened, and the tick looped "missing required
+		// item" every 12 seconds forever.
+		if (Rs2GroundItem.exists(targetItemId, 15)) {
+			lootGroundItem(targetItemId, 15);
+			return true;
 		}
 
+		if (worldPoint == null) {
+			lootGroundItem(targetItemId, 20);
+			return true;
+		}
+
+		WorldPoint player = Rs2Player.getWorldLocation();
+		if (player == null || player.distanceTo(worldPoint) > 3) {
+			Rs2Walker.walkTo(worldPoint, 2); // full walker (handles transports on long legs)
+			return true;
+		}
+
+		// At the spot with nothing on the ground: a table/floor spawn is mid-cycle. Wait one respawn
+		// out (master-pause responsive) instead of shuffling in place.
+		Microbot.status = "Waiting for " + itemRequirement.getName() + " to spawn";
+		sleepUntil(() -> Rs2GroundItem.exists(targetItemId, 15) || paused(), 35_000);
+		if (!paused() && Rs2GroundItem.exists(targetItemId, 15)) {
+			lootGroundItem(targetItemId, 15);
+		}
 		return true;
 	}
 
