@@ -2053,8 +2053,13 @@ public class QuestingScript extends Script {
         // to walkTo() so the walker approaches / opens the door.
         if (npc != null && npc.getLocalLocation() != null
                 && (Microbot.getClient().isInInstancedRegion()
+                    || canServerPathToNpc(npc)
                     || (Rs2Camera.isTileOnScreen(npc.getLocalLocation()) && npc.hasLineOfSight())
                     || !Rs2Walker.canReach(npc.getWorldLocation()))) {
+            // canServerPathToNpc is the player-like path: the NPC is in the scene and nothing but open
+            // ground separates us, so click Talk-to from HERE and let the server walk the character
+            // over — no pre-walking to a tile in front of them. The on-screen/LOS pair and the
+            // across-a-gap !canReach case remain for the situations the BFS can't vouch for.
             Rs2Walker.clearWalkingRoute("quest-helper:npc-step-visible-interact");
 
             if (step.getText().stream().anyMatch(x -> x.toLowerCase().contains("kill"))) {
@@ -2152,6 +2157,7 @@ public class QuestingScript extends Script {
             return false;
         }
         boolean clickable = Microbot.getClient().isInInstancedRegion()
+                || canServerPathToNpc(n)
                 || n.hasLineOfSight()
                 || !Rs2Walker.canReach(n.getWorldLocation());
         if (!clickable) {
@@ -2339,12 +2345,19 @@ public class QuestingScript extends Script {
 
         boolean approachArrived = false;
         WorldPoint objectStepDp = step.getDefinedPoint() != null ? step.getDefinedPoint().getWorldPoint() : null;
+        // If a plain click would land — the object is in the scene and the local BFS reaches a tile
+        // beside it with no closed door between — then click it and let the SERVER path the character,
+        // exactly as a player would. All the approach machinery below exists only for when that is not
+        // true: a door in the way (walker opens it), another floor (walker takes the stairs), or the
+        // target out of scene (walk toward it).
+        boolean directlyClickable = canServerPathTo(object);
         // A target on another floor must ALWAYS be walked to (the walker takes the stairs/ladders):
         // distanceTo2D ignores plane, so a spindle one tile away on the floor above read as "already
         // there", skipped the walk, and every proximity/LOS check then correctly failed -> dead silence.
         boolean differentPlane = objectStepDp != null
                 && objectStepDp.getPlane() != Rs2Player.getWorldLocation().getPlane();
-        if (!Microbot.getClient().isInInstancedRegion()
+        if (!directlyClickable
+                && !Microbot.getClient().isInInstancedRegion()
                 && objectStepDp != null
                 && (differentPlane || Rs2Player.getWorldLocation().distanceTo2D(objectStepDp) > 2
                     || !canInteractWithObject(object, step.getObjectID()))) {
@@ -2485,6 +2498,7 @@ public class QuestingScript extends Script {
             // of the menu appearing and the next tick answers it.
             WalkerState approachState = Rs2Walker.walkWithStateUntil(targetTile, acceptance,
                     () -> canInteractWithObject(approachTarget, step.getObjectID())
+                            || canServerPathTo(approachTarget)
                             || Rs2Dialogue.hasSelectAnOption());
             if (Rs2Dialogue.hasSelectAnOption()) {
                 if (System.currentTimeMillis() - lastApproachWarnLog > 3000) {
@@ -2507,7 +2521,8 @@ public class QuestingScript extends Script {
         // The approach finished but the object still isn't clickable from here (no line of sight, not
         // reachable). Yield rather than clicking through whatever is in the way — the tick retries, and
         // the log names the object so a genuinely impossible approach is visible instead of silent.
-        if (approachArrived && !canInteractWithObject(object, step.getObjectID())) {
+        if (approachArrived && !canInteractWithObject(object, step.getObjectID())
+                && !canServerPathTo(object)) {
             if (System.currentTimeMillis() - lastApproachWarnLog > 3000) {
                 lastApproachWarnLog = System.currentTimeMillis();
                 Microbot.log("[Questing] approach finished but object not clickable yet: id="
@@ -2521,7 +2536,7 @@ public class QuestingScript extends Script {
         // heuristic. Full-tile objects (e.g. a searchable pile of books) block line-of-sight to their own
         // tile, and the snapshot's local/canvas location can be unresolved, so that heuristic goes all-false
         // and we fall through to walkTo() forever, nudging in place next to the target and never interacting.
-        if (canInteractWithObject(object, step.getObjectID())) {
+        if (canInteractWithObject(object, step.getObjectID()) || canServerPathTo(object)) {
             Rs2Walker.clearWalkingRoute("quest-helper:object-step-interact");
 
             // Re-resolve the object fresh from the live cache right before clicking, by the STEP's target
@@ -3104,6 +3119,89 @@ public class QuestingScript extends Script {
             return null;
         }
         return flags[sceneX][sceneY];
+    }
+
+    /**
+     * Beyond this there is no point running the local BFS — walk toward the target first. Roughly the
+     * far edge of what the client renders.
+     */
+    private static final int SERVER_PATH_SCAN_RADIUS = 40;
+
+    /**
+     * Whether a plain click on this object would work right now — i.e. the SERVER can path the
+     * character to it. This is the test that lets the executor behave like a player: a player does not
+     * walk to a manufactured tile beside the stairs and then click them; they click the stairs from
+     * wherever they stand and the server does the walking.
+     *
+     * <p>The local BFS is the right oracle because it stops at closed doors. Reaching a tile against
+     * the footprint means the click will land (click it, server paths); not reaching one means a door
+     * or wall is in the way (let the walker open it) or the target is on another floor (walk).
+     *
+     * <p>Deliberately false inside instances — entity coordinates there are raw scene values while the
+     * player's are template, so the distance below is meaningless; the instanced short-circuits in the
+     * callers already handle that world.
+     */
+    private boolean canServerPathTo(Rs2TileObjectModel object) {
+        if (object == null || Microbot.getClient().isInInstancedRegion()) {
+            return false;
+        }
+        WorldPoint player = Rs2Player.getWorldLocation();
+        WorldArea footprint = object.getFootprint();
+        if (player == null || footprint == null || footprint.getPlane() != player.getPlane()) {
+            return false;
+        }
+        boolean wallLike = object.getTileObjectType() == TileObjectType.WALL;
+        if (isOrthogonallyAgainst(player, footprint) || (wallLike && insideArea(player, footprint))) {
+            return true;
+        }
+        int dist = player.distanceTo2D(nearestFootprintTile(player, footprint));
+        if (dist > SERVER_PATH_SCAN_RADIUS) {
+            return false;
+        }
+        Map<WorldPoint, Integer> reachable =
+                Rs2Tile.getReachableTilesFromTile(player, Math.min(SERVER_PATH_SCAN_RADIUS, dist + 6));
+        for (WorldPoint tile : reachable.keySet()) {
+            if (isOrthogonallyAgainst(tile, footprint) || (wallLike && insideArea(tile, footprint))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Same question for an NPC: can the server path us to (a tile beside) where it stands. */
+    private boolean canServerPathToNpc(Rs2NpcModel npc) {
+        if (npc == null || Microbot.getClient().isInInstancedRegion()) {
+            return false;
+        }
+        WorldPoint player = Rs2Player.getWorldLocation();
+        WorldPoint loc = npc.getWorldLocation();
+        if (player == null || loc == null || player.getPlane() != loc.getPlane()) {
+            return false;
+        }
+        int dist = player.distanceTo2D(loc);
+        if (dist <= 1) {
+            return true;
+        }
+        if (dist > SERVER_PATH_SCAN_RADIUS) {
+            return false;
+        }
+        Map<WorldPoint, Integer> reachable =
+                Rs2Tile.getReachableTilesFromTile(player, Math.min(SERVER_PATH_SCAN_RADIUS, dist + 6));
+        if (reachable.containsKey(loc)) {
+            return true;
+        }
+        for (WorldPoint tile : reachable.keySet()) {
+            if (tile.distanceTo2D(loc) <= 1) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean insideArea(WorldPoint p, WorldArea a) {
+        return p.getPlane() == a.getPlane()
+                && p.getX() >= a.getX() && p.getX() < a.getX() + a.getWidth()
+                && p.getY() >= a.getY() && p.getY() < a.getY() + a.getHeight();
     }
 
     /** Whether {@code point} is directly north/south/east/west of the area (not diagonal, not inside). */
