@@ -3454,6 +3454,7 @@ public class QuestingScript extends Script {
             followMarkerIndex = 0;
             followGuardLastLocal = null;
             followGuardMovedAt = System.currentTimeMillis();
+            followGuardWasStopped = false;
         }
 
         LocalPoint npcLocal = npc.getLocalLocation();
@@ -3470,7 +3471,6 @@ public class QuestingScript extends Script {
         }
 
         int playerToCover = localDistance(playerLocal, coverLocal);
-        int npcToCover = localDistance(npcLocal, coverLocal);
 
         // Is he walking? He patrols a leg, stops at the end, turns to look back, then moves on. The turn
         // is the check, so the only safe time to be crossing open ground is while he is still walking
@@ -3484,12 +3484,18 @@ public class QuestingScript extends Script {
         followGuardLastLocal = npcLocal;
         boolean guardStopped = System.currentTimeMillis() - followGuardMovedAt > FOLLOW_GUARD_STILL_MS;
 
-        // Advance the aim once he is clear of our current cover, so the next hop starts as he sets off.
-        if (playerToCover <= 1 && npcToCover > FOLLOW_ADVANCE_DISTANCE && index < markers.size() - 1) {
+        // Advance on the moment he SETS OFF again, not on how far away he is. His patrol is
+        // walk-a-leg, stop, turn and look, walk on — so the safe window opens the instant he starts the
+        // next leg, and it opens at the same instant regardless of how long that leg is. Distance was
+        // the wrong instrument: six tiles clear was so late the long legs were unwinnable, two tiles was
+        // early enough to break cover while he was still looking. This edge has no threshold to tune.
+        boolean setOffAgain = followGuardWasStopped && !guardStopped;
+        followGuardWasStopped = guardStopped;
+        if (setOffAgain && playerToCover <= 1 && index < markers.size() - 1) {
             followMarkerIndex = index + 1;
             if (System.currentTimeMillis() - lastApproachWarnLog > 2000) {
                 lastApproachWarnLog = System.currentTimeMillis();
-                Microbot.log("[Questing] follow step: guard clear of cover " + (index + 1)
+                Microbot.log("[Questing] follow step: guard set off from cover " + (index + 1)
                         + " — advancing to " + (followMarkerIndex + 1) + "/" + markers.size(), Level.WARN);
             }
             return false;
@@ -3562,18 +3568,12 @@ public class QuestingScript extends Script {
                 from.getPlane());
     }
 
-    /**
-     * Tiles the guard must be past before we break cover. Deliberately small: he is safe to travel
-     * behind the moment he sets off, and the leg is exactly the time budget for reaching the next
-     * cover. Waiting for him to get six tiles clear spent most of that budget standing still, so the
-     * hop started late and the long legs were lost outright.
-     */
-    private static final int FOLLOW_ADVANCE_DISTANCE = 2;
     /** No movement for this long means he has stopped at the end of a leg and is looking back. */
     private static final long FOLLOW_GUARD_STILL_MS = 1200;
 
     private LocalPoint followGuardLastLocal = null;
     private long followGuardMovedAt = 0;
+    private boolean followGuardWasStopped = false;
 
     private LocalPoint localForFollowMarker(WorldPoint marker) {
         return Microbot.getClientThread().runOnClientThreadOptional(() -> {
