@@ -3709,9 +3709,80 @@ public class Rs2Walker {
                 && playerLoc.distanceTo2D(selected) <= CLOSEST_INDEX_REACHABLE_STEP_BUDGET - 2) {
             WebWalkLog.spInfo("route_click_walled | to={} player={} anchorIdx={} — refused, falling back",
                     compactWorldPoint(selected), compactWorldPoint(playerLoc), rawAnchorIndex);
+            learnWalledRouteEdge(rawPath, playerLoc, reachable);
             return null;
         }
         return selected;
+    }
+
+    /**
+     * The route crosses from reachable to unreachable at some edge; that edge is impassable in reality,
+     * whatever the shipped map says. Learn it so the pathfinder routes around it instead of replanning
+     * the same way forever.
+     * <p>
+     * Refusing the click was always correct, but on its own it is not a recovery: the planner keeps
+     * producing the same route, the net keeps refusing it, and the walker oscillates. Seen at Sinclair
+     * Mansion, where the shipped map has no walls at all for the building — probed as n/s/e/w all open
+     * on every tile the walker kept trying — while the live scene reported 330 blocked edges the static
+     * map calls open. Four refusals, no progress, no escape.
+     * <p>
+     * The first strike blocks the edge for THIS session (see
+     * {@code PathfinderConfig#learnBlockedEdge}), so the replan below routes around it immediately;
+     * persistence across sessions still needs an independent second strike, which is what stops a
+     * transient refusal poisoning the store. learnBlockedEdge returns false for an edge already known,
+     * so the replan fires once per edge rather than on every refusal.
+     */
+    private static void learnWalledRouteEdge(List<WorldPoint> rawPath, WorldPoint playerLoc,
+                                             Map<WorldPoint, Integer> reachable) {
+        WorldPoint[] edge = firstWalledRawEdge(rawPath, playerLoc, reachable,
+                CLOSEST_INDEX_REACHABLE_STEP_BUDGET);
+        if (edge == null) {
+            return;
+        }
+        PathfinderConfig cfg = Rs2PathApi.getPathfinderConfig();
+        if (cfg == null) {
+            return;
+        }
+        if (cfg.learnBlockedEdge(edge[0], edge[1], "route-click-walled")) {
+            WebWalkLog.spInfo("walled_edge_learned | {} -> {} — replanning around it",
+                    compactWorldPoint(edge[0]), compactWorldPoint(edge[1]));
+            recalculatePath();
+        }
+    }
+
+    /**
+     * First raw-path step that leaves the player-origin BFS: {@code a} reachable, {@code b} not.
+     * <p>
+     * Both endpoints must sit inside the BFS budget, or "not reachable" means merely far away and the
+     * edge is innocent — the same guard the refusal itself uses.
+     */
+    static WorldPoint[] firstWalledRawEdge(List<WorldPoint> rawPath, WorldPoint playerLoc,
+                                           Map<WorldPoint, Integer> reachable, int stepBudget) {
+        if (rawPath == null || rawPath.isEmpty() || playerLoc == null
+                || reachable == null || reachable.isEmpty()) {
+            return null;
+        }
+        // Deliberately no getClosestTileIndex here: that reads the scene on the client thread, and this
+        // must stay pure so the decision table can cover it. The reachable set already confines the
+        // answer to the player's immediate surroundings, so a full scan is both cheap and sufficient.
+        final int maxDistance = stepBudget - 2;
+        for (int i = 0; i + 1 < rawPath.size(); i++) {
+            WorldPoint a = rawPath.get(i);
+            WorldPoint b = rawPath.get(i + 1);
+            if (a == null || b == null
+                    || a.getPlane() != playerLoc.getPlane() || b.getPlane() != playerLoc.getPlane()) {
+                continue;
+            }
+            // Both ends inside the BFS budget, or "unreachable" only means "far" and the edge is
+            // innocent. Skip rather than stop: a route may leave and re-enter the budget.
+            if (playerLoc.distanceTo2D(a) > maxDistance || playerLoc.distanceTo2D(b) > maxDistance) {
+                continue;
+            }
+            if (reachable.containsKey(a) && !reachable.containsKey(b)) {
+                return new WorldPoint[]{a, b};
+            }
+        }
+        return null;
     }
 
     /**
