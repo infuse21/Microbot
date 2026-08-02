@@ -163,7 +163,11 @@ public class FishingContest extends BasicQuestHelper
 		grandpaJack.addDialogStep("Can I buy one of your fishing rods?");
 		grandpaJack.addDialogStep("Very fair, I'll buy that rod!");
 
-		putGarlicInPipe = new ObjectStep(this, ObjectID.GARLICPIPE, new WorldPoint(2638, 3446, 0), "Put garlic in the pipes.", garlic);
+		// MICROBOT: the pipe is at 2637, not 2638. Three Wall Pipes share ObjectID.GARLICPIPE — 2636,
+		// 2637 and 2638 — and only the middle one takes the garlic, so the highlight (and anything
+		// automated following it) went to the wrong pipe. Upstream's own zone below agrees: it calls
+		// 2638-2641 "the 3 tiles east of the pipe", which only holds if the pipe is 2637.
+		putGarlicInPipe = new ObjectStep(this, ObjectID.GARLICPIPE, new WorldPoint(2637, 3446, 0), "Put garlic in the pipes.", garlic);
 		putGarlicInPipe.addIcon(ItemID.GARLIC);
 
 		speakToBonzo = new NpcStep(this, NpcID.BONZO, new WorldPoint(2641, 3437, 0), "Speak to Bonzo to start the competition.", coins);
