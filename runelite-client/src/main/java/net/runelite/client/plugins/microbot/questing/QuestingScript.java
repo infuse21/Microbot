@@ -3062,21 +3062,45 @@ public class QuestingScript extends Script {
         }).orElse(false);
     }
 
-    /** Nearest live-cache object matching the step's id or its alternates — the proven clickable model. */
+    /**
+     * The live-cache object this step means — matched by id, then chosen by the step's DEFINED POINT.
+     *
+     * <p>Picking the one nearest the player is wrong wherever a scene holds several objects sharing an
+     * id. Fishing Contest's "Put garlic in the pipes" is the case that showed it: Hemenster has a row of
+     * pipes all on id 41, the step names (2638,3446), and the pipe nearest the player was (2636,3446) —
+     * so the garlic went into the wrong one, every time, while the diagnostic above happily reported the
+     * right object resolved. The defined point is the quest telling us which of the identical objects it
+     * means; player proximity is a guess that only agrees with it by luck.
+     */
     private Rs2TileObjectModel resolveStepObjectFromCache(ObjectStep step) {
-        Rs2TileObjectModel o = Microbot.getRs2TileObjectCache().query()
-                .withId(step.getObjectID()).nearestOnClientThread();
-        if (o != null) {
-            return o;
-        }
+        WorldPoint definedPoint = step.getDefinedPoint() != null
+                ? step.getDefinedPoint().getWorldPoint() : null;
+
+        List<Integer> ids = new ArrayList<>();
+        ids.add(step.getObjectID());
         for (Integer altId : step.getAlternateObjectIDs()) {
-            if (altId == null) {
+            if (altId != null) {
+                ids.add(altId);
+            }
+        }
+
+        for (Integer id : ids) {
+            List<Rs2TileObjectModel> matches = Microbot.getRs2TileObjectCache().query()
+                    .withId(id).toListOnClientThread().stream()
+                    .filter(o -> o != null && o.getWorldLocation() != null)
+                    .collect(Collectors.toList());
+            if (matches.isEmpty()) {
                 continue;
             }
-            o = Microbot.getRs2TileObjectCache().query().withId(altId).nearestOnClientThread();
-            if (o != null) {
-                return o;
+            // Without a defined point the step hasn't said which one it wants, so proximity is all we
+            // have — that is the case the old behaviour was written for, and it stays.
+            WorldPoint anchor = definedPoint != null ? definedPoint : Rs2Player.getWorldLocation();
+            if (anchor == null) {
+                return matches.get(0);
             }
+            return matches.stream()
+                    .min(Comparator.comparingInt(o -> o.getWorldLocation().distanceTo(anchor)))
+                    .orElse(null);
         }
         return null;
     }
