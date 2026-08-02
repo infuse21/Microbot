@@ -31,6 +31,7 @@ import net.runelite.client.plugins.microbot.util.combat.Rs2Combat;
 import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange;
+import net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem;
 import net.runelite.client.plugins.microbot.util.grandexchange.models.WikiPrice;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
@@ -583,8 +584,9 @@ public class QuestingScript extends Script {
 				continue;
 			}
 			if (!isItemRequirementTradable(ir) && !bankSnapshotHas(ir)
-					&& !(config.buyFromShops() && QuestShopCatalog.lookup(ir.getAllIds()) != null)) {
-				continue; // no bank stock, not tradeable, no known shop — only the quest can supply it
+					&& !(config.buyFromShops() && QuestShopCatalog.lookup(ir.getAllIds()) != null)
+					&& QuestGroundSpawnCatalog.lookup(ir.getAllIds()) == null) {
+				continue; // no bank stock, not tradeable, no shop, no known spawn — only the quest can supply it
 			}
 			missing.add(ir);
 		}
@@ -696,6 +698,56 @@ public class QuestingScript extends Script {
 		rememberAcquired(requirement);
 		Rs2Shop.closeShop();
 		sleepUntil(() -> !Rs2Shop.isOpen(), 2_000);
+		return true;
+	}
+
+	/**
+	 * Picks a requirement up from a world spawn in {@link QuestGroundSpawnCatalog}: walk to the spawn
+	 * area, loot the item off the ground, waiting out one respawn cycle if someone (or we) just took it.
+	 *
+	 * <p>This is the source for items no other channel reliably supplies — Plague City's dwellberries
+	 * being the motivating case: tradeable in name, but the GE rarely has stock, so the buy offer sat
+	 * unfilled until the 60s stop fired, while the berries respawn forever in McGrubor's Wood.
+	 *
+	 * @return true when the tick was consumed (travelling, waiting on a respawn, or looting).
+	 */
+	private boolean collectFromGroundSpawn(ItemRequirement requirement) {
+		if (paused()) {
+			return false;
+		}
+		QuestGroundSpawnCatalog.SpawnSource spawn = QuestGroundSpawnCatalog.lookup(requirement.getAllIds());
+		int itemId = QuestGroundSpawnCatalog.spawnableId(requirement.getAllIds());
+		if (spawn == null || itemId == -1 || remainingQuantityNeeded(requirement) <= 0) {
+			return false;
+		}
+
+		WorldPoint player = Rs2Player.getWorldLocation();
+		if (player == null || player.distanceTo(spawn.getLocation()) > spawn.getLootRadius()) {
+			Microbot.status = "Quest helper: walking to the " + requirement.getName() + " spawn";
+			Rs2Walker.walkTo(spawn.getLocation(), 5);
+			return true; // still travelling; resume next tick
+		}
+
+		// In the area. Spawns cycle (~30s), so give one a chance to appear before declaring failure —
+		// paused() keeps the master toggle responsive during the wait.
+		Microbot.status = "Picking up " + requirement.getName();
+		if (!Rs2GroundItem.exists(itemId, spawn.getLootRadius())
+				&& !sleepUntil(() -> Rs2GroundItem.exists(itemId, spawn.getLootRadius()) || paused(), 40_000)) {
+			Microbot.log("Quest helper: no " + requirement.getName() + " appeared near "
+					+ spawn.getLocation() + " within 40s — spawn point may be wrong", Level.WARN);
+			return false;
+		}
+		if (paused()) {
+			return false;
+		}
+
+		Rs2GroundItem.loot(itemId, spawn.getLootRadius());
+		sleepUntil(() -> remainingQuantityNeeded(requirement) <= 0
+				|| !Rs2GroundItem.exists(itemId, spawn.getLootRadius()), 8_000);
+		if (remainingQuantityNeeded(requirement) <= 0) {
+			rememberAcquired(requirement);
+		}
+		// Needing several (or the loot missing) resumes here next tick and waits out the next respawn.
 		return true;
 	}
 
@@ -844,11 +896,17 @@ public class QuestingScript extends Script {
 			if (config.buyFromShops() && QuestShopCatalog.lookup(req.getAllIds()) != null && buyFromShop(req)) {
 				return true;
 			}
+			// A known world spawn beats the GE too: free, deterministic, and the items in this catalog
+			// are exactly the ones the GE cannot be trusted to stock (dwellberries sat unfilled for the
+			// full 60s and stopped the quester, while spawning forever in McGrubor's Wood).
+			if (QuestGroundSpawnCatalog.lookup(req.getAllIds()) != null && collectFromGroundSpawn(req)) {
+				return true;
+			}
 			if (isItemRequirementTradable(req)) {
 				buyable.add(req);
 			} else {
-				Microbot.log("Quest helper: " + req.getName() + " is not in the bank, not tradeable and not "
-						+ "in the shop catalog; letting the step handle it", Level.WARN);
+				Microbot.log("Quest helper: " + req.getName() + " is not in the bank, not tradeable, and in "
+						+ "no shop or spawn catalog; letting the step handle it", Level.WARN);
 				exhausted.add(req.getId());
 			}
 		}
