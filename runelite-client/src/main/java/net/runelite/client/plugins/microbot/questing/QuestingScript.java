@@ -3452,6 +3452,8 @@ public class QuestingScript extends Script {
         if (followStep != step) {
             followStep = step;
             followMarkerIndex = 0;
+            followGuardLastLocal = null;
+            followGuardMovedAt = System.currentTimeMillis();
         }
 
         LocalPoint npcLocal = npc.getLocalLocation();
@@ -3470,21 +3472,20 @@ public class QuestingScript extends Script {
         int playerToCover = localDistance(playerLocal, coverLocal);
         int npcToCover = localDistance(npcLocal, coverLocal);
 
-        // Not at cover yet: one canvas click toward it. Repeats each tick until we arrive, which is
-        // also how the character keeps up when the guard pulls ahead.
-        if (playerToCover > 1) {
-            Microbot.status = "Following: moving to cover " + (index + 1) + "/" + markers.size();
-            if (!Rs2Walker.walkFastCanvas(markers.get(index))) {
-                // Off screen — face the guard (the cover is along his route) and retry next tick,
-                // rather than handing the walker a route it will over-execute.
-                Rs2Camera.turnTo(npc);
-            }
-            return false;
+        // Is he walking? He patrols a leg, stops at the end, turns to look back, then moves on. The turn
+        // is the check, so the only safe time to be crossing open ground is while he is still walking
+        // away — and a whole leg is ample to reach the next cover. Tracked by his own position changing,
+        // which needs no animation or facing data.
+        boolean guardMoving = followGuardLastLocal == null
+                || localDistance(followGuardLastLocal, npcLocal) > 0;
+        if (guardMoving) {
+            followGuardMovedAt = System.currentTimeMillis();
         }
+        followGuardLastLocal = npcLocal;
+        boolean guardStopped = System.currentTimeMillis() - followGuardMovedAt > FOLLOW_GUARD_STILL_MS;
 
-        // At cover. Hold until the guard has moved past this spot, then take the next one. Advancing on
-        // his distance rather than a timer keeps us behind him however fast he walks.
-        if (npcToCover > FOLLOW_ADVANCE_DISTANCE && index < markers.size() - 1) {
+        // Advance the aim once he is clear of our current cover, so the next hop starts as he sets off.
+        if (playerToCover <= 1 && npcToCover > FOLLOW_ADVANCE_DISTANCE && index < markers.size() - 1) {
             followMarkerIndex = index + 1;
             if (System.currentTimeMillis() - lastApproachWarnLog > 2000) {
                 lastApproachWarnLog = System.currentTimeMillis();
@@ -3494,12 +3495,33 @@ public class QuestingScript extends Script {
             return false;
         }
 
-        Microbot.status = "Following: holding cover " + (index + 1) + "/" + markers.size();
+        if (playerToCover <= 1) {
+            Microbot.status = "Following: holding cover " + (index + 1) + "/" + markers.size();
+            return false;
+        }
+
+        // Short of cover and he has stopped — freeze. Moving now is what he turns round to catch.
+        if (guardStopped) {
+            Microbot.status = "Following: frozen, guard is looking back";
+            return false;
+        }
+
+        Microbot.status = "Following: moving to cover " + (index + 1) + "/" + markers.size();
+        if (!Rs2Walker.walkFastCanvas(markers.get(index))) {
+            // Off screen — face the guard (the cover is along his route) and retry next tick, rather
+            // than handing the walker a route it will over-execute.
+            Rs2Camera.turnTo(npc);
+        }
         return false;
     }
 
     /** Tiles the guard must be past before we break cover. */
     private static final int FOLLOW_ADVANCE_DISTANCE = 6;
+    /** No movement for this long means he has stopped at the end of a leg and is looking back. */
+    private static final long FOLLOW_GUARD_STILL_MS = 1200;
+
+    private LocalPoint followGuardLastLocal = null;
+    private long followGuardMovedAt = 0;
 
     private LocalPoint localForFollowMarker(WorldPoint marker) {
         return Microbot.getClientThread().runOnClientThreadOptional(() -> {
