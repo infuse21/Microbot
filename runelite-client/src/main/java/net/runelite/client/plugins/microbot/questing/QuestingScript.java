@@ -2620,6 +2620,15 @@ public class QuestingScript extends Script {
                 }
             }
 
+            // Never interrupt an action that is still running. Searching Jungle Potion's marshy vine is
+            // a timed action that pays out at the end, and clicking it again restarts it — so a step
+            // that needs one click and a wait logged objectClick at 00:23:50, 00:23:59 and 00:24:06 and
+            // never produced the snake weed. Anything the player is mid-animation on gets left alone.
+            if (Rs2Player.isAnimating()) {
+                Microbot.status = "Waiting for the current action to finish";
+                return false;
+            }
+
             Microbot.log(String.format("[QuestHelper] objectClick id=%d itemId=%d reqs=%d obj=%s",
                     object.getId(), itemId, step.getRequirements().size(), object.getWorldLocation()), Level.WARN);
 
@@ -2646,9 +2655,41 @@ public class QuestingScript extends Script {
                 object.click("");
             }
 
-            sleepUntil(() -> Rs2Player.isMoving() || Rs2Player.isAnimating(), 2000);
+            // Stay inside the action until it ends, instead of waiting a fixed two seconds.
+            //
+            // Some object actions are continuous: searching Jungle Potion's marshy vine keeps the
+            // character searching for one to five minutes before the grimy snake weed drops, the same
+            // shape as woodcutting. The old wait expired mid-search and handed back to the tick, which
+            // clicked the vine again and restarted it from zero — so the step logged objectClick at
+            // 00:23:50, 00:23:59 and 00:24:06 and could never have finished, however long it ran.
+            //
+            // Ending on an idle gap rather than a timeout keeps this cheap for ordinary one-shot actions
+            // like opening a door: those go idle almost immediately and fall straight through.
+            final String stepTextBeforeClick = activeStepText();
+            final int inventoryCountBeforeClick = Rs2Inventory.count();
+            sleepUntil(() -> Rs2Player.isMoving() || Rs2Player.isAnimating() || Rs2Dialogue.isInDialogue(), 2000);
             sleep(100);
-            sleepUntil(() -> !Rs2Player.isMoving() && !Rs2Player.isAnimating(), 2000);
+            long actionDeadline = System.currentTimeMillis() + OBJECT_ACTION_TIMEOUT_MS;
+            long lastBusyAt = System.currentTimeMillis();
+            while (System.currentTimeMillis() < actionDeadline) {
+                if (paused() || !isRunning() || !Microbot.isLoggedIn()) {
+                    break;
+                }
+                if (Rs2Dialogue.isInDialogue()
+                        || Rs2Inventory.count() != inventoryCountBeforeClick
+                        || !Objects.equals(stepTextBeforeClick, activeStepText())) {
+                    break; // it paid out
+                }
+                // Animation only, deliberately. isInteracting can stay set after an action has actually
+                // stopped, which would hold us here until the runaway cap with nothing happening.
+                if (Rs2Player.isAnimating() || Rs2Player.isMoving()) {
+                    lastBusyAt = System.currentTimeMillis();
+                    Microbot.status = "Working the object — waiting for it to finish";
+                } else if (System.currentTimeMillis() - lastBusyAt > OBJECT_ACTION_IDLE_MS) {
+                    break; // genuinely stopped; let the tick decide whether to click again
+                }
+                sleep(OBJECT_ACTION_POLL_MS);
+            }
             objectsHandeled.add(object.getHash());
         } else if (object != null && !Microbot.getClient().isInInstancedRegion()) {
             // Full walker, cancelling once adjacent — see the approach-walk comment above (door-target steps).
@@ -3816,6 +3857,18 @@ public class QuestingScript extends Script {
                 from.getY() + Math.round((float) dy * tiles / span),
                 from.getPlane());
     }
+
+    /**
+     * How long a continuous object action may run before we treat it as runaway. Searching the marshy
+     * vine for snake weed takes one to five minutes depending on Herblore level, so this is an upper
+     * bound on a legitimate wait, not an expected one.
+     */
+    private static final long OBJECT_ACTION_TIMEOUT_MS = 420_000;
+
+    /** Idle this long and the action has really stopped, rather than being between animation cycles. */
+    private static final long OBJECT_ACTION_IDLE_MS = 2_500;
+
+    private static final int OBJECT_ACTION_POLL_MS = 200;
 
     /**
      * How often the follow loop re-reads the guard. Fast enough that the instant he sets off is caught
