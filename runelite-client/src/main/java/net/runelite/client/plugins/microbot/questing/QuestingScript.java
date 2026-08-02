@@ -800,8 +800,19 @@ public class QuestingScript extends Script {
 						continue;
 					}
 					for (Requirement req : reqs) {
-						if (req instanceof ItemRequirement && seen.add(((ItemRequirement) req).getId())) {
-							all.add((ItemRequirement) req);
+						if (!(req instanceof ItemRequirement)) {
+							continue;
+						}
+						ItemRequirement ir = (ItemRequirement) req;
+						// Never re-fetch what the record says we already obtained. This was the one list
+						// builder without the filter, and it sent the executor to McGrubor's Wood for
+						// dwellberries that had already been picked AND handed to Alrena — hijacking the
+						// recovery trip for the items that were genuinely missing.
+						if (everHeldItemRequirementIds.contains(ir.getId())) {
+							continue;
+						}
+						if (seen.add(ir.getId())) {
+							all.add(ir);
 						}
 					}
 				}
@@ -818,7 +829,13 @@ public class QuestingScript extends Script {
 
 		List<ItemRequirement> questLevel = quest.getItemRequirements();
 		if (questLevel != null) {
-			all.addAll(questLevel);
+			for (ItemRequirement ir : questLevel) {
+				// Same filter as the section path above: the record of already-obtained items applies
+				// whichever way this list gets built.
+				if (ir != null && !everHeldItemRequirementIds.contains(ir.getId())) {
+					all.add(ir);
+				}
+			}
 		}
 		return all;
 	}
