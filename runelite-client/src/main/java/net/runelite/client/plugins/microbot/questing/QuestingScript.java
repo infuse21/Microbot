@@ -3508,11 +3508,39 @@ public class QuestingScript extends Script {
 
         Microbot.status = "Following: moving to cover " + (index + 1) + "/" + markers.size();
         if (!Rs2Walker.walkFastCanvas(markers.get(index))) {
-            // Off screen — face the guard (the cover is along his route) and retry next tick, rather
-            // than handing the walker a route it will over-execute.
-            Rs2Camera.turnTo(npc);
+            // Too far to project onto the canvas — cover 3 sits ~14 tiles from cover 2 and simply is
+            // not on screen from there. Stage it: canvas-click a tile part way along, and pick the
+            // cover up on a later tick once it is in range. Handing this to the walker instead is what
+            // produced "Minimap click target was outside clip; used reachable fallback" and a route
+            // march. Interpolating is safe in template space — the marker and Rs2Player.getWorldLocation
+            // are both template, even inside the instance.
+            WorldPoint here = Rs2Player.getWorldLocation();
+            WorldPoint staged = stageToward(here, markers.get(index), FOLLOW_STAGE_TILES);
+            if (staged == null || !Rs2Walker.walkFastCanvas(staged)) {
+                Rs2Camera.turnTo(npc);
+            }
         }
         return false;
+    }
+
+    /** How far each staged hop reaches when the cover itself is off screen. */
+    private static final int FOLLOW_STAGE_TILES = 7;
+
+    /** A point {@code tiles} along the straight line from {@code from} to {@code to}, or null. */
+    private static WorldPoint stageToward(WorldPoint from, WorldPoint to, int tiles) {
+        if (from == null || to == null || from.getPlane() != to.getPlane()) {
+            return null;
+        }
+        int dx = to.getX() - from.getX();
+        int dy = to.getY() - from.getY();
+        int span = Math.max(Math.abs(dx), Math.abs(dy));
+        if (span <= tiles) {
+            return to;
+        }
+        return new WorldPoint(
+                from.getX() + Math.round((float) dx * tiles / span),
+                from.getY() + Math.round((float) dy * tiles / span),
+                from.getPlane());
     }
 
     /** Tiles the guard must be past before we break cover. */
