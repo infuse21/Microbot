@@ -3614,8 +3614,24 @@ public class QuestingScript extends Script {
                 continue;
             }
 
-            // Already en route — re-clicking the same tile every poll would only restart the path.
             if (Rs2Player.isMoving()) {
+                // Stop dead if he stops or turns while we are still crossing. Clicking the cover and
+                // letting the server path means the whole crossing is one committed path, and declining
+                // to click again does not shorten it — so a guard who turns halfway catches us in the
+                // open with nothing we can do about it.
+                //
+                // A manual run of the section halts exactly here, and only here. Legs 1-2, 2-3 and 3-4
+                // are crossed without a pause; on the last leg the player stopped at (3243,3390) for
+                // 4.6 seconds, starting the moment the guard turned from east to north (o=1280 co=1344)
+                // and resuming while he was still walking. That is the one behaviour separating a run
+                // that reaches cover 5 from every run that has not.
+                if (!guardMoving) {
+                    Microbot.status = "Following: halting, guard turned mid-crossing";
+                    canvasClickOnly(Rs2Player.getWorldLocation());
+                    sleep(FOLLOW_POLL_MS);
+                    continue;
+                }
+                // Otherwise let the path run — re-clicking every poll would only restart it.
                 Microbot.status = "Following: crossing to cover " + (index + 1) + "/" + markers.size();
                 sleep(FOLLOW_POLL_MS);
                 continue;
