@@ -114,6 +114,15 @@ public class QuestingScript extends Script {
      */
     private long dialogueCooldownEndsAt = 0;
 
+    /**
+     * The cooldown above is a ceiling, not a fixed wait. These let it end as soon as the thing it
+     * guards against is demonstrably over — the player idle and out of dialogue, or the quest visibly
+     * moved on — with a short floor so the game still gets a tick or two to register the conversation
+     * ending. Waiting the full 4-7s every time is what made the quester feel glacial between steps.
+     */
+    private long dialogueCooldownFloorEndsAt = 0;
+    private String dialogueCooldownStepText = null;
+
     /** Throttle for the in-dialogue diagnostic log (see the space-branch in the main tick). */
     private long lastDialogueDiagLog = 0;
     /** Throttle for the tick-phase diagnostic (used to locate where the loop hangs). */
@@ -171,6 +180,7 @@ public class QuestingScript extends Script {
                         dialogueStartedStep = null;
                         dialogueSpaceStuckStep = null;
                         dialogueCooldownEndsAt = 0;
+                        dialogueCooldownStepText = null;
                         Microbot.status = "Quest helper paused";
                     }
                     return;
@@ -383,6 +393,7 @@ public class QuestingScript extends Script {
                             dialogueSpaceStuckStep = null;
                             dialogueStartedStep = null;
                             dialogueCooldownEndsAt = 0; // don't let a stale post-dialogue cooldown re-block the step
+                            dialogueCooldownStepText = null;
                             // fall through to the step/walker logic below (do NOT return here)
                         } else {
                             Rs2Walker.clearWalkingRoute("quest-helper:dialogue-space-step");
@@ -393,12 +404,31 @@ public class QuestingScript extends Script {
                         dialogueSpaceStuckStep = null;
                         if (dialogueStartedStep != null) {
                             dialogueCooldownEndsAt = System.currentTimeMillis() + Rs2Random.between(4000, 7000);
+                            dialogueCooldownFloorEndsAt = System.currentTimeMillis() + Rs2Random.between(600, 1000);
+                            dialogueCooldownStepText = activeStepText();
                         }
                         dialogueStartedStep = null;
                     }
 
                     if (System.currentTimeMillis() < dialogueCooldownEndsAt) {
-                        return;
+                        // Past the floor, end it early once there is nothing left to interrupt: no
+                        // dialogue, the player idle, and no scripted animation running — or the quest
+                        // has already advanced, in which case acting is exactly right. A cutscene keeps
+                        // the player animating, so that case still waits out the full ceiling.
+                        boolean settled = !Rs2Dialogue.isInDialogue()
+                                && !Rs2Player.isAnimating()
+                                && !Rs2Player.isInteracting()
+                                && !Rs2Player.isMoving();
+                        String nowText = activeStepText();
+                        boolean questMovedOn = nowText != null && dialogueCooldownStepText != null
+                                && !nowText.equals(dialogueCooldownStepText);
+                        if (System.currentTimeMillis() >= dialogueCooldownFloorEndsAt
+                                && (settled || questMovedOn)) {
+                            dialogueCooldownEndsAt = 0;
+                            dialogueCooldownStepText = null;
+                        } else {
+                            return;
+                        }
                     }
 
                     boolean isInCutscene = Microbot.getVarbitValue(4606) > 0;
