@@ -3475,6 +3475,8 @@ public class QuestingScript extends Script {
             followStep = step;
             followMarkerIndex = 0;
         }
+        followGuardLastLocal = null;
+        followGuardMovedAt = System.currentTimeMillis();
 
         final int guardId = npc.getId();
         final String stepTextAtEntry = activeStepText();
@@ -3486,12 +3488,23 @@ public class QuestingScript extends Script {
         boolean guardWasMoving = true;
 
         while (System.currentTimeMillis() < deadline) {
+            // Say WHY on the way out. A run on 2026-08-02 logged "entering follow loop" twice 20s apart
+            // with no exit line between, which means it left through here — and with the three causes
+            // sharing one branch there was no way to tell which, only guesses. Each dropped us back onto
+            // the 5s tick for the gap, which is the very thing this loop exists to avoid.
             if (paused() || !isRunning() || !Microbot.isLoggedIn()) {
+                Microbot.log("[Questing] follow step: leaving follow loop — paused=" + paused()
+                        + " running=" + isRunning() + " loggedIn=" + Microbot.isLoggedIn(), Level.WARN);
                 return false;
             }
             // The section ending is what changes the step under us; that is the loop's success exit.
-            if (!Objects.equals(stepTextAtEntry, activeStepText())) {
-                Microbot.log("[Questing] follow step: step changed — section complete", Level.WARN);
+            String stepTextNow = activeStepText();
+            if (!Objects.equals(stepTextAtEntry, stepTextNow)) {
+                // Print both: if the section really has ended these differ meaningfully, but if the
+                // helper is only flapping between sub-steps we would be dropping back to the 5s tick
+                // mid-section, and the two texts are what tells those apart.
+                Microbot.log("[Questing] follow step: step changed — was \"" + stepTextAtEntry
+                        + "\" now \"" + stepTextNow + "\"", Level.WARN);
                 return true;
             }
 
@@ -3513,10 +3526,38 @@ public class QuestingScript extends Script {
             }
             int playerToCover = localDistance(playerLocal, coverLocal);
 
-            // Whether he is walking, straight from his pose: an actor whose pose animation differs from
-            // its idle pose is moving. That is a per-tick fact read off the actor, not a timer over
-            // sampled positions, so it needs no threshold and cannot lag behind the poll.
-            boolean guardMoving = guard.isMoving();
+            // Whether he is WALKING, from his position changing — not from his pose.
+            //
+            // Rs2NpcModel.isMoving() asks whether the pose animation differs from the idle pose, and
+            // measurement says a turn on the spot uses the WALK pose: every mid-turn sample captured
+            // (orientation and currentOrientation diverging) read pose 10682, the same value he shows
+            // while walking, 4 of 4. So the pose reports "moving" while he stands still rotating to look
+            // back down his path, and an advance keyed off it breaks cover at the exact instant he turns
+            // to check. One such advance is on record at 21:57:40, landing on the sample
+            // "o=512 co=128 pose=10682".
+            //
+            // Position cannot make that mistake: turning does not move him. This is the same test the
+            // tick-driven version used, and it was never the wrong method — only sampled 25x too slowly
+            // to mean anything. At this poll rate the stopped threshold is a game tick and a half, which
+            // absorbs the 600ms granularity of his movement without blurring the edge we care about.
+            LocalPoint guardLocal = guard.getLocalLocation();
+            if (guardLocal == null) {
+                sleep(FOLLOW_POLL_MS);
+                continue;
+            }
+            if (followGuardLastLocal == null || localDistance(followGuardLastLocal, guardLocal) > 0) {
+                followGuardMovedAt = System.currentTimeMillis();
+            }
+            followGuardLastLocal = guardLocal;
+            boolean guardMoving = System.currentTimeMillis() - followGuardMovedAt <= FOLLOW_GUARD_STILL_MS;
+
+            // Belt and braces on the failure above: while a turn is in progress his facing has not caught
+            // up with his target facing, and that divergence is directly readable. Never treat a guard
+            // who is mid-turn as having set off, whatever else says so. The tolerance keeps settled
+            // facings such as "o=447 co=448" from reading as a turn.
+            if (Math.abs(guard.getOrientation() - guard.getCurrentOrientation()) >= FOLLOW_TURN_SLOP) {
+                guardMoving = false;
+            }
 
             // Advance on the moment he SETS OFF again, not on how far away he is. The safe window opens
             // the instant he starts the next leg, and it opens at that same instant regardless of how
@@ -3622,6 +3663,18 @@ public class QuestingScript extends Script {
 
     /** Upper bound on a follow section, so a change in the quest can never strand the loop. */
     private static final long FOLLOW_SECTION_TIMEOUT_MS = 300_000;
+
+    /**
+     * No movement for this long means he has stopped. A game tick and a half: his position updates on
+     * the tick, so anything shorter would read the gap between updates as a stop.
+     */
+    private static final long FOLLOW_GUARD_STILL_MS = 900;
+
+    /** Facing this far from target facing means a turn is still in progress. */
+    private static final int FOLLOW_TURN_SLOP = 64;
+
+    private LocalPoint followGuardLastLocal = null;
+    private long followGuardMovedAt = 0;
 
     private LocalPoint localForFollowMarker(WorldPoint marker) {
         return Microbot.getClientThread().runOnClientThreadOptional(() -> {
