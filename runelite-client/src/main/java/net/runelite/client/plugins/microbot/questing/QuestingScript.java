@@ -3400,14 +3400,21 @@ public class QuestingScript extends Script {
         return fallback != null ? fallback : "Talk-to";
     }
 
+	// "eat" and "drink" belong here: a quest step essentially never wants a required item consumed, and
+	// the fallback below picking the item's first action is how the hangover cure's ingredients got
+	// eaten and drunk. A step that genuinely says "Drink the ..." still matches in the text loop.
 	private static final Set<String> DESTRUCTIVE_ITEM_ACTIONS =
-			new HashSet<>(java.util.Arrays.asList("drop", "destroy", "empty", "release", "discard"));
+			new HashSet<>(java.util.Arrays.asList("drop", "destroy", "empty", "release", "discard", "eat", "drink"));
 
 	private String chooseCorrectItemOption(QuestStep step, int itemId) {
 		var actions = Rs2Inventory.get(itemId).getInventoryActions();
 
 		for (var action : actions) {
-			if (action != null && step.getText().stream().anyMatch(x -> x.toLowerCase().contains(action.toLowerCase())))
+			// Whole-word match: plain contains() let "Eat" ride along inside "great"/"beat"/"treat"
+			// and consume the item off the back of an unrelated word in the step text.
+			if (action == null) continue;
+			String pattern = ".*\\b" + java.util.regex.Pattern.quote(action.toLowerCase()) + "\\b.*";
+			if (step.getText().stream().anyMatch(x -> x.toLowerCase().matches(pattern)))
 				return action;
 		}
 
@@ -3481,6 +3488,46 @@ public class QuestingScript extends Script {
                 if (nearestUnreachableWalkableTile != null) {
                     return Rs2Walker.walkTo(nearestUnreachableWalkableTile, 0);
                 }
+            }
+        }
+
+        // A location-free step built around two held items means "use one on the other" — COMBINE them.
+        // Interacting with each independently is what destroyed Plague City's hangover cure: "Use" is a
+        // universal inventory op that never appears in an item's own action list, so the text match found
+        // nothing and the fallback took the first composition action — "Eat" on the chocolate dust,
+        // "Drink" on the chocolatey milk — eating and drinking the ingredients.
+        if (detailedDp == null) {
+            List<Integer> highlightedHeld = new ArrayList<>();
+            List<Integer> otherHeld = new ArrayList<>();
+            for (Requirement requirement : conditionalStep.getRequirements()) {
+                if (!(requirement instanceof ItemRequirement)) {
+                    continue;
+                }
+                ItemRequirement ir = (ItemRequirement) requirement;
+                Integer held = ir.getAllIds().stream().filter(Rs2Inventory::contains).findFirst().orElse(null);
+                if (held == null) {
+                    continue;
+                }
+                if (ir.shouldHighlightInInventory(Microbot.getClient())) {
+                    highlightedHeld.add(held);
+                } else {
+                    otherHeld.add(held);
+                }
+            }
+            Integer combineA = null;
+            Integer combineB = null;
+            if (highlightedHeld.size() == 2 && otherHeld.isEmpty()) {
+                combineA = highlightedHeld.get(0);
+                combineB = highlightedHeld.get(1);
+            } else if (highlightedHeld.size() == 1 && otherHeld.size() == 1) {
+                combineA = highlightedHeld.get(0);
+                combineB = otherHeld.get(0);
+            }
+            if (combineA != null && !combineA.equals(combineB)) {
+                Microbot.log("[QuestHelper] combining item " + combineA + " with " + combineB, Level.WARN);
+                Rs2Inventory.combine(combineA, combineB);
+                sleepUntil(() -> Rs2Player.isAnimating() || Rs2Dialogue.isInDialogue(), 3000);
+                return true;
             }
         }
 
