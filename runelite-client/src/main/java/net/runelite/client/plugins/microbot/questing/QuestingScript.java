@@ -25,6 +25,7 @@ import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRe
 import net.runelite.client.plugins.microbot.questhelper.steps.*;
 import net.runelite.client.plugins.microbot.questhelper.steps.widget.WidgetHighlight;
 import net.runelite.client.plugins.microbot.questhelper.tools.QuestTile;
+import net.runelite.client.plugins.microbot.util.coords.Rs2LocalPoint;
 import net.runelite.client.plugins.microbot.util.walker.Rs2PathApi;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
@@ -3418,52 +3419,101 @@ public class QuestingScript extends Script {
         }).orElse(false);
     }
 
+    /** Cover marker this follow step is currently making for, and the step it belongs to. */
+    private QuestStep followStep = null;
+    private int followMarkerIndex = 0;
+
     /**
-     * Walks a follow step's marked tiles in order, paced against the NPC being followed.
+     * Moves a follow step between its cover markers with single canvas clicks, paced by the target.
      *
-     * <p>These steps hand us a route as tile markers — the hiding spots — and expect the player to move
-     * up one at a time as the target advances. Stay on the current marker while the target is still
-     * nearer to it than to the next one; step forward once the target has passed it. That keeps the
-     * character behind the NPC rather than walking onto it, which is what the stealth check punishes.
+     * <p>Emphatically NOT a walker step. The markers are adjacent cover spots a few tiles apart and the
+     * whole section is a timing exercise: route planning, transport scans and minimap staging all take
+     * seconds the guard does not give you, and the walker will happily march the entire route while he
+     * is still standing next to you. One {@code walkFastCanvas} click per hop is the whole movement
+     * model — it also handles instanced scenes, converting a template marker through
+     * {@code Rs2LocalPoint.fromWorldInstance}.
      *
-     * <p>Best effort, and honestly so: the game's real rule involves facing and line of sight that
-     * nothing here models. If it fails the section the quest simply restarts it, so a wrong guess costs
-     * a retry rather than progress.
+     * <p>Pacing is measured in LOCAL space, never world. This section is instanced, so the NPC's
+     * {@code getWorldLocation()} is a raw scene coordinate — the guard read as (11524,902) against
+     * template markers at (3241,3403), making every distance meaningless and the cover choice random.
+     * Local points are the one space both the marker and the NPC can be expressed in.
+     *
+     * <p>Best effort, and honestly so: the real rule involves facing and sight lines nothing here
+     * models. Failing the section restarts it, so a wrong guess costs a retry rather than progress.
      */
     private boolean followMarkedTiles(NpcStep step, Rs2NpcModel npc) {
         List<WorldPoint> markers = step.getMarkedTiles().stream()
                 .map(QuestTile::getWorldPoint)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
-        WorldPoint player = Rs2Player.getWorldLocation();
-        WorldPoint target = npc.getWorldLocation();
-        if (markers.isEmpty() || player == null || target == null) {
+        if (markers.isEmpty()) {
+            return false;
+        }
+        if (followStep != step) {
+            followStep = step;
+            followMarkerIndex = 0;
+        }
+
+        LocalPoint npcLocal = npc.getLocalLocation();
+        LocalPoint playerLocal = Microbot.getClient().getLocalPlayer() == null
+                ? null : Microbot.getClient().getLocalPlayer().getLocalLocation();
+        if (npcLocal == null || playerLocal == null) {
             return false;
         }
 
-        // The marker the target has NOT yet passed: the first whose distance from the NPC is not
-        // beaten by a later one. Ordering is the quest author's, so index order is route order.
-        int aim = markers.size() - 1;
-        for (int i = 0; i < markers.size(); i++) {
-            if (target.distanceTo2D(markers.get(i)) <= target.distanceTo2D(markers.get(Math.min(i + 1, markers.size() - 1)))) {
-                aim = i;
-                break;
+        int index = Math.min(followMarkerIndex, markers.size() - 1);
+        LocalPoint coverLocal = localForFollowMarker(markers.get(index));
+        if (coverLocal == null) {
+            return false;
+        }
+
+        int playerToCover = localDistance(playerLocal, coverLocal);
+        int npcToCover = localDistance(npcLocal, coverLocal);
+
+        // Not at cover yet: one canvas click toward it. Repeats each tick until we arrive, which is
+        // also how the character keeps up when the guard pulls ahead.
+        if (playerToCover > 1) {
+            Microbot.status = "Following: moving to cover " + (index + 1) + "/" + markers.size();
+            if (!Rs2Walker.walkFastCanvas(markers.get(index))) {
+                // Off screen — face the guard (the cover is along his route) and retry next tick,
+                // rather than handing the walker a route it will over-execute.
+                Rs2Camera.turnTo(npc);
             }
-        }
-        WorldPoint destination = markers.get(aim);
-
-        if (player.equals(destination)) {
-            Microbot.status = "Waiting at cover for " + npc.getName();
-            return false; // in position; hold until the target moves on and the aim advances
+            return false;
         }
 
-        if (System.currentTimeMillis() - lastApproachWarnLog > 3000) {
-            lastApproachWarnLog = System.currentTimeMillis();
-            Microbot.log("[Questing] follow step: moving to cover " + (aim + 1) + "/" + markers.size()
-                    + " at " + destination + " (target " + npc.getName() + " at " + target + ")", Level.WARN);
+        // At cover. Hold until the guard has moved past this spot, then take the next one. Advancing on
+        // his distance rather than a timer keeps us behind him however fast he walks.
+        if (npcToCover > FOLLOW_ADVANCE_DISTANCE && index < markers.size() - 1) {
+            followMarkerIndex = index + 1;
+            if (System.currentTimeMillis() - lastApproachWarnLog > 2000) {
+                lastApproachWarnLog = System.currentTimeMillis();
+                Microbot.log("[Questing] follow step: guard clear of cover " + (index + 1)
+                        + " — advancing to " + (followMarkerIndex + 1) + "/" + markers.size(), Level.WARN);
+            }
+            return false;
         }
-        Rs2Walker.walkTo(destination, 0);
+
+        Microbot.status = "Following: holding cover " + (index + 1) + "/" + markers.size();
         return false;
+    }
+
+    /** Tiles the guard must be past before we break cover. */
+    private static final int FOLLOW_ADVANCE_DISTANCE = 6;
+
+    private LocalPoint localForFollowMarker(WorldPoint marker) {
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            LocalPoint lp = LocalPoint.fromWorld(Microbot.getClient().getTopLevelWorldView(), marker);
+            if (lp == null && Microbot.getClient().getTopLevelWorldView().isInstance()) {
+                lp = Rs2LocalPoint.fromWorldInstance(marker);
+            }
+            return lp;
+        }).orElse(null);
+    }
+
+    /** Chebyshev distance in tiles between two local points. */
+    private static int localDistance(LocalPoint a, LocalPoint b) {
+        return Math.max(Math.abs(a.getSceneX() - b.getSceneX()), Math.abs(a.getSceneY() - b.getSceneY()));
     }
 
     private String chooseCorrectNPCOption(QuestStep step, Rs2NpcModel npc) {
