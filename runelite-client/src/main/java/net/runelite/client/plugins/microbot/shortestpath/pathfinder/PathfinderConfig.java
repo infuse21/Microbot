@@ -228,6 +228,26 @@ public class PathfinderConfig {
      * Cleared by {@link #invalidateTransportRefreshCache()}.
      */
     private static final int TRANSPORT_REFRESH_SNAPSHOT_CACHE_SIZE = 4;
+
+    /**
+     * Item ids and currency names that some transport or restriction actually gates on. Only these may
+     * participate in the transport-refresh cache key — see
+     * {@link #itemAffectsTransportUsability(int, String, Set, Set)}. Null until the first refresh has
+     * run, which makes the fingerprint fall back to hashing everything.
+     */
+    private volatile Set<Integer> transportRelevantItemIds = null;
+    private volatile Set<String> transportRelevantCurrencyNames = null;
+
+    /**
+     * The item ids usability depends on that are NOT declared on any transport row: the fairy-ring
+     * staves and the Chronicle are checked against hardcoded ids, so they must be seeded explicitly or
+     * picking one up would not invalidate the cache.
+     */
+    private static final Set<Integer> HARDCODED_USABILITY_ITEM_IDS = Collections.unmodifiableSet(
+            new HashSet<>(Arrays.asList(
+                    ItemID.DRAMEN_STAFF,
+                    ItemID.LUNAR_MOONCLAN_LIMINAL_STAFF,
+                    ItemID.CHRONICLE)));
     private final Map<Integer, TransportRefreshSnapshot> transportRefreshSnapshots =
             Collections.synchronizedMap(new java.util.LinkedHashMap<Integer, TransportRefreshSnapshot>(8, 0.75f, true) {
                 @Override
@@ -536,6 +556,10 @@ public class PathfinderConfig {
         // requirement). Only these may participate in the verification hash — otherwise hitpoints
         // regenerating invalidates the whole transport cache.
         Set<Integer> requiredSkillOrdinals = new HashSet<>();
+        // Item ids / currency names some transport or restriction gates on — everything else is
+        // excluded from the cache key so ordinary inventory churn stops forcing a cold start.
+        Set<Integer> relevantItemIds = new HashSet<>();
+        Set<String> relevantCurrencyNames = new HashSet<>();
         for (Set<Transport> ts : mergedList.values()) {
             for (Transport t : ts) {
                 t.getVarbits().forEach(v -> {
@@ -554,8 +578,33 @@ public class PathfinderConfig {
                         }
                     }
                 }
+                if (t.getItemIdRequirements() != null) {
+                    t.getItemIdRequirements().stream()
+                            .filter(Objects::nonNull)
+                            .forEach(relevantItemIds::addAll);
+                }
+                if (t.getCurrencyAmount() > 0 && t.getCurrencyName() != null && !t.getCurrencyName().isEmpty()) {
+                    relevantCurrencyNames.add(t.getCurrencyName());
+                }
             }
         }
+        // Restrictions gate on items too (hasRequiredItems(Restriction)), from their own list.
+        for (List<Restriction> group : Arrays.asList(resourceRestrictions, customRestrictions)) {
+            if (group == null) {
+                continue;
+            }
+            for (Restriction r : group) {
+                if (r == null || r.getItemIdRequirements() == null) {
+                    continue;
+                }
+                r.getItemIdRequirements().stream()
+                        .filter(Objects::nonNull)
+                        .forEach(relevantItemIds::addAll);
+            }
+        }
+        relevantItemIds.addAll(HARDCODED_USABILITY_ITEM_IDS);
+        transportRelevantItemIds = Collections.unmodifiableSet(relevantItemIds);
+        transportRelevantCurrencyNames = Collections.unmodifiableSet(relevantCurrencyNames);
 
         refreshBoostedLevels = new int[SKILLS.length];
         Map<Integer, Integer> varplayerValues = new HashMap<>();
@@ -1878,18 +1927,71 @@ public class PathfinderConfig {
         return bits;
     }
 
+    /**
+     * Items no transport can possibly gate on must not participate in the cache key — the same
+     * argument already applied to skills above.
+     * <p>
+     * Hashing EVERY item meant any inventory, equipment or bank change minted a new key, and a new key
+     * is a full re-evaluation of ~5,700 transports. Measured over a questing session: 0 cache hits, 22
+     * misses, every one of them {@code invChanged=true}. Quests are the pathological case because they
+     * churn the inventory constantly AND walk after nearly every step, so they paid the ~2.3s cold
+     * start (7.8s worst) on almost every walk. A fishing script churns items too but walks once a trip,
+     * so it only ate it occasionally — which is why this looked like a questing bug.
+     * <p>
+     * Usability depends on item state in exactly four places, all enumerated into the relevant sets by
+     * {@link #collectTransportRelevantItemState}: transport {@code itemIdRequirements}, restriction
+     * {@code itemIdRequirements}, the hardcoded fairy-ring staves and Chronicle, and currency — which
+     * is matched by NAME, not id, so ids alone would silently stop coin changes invalidating the
+     * cache and leave a stale "you can afford this" verdict.
+     *
+     * @param itemName may be null; only consulted for the currency comparison
+     */
+    static boolean itemAffectsTransportUsability(int itemId, String itemName,
+                                                 Set<Integer> relevantItemIds,
+                                                 Set<String> relevantCurrencyNames) {
+        // Sets not built yet (first key is computed before the first refresh) — fingerprint
+        // everything, which is exactly the old behaviour.
+        if (relevantItemIds == null || relevantCurrencyNames == null) {
+            return true;
+        }
+        if (relevantItemIds.contains(itemId)) {
+            return true;
+        }
+        if (itemName == null || itemName.isEmpty()) {
+            return false;
+        }
+        String lower = itemName.toLowerCase();
+        for (String currency : relevantCurrencyNames) {
+            if (currency == null || currency.isEmpty()) {
+                continue;
+            }
+            String currencyLower = currency.toLowerCase();
+            // Containment as well as equality: over-including an item only costs a cache
+            // invalidation, under-including it costs a wrong route.
+            if (lower.equals(currencyLower) || lower.contains(currencyLower)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private int fingerprintInventoryEquipmentBank() {
+        final Set<Integer> ids = transportRelevantItemIds;
+        final Set<String> currencies = transportRelevantCurrencyNames;
         final int[] h = {1};
         Rs2Inventory.items().forEach(item -> {
+            if (!itemAffectsTransportUsability(item.getId(), item.getName(), ids, currencies)) return;
             h[0] = 31 * h[0] + item.getId();
             h[0] = 31 * h[0] + item.getQuantity();
         });
         Rs2Equipment.all().forEach(item -> {
+            if (!itemAffectsTransportUsability(item.getId(), item.getName(), ids, currencies)) return;
             h[0] = 31 * h[0] + item.getId();
             h[0] = 31 * h[0] + item.getQuantity();
         });
         if (useBankItems) {
             Rs2Bank.getAll().forEach(item -> {
+                if (!itemAffectsTransportUsability(item.getId(), item.getName(), ids, currencies)) return;
                 h[0] = 31 * h[0] + item.getId();
                 h[0] = 31 * h[0] + item.getQuantity();
             });
