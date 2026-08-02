@@ -274,4 +274,51 @@ public class WalkerRouteCorpusTest {
                 at != null && at.stream().anyMatch(t ->
                         destination.equals(t.getDestination())));
     }
+
+    // ---- White Wolf Mountain tunnel (Fishing Contest reward) ---------------------------------------
+
+    /** Burthorpe/Taverley-side entrance and the Catherby-side exit of the under-mountain tunnel. */
+    private static final WorldPoint TUNNEL_EAST_SURFACE = new WorldPoint(2877, 3482, 0);
+    private static final WorldPoint TUNNEL_EAST_UNDER = new WorldPoint(2876, 9878, 0);
+    private static final WorldPoint TUNNEL_WEST_UNDER = new WorldPoint(2820, 9882, 0);
+    private static final WorldPoint TUNNEL_WEST_SURFACE = new WorldPoint(2820, 3486, 0);
+
+    /** Tunnel stair object ids from transports.tsv lines 1255-1260. */
+    private static boolean isWhiteWolfTunnel(Transport t) {
+        int id = t.getObjectId();
+        return id == 54 || id == 55 || id == 56 || id == 57;
+    }
+
+    /**
+     * Fishing Contest unlocks the tunnel under White Wolf Mountain. The rows, the collision map and the
+     * pathfinder were all correct — measured here: the cave is walkable end to end and a surface
+     * crossing does route under the mountain once the transport is allowed. What failed live was the
+     * runtime quest gate, because Fishing Contest is tracked by a VARPLAYER and the player-state cache
+     * only refreshed varbit-tracked quests, so completing it mid-session never opened the gate.
+     * <p>
+     * Pinned so a lost row or a collision regression in the cave fails here instead of quietly sending
+     * every Catherby-bound walk back over the mountain.
+     */
+    @Test
+    public void whiteWolfTunnel_isRoutableWhenTheQuestGateOpens() {
+        List<WorldPoint> underground = route(configWith(WalkerRouteCorpusTest::unrestricted),
+                TUNNEL_EAST_UNDER, TUNNEL_WEST_UNDER);
+        assertTrue("the tunnel cave must be walkable end to end",
+                arrives(underground, TUNNEL_WEST_UNDER, 3));
+
+        List<WorldPoint> surface = route(configWith(t -> unrestricted(t) || isWhiteWolfTunnel(t)),
+                TUNNEL_EAST_SURFACE, TUNNEL_WEST_SURFACE);
+        assertTrue("crossing must arrive on the Catherby side", arrives(surface, TUNNEL_WEST_SURFACE, 3));
+        assertTrue("with the tunnel usable the route must go UNDER the mountain",
+                visits(surface, TUNNEL_EAST_UNDER, 5));
+    }
+
+    /** Without the quest-gated tunnel the crossing must NOT dive into the cave. */
+    @Test
+    public void whiteWolfTunnel_notUsedWithoutTheQuest() {
+        List<WorldPoint> surface = route(configWith(WalkerRouteCorpusTest::unrestricted),
+                TUNNEL_EAST_SURFACE, TUNNEL_WEST_SURFACE);
+        assertFalse("a player without Fishing Contest must not be routed through the tunnel",
+                visits(surface, TUNNEL_EAST_UNDER, 5));
+    }
 }

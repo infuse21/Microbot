@@ -11,6 +11,8 @@ import net.runelite.client.eventbus.EventBus;
 import org.junit.Before;
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -158,6 +160,29 @@ public class Rs2PlayerStateCacheTest
 
 		assertEquals(0, cache.getVarpValue(VARP_ID));
 		verify(client, times(1)).getVarpValue(VARP_ID);
+	}
+
+	/**
+	 * Varplayer-tracked quests (Fishing Contest among them) were never matched, so completing one
+	 * mid-session left the cached state at whatever login saw. completedQuests fails closed on a stale
+	 * state, so the quest-gated transport — the White Wolf Mountain tunnel — stayed unusable until relog.
+	 */
+	@Test
+	public void questTrackedByChangedVar_matchesVarplayerNotJustVarbit()
+	{
+		// varbit-tracked quest, varbit event
+		assertTrue(Rs2PlayerStateCache.questTrackedByChangedVar(1234, null, 1234, -1));
+		// varplayer-tracked quest, varp event — the case that was missed
+		assertTrue(Rs2PlayerStateCache.questTrackedByChangedVar(null, 5678, -1, 5678));
+	}
+
+	@Test
+	public void questTrackedByChangedVar_ignoresUnrelatedAndAbsentIds()
+	{
+		assertFalse(Rs2PlayerStateCache.questTrackedByChangedVar(1234, 5678, 9999, 8888));
+		assertFalse(Rs2PlayerStateCache.questTrackedByChangedVar(null, null, 1234, 5678));
+		// -1 is "not present" on the event and must never match a real id
+		assertFalse(Rs2PlayerStateCache.questTrackedByChangedVar(-1, -1, -1, -1));
 	}
 
 	@Test

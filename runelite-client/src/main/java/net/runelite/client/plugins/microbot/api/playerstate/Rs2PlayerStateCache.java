@@ -106,10 +106,36 @@ public final class Rs2PlayerStateCache {
 	 *
 	 * @param event
 	 */
+	/**
+	 * Whether a quest tracked by {@code questVarbitId} / {@code questVarPlayerId} (either may be null)
+	 * is the one this VarbitChanged refers to.
+	 * <p>
+	 * Matching only varbits left every VARPLAYER-tracked quest frozen at whatever
+	 * {@link #populateQuests()} saw at login. Completing one mid-session never updated the cache, and
+	 * {@code TransportRequirementPolicy.completedQuests} fails closed on a stale or null state, so
+	 * quest-gated transports stayed invisible until relog — the White Wolf Mountain tunnel unlocked by
+	 * Fishing Contest (a varplayer quest) being the case that surfaced it. VarbitChanged carries both
+	 * ids; this cache already reads {@code getVarpId()} for its varp map a few lines below.
+	 */
+	static boolean questTrackedByChangedVar(Integer questVarbitId, Integer questVarPlayerId,
+			int eventVarbitId, int eventVarpId) {
+		if (questVarbitId != null && eventVarbitId != -1 && questVarbitId == eventVarbitId) {
+			return true;
+		}
+		return questVarPlayerId != null && eventVarpId != -1 && questVarPlayerId.equals(eventVarpId);
+	}
+
 	private void updateQuest(VarbitChanged event) {
+		// Read the event once: inside the filter these ran for every QuestHelperQuest value on every
+		// VarbitChanged, which is a few hundred redundant accessor calls per game tick.
+		final int changedVarbitId = event.getVarbitId();
+		final int changedVarpId = event.getVarpId();
 		QuestHelperQuest quest = Arrays.stream(QuestHelperQuest.values())
-				.filter(x -> x.getVarbit() != null)
-				.filter(x -> x.getVarbit().getId() == event.getVarbitId())
+				.filter(x -> questTrackedByChangedVar(
+						x.getVarbit() == null ? null : x.getVarbit().getId(),
+						x.getVarPlayer() == null ? null : x.getVarPlayer().getId(),
+						changedVarbitId,
+						changedVarpId))
 				.findFirst()
 				.orElse(null);
 
