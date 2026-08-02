@@ -3507,7 +3507,7 @@ public class QuestingScript extends Script {
         }
 
         Microbot.status = "Following: moving to cover " + (index + 1) + "/" + markers.size();
-        if (!Rs2Walker.walkFastCanvas(markers.get(index))) {
+        if (!canvasClickOnly(markers.get(index))) {
             // Too far to project onto the canvas — cover 3 sits ~14 tiles from cover 2 and simply is
             // not on screen from there. Stage it: canvas-click a tile part way along, and pick the
             // cover up on a later tick once it is in range. Handing this to the walker instead is what
@@ -3516,7 +3516,7 @@ public class QuestingScript extends Script {
             // are both template, even inside the instance.
             WorldPoint here = Rs2Player.getWorldLocation();
             WorldPoint staged = stageToward(here, markers.get(index), FOLLOW_STAGE_TILES);
-            if (staged == null || !Rs2Walker.walkFastCanvas(staged)) {
+            if (staged == null || !canvasClickOnly(staged)) {
                 Rs2Camera.turnTo(npc);
             }
         }
@@ -3525,6 +3525,25 @@ public class QuestingScript extends Script {
 
     /** How far each staged hop reaches when the cover itself is off screen. */
     private static final int FOLLOW_STAGE_TILES = 7;
+
+    /**
+     * A canvas click, and ONLY a canvas click.
+     *
+     * <p>{@link Rs2Walker#walkFastCanvas} silently falls back to a minimap click for an off-screen tile
+     * and still returns true, so "did the canvas click work?" could never be answered and the staging
+     * below was dead code — every distant cover became the minimap walk this step exists to avoid.
+     * Check the projection ourselves and decline instead.
+     */
+    private boolean canvasClickOnly(WorldPoint tile) {
+        LocalPoint local = localForFollowMarker(tile);
+        if (local == null) {
+            return false;
+        }
+        boolean onScreen = Microbot.getClientThread()
+                .runOnClientThreadOptional(() -> Rs2Camera.isTileOnScreen(local))
+                .orElse(false);
+        return onScreen && Rs2Walker.walkFastCanvas(tile);
+    }
 
     /** A point {@code tiles} along the straight line from {@code from} to {@code to}, or null. */
     private static WorldPoint stageToward(WorldPoint from, WorldPoint to, int tiles) {
@@ -3543,8 +3562,13 @@ public class QuestingScript extends Script {
                 from.getPlane());
     }
 
-    /** Tiles the guard must be past before we break cover. */
-    private static final int FOLLOW_ADVANCE_DISTANCE = 6;
+    /**
+     * Tiles the guard must be past before we break cover. Deliberately small: he is safe to travel
+     * behind the moment he sets off, and the leg is exactly the time budget for reaching the next
+     * cover. Waiting for him to get six tiles clear spent most of that budget standing still, so the
+     * hop started late and the long legs were lost outright.
+     */
+    private static final int FOLLOW_ADVANCE_DISTANCE = 2;
     /** No movement for this long means he has stopped at the end of a leg and is looking back. */
     private static final long FOLLOW_GUARD_STILL_MS = 1200;
 
