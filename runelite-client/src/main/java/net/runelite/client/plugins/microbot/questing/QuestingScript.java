@@ -24,6 +24,7 @@ import net.runelite.client.plugins.microbot.questhelper.requirements.Requirement
 import net.runelite.client.plugins.microbot.questhelper.requirements.item.ItemRequirement;
 import net.runelite.client.plugins.microbot.questhelper.steps.*;
 import net.runelite.client.plugins.microbot.questhelper.steps.widget.WidgetHighlight;
+import net.runelite.client.plugins.microbot.questhelper.tools.QuestTile;
 import net.runelite.client.plugins.microbot.util.walker.Rs2PathApi;
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
@@ -2058,6 +2059,14 @@ public class QuestingScript extends Script {
             }
         }
 
+        // A step whose NPC exposes NO menu options is not a "talk to them" step at all — it is a follow
+        // or escort, and the only machine-readable instruction it carries is its tile markers. Clicking
+        // is impossible by construction: Children of the Sun's guard logs
+        // "Action not found. Actions=[]" on every tick while the character stands still.
+        if (npc != null && npcHasNoOptions(npc) && !step.getMarkedTiles().isEmpty()) {
+            return followMarkedTiles(step, npc);
+        }
+
         // Decide whether to interact now or walk closer first:
         //  - instanced region: interact (canReach/LOS are unreliable there).
         //  - on screen AND line of sight: interact (a direct click resolves).
@@ -3391,6 +3400,70 @@ public class QuestingScript extends Script {
         }
 
         return "";
+    }
+
+    /** Whether this NPC exposes no menu options at all — the mark of a follow/escort/cutscene actor. */
+    private boolean npcHasNoOptions(Rs2NpcModel npc) {
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            var comp = Microbot.getClient().getNpcDefinition(npc.getId());
+            if (comp == null || comp.getActions() == null) {
+                return false; // unknown, not "no options" — leave the normal path alone
+            }
+            for (String action : comp.getActions()) {
+                if (action != null && !action.isBlank()) {
+                    return false;
+                }
+            }
+            return true;
+        }).orElse(false);
+    }
+
+    /**
+     * Walks a follow step's marked tiles in order, paced against the NPC being followed.
+     *
+     * <p>These steps hand us a route as tile markers — the hiding spots — and expect the player to move
+     * up one at a time as the target advances. Stay on the current marker while the target is still
+     * nearer to it than to the next one; step forward once the target has passed it. That keeps the
+     * character behind the NPC rather than walking onto it, which is what the stealth check punishes.
+     *
+     * <p>Best effort, and honestly so: the game's real rule involves facing and line of sight that
+     * nothing here models. If it fails the section the quest simply restarts it, so a wrong guess costs
+     * a retry rather than progress.
+     */
+    private boolean followMarkedTiles(NpcStep step, Rs2NpcModel npc) {
+        List<WorldPoint> markers = step.getMarkedTiles().stream()
+                .map(QuestTile::getWorldPoint)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+        WorldPoint player = Rs2Player.getWorldLocation();
+        WorldPoint target = npc.getWorldLocation();
+        if (markers.isEmpty() || player == null || target == null) {
+            return false;
+        }
+
+        // The marker the target has NOT yet passed: the first whose distance from the NPC is not
+        // beaten by a later one. Ordering is the quest author's, so index order is route order.
+        int aim = markers.size() - 1;
+        for (int i = 0; i < markers.size(); i++) {
+            if (target.distanceTo2D(markers.get(i)) <= target.distanceTo2D(markers.get(Math.min(i + 1, markers.size() - 1)))) {
+                aim = i;
+                break;
+            }
+        }
+        WorldPoint destination = markers.get(aim);
+
+        if (player.equals(destination)) {
+            Microbot.status = "Waiting at cover for " + npc.getName();
+            return false; // in position; hold until the target moves on and the aim advances
+        }
+
+        if (System.currentTimeMillis() - lastApproachWarnLog > 3000) {
+            lastApproachWarnLog = System.currentTimeMillis();
+            Microbot.log("[Questing] follow step: moving to cover " + (aim + 1) + "/" + markers.size()
+                    + " at " + destination + " (target " + npc.getName() + " at " + target + ")", Level.WARN);
+        }
+        Rs2Walker.walkTo(destination, 0);
+        return false;
     }
 
     private String chooseCorrectNPCOption(QuestStep step, Rs2NpcModel npc) {

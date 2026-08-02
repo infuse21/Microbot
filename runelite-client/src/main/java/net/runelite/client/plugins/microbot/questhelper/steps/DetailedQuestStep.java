@@ -89,6 +89,10 @@ public class DetailedQuestStep extends QuestStep
 	@Setter
 	protected List<WorldPoint> worldLinePoints;
 
+	// MICROBOT: exposed so the questing executor can read a step's marked tiles. Follow/stealth steps
+	// carry their route as tile markers and their NPC has no interaction options at all, so the markers
+	// are the only machine-readable instruction the step has.
+	@Getter
 	private final List<QuestTile> markedTiles = new ArrayList<>();
 
 	@Getter
