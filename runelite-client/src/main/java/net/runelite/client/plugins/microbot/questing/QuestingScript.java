@@ -3441,6 +3441,28 @@ public class QuestingScript extends Script {
      * <p>Best effort, and honestly so: the real rule involves facing and sight lines nothing here
      * models. Failing the section restarts it, so a wrong guess costs a retry rather than progress.
      */
+    /**
+     * Drives a stealth-follow section to completion in its own loop, rather than one decision per tick.
+     *
+     * <p>The ordinary quest tick runs about every five seconds — measured on this very step, consecutive
+     * evaluations landed at 43:25, 43:36, 43:43, 43:48, 43:53, 43:58, 44:02, 44:07. The guard's patrol
+     * runs on a far shorter clock than that, so a tick-driven rule cannot see it, let alone act inside
+     * it: the run that produced those timestamps set off from the end of a leg at 43:49 and we did not
+     * notice until 44:07, eighteen seconds and one whole leg later. The player stood on the first cover
+     * for thirty seconds without moving. No amount of tuning the rule fixes a sampling rate that coarse,
+     * which is why five successive attempts at the timing all failed in different directions.
+     *
+     * <p>So this blocks the tick and polls at {@link #FOLLOW_POLL_MS} instead. Blocking is safe here
+     * because the section owns the character for its duration — there is no other quest work to do while
+     * it runs — and the loop still yields to a pause, to the step changing under it, and to a hard
+     * timeout.
+     *
+     * <p>Measured behaviour of the guard (agent-server capture, id 12661): he walks a leg, stops for
+     * roughly nine seconds, turns a full 180° to look back down his own path, holds, turns away, and
+     * walks on. Orientation is standard (0 south, 512 west, 1024 north, 1536 east) and the turn shows up
+     * as {@code orientation} and {@code currentOrientation} diverging while it is in progress. The nine
+     * second pause is generous; the difficulty was never the margin, only being able to observe it.
+     */
     private boolean followMarkedTiles(NpcStep step, Rs2NpcModel npc) {
         List<WorldPoint> markers = step.getMarkedTiles().stream()
                 .map(QuestTile::getWorldPoint)
@@ -3452,80 +3474,104 @@ public class QuestingScript extends Script {
         if (followStep != step) {
             followStep = step;
             followMarkerIndex = 0;
-            followGuardLastLocal = null;
-            followGuardMovedAt = System.currentTimeMillis();
-            followGuardWasStopped = false;
         }
 
-        LocalPoint npcLocal = npc.getLocalLocation();
-        LocalPoint playerLocal = Microbot.getClient().getLocalPlayer() == null
-                ? null : Microbot.getClient().getLocalPlayer().getLocalLocation();
-        if (npcLocal == null || playerLocal == null) {
-            return false;
-        }
+        final int guardId = npc.getId();
+        final String stepTextAtEntry = activeStepText();
+        final long deadline = System.currentTimeMillis() + FOLLOW_SECTION_TIMEOUT_MS;
+        Microbot.log("[Questing] follow step: entering follow loop, " + markers.size()
+                + " covers, guard id=" + guardId, Level.WARN);
 
-        int index = Math.min(followMarkerIndex, markers.size() - 1);
-        LocalPoint coverLocal = localForFollowMarker(markers.get(index));
-        if (coverLocal == null) {
-            return false;
-        }
+        // Assume he is walking to begin with, so the first poll cannot be mistaken for him setting off.
+        boolean guardWasMoving = true;
 
-        int playerToCover = localDistance(playerLocal, coverLocal);
+        while (System.currentTimeMillis() < deadline) {
+            if (paused() || !isRunning() || !Microbot.isLoggedIn()) {
+                return false;
+            }
+            // The section ending is what changes the step under us; that is the loop's success exit.
+            if (!Objects.equals(stepTextAtEntry, activeStepText())) {
+                Microbot.log("[Questing] follow step: step changed — section complete", Level.WARN);
+                return true;
+            }
 
-        // Is he walking? He patrols a leg, stops at the end, turns to look back, then moves on. The turn
-        // is the check, so the only safe time to be crossing open ground is while he is still walking
-        // away — and a whole leg is ample to reach the next cover. Tracked by his own position changing,
-        // which needs no animation or facing data.
-        boolean guardMoving = followGuardLastLocal == null
-                || localDistance(followGuardLastLocal, npcLocal) > 0;
-        if (guardMoving) {
-            followGuardMovedAt = System.currentTimeMillis();
-        }
-        followGuardLastLocal = npcLocal;
-        boolean guardStopped = System.currentTimeMillis() - followGuardMovedAt > FOLLOW_GUARD_STILL_MS;
+            Rs2NpcModel guard = Microbot.getRs2NpcCache().query().withId(guardId).nearestOnClientThread();
+            if (guard == null) {
+                Microbot.log("[Questing] follow step: guard despawned — leaving follow loop", Level.WARN);
+                return true;
+            }
 
-        // Advance on the moment he SETS OFF again, not on how far away he is. His patrol is
-        // walk-a-leg, stop, turn and look, walk on — so the safe window opens the instant he starts the
-        // next leg, and it opens at the same instant regardless of how long that leg is. Distance was
-        // the wrong instrument: six tiles clear was so late the long legs were unwinnable, two tiles was
-        // early enough to break cover while he was still looking. This edge has no threshold to tune.
-        boolean setOffAgain = followGuardWasStopped && !guardStopped;
-        followGuardWasStopped = guardStopped;
-        if (setOffAgain && playerToCover <= 1 && index < markers.size() - 1) {
-            followMarkerIndex = index + 1;
-            if (System.currentTimeMillis() - lastApproachWarnLog > 2000) {
-                lastApproachWarnLog = System.currentTimeMillis();
+            int index = Math.min(followMarkerIndex, markers.size() - 1);
+            LocalPoint coverLocal = localForFollowMarker(markers.get(index));
+            LocalPoint playerLocal = Microbot.getClientThread()
+                    .runOnClientThreadOptional(() -> Microbot.getClient().getLocalPlayer() == null
+                            ? null : Microbot.getClient().getLocalPlayer().getLocalLocation())
+                    .orElse(null);
+            if (coverLocal == null || playerLocal == null) {
+                sleep(FOLLOW_POLL_MS);
+                continue;
+            }
+            int playerToCover = localDistance(playerLocal, coverLocal);
+
+            // Whether he is walking, straight from his pose: an actor whose pose animation differs from
+            // its idle pose is moving. That is a per-tick fact read off the actor, not a timer over
+            // sampled positions, so it needs no threshold and cannot lag behind the poll.
+            boolean guardMoving = guard.isMoving();
+
+            // Advance on the moment he SETS OFF again, not on how far away he is. The safe window opens
+            // the instant he starts the next leg, and it opens at that same instant regardless of how
+            // long the leg turns out to be. Distance was the wrong instrument: six tiles clear was so
+            // late the long legs were unwinnable, two tiles broke cover while he was still looking. This
+            // edge has nothing left to tune.
+            if (guardMoving && !guardWasMoving && playerToCover <= 1 && index < markers.size() - 1) {
+                followMarkerIndex = index + 1;
                 Microbot.log("[Questing] follow step: guard set off from cover " + (index + 1)
                         + " — advancing to " + (followMarkerIndex + 1) + "/" + markers.size(), Level.WARN);
+                guardWasMoving = true;
+                continue;
             }
-            return false;
-        }
+            guardWasMoving = guardMoving;
 
-        if (playerToCover <= 1) {
-            Microbot.status = "Following: holding cover " + (index + 1) + "/" + markers.size();
-            return false;
-        }
-
-        // Short of cover and he has stopped — freeze. Moving now is what he turns round to catch.
-        if (guardStopped) {
-            Microbot.status = "Following: frozen, guard is looking back";
-            return false;
-        }
-
-        Microbot.status = "Following: moving to cover " + (index + 1) + "/" + markers.size();
-        if (!canvasClickOnly(markers.get(index))) {
-            // Too far to project onto the canvas — cover 3 sits ~14 tiles from cover 2 and simply is
-            // not on screen from there. Stage it: canvas-click a tile part way along, and pick the
-            // cover up on a later tick once it is in range. Handing this to the walker instead is what
-            // produced "Minimap click target was outside clip; used reachable fallback" and a route
-            // march. Interpolating is safe in template space — the marker and Rs2Player.getWorldLocation
-            // are both template, even inside the instance.
-            WorldPoint here = Rs2Player.getWorldLocation();
-            WorldPoint staged = stageToward(here, markers.get(index), FOLLOW_STAGE_TILES);
-            if (staged == null || !canvasClickOnly(staged)) {
-                Rs2Camera.turnTo(npc);
+            if (playerToCover <= 1) {
+                Microbot.status = "Following: holding cover " + (index + 1) + "/" + markers.size();
+                sleep(FOLLOW_POLL_MS);
+                continue;
             }
+
+            // Short of cover and he has stopped — freeze. Moving now is what he turns round to catch.
+            // Freezing is simply declining to click: any hop already in flight ends on a tile we chose.
+            if (!guardMoving) {
+                Microbot.status = "Following: frozen, guard is looking back";
+                sleep(FOLLOW_POLL_MS);
+                continue;
+            }
+
+            // Already en route — re-clicking the same tile every poll would only restart the path.
+            if (Rs2Player.isMoving()) {
+                Microbot.status = "Following: crossing to cover " + (index + 1) + "/" + markers.size();
+                sleep(FOLLOW_POLL_MS);
+                continue;
+            }
+
+            Microbot.status = "Following: moving to cover " + (index + 1) + "/" + markers.size();
+            if (!canvasClickOnly(markers.get(index))) {
+                // Too far to project onto the canvas — cover 3 sits ~14 tiles from cover 2 and simply is
+                // not on screen from there. Stage it: canvas-click a tile part way along, and pick the
+                // cover up on a later poll once it is in range. Handing this to the walker instead is
+                // what produced "Minimap click target was outside clip; used reachable fallback" and a
+                // route march. Interpolating is safe in template space — the marker and
+                // Rs2Player.getWorldLocation are both template, even inside the instance.
+                WorldPoint here = Rs2Player.getWorldLocation();
+                WorldPoint staged = stageToward(here, markers.get(index), FOLLOW_STAGE_TILES);
+                if (staged == null || !canvasClickOnly(staged)) {
+                    Rs2Camera.turnTo(guard);
+                }
+            }
+            sleep(FOLLOW_POLL_MS);
         }
+
+        Microbot.log("[Questing] follow step: timed out after "
+                + (FOLLOW_SECTION_TIMEOUT_MS / 1000) + "s — handing back to the tick", Level.WARN);
         return false;
     }
 
@@ -3568,12 +3614,14 @@ public class QuestingScript extends Script {
                 from.getPlane());
     }
 
-    /** No movement for this long means he has stopped at the end of a leg and is looking back. */
-    private static final long FOLLOW_GUARD_STILL_MS = 1200;
+    /**
+     * How often the follow loop re-reads the guard. Fast enough that the instant he sets off is caught
+     * within a fraction of a game tick, which is the whole point of taking this off the quest tick.
+     */
+    private static final int FOLLOW_POLL_MS = 200;
 
-    private LocalPoint followGuardLastLocal = null;
-    private long followGuardMovedAt = 0;
-    private boolean followGuardWasStopped = false;
+    /** Upper bound on a follow section, so a change in the quest can never strand the loop. */
+    private static final long FOLLOW_SECTION_TIMEOUT_MS = 300_000;
 
     private LocalPoint localForFollowMarker(WorldPoint marker) {
         return Microbot.getClientThread().runOnClientThreadOptional(() -> {
