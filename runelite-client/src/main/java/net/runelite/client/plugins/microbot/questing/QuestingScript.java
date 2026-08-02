@@ -2518,25 +2518,47 @@ public class QuestingScript extends Script {
             approachArrived = true;
         }
 
-        // The approach finished but the object still isn't clickable from here (no line of sight, not
-        // reachable). Yield rather than clicking through whatever is in the way — the tick retries, and
-        // the log names the object so a genuinely impossible approach is visible instead of silent.
+        // The approach finished but every oracle still says "not clickable". Two very different cases
+        // hide in here, and only distance tells them apart.
+        boolean clickDespiteOracles = false;
         if (approachArrived && !canInteractWithObject(object, step.getObjectID())
                 && !canServerPathTo(object)) {
-            if (System.currentTimeMillis() - lastApproachWarnLog > 3000) {
-                lastApproachWarnLog = System.currentTimeMillis();
-                Microbot.log("[Questing] approach finished but object not clickable yet: id="
-                        + (object == null ? "-" : object.getId())
-                        + " at " + (object == null ? "-" : object.getWorldLocation()), Level.WARN);
+            // Standing beside the target with the oracles all refusing means the ORACLES are out of
+            // information, not that the click is bad: Plague City's sewer pipe sits in the wall with
+            // its own tile AND its only orthogonal tile blocked in collision, so adjacency, line of
+            // sight and the BFS all correctly compute "unreachable" — while the game accepts the click
+            // from the diagonal, because objects carry interaction rules tile geometry cannot see.
+            // Click anyway and let the game adjudicate: a genuinely bad click answers "I can't reach
+            // that!", which blacklists this tile and re-runs the approach. One wasted click beats the
+            // permanent stall this guard used to be.
+            WorldArea fp = object == null ? null : object.getFootprint();
+            WorldPoint here = Rs2Player.getWorldLocation();
+            if (fp != null && here != null && here.distanceTo2D(nearestFootprintTile(here, fp)) <= 2) {
+                clickDespiteOracles = true;
+                if (System.currentTimeMillis() - lastApproachWarnLog > 3000) {
+                    lastApproachWarnLog = System.currentTimeMillis();
+                    Microbot.log("[Questing] beside object id=" + object.getId()
+                            + " with every reachability oracle refusing — clicking anyway and letting"
+                            + " the game decide", Level.WARN);
+                }
+            } else {
+                // Genuinely far or the object never resolved — yield; the tick retries, and the log
+                // names the object so an impossible approach is visible instead of silent.
+                if (System.currentTimeMillis() - lastApproachWarnLog > 3000) {
+                    lastApproachWarnLog = System.currentTimeMillis();
+                    Microbot.log("[Questing] approach finished but object not clickable yet: id="
+                            + (object == null ? "-" : object.getId())
+                            + " at " + (object == null ? "-" : object.getWorldLocation()), Level.WARN);
+                }
+                return false;
             }
-            return false;
         }
 
         // Once we're standing next to a reachable object, click it — don't gate on the on-screen/LOS
         // heuristic. Full-tile objects (e.g. a searchable pile of books) block line-of-sight to their own
         // tile, and the snapshot's local/canvas location can be unresolved, so that heuristic goes all-false
         // and we fall through to walkTo() forever, nudging in place next to the target and never interacting.
-        if (canInteractWithObject(object, step.getObjectID()) || canServerPathTo(object)) {
+        if (clickDespiteOracles || canInteractWithObject(object, step.getObjectID()) || canServerPathTo(object)) {
             Rs2Walker.clearWalkingRoute("quest-helper:object-step-interact");
 
             // Re-resolve the object fresh from the live cache right before clicking, by the STEP's target
