@@ -3623,34 +3623,38 @@ public class QuestingScript extends Script {
 
             Microbot.status = "Following: moving to cover " + (index + 1) + "/" + markers.size();
 
-            // Head for the next waypoint on the step's AUTHORED route, not straight at the cover.
+            // Click the COVER itself and let the server path, which is what a human does. A manual run
+            // of this section shows one click per leg and the server producing a clean L or diagonal —
+            // cover 1 to cover 2 went east along y=3428 then south along x=3240, cover 3 to cover 4 went
+            // diagonally to (3236,3395) then south. No intermediate targets at any point.
             //
-            // Interpolating towards the cover is pure geometry and knows nothing about walls, so it
-            // staged us onto a tile inside a shop: the server pathed in through the door and out the far
-            // side, leaving us in the open when the guard stopped and turned, and the section reset. The
-            // shipped route exists precisely because the safe path is not a straight line — Children of
-            // the Sun's final segment runs south to (3238,3390), east to (3248,3390), then north to
-            // (3248,3396) to get round that same building.
-            //
-            // Falls back to the old interpolation when a step ships no usable route, which is no worse
-            // than before for such a step.
+            // Only when the cover is off screen is anything else needed, and then it must be the step's
+            // AUTHORED route, never a geometric guess. Both available guesses walk into buildings:
+            // interpolating towards the cover staged us onto (3238,3396), inside a shop, and
+            // Rs2Walker's own off-screen fallback scales a radius towards the target and filters to
+            // REACHABLE tiles, which a tile inside a shop is — through the door. The shipped route
+            // exists because the safe path is not a straight line; the final segment runs south to
+            // (3238,3390), east to (3248,3390), then north to (3248,3396) to get round that building.
             WorldPoint here = Rs2Player.getWorldLocation();
-            WorldPoint target = nextRouteWaypoint(step, markers, index, here);
-            if (target == null) {
-                target = markers.get(index);
-            }
-            if (!canvasClickOnly(target)) {
-                // Still off screen: interpolate towards the WAYPOINT rather than the cover. The route's
-                // legs are straight, so a point part way along one stays on the route.
-                WorldPoint staged = stageToward(here, target, FOLLOW_STAGE_TILES);
-                if (staged == null || !canvasClickOnly(staged)) {
-                    Rs2Camera.turnTo(guard);
+            WorldPoint cover = markers.get(index);
+            WorldPoint target = cover;
+            if (!canvasClickOnly(cover)) {
+                WorldPoint waypoint = nextRouteWaypoint(step, markers, index, here);
+                target = waypoint != null ? waypoint : cover;
+                if (waypoint == null || !canvasClickOnly(waypoint)) {
+                    // Last resort. Interpolating towards a waypoint at least runs along a route leg,
+                    // which is straight, rather than cutting across whatever happens to be in the way.
+                    WorldPoint staged = stageToward(here, target, FOLLOW_STAGE_TILES);
+                    if (staged == null || !canvasClickOnly(staged)) {
+                        Rs2Camera.turnTo(guard);
+                    }
                 }
             }
             if (System.currentTimeMillis() - lastFollowClickLog > 1200) {
                 lastFollowClickLog = System.currentTimeMillis();
                 Microbot.log("[Questing] follow step: cover " + (index + 1) + "/" + markers.size()
-                        + " at " + markers.get(index) + " via waypoint " + target + " from " + here,
+                        + " at " + cover + (target.equals(cover) ? " direct" : " via waypoint " + target)
+                        + " from " + here,
                         Level.WARN);
             }
             sleep(FOLLOW_POLL_MS);
@@ -3724,17 +3728,19 @@ public class QuestingScript extends Script {
      * so a step whose route has a different number of segments than it has markers is simply declined
      * instead of silently walking the wrong one.
      *
-     * <p>Within the matched segment the target is the first waypoint we have not already reached, which
+     * <p>Within the matched segment the target is the waypoint after the one we are nearest to, which
      * makes progress along the route monotonic without needing to remember where we were.
      */
     private WorldPoint nextRouteWaypoint(NpcStep step, List<WorldPoint> markers, int index,
                                          WorldPoint here) {
-        List<WorldPoint> route = step.getLinePoints();
-        if (route == null || route.isEmpty() || here == null) {
+        return nextRouteWaypoint(step.getLinePoints(), markers.get(index), here);
+    }
+
+    /** @see #nextRouteWaypoint(NpcStep, List, int, WorldPoint) */
+    static WorldPoint nextRouteWaypoint(List<WorldPoint> route, WorldPoint cover, WorldPoint here) {
+        if (route == null || route.isEmpty() || cover == null || here == null) {
             return null;
         }
-        WorldPoint cover = markers.get(index);
-
         List<WorldPoint> segment = new ArrayList<>();
         for (WorldPoint point : route) {
             if (point == null) {
@@ -3751,12 +3757,31 @@ public class QuestingScript extends Script {
             return null;
         }
 
-        for (WorldPoint waypoint : segment) {
-            if (waypoint.distanceTo(here) > 1) {
-                return waypoint;
+        // Head for the waypoint we are nearest to, and only move on to the next once we have actually
+        // REACHED it. Both halves of that matter, and each was got wrong in turn:
+        //
+        //  - "the first waypoint more than a tile away" cannot tell a waypoint not yet reached from one
+        //    already walked past. Standing on (3233,3429), the middle of segment 1, it returned that
+        //    segment's own start (3225,3429) eight tiles behind, walking the character back towards
+        //    Alina until the guard was far enough ahead to fail the step.
+        //
+        //  - "the waypoint after the nearest" assumes we are standing on the nearest one. Two tiles
+        //    short of it we skip it instead: from cover 4 that targets (3248,3390) rather than
+        //    (3238,3390) first, cutting the corner off the dog-leg and heading straight back through the
+        //    very building the route goes round.
+        int nearest = 0;
+        int nearestDistance = Integer.MAX_VALUE;
+        for (int i = 0; i < segment.size(); i++) {
+            int distance = segment.get(i).distanceTo(here);
+            if (distance < nearestDistance) {
+                nearestDistance = distance;
+                nearest = i;
             }
         }
-        return cover;
+        if (nearestDistance <= 1 && nearest + 1 < segment.size()) {
+            return segment.get(nearest + 1);
+        }
+        return segment.get(nearest);
     }
 
     /** A point {@code tiles} along the straight line from {@code from} to {@code to}, or null. */
