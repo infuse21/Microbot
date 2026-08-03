@@ -236,7 +236,6 @@ public class PathfinderConfig {
      * run, which makes the fingerprint fall back to hashing everything.
      */
     private volatile Set<Integer> transportRelevantItemIds = null;
-    private volatile Set<String> transportRelevantCurrencyNames = null;
 
     /**
      * The item ids usability depends on that are NOT declared on any transport row: the fairy-ring
@@ -603,8 +602,23 @@ public class PathfinderConfig {
             }
         }
         relevantItemIds.addAll(HARDCODED_USABILITY_ITEM_IDS);
-        transportRelevantItemIds = Collections.unmodifiableSet(relevantItemIds);
-        transportRelevantCurrencyNames = Collections.unmodifiableSet(relevantCurrencyNames);
+        // Resolve currency to ids HERE, once, rather than comparing item names during fingerprinting —
+        // reading an item's name loads its composition on the client thread. An unresolvable currency
+        // disables the narrowing rather than losing that currency's invalidation.
+        boolean allCurrenciesResolved = true;
+        for (String currency : relevantCurrencyNames) {
+            int id = currencyItemId(currency);
+            if (id > 0) {
+                relevantItemIds.add(id);
+            } else {
+                log.warn("[Walker] transport currency '{}' has no known item id — transport-refresh cache "
+                        + "key falls back to fingerprinting every item", currency);
+                allCurrenciesResolved = false;
+            }
+        }
+        transportRelevantItemIds = allCurrenciesResolved
+                ? Collections.unmodifiableSet(relevantItemIds)
+                : null;
 
         refreshBoostedLevels = new int[SKILLS.length];
         Map<Integer, Integer> varplayerValues = new HashMap<>();
@@ -1944,54 +1958,55 @@ public class PathfinderConfig {
      * is matched by NAME, not id, so ids alone would silently stop coin changes invalidating the
      * cache and leave a stale "you can afford this" verdict.
      *
-     * @param itemName may be null; only consulted for the currency comparison
+     * Deliberately takes an ITEM ID only. An earlier version also compared {@code item.getName()}
+     * against the currency names, which was a client-thread stall in disguise: {@link
+     * net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel#getName()} lazily loads the item
+     * composition through {@code runOnClientThread}, so fingerprinting a full bank fired hundreds of
+     * client-thread round-trips per cache-key computation and every other script's queued task timed
+     * out at once. Currency is resolved to ids at collection time instead — see
+     * {@link #currencyItemId(String)} — so this stays pure arithmetic.
      */
-    static boolean itemAffectsTransportUsability(int itemId, String itemName,
-                                                 Set<Integer> relevantItemIds,
-                                                 Set<String> relevantCurrencyNames) {
-        // Sets not built yet (first key is computed before the first refresh) — fingerprint
-        // everything, which is exactly the old behaviour.
-        if (relevantItemIds == null || relevantCurrencyNames == null) {
-            return true;
+    static boolean itemAffectsTransportUsability(int itemId, Set<Integer> relevantItemIds) {
+        // Null set = not built yet, or a currency we could not resolve: fingerprint everything, which
+        // is exactly the old behaviour and never under-invalidates.
+        return relevantItemIds == null || relevantItemIds.contains(itemId);
+    }
+
+    /**
+     * Currency name to item id, mirroring the banking planner's resolver. Returns -1 for anything
+     * unknown, which disables the narrowing entirely rather than silently dropping that currency's
+     * invalidation.
+     */
+    private static int currencyItemId(String currencyName) {
+        if (currencyName == null || currencyName.trim().isEmpty()) {
+            return -1;
         }
-        if (relevantItemIds.contains(itemId)) {
-            return true;
+        switch (currencyName.trim().toLowerCase()) {
+            case "coins":
+                return ItemID.COINS;
+            case "ecto-token":
+                return ItemID.ECTOTOKEN;
+            default:
+                return -1;
         }
-        if (itemName == null || itemName.isEmpty()) {
-            return false;
-        }
-        String lower = itemName.toLowerCase();
-        for (String currency : relevantCurrencyNames) {
-            if (currency == null || currency.isEmpty()) {
-                continue;
-            }
-            String currencyLower = currency.toLowerCase();
-            // Containment as well as equality: over-including an item only costs a cache
-            // invalidation, under-including it costs a wrong route.
-            if (lower.equals(currencyLower) || lower.contains(currencyLower)) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private int fingerprintInventoryEquipmentBank() {
         final Set<Integer> ids = transportRelevantItemIds;
-        final Set<String> currencies = transportRelevantCurrencyNames;
         final int[] h = {1};
         Rs2Inventory.items().forEach(item -> {
-            if (!itemAffectsTransportUsability(item.getId(), item.getName(), ids, currencies)) return;
+            if (!itemAffectsTransportUsability(item.getId(), ids)) return;
             h[0] = 31 * h[0] + item.getId();
             h[0] = 31 * h[0] + item.getQuantity();
         });
         Rs2Equipment.all().forEach(item -> {
-            if (!itemAffectsTransportUsability(item.getId(), item.getName(), ids, currencies)) return;
+            if (!itemAffectsTransportUsability(item.getId(), ids)) return;
             h[0] = 31 * h[0] + item.getId();
             h[0] = 31 * h[0] + item.getQuantity();
         });
         if (useBankItems) {
             Rs2Bank.getAll().forEach(item -> {
-                if (!itemAffectsTransportUsability(item.getId(), item.getName(), ids, currencies)) return;
+                if (!itemAffectsTransportUsability(item.getId(), ids)) return;
                 h[0] = 31 * h[0] + item.getId();
                 h[0] = 31 * h[0] + item.getQuantity();
             });

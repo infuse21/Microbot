@@ -205,10 +205,9 @@ public class PathfinderConfigTransportRefreshHashTest {
 
     // ---- transport-relevant item filter (transport-refresh cache key) --------------------------------
 
+    /** Ids a transport gates on, plus Coins resolved from the currency column at collection time. */
     private static final Set<Integer> RELEVANT_IDS =
-            Collections.unmodifiableSet(new HashSet<>(Arrays.asList(1856, 954)));
-    private static final Set<String> COIN_CURRENCY =
-            Collections.unmodifiableSet(new HashSet<>(Collections.singletonList("Coins")));
+            Collections.unmodifiableSet(new HashSet<>(Arrays.asList(1856, 954, net.runelite.api.gameval.ItemID.COINS)));
 
     /**
      * The whole point: an item no transport gates on must not touch the key, or ordinary inventory
@@ -217,39 +216,29 @@ public class PathfinderConfigTransportRefreshHashTest {
      */
     @Test
     public void irrelevantItemDoesNotAffectTransportUsability() {
-        assertFalse(PathfinderConfig.itemAffectsTransportUsability(
-                995000, "Raw shrimps", RELEVANT_IDS, COIN_CURRENCY));
+        assertFalse(PathfinderConfig.itemAffectsTransportUsability(995000, RELEVANT_IDS));
     }
 
     @Test
     public void declaredItemRequirementAffectsTransportUsability() {
-        assertTrue(PathfinderConfig.itemAffectsTransportUsability(
-                1856, "Shantay pass", RELEVANT_IDS, COIN_CURRENCY));
+        assertTrue(PathfinderConfig.itemAffectsTransportUsability(1856, RELEVANT_IDS));
     }
 
     /**
-     * Currency is matched by NAME in hasRequiredItems/useTransport, never by id, so an id-only filter
-     * would stop coin changes invalidating the cache and leave a stale "you can afford this" verdict —
-     * a wrong route rather than a crash.
+     * Currency must still invalidate, but by ID — comparing item NAMES here called
+     * Rs2ItemModel.getName(), which lazily loads the composition on the client thread, so
+     * fingerprinting a full bank fired hundreds of round-trips and every script's queued task timed
+     * out at once. Currency is resolved to ids once at collection time instead.
      */
     @Test
-    public void currencyIsMatchedByNameNotId() {
+    public void currencyAffectsUsabilityByResolvedId() {
         assertTrue(PathfinderConfig.itemAffectsTransportUsability(
-                617, "Coins", RELEVANT_IDS, COIN_CURRENCY));
-        // Stacked coins render as "Coins" but the id varies by stack size; name matching covers it.
-        assertTrue(PathfinderConfig.itemAffectsTransportUsability(
-                1004, "Coins", RELEVANT_IDS, COIN_CURRENCY));
+                net.runelite.api.gameval.ItemID.COINS, RELEVANT_IDS));
     }
 
-    /** Before the first refresh the sets are null, and the filter must degrade to the old behaviour. */
+    /** Null set — sets not built yet, or a currency that would not resolve — must fingerprint all. */
     @Test
-    public void unknownRelevantSetsFingerprintEverything() {
-        assertTrue(PathfinderConfig.itemAffectsTransportUsability(995000, "Raw shrimps", null, COIN_CURRENCY));
-        assertTrue(PathfinderConfig.itemAffectsTransportUsability(995000, "Raw shrimps", RELEVANT_IDS, null));
-    }
-
-    @Test
-    public void nullItemNameIsNotACurrencyMatch() {
-        assertFalse(PathfinderConfig.itemAffectsTransportUsability(995000, null, RELEVANT_IDS, COIN_CURRENCY));
+    public void unknownRelevantSetFingerprintsEverything() {
+        assertTrue(PathfinderConfig.itemAffectsTransportUsability(995000, null));
     }
 }
