@@ -5,9 +5,9 @@ import com.sun.net.httpserver.HttpExchange;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
-import net.runelite.client.plugins.microbot.shortestpath.ShortestPathPlugin;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.PathfinderConfig;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
+import net.runelite.client.plugins.microbot.util.walker.Rs2PathApi;
 
 import java.io.IOException;
 import java.util.LinkedHashMap;
@@ -44,7 +44,7 @@ public class LiveCollisionHandler extends AgentHandler {
             return;
         }
 
-        final PathfinderConfig config = ShortestPathPlugin.getPathfinderConfig();
+        final PathfinderConfig config = Rs2PathApi.getPathfinderConfig();
         if (config == null) {
             sendJson(exchange, 503, errorResponse("Pathfinder not initialised yet"));
             return;

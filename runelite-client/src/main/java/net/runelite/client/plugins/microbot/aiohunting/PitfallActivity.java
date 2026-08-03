@@ -1,7 +1,7 @@
 package net.runelite.client.plugins.microbot.aiohunting;
 
 import java.util.ArrayDeque;
-import java.util.HashSet;
+
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
@@ -82,8 +82,11 @@ final class PitfallActivity
 	private int larupiaFrozenChecks;
 	/** Learned per pit (persisted): the two tiles you jump between, 3 apart across the pit's axis. */
 	private final PitSideMemory pitSides;
-	/** Pits this larupia has already jumped over - it won't take the same one twice in a row. */
-	private final Set<WorldPoint> refusedPits = new HashSet<>();
+	/** The pit this larupia refused most recently. It won't take the same pit twice IN A ROW, so
+	 * only the latest refusal is excluded - it becomes fair again once another pit is attempted,
+	 * which is exactly the lead-it-back-and-forth rotation between two traps. */
+	private WorldPoint lastRefusedPit;
+	private int deaggroChecks;
 	private WorldPoint jumpPitPending;
 	private WorldPoint posBeforeJump;
 	private long lastJumpAt;
@@ -111,7 +114,8 @@ final class PitfallActivity
 		lastJumpedPit = null;
 		lastLarupiaPos = null;
 		larupiaFrozenChecks = 0;
-		refusedPits.clear();
+		lastRefusedPit = null;
+		deaggroChecks = 0;
 		luredPit = null;
 		larupiaSideAtJump = null;
 		jumpPitPending = null;
@@ -283,19 +287,48 @@ final class PitfallActivity
 		// Stick with the larupia we teased, but drop it once it's caught or stops chasing us, so we
 		// always go and tease a fresh one instead of shadowing a larupia that is no longer ours.
 		Rs2NpcModel larupia = teasedIndex >= 0 ? findLarupia(teasedIndex) : null;
-		if (larupia != null && (larupia.getAnimation() == LARUPIA_FALLS_IN_ANIM
-			|| plugin.getLastAnimation(teasedIndex) == LARUPIA_FALLS_IN_ANIM))
+		// Consume the event-recorded outcome FIRST - before any branch can re-tease or drop the
+		// larupia - otherwise a jump-over gets wiped on the way and we loop forever on a pit it
+		// will never take again.
+		if (teasedIndex >= 0)
 		{
-			plugin.clearLastAnimation(teasedIndex);
-			// It's falling into the pit - stand still and let it die, then the collapsed trap gets
-			// dismantled (loot) and re-armed. Jumping now would drag it back off the pit.
-			teasedIndex = -1;
-			return;
+			int recorded = plugin.getLastAnimation(teasedIndex);
+			if (recorded == LARUPIA_FALLS_IN_ANIM
+				|| (larupia != null && larupia.getAnimation() == LARUPIA_FALLS_IN_ANIM))
+			{
+				plugin.clearLastAnimation(teasedIndex);
+				// It's falling into the pit - stand still and let it die, then the collapsed trap
+				// gets dismantled (loot) and re-armed. Jumping now would drag it back off the pit.
+				teasedIndex = -1;
+				return;
+			}
+			if (recorded == LARUPIA_JUMPS_OVER_ANIM)
+			{
+				plugin.clearLastAnimation(teasedIndex);
+				WorldPoint refused = luredPit != null ? luredPit : lastJumpedPit;
+				if (refused != null)
+				{
+					// It cleared this pit; it won't take the same one twice in a row, so the next
+					// attempt must be at another pit (this one becomes fair again after that).
+					lastRefusedPit = refused;
+				}
+				luredPit = null;
+				larupiaSideAtJump = null;
+			}
 		}
 		if (larupia != null && !larupia.isInteracting())
 		{
-			// Lost aggro (or it was never ours) - re-tease.
-			larupia = null;
+			// Deaggro needs a grace period - interacting reads false for a moment mid jump-over,
+			// and instantly re-teasing then would look wrong and churn state.
+			if (++deaggroChecks >= 2)
+			{
+				deaggroChecks = 0;
+				larupia = null;
+			}
+		}
+		else
+		{
+			deaggroChecks = 0;
 		}
 		if (larupia != null && !script.isInsideArea(larupia.getWorldLocation()))
 		{
@@ -313,12 +346,15 @@ final class PitfallActivity
 			}
 			if (larupia.click("Tease"))
 			{
+				if (larupia.getIndex() != teasedIndex)
+				{
+					// A DIFFERENT larupia has no pit history. Re-teasing the SAME one must keep
+					// ours - the game still remembers which pit it refused last.
+					lastRefusedPit = null;
+					lastJumpedPit = null;
+				}
 				teasedIndex = larupia.getIndex();
 				teasedNpcSize = npcSize(larupia);
-				// A fresh larupia has no history - any pit is fair game again, and the old trail
-				// proves nothing about it.
-				refusedPits.clear();
-				lastJumpedPit = null;
 				luredPit = null;
 				larupiaSideAtJump = null;
 				breadcrumbs.clear();
@@ -359,19 +395,6 @@ final class PitfallActivity
 			larupiaFrozenChecks = 0;
 		}
 		lastLarupiaPos = larupiaLoc;
-		// Outcome comes straight from the event-driven animation record, so a one-tick state is never
-		// missed: JUMPED OVER means that pit is spent for this larupia and we must lead it to another.
-		int outcome = plugin.getLastAnimation(teasedIndex);
-		if (outcome == LARUPIA_JUMPS_OVER_ANIM)
-		{
-			plugin.clearLastAnimation(teasedIndex);
-			if (luredPit != null)
-			{
-				refusedPits.add(luredPit);
-				luredPit = null;
-				larupiaSideAtJump = null;
-			}
-		}
 
 		Rs2TileObjectModel pit = pickArmedPit();
 		if (pit == null)
@@ -613,23 +636,17 @@ final class PitfallActivity
 	/** Nearest armed pit that isn't the one the prey last refused; falls back to any armed pit. */
 	private Rs2TileObjectModel pickArmedPit()
 	{
-		// A larupia will only take a given pit once - after an attempt you MUST lead it to another pit
-		// (and back again after that one). So never re-use the pit we just jumped, and skip any this
-		// larupia has already refused. Relying on spotting the jump-over animation is not enough: it
-		// lasts a tick and the loop misses it, which left it jumping the same pit back and forth.
+		// Exclude only the most recently refused pit - it won't take that one again until another
+		// pit has been attempted, at which point it becomes fair game (the A -> B -> A rotation).
 		Rs2TileObjectModel pit = Microbot.getRs2TileObjectCache().query()
 			.where(object -> PIT_IDS.contains(object.getId()))
 			.where(object -> script.isInsideArea(object.getWorldLocation()))
 			.where(object -> isPitNamed(object, ARMED_NAME))
-			.where(object -> !refusedPits.contains(object.getWorldLocation()))
+			.where(object -> !object.getWorldLocation().equals(lastRefusedPit))
 			.nearestOnClientThread();
-		if (pit != null)
-		{
-			return pit;
-		}
-		// Nothing else armed (e.g. the other pit just collapsed) - clear refusals and reuse.
-		refusedPits.clear();
-		return findPitNamed(ARMED_NAME);
+		// null = the only armed pit is the refused one (or none armed yet). Do NOT fall back to the
+		// refused pit - jumping it again is futile; ensurePitsArmed() brings another pit up next tick.
+		return pit;
 	}
 
 	private void chopLogs()
