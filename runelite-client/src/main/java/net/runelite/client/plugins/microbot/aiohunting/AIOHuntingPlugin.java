@@ -17,6 +17,8 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.NPC;
+import net.runelite.api.events.AnimationChanged;
 import net.runelite.api.events.GameObjectSpawned;
 import net.runelite.api.events.StatChanged;
 import net.runelite.client.config.ConfigManager;
@@ -43,7 +45,7 @@ import net.runelite.client.ui.overlay.OverlayManager;
 @Slf4j
 public class AIOHuntingPlugin extends Plugin
 {
-	public static final String VERSION = "1.9.23";
+	public static final String VERSION = "1.12.1";
 
 	private static final long EXPECTED_TRAP_WINDOW_MS = 5000L;
 
@@ -66,6 +68,8 @@ public class AIOHuntingPlugin extends Plugin
 	private ExecutorService controlExecutor;
 
 	private final Set<WorldPoint> ownedTraps = ConcurrentHashMap.newKeySet();
+	/** Latest animation per NPC index, captured event-driven so no one-tick state is ever missed. */
+	private final Map<Integer, Integer> lastNpcAnimation = new ConcurrentHashMap<>();
 	private volatile WorldPoint expectedTrapLocation;
 	private volatile long expectedTrapUntil;
 	private final Map<HuntingMethod, Integer> catches = new EnumMap<>(HuntingMethod.class);
@@ -223,8 +227,43 @@ public class AIOHuntingPlugin extends Plugin
 	public void clearOwnedTraps()
 	{
 		ownedTraps.clear();
+		lastNpcAnimation.clear();
 		expectedTrapLocation = null;
 		expectedTrapUntil = 0L;
+	}
+
+	/**
+	 * Records every NPC animation as it fires. Polling animations from the script loop aliases against
+	 * the 600ms game tick and misses one-tick states outright - which is why pitfall could not tell a
+	 * larupia jumping the pit ({@code 5231}) from one falling in ({@code 5234}). This event is fired
+	 * for every change, so activities can read the exact state instead of inferring it from position.
+	 */
+	@Subscribe
+	public void onAnimationChanged(AnimationChanged event)
+	{
+		if (!isScriptRunning() || !(event.getActor() instanceof NPC))
+		{
+			return;
+		}
+		NPC npc = (NPC) event.getActor();
+		int animation = npc.getAnimation();
+		if (animation != -1)
+		{
+			lastNpcAnimation.put(npc.getIndex(), animation);
+		}
+	}
+
+	/** The most recent animation seen for an NPC index, or -1 if none has been recorded. */
+	public int getLastAnimation(int npcIndex)
+	{
+		Integer animation = lastNpcAnimation.get(npcIndex);
+		return animation == null ? -1 : animation;
+	}
+
+	/** Forget an NPC's recorded animation (e.g. once its outcome has been acted on). */
+	public void clearLastAnimation(int npcIndex)
+	{
+		lastNpcAnimation.remove(npcIndex);
 	}
 
 	@Subscribe
@@ -313,6 +352,7 @@ public class AIOHuntingPlugin extends Plugin
 		lastHunterXp = xp;
 		startedAt = System.currentTimeMillis();
 		ownedTraps.clear();
+		lastNpcAnimation.clear();
 		expectedTrapLocation = null;
 		expectedTrapUntil = 0L;
 		synchronized (catches)

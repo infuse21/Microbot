@@ -98,6 +98,19 @@ public enum OreStage {
                             "members; Shilo Village"),
             }),
 
+    /**
+     * Granite comes out of the rock in three sizes, so all three are listed as products -
+     * banking and dropping have to clear every size or the inventory silently fills up.
+     * The quarry sits in the desert heat zone, so bring waterskins.
+     */
+    GRANITE("Granite", "granite rocks",
+            new String[]{"Granite (500g)", "Granite (2kg)", "Granite (5kg)"},
+            45, true, false, StageRequirement.NONE,
+            new MiningLocation[]{
+                    MiningLocation.members("Desert Quarry", 3170, 2913, "members; desert heat")
+                            .inDesertHeat(),
+            }),
+
     RUBIUM_SPLINTERS("Rubium splinters", "rubium rocks", "Rubium splinters", 48,
             true, false, StageRequirement.skill(Skill.SAILING, 60),
             new MiningLocation[]{
@@ -122,13 +135,6 @@ public enum OreStage {
             true, false, StageRequirement.skill(Skill.SAILING, 60),
             new MiningLocation[]{
                     MiningLocation.members("Charred Dungeon", 2679, 8852, "members; 60 Sailing"),
-            }),
-
-    SOFT_CLAY("Soft clay", "soft clay rocks", "Soft clay", 70, true, false,
-            StageRequirement.quest(Quest.SONG_OF_THE_ELVES),
-            new MiningLocation[]{
-                    MiningLocation.members("Trahaearn Mine", 3293, 12447,
-                            "members; Song of the Elves"),
             }),
 
     ADAMANTITE("Adamantite", "adamantite rocks", "Adamantite ore", 70, false, true,

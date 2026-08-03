@@ -53,7 +53,7 @@ import java.util.function.Function;
 )
 @Slf4j
 public class SimpleMiningPlugin extends Plugin {
-    public static final String version = "1.3.1";
+    public static final String version = "1.5.1";
 
     @Inject
     @Getter
@@ -78,6 +78,13 @@ public class SimpleMiningPlugin extends Plugin {
 
     private int startXp = 0;
     private long startTime = 0;
+    /**
+     * When Mining XP last arrived. The script treats this as proof that a swing is actually
+     * making progress, rather than guessing from how long ago it clicked. Static because the
+     * script reaches this plugin statically, the same way it reads {@link #QUEST_STATES}.
+     */
+    @Getter
+    private static volatile long lastMiningXpAt = 0;
 
     @Provides
     SimpleMiningConfig provideConfig(ConfigManager configManager) {
@@ -263,6 +270,7 @@ public class SimpleMiningPlugin extends Plugin {
     @Subscribe
     public void onStatChanged(StatChanged event) {
         if (event.getSkill() == Skill.MINING) {
+            lastMiningXpAt = System.currentTimeMillis();
             refreshPanel();
         }
     }

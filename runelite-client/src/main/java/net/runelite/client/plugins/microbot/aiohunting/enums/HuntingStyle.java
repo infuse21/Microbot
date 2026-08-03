@@ -11,7 +11,8 @@ public enum HuntingStyle
 	BIRD_HOUSE("Birdhouse run"),
 	HERBIBOAR("Herbiboar"),
 	IMPLING("Impling"),
-	TRACKING("Tracking");
+	TRACKING("Tracking"),
+	PITFALL("Pitfall");
 
 	private final String displayName;
 

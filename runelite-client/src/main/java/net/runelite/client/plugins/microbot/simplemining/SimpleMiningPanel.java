@@ -344,6 +344,8 @@ public class SimpleMiningPanel extends PluginPanel {
                 ? "Uncut gems"
                 : stage == OreStage.INFERNAL_SHALE
                 ? "Crushed infernal shale"
+                : stage == OreStage.GRANITE
+                ? "Granite  ·  500g/2kg/5kg"
                 : stage.getOreName();
         StringBuilder meta = new StringBuilder(productLabel);
         if (stage.isMembersOnly()) {

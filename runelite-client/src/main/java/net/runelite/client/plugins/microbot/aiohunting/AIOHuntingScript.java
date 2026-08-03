@@ -96,6 +96,7 @@ public class AIOHuntingScript extends StateMachineScript<AIOHuntingState>
 	private FalconryActivity falconry;
 	private ImplingActivity impling;
 	private TrapActivity trap;
+	private PitfallActivity pitfall;
 	private int trackingFinishValue;
 	private final Set<WorldPoint> attemptedTrackingEnds = new HashSet<>();
 	private WorldPoint lastTrackingClue;
@@ -126,6 +127,7 @@ public class AIOHuntingScript extends StateMachineScript<AIOHuntingState>
 		this.falconry = new FalconryActivity(config, this);
 		this.impling = new ImplingActivity(config, this);
 		this.trap = new TrapActivity(config, this, plugin);
+		this.pitfall = new PitfallActivity(config, this, plugin);
 		this.trackingEnds = new TrackingEndMemory(plugin.getConfigManager());
 		this.trackingFinishValue = 0;
 		this.attemptedTrackingEnds.clear();
@@ -370,6 +372,7 @@ public class AIOHuntingScript extends StateMachineScript<AIOHuntingState>
 		clusterEmptySince = 0L;
 		lastClusterChangeAt = System.currentTimeMillis();
 		trap.reset();
+		pitfall.reset();
 		plugin.clearOwnedTraps();
 	}
 
@@ -543,6 +546,9 @@ public class AIOHuntingScript extends StateMachineScript<AIOHuntingState>
 				break;
 			case IMPLING:
 				impling.step();
+				break;
+			case PITFALL:
+				pitfall.step();
 				break;
 			case TRACKING:
 				handleTracking();
@@ -838,6 +844,9 @@ public class AIOHuntingScript extends StateMachineScript<AIOHuntingState>
 
 		Set<Integer> keep = retainedItemIds();
 		Rs2Bank.depositAllExcept(keep, Collections.emptyMap());
+		// Wait for the deposit to actually register - closing too early leaves us still full, so the
+		// state machine sends us straight back to the bank for a second, pointless trip.
+		awaitCondition(() -> paused || Rs2Inventory.emptySlotCount() > INVENTORY_BUFFER, 3000);
 		if (config.useHuntsmanKit() && Rs2Inventory.hasItem(Rs2HuntKit.KIT_ITEM_ID)
 			&& !hasRequiredSupplies())
 		{
@@ -857,6 +866,13 @@ public class AIOHuntingScript extends StateMachineScript<AIOHuntingState>
 		{
 			recoveryReason = "Required supplies are missing from the bank";
 			desiredState = AIOHuntingState.RECOVERING;
+			return;
+		}
+		if (needsInventoryCleanup())
+		{
+			// Still full: the deposit did not land. Stay at the open bank and retry next loop rather
+			// than walking all the way back with a full inventory.
+			status = "Retrying deposit";
 			return;
 		}
 		Rs2Bank.closeBank();
@@ -881,6 +897,8 @@ public class AIOHuntingScript extends StateMachineScript<AIOHuntingState>
 				return true;
 			case IMPLING:
 				return impling.withdraw();
+			case PITFALL:
+				return pitfall.withdraw();
 			case TRACKING:
 				return withdrawDeficit(ItemID.NOOSE_WAND, 1);
 			default:
@@ -913,6 +931,8 @@ public class AIOHuntingScript extends StateMachineScript<AIOHuntingState>
 				return true;
 			case IMPLING:
 				return impling.hasSupplies();
+			case PITFALL:
+				return pitfall.hasSupplies();
 			case TRACKING:
 				return Rs2Inventory.hasItem(NOOSE_WAND_IDS)
 					|| Rs2Equipment.isWearing(NOOSE_WAND_IDS);
@@ -976,6 +996,9 @@ public class AIOHuntingScript extends StateMachineScript<AIOHuntingState>
 				break;
 			case IMPLING:
 				impling.collectRetained(keep);
+				break;
+			case PITFALL:
+				pitfall.collectRetained(keep);
 				break;
 			case TRACKING:
 				Arrays.stream(NOOSE_WAND_IDS).forEach(keep::add);

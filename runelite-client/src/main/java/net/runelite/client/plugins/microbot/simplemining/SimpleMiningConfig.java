@@ -5,6 +5,7 @@ import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.ConfigSection;
 import net.runelite.client.config.Range;
+import net.runelite.client.plugins.microbot.simplemining.enums.DesertHeatItem;
 import net.runelite.client.plugins.microbot.simplemining.enums.WorldMode;
 import net.runelite.client.plugins.microbot.simplemining.enums.GeSellPricing;
 import net.runelite.client.plugins.microbot.simplemining.enums.InventoryMode;
@@ -29,8 +30,13 @@ public interface SimpleMiningConfig extends Config {
             position = 3, closedByDefault = true)
     String INFERNAL_SHALE_SECTION = "infernalShale";
 
-    @ConfigSection(name = "Grand Exchange", description = "Selling ore on the GE",
+    @ConfigSection(name = "Desert heat",
+            description = "Staying alive in the Kharidian Desert, used when mining granite",
             position = 4, closedByDefault = true)
+    String DESERT_SECTION = "desert";
+
+    @ConfigSection(name = "Grand Exchange", description = "Selling ore on the GE",
+            position = 5, closedByDefault = true)
     String GE_SECTION = "grandexchange";
 
     // ---- Progression (mode, ore and location are set in the sidebar; hidden but persisted) ----
@@ -123,6 +129,36 @@ public interface SimpleMiningConfig extends Config {
             position = 0, section = INFERNAL_SHALE_SECTION)
     default InfernalShaleMethod infernalShaleMethod() {
         return InfernalShaleMethod.ACTIVE_DEPOSIT;
+    }
+
+    // ---- Desert heat ----
+
+    @ConfigItem(keyName = "desertHeatItem", name = "Wear",
+            description = "Equip this before mining in the desert, taking it from the bank if it "
+                    + "is not already worn. Only the Desert amulet 4 stops heat damage outright; "
+                    + "the circlet of water spends a charge per hit and amulets 1-3 do nothing "
+                    + "for heat, so waterskins are still bought alongside them.",
+            position = 0, section = DESERT_SECTION)
+    default DesertHeatItem desertHeatItem() {
+        return DesertHeatItem.NONE;
+    }
+
+    @ConfigItem(keyName = "buyWaterskins", name = "Keep waterskins stocked",
+            description = "Top waterskins up before heading into the desert: withdraw them from "
+                    + "the bank first, then buy the rest from Shantay at the Shantay Pass. "
+                    + "Skipped while a Desert amulet 4 is worn.",
+            position = 1, section = DESERT_SECTION)
+    default boolean buyWaterskins() {
+        return false;
+    }
+
+    @Range(min = 1, max = 10)
+    @ConfigItem(keyName = "waterskinCount", name = "Waterskins to carry",
+            description = "How many full waterskins to keep in the inventory. Each one holds "
+                    + "four doses and each dose covers one hit of heat.",
+            position = 2, section = DESERT_SECTION)
+    default int waterskinCount() {
+        return 2;
     }
 
     // ---- Grand Exchange ----

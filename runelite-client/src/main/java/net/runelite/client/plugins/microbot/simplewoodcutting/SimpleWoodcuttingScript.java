@@ -68,6 +68,11 @@ public class SimpleWoodcuttingScript extends Script {
     private static final int BANK_WALK_TOLERANCE = 4;
     /** GE booths are wall objects and are not included in the normal bank-object ID set. */
     private static final Set<Integer> GRAND_EXCHANGE_BOOTH_IDS = Set.of(10060, 30389);
+    /**
+     * How long a swing may run without any Woodcutting XP before we assume it is wedged and
+     * click again. Generously above the slowest realistic time between logs.
+     */
+    private static final long CHOP_STALL_TIMEOUT_MS = 45_000;
     /** Abandon a GE sale after this many failed attempts (price lookup or listing). */
     private static final int MAX_SELL_ATTEMPTS = 4;
     private static final Set<Integer> CAMPFIRE_IDS = Set.of(49927, 26185);
@@ -87,6 +92,8 @@ public class SimpleWoodcuttingScript extends Script {
     private volatile String lastFatalError;
 
     private long lastChopTime = 0;
+    /** Refreshed on every click and every XP drop; see {@link #isBusyChopping()}. */
+    private volatile long lastChopProgressAt = 0;
     private volatile TreeLocation travelTarget;
     private volatile TreeStage travelTargetStage;
     private volatile WorldPoint startingLocation;
@@ -116,6 +123,8 @@ public class SimpleWoodcuttingScript extends Script {
         this.lastTreeLocation = null;
         this.lastChoppingArea = null;
         this.cannotLightFire = false;
+        // Assume the axe is already swinging, so starting mid-chop does not fire a stray click.
+        this.lastChopProgressAt = System.currentTimeMillis();
         this.sellAttempts.clear();
         this.unsellable.clear();
         this.state = SimpleWcState.IDLE;
@@ -158,9 +167,7 @@ public class SimpleWoodcuttingScript extends Script {
             }
             state = determineState();
 
-            if (state == SimpleWcState.CHOPPING
-                    && (Rs2Player.isAnimating() || Rs2Player.isInteracting())
-                    && System.currentTimeMillis() - lastChopTime < 12000) {
+            if (state == SimpleWcState.CHOPPING && isBusyChopping()) {
                 return;
             }
             if (Rs2Player.isMoving() && !canInteractWhileMoving(state)) {
@@ -320,15 +327,34 @@ public class SimpleWoodcuttingScript extends Script {
         if (!isInRange(tree)) {
             return; // routed back to TRAVELING next tick
         }
-        if (Rs2Player.isAnimating() && System.currentTimeMillis() - lastChopTime < 12000) {
+        if (isBusyChopping()) {
             return;
         }
         if (tree.click(activeStage.getAction())) {
             lastTreeLocation = tree.getWorldLocation();
             lastChopTime = System.currentTimeMillis();
+            lastChopProgressAt = lastChopTime;
             Rs2Player.waitForXpDrop(Skill.WOODCUTTING, true);
             safeAntibanCooldown();
         }
+    }
+
+    /**
+     * Whether the axe is mid-swing and should be left alone.
+     *
+     * <p>Progress is measured by XP arriving, not by how long ago we clicked. The old fixed
+     * 12s window expired during any normal yew, magic or redwood chop, so the script clicked
+     * again - often onto a different tree - while the current one was still being cut.</p>
+     *
+     * <p>The stall timeout only exists so a wedged animation cannot freeze the script forever;
+     * it is deliberately far longer than the gap between logs on a slow axe.</p>
+     */
+    private boolean isBusyChopping() {
+        if (!Rs2Player.isAnimating() && !Rs2Player.isInteracting()) {
+            return false;
+        }
+        long progressAt = Math.max(lastChopProgressAt, plugin.getLastWoodcuttingXpAt());
+        return System.currentTimeMillis() - progressAt < CHOP_STALL_TIMEOUT_MS;
     }
 
     private void handleBanking() {

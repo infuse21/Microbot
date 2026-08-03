@@ -81,7 +81,7 @@ import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
 )
 @Slf4j
 public class SimpleWoodcuttingPlugin extends Plugin {
-    public static final String version = "1.2.0";
+    public static final String version = "1.2.1";
 
     private static final Pattern SAPLING_MESSAGE =
             Pattern.compile("^The sapling seems to love the (first|second|third).*$");
@@ -108,6 +108,12 @@ public class SimpleWoodcuttingPlugin extends Plugin {
 
     private int startXp = 0;
     private long startTime = 0;
+    /**
+     * When Woodcutting XP last arrived. The script treats this as proof that a swing is
+     * actually making progress, rather than guessing from how long ago it clicked.
+     */
+    @Getter
+    private volatile long lastWoodcuttingXpAt = 0;
 
     private EggEvent eggEvent;
     private EntlingsEvent entlingsEvent;
@@ -300,6 +306,7 @@ public class SimpleWoodcuttingPlugin extends Plugin {
     @Subscribe
     public void onStatChanged(StatChanged event) {
         if (event.getSkill() == Skill.WOODCUTTING) {
+            lastWoodcuttingXpAt = System.currentTimeMillis();
             refreshPanel();
         }
     }

@@ -10,6 +10,7 @@ import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.api.tileobject.models.Rs2TileObjectModel;
+import net.runelite.client.plugins.microbot.simplemining.enums.DesertHeatItem;
 import net.runelite.client.plugins.microbot.simplemining.enums.GeSellPricing;
 import net.runelite.client.plugins.microbot.simplemining.enums.InfernalShaleMethod;
 import net.runelite.client.plugins.microbot.simplemining.enums.InventoryMode;
@@ -26,6 +27,7 @@ import net.runelite.client.plugins.microbot.util.grandexchange.Rs2GrandExchange;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
+import net.runelite.client.plugins.microbot.util.shop.Rs2Shop;
 import net.runelite.client.plugins.microbot.util.tile.Rs2Tile;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 
@@ -53,8 +55,20 @@ public class SimpleMiningScript extends Script {
     private static final int MINE_AREA_RADIUS = 20;
     /** Abandon a GE sale after this many failed attempts rather than retrying forever. */
     private static final int MAX_SELL_ATTEMPTS = 4;
+    /**
+     * How long a swing may run without any Mining XP before we assume it is wedged and click
+     * again. Generously above the slowest realistic time between ores.
+     */
+    private static final long MINE_STALL_TIMEOUT_MS = 45_000;
     /** Ten or more raw shale has a worse expected crushed-shale yield. */
     private static final int INFERNAL_SHALE_BATCH_SIZE = 9;
+    /** Shantay's shop at the Shantay Pass: 100 waterskins in stock at 30gp each. */
+    private static final WorldPoint WATERSKIN_SHOP = new WorldPoint(3303, 3122, 0);
+    private static final String WATERSKIN_SHOP_NPC = "Shantay";
+    private static final String WATERSKIN_ITEM = "Waterskin(4)";
+    /** Coins taken per waterskin ordered - generous headroom over the 30gp shelf price. */
+    private static final int WATERSKIN_COIN_BUDGET = 100;
+    private static final int SHOP_INTERACT_RANGE = 5;
     private static final int[] CLUE_GEODE_IDS = {
             ItemID.CLUE_GEODE_BEGINNER,
             ItemID.CLUE_GEODE_EASY,
@@ -75,6 +89,9 @@ public class SimpleMiningScript extends Script {
     private volatile String stopReason;
 
     private long lastMineTime = 0;
+    /** The rock we clicked, so a re-click is only considered once that rock is gone. */
+    private volatile WorldPoint activeRockLocation;
+    private volatile int activeRockId;
     private volatile MiningLocation travelTarget;
     private volatile OreStage travelTargetStage;
     private volatile String pendingSaleItem;
@@ -90,6 +107,12 @@ public class SimpleMiningScript extends Script {
     private final Map<String, Integer> sellAttempts = new HashMap<>();
     /** Ores we gave up selling - do not re-withdraw them every bank trip. */
     private final Set<String> unsellable = new HashSet<>();
+    /**
+     * Set once a bank-and-shop round trip has failed to produce the desert kit. Mining then
+     * carries on without it, because heat is chip damage rather than death; without this the
+     * script would gear up forever instead of ever reaching the quarry.
+     */
+    private volatile boolean desertSupplyBlocked;
 
     public boolean run(SimpleMiningConfig config) {
         this.config = config;
@@ -103,6 +126,9 @@ public class SimpleMiningScript extends Script {
         this.recipeCycleCompletePendingBank = false;
         this.sellAttempts.clear();
         this.unsellable.clear();
+        this.desertSupplyBlocked = false;
+        this.activeRockLocation = null;
+        this.activeRockId = 0;
         this.state = SimpleMiningState.IDLE;
 
         Rs2Antiban.resetAntibanSettings();
@@ -143,9 +169,7 @@ public class SimpleMiningScript extends Script {
                 return;
             }
 
-            if (state == SimpleMiningState.MINING
-                    && (Rs2Player.isAnimating() || Rs2Player.isInteracting())
-                    && System.currentTimeMillis() - lastMineTime < 12000) {
+            if (state == SimpleMiningState.MINING && isBusyMining()) {
                 return;
             }
             if (Rs2Player.isMoving() && state != SimpleMiningState.TRAVELING
@@ -223,7 +247,7 @@ public class SimpleMiningScript extends Script {
         if (pendingSaleItem != null) {
             return SimpleMiningState.SELLING;
         }
-        if (PickaxeType.bestHeld() == null || needsInfernalTools()) {
+        if (PickaxeType.bestHeld() == null || needsInfernalTools() || needsDesertSupplies()) {
             return SimpleMiningState.GEARING;
         }
         if (shouldProcessInfernalShale()) {
@@ -298,14 +322,129 @@ public class SimpleMiningScript extends Script {
                 }
             }
         }
+        if (inDesertHeat()) {
+            stockDesertSuppliesFromBank();
+        }
         Rs2Bank.closeBank();
         sleepUntil(() -> !Rs2Bank.isOpen(), 3000);
+
+        // Shantay is a long walk, so only buy when the bank could not supply a single skin.
+        // The trip takes several passes, and staying in GEARING keeps it off the mining path.
+        if (inDesertHeat() && waterskinsWanted() && waterskinsHeld() == 0
+                && !restockWaterskinsAtShop()) {
+            return;
+        }
 
         if (PickaxeType.bestHeld() == null) {
             requestStop("Could not obtain a pickaxe");
         } else if (activeStage == OreStage.INFERNAL_SHALE && needsInfernalTools()) {
             requestStop("Could not obtain the tools required to process infernal shale");
+        } else if (needsDesertSupplies()) {
+            // Nothing left to try. Say so once and mine anyway rather than gearing forever.
+            desertSupplyBlocked = true;
+            log.warn("Could not fully stock desert heat kit for {}; mining on without it",
+                    activeStage.getDisplayName());
         }
+    }
+
+    // ------------------------------------------------------- desert heat kit
+
+    /** The mine being worked or walked to. Granite's quarry is the only heat zone today. */
+    private MiningLocation currentLocation() {
+        MiningLocation pinned = pinnedLocation();
+        if (pinned != null) {
+            return pinned;
+        }
+        return activeStage.getClosestLocation(Rs2Player.getWorldLocation(),
+                SimpleMiningPlugin.isMembersWorld(config));
+    }
+
+    private boolean inDesertHeat() {
+        MiningLocation location = currentLocation();
+        return location != null && location.isDesertHeat();
+    }
+
+    private boolean heatProtectionWorn() {
+        DesertHeatItem item = config.desertHeatItem();
+        return !item.isEnabled() || Rs2Equipment.isWearing(item.getItemId());
+    }
+
+    /** Water is pointless under a Desert amulet 4, but only once it is actually on. */
+    private boolean waterskinsWanted() {
+        return config.buyWaterskins()
+                && !(config.desertHeatItem().isNegatesHeat() && heatProtectionWorn());
+    }
+
+    /** Waterskins with water left; an empty Waterskin(0) is dead weight, not a supply. */
+    private int waterskinsHeld() {
+        return Rs2Inventory.itemQuantity(item -> item.getName() != null
+                && item.getName().startsWith("Waterskin(")
+                && !item.getName().equals("Waterskin(0)"));
+    }
+
+    private boolean needsDesertSupplies() {
+        if (desertSupplyBlocked || config == null || !inDesertHeat()) {
+            return false;
+        }
+        // Only a dry inventory is worth its own trip. Ordinary bank visits top water back up,
+        // so triggering on "below the configured count" would abandon a half-mined inventory
+        // every time a skin ran empty.
+        return !heatProtectionWorn() || (waterskinsWanted() && waterskinsHeld() == 0);
+    }
+
+    /** Bank half of the resupply: wear the protection item, then take water and shop money. */
+    private void stockDesertSuppliesFromBank() {
+        DesertHeatItem protection = config.desertHeatItem();
+        if (protection.isEnabled() && !Rs2Equipment.isWearing(protection.getItemId())) {
+            if (Rs2Inventory.hasItem(protection.getItemId())) {
+                Rs2Inventory.wear(protection.getItemId());
+            } else if (Rs2Bank.hasBankItem(protection.getItemId(), 1)) {
+                Rs2Bank.withdrawAndEquip(protection.getItemId());
+            }
+            sleepUntil(() -> Rs2Equipment.isWearing(protection.getItemId()), 2000);
+        }
+
+        if (!waterskinsWanted()) {
+            return;
+        }
+        int missing = config.waterskinCount() - waterskinsHeld();
+        if (missing > 0 && Rs2Bank.hasBankItem(WATERSKIN_ITEM, 1, true)) {
+            Rs2Bank.withdrawX(WATERSKIN_ITEM, missing, true);
+            Rs2Inventory.waitForInventoryChanges(1800);
+            missing = config.waterskinCount() - waterskinsHeld();
+        }
+        // Buy money for whatever the bank could not cover, while the bank is still open.
+        int budget = missing * WATERSKIN_COIN_BUDGET;
+        if (missing > 0 && Rs2Inventory.itemQuantity("Coins") < budget) {
+            Rs2Bank.withdrawX("Coins", budget);
+            Rs2Inventory.waitForInventoryChanges(1200);
+        }
+    }
+
+    /**
+     * Shop half of the resupply. Returns false while still walking, so the caller holds the
+     * script in GEARING, and true once the trip is over - bought or given up on.
+     */
+    private boolean restockWaterskinsAtShop() {
+        WorldPoint player = Rs2Player.getWorldLocation();
+        if (player == null) {
+            return false;
+        }
+        if (player.distanceTo(WATERSKIN_SHOP) > SHOP_INTERACT_RANGE) {
+            Rs2Walker.walkTo(WATERSKIN_SHOP, SHOP_INTERACT_RANGE);
+            return false;
+        }
+        if (!Rs2Shop.openShop(WATERSKIN_SHOP_NPC)) {
+            log.warn("Could not open {}'s shop", WATERSKIN_SHOP_NPC);
+            return true;
+        }
+        int missing = config.waterskinCount() - waterskinsHeld();
+        if (missing > 0 && Rs2Shop.hasStock(WATERSKIN_ITEM)) {
+            Rs2Shop.buyItemOptimally(WATERSKIN_ITEM, missing);
+            Rs2Inventory.waitForInventoryChanges(2000);
+        }
+        Rs2Shop.closeShop();
+        return true;
     }
 
     private void handleTraveling() {
@@ -335,11 +474,13 @@ public class SimpleMiningScript extends Script {
         if (!isInRange(rock)) {
             return; // routed back to TRAVELING next tick
         }
-        if (Rs2Player.isAnimating() && System.currentTimeMillis() - lastMineTime < 12000) {
+        if (isBusyMining()) {
             return;
         }
         if (rock.click("Mine")) {
             lastMineTime = System.currentTimeMillis();
+            activeRockLocation = rock.getWorldLocation();
+            activeRockId = rock.getId();
             int oreBefore = Rs2Inventory.itemQuantity(activeStage.getOreName(), true);
             if (Rs2Player.waitForXpDrop(Skill.MINING, true)) {
                 int mined = Math.max(1,
@@ -348,6 +489,43 @@ public class SimpleMiningScript extends Script {
             }
             safeAntibanCooldown();
         }
+    }
+
+    /**
+     * Whether the pickaxe is mid-swing on a rock that is still standing.
+     *
+     * <p>Three things have to hold to stay hands-off: the character is swinging, the rock we
+     * actually clicked is still there, and Mining XP is still arriving. The rock check is the
+     * decisive one - a rock changes id the moment it is mined out, which releases the guard on
+     * the same tick even if the animation lingers.</p>
+     *
+     * <p>This replaces a fixed 12s window measured from the last click, which expired during
+     * any slow ore and let the script click again - often onto a different rock - mid-swing.
+     * The stall timeout below is only a safety net against a wedged animation.</p>
+     */
+    private boolean isBusyMining() {
+        if (!Rs2Player.isAnimating() && !Rs2Player.isInteracting()) {
+            return false;
+        }
+        if (!activeRockStillStanding()) {
+            return false;
+        }
+        long progressAt = Math.max(lastMineTime, SimpleMiningPlugin.getLastMiningXpAt());
+        return System.currentTimeMillis() - progressAt < MINE_STALL_TIMEOUT_MS;
+    }
+
+    /** The clicked rock, unchanged. Depleting swaps the object id, so this goes false. */
+    private boolean activeRockStillStanding() {
+        WorldPoint location = activeRockLocation;
+        if (location == null) {
+            return false;
+        }
+        final int id = activeRockId;
+        // Deliberately .first() and not nearestReachable(): a reachability search here would
+        // cost a client-thread round trip per candidate on every single loop pass.
+        return Microbot.getRs2TileObjectCache().query()
+                .where(object -> object.getId() == id && location.equals(object.getWorldLocation()))
+                .first() != null;
     }
 
     /**
@@ -413,6 +591,11 @@ public class SimpleMiningScript extends Script {
             recipeCycleCompletePendingBank = false;
         }
         withdrawStackForSale();
+        // Free top-up: we are already standing at the bank, so water rarely runs out and the
+        // dedicated resupply trip stays a fallback.
+        if (inDesertHeat()) {
+            stockDesertSuppliesFromBank();
+        }
         Rs2Bank.closeBank();
         sleepUntil(() -> !Rs2Bank.isOpen(), 3000);
         safeAntibanCooldown();

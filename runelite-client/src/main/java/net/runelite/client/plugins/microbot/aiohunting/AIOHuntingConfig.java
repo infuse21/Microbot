@@ -58,6 +58,14 @@ public interface AIOHuntingConfig extends Config
 	)
 	String BIRD_SNARE = "birdSnare";
 
+	@ConfigSection(
+		name = "Pitfall",
+		description = "Pitfall options and combat safety (used when a pitfall method is selected)",
+		position = 6,
+		closedByDefault = true
+	)
+	String PITFALL = "pitfall";
+
 	@ConfigItem(
 		keyName = "autoProgress",
 		name = "Auto progression",
@@ -330,5 +338,55 @@ public interface AIOHuntingConfig extends Config
 	default boolean campBirdSpawns()
 	{
 		return true;
+	}
+
+	@ConfigItem(
+		keyName = "pitfallFood",
+		name = "Food",
+		description = "Food item to eat during pitfall hunting (teasing deals damage). Leave blank for none.",
+		position = 0,
+		section = PITFALL
+	)
+	default String pitfallFood()
+	{
+		return "";
+	}
+
+	@Range(min = 1, max = 99)
+	@ConfigItem(
+		keyName = "pitfallEatBelow",
+		name = "Eat below HP %",
+		description = "Eat food when Hitpoints drop below this percentage",
+		position = 1,
+		section = PITFALL
+	)
+	default int pitfallEatBelow()
+	{
+		return 50;
+	}
+
+	@ConfigItem(
+		keyName = "pitfallProtectMelee",
+		name = "Protect from Melee",
+		description = "Keep Protect from Melee active while teasing (requires Prayer)",
+		position = 2,
+		section = PITFALL
+	)
+	default boolean pitfallProtectMelee()
+	{
+		return false;
+	}
+
+	@Range(min = 1, max = 99)
+	@ConfigItem(
+		keyName = "pitfallRetreatBelow",
+		name = "Retreat below HP %",
+		description = "If out of food and prayer, stop teasing and retreat when Hitpoints drop below this percentage",
+		position = 3,
+		section = PITFALL
+	)
+	default int pitfallRetreatBelow()
+	{
+		return 15;
 	}
 }

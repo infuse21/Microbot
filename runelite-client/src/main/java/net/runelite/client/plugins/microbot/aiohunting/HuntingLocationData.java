@@ -32,6 +32,9 @@ final class HuntingLocationData
 				return points(2331, 3562, 2322, 3576, 2341, 3577);
 			case FELDIP_WEASEL:
 				return points(2525, 2889, 2554, 2882);
+			case SPINED_LARUPIA:
+				// Centroid of the five Feldip larupia pit spots (2543-2573, 2885-2908).
+				return points(2558, 2896);
 			case DESERT_DEVIL:
 				return points(3402, 3131, 3396, 3106);
 			case RAZOR_BACKED_KEBBIT:
