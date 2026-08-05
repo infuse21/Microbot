@@ -212,6 +212,10 @@ public abstract class Overlay implements LayoutableRenderableEntity
 		drawHooks.add(component);
 	}
 
+	void onDrag()
+	{
+	}
+
 	public void onMouseOver()
 	{
 	}
@@ -238,6 +242,16 @@ public abstract class Overlay implements LayoutableRenderableEntity
 	public Rectangle getParentBounds()
 	{
 		return null;
+	}
+
+	void reset()
+	{
+		setPreferredPosition(null);
+		setPreferredSize(null);
+		setPreferredLocation(null);
+		setOrigin(OverlayOrigin.AUTO);
+		setOriginX(OverlayOriginX.LEFT);
+		setOriginY(OverlayOriginY.TOP);
 	}
 
 	public void revalidate()

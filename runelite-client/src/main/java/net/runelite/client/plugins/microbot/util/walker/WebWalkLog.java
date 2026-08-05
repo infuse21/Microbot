@@ -22,31 +22,48 @@ public final class WebWalkLog {
         LOG.warn("[WebWalk] clear | reason=<missing> thread={}", threadName);
     }
 
-    /** Cancel / EXIT / traceProcessWalkExit — compact WARN for production diagnosis. */
+    /** Cancel / EXIT / traceProcessWalkExit - compact WARN for production diagnosis. */
     public static void exitWarn(String reason, boolean nullCurrent, boolean targetMismatch, boolean interrupted,
             WorldPoint goal, WorldPoint current, int tailIdx, int tailMax, WorldPoint player) {
-        LOG.warn("[WebWalk] exit | r={} nullCur={} mismatch={} intr={} goal={} cur={} tail={}/{} at={}",
+        // Routine lifecycle exits (the script retargeting/cancelling the walk) are NORMAL, not
+        // warnings — at WARN they were mirrored into the game chatbox by GameChatAppender on every
+        // retarget, spamming the chat. Genuine anomalies keep WARN (and thus chat visibility).
+        boolean routine = reason != null
+                && (reason.startsWith("cancel:") || reason.equals("interrupted-exception"));
+        if (routine) {
+            LOG.info("[WebWalk] exit | r={} nullCur={} mismatch={} intr={} goal={} cur={} tail={}/{} at={}",
                 reason, nullCurrent, targetMismatch, interrupted, goal, current, tailIdx, tailMax, player);
+        } else {
+            LOG.warn("[WebWalk] exit | r={} nullCur={} mismatch={} intr={} goal={} cur={} tail={}/{} at={}",
+                reason, nullCurrent, targetMismatch, interrupted, goal, current, tailIdx, tailMax, player);
+        }
     }
 
     public static void exitDetailDebug(String fmt, Object... args) {
         LOG.debug("[WebWalk] exit_dbg | " + fmt, args);
     }
 
-    /** interim-in-flight and similar yields — DEBUG to avoid tick spam. */
+    /** interim-in-flight and similar yields - DEBUG to avoid tick spam. */
     public static void yieldDebug(String reason, WorldPoint player, WorldPoint goal, WorldPoint pathEnd, int idxStart, int pathLen) {
         LOG.debug("[WebWalk] yield | r={} player={} goal={} end={} idx={}/{}",
                 reason, player, goal, pathEnd, idxStart, pathLen);
     }
 
     public static void earlyExit(String reason, WorldPoint player, WorldPoint goal, WorldPoint pathEnd, int idxStart, int pathLen) {
+        if ("interim-in-flight".equals(reason)) {
+            LOG.debug("[WebWalk] early_exit | r={} at={} goal={} end={} idx={}/{}",
+                    reason, player, goal, pathEnd, idxStart, pathLen);
+            return;
+        }
         LOG.info("[WebWalk] early_exit | r={} at={} goal={} end={} idx={}/{}",
                 reason, player, goal, pathEnd, idxStart, pathLen);
     }
 
-    /** Path ends far from goal — walking multi-hop segment. */
+    /** Path ends far from goal - walking multi-hop segment. */
     public static void partialSegment(WorldPoint pathEnd, int distToGoal, WorldPoint goal, int waypointCount) {
-        LOG.info("[WebWalk] partial_seg | end={} dGoal={} goal={} nWp={}", pathEnd, distToGoal, goal, waypointCount);
+        // Debug: fires with identical content many times per second while a partial path is active;
+        // partial_retry remains the info-level summary.
+        LOG.debug("[WebWalk] partial_seg | end={} dGoal={} goal={} nWp={}", pathEnd, distToGoal, goal, waypointCount);
     }
 
     public static void partialRetry(int finalDist, int attempt, int maxAttempts) {
@@ -65,7 +82,7 @@ public final class WebWalkLog {
         LOG.debug("[WebWalk] stall_ctx | lastClick={} ok={} ageMs={} interim={}", lastClick, clickOk, clickAgeMs, interim);
     }
 
-    /** Off-path / unreachable recovery / generic replan — single INFO line. */
+    /** Off-path / unreachable recovery / generic replan - single INFO line. */
     public static void recalc(String reason) {
         LOG.info("[WebWalk] recalc | {}", reason);
     }
@@ -86,21 +103,29 @@ public final class WebWalkLog {
                 maxTail, target, current, interim, stuck, player);
     }
 
-    /** Pathfinder {@link net.runelite.client.plugins.microbot.shortestpath.pathfinder.Pathfinder} — DEBUG volume. */
+    /** Pathfinder {@link net.runelite.client.plugins.microbot.shortestpath.pathfinder.Pathfinder} - DEBUG volume. */
     public static void pf(String fmt, Object... args) {
         LOG.debug("[WebWalk] pf | " + fmt, args);
     }
 
-    /** {@link net.runelite.client.plugins.microbot.shortestpath.pathfinder.PathfinderConfig} refresh — DEBUG volume. */
+    /** {@link net.runelite.client.plugins.microbot.shortestpath.pathfinder.PathfinderConfig} refresh - DEBUG volume. */
     public static void cfg(String fmt, Object... args) {
         LOG.debug("[WebWalk] cfg | " + fmt, args);
+    }
+
+    /**
+     * Config work slow enough to be a user-visible stall (e.g. a pathfinder-config refresh that the
+     * walker blocks on at route start). INFO so it appears without enabling debug logging.
+     */
+    public static void cfgSlow(String fmt, Object... args) {
+        LOG.info("[WebWalk] cfg | " + fmt, args);
     }
 
     public static void leagues(String fmt, Object... args) {
         LOG.debug("[WebWalk] leagues | " + fmt, args);
     }
 
-    /** Leagues calibration, region unlock, explicit no-op — INFO (not tick-spam paths). */
+    /** Leagues calibration, region unlock, explicit no-op - INFO (not tick-spam paths). */
     public static void leaguesInfo(String fmt, Object... args) {
         LOG.info("[WebWalk] leagues | " + fmt, args);
     }
@@ -131,7 +156,7 @@ public final class WebWalkLog {
         LOG.warn("[WebWalk] compare_err | {}ms target={} err={}", String.format("%.1f", totalMs), target, err);
     }
 
-    /** Banked-route helper: per-path transport scan — DEBUG volume. */
+    /** Banked-route helper: per-path transport scan - DEBUG volume. */
     public static void bankPathTransportsDebug(int count, WorldPoint from, WorldPoint to) {
         LOG.debug("[WebWalk] bank_path | transports={} {} -> {}", count, from, to);
     }
@@ -146,6 +171,16 @@ public final class WebWalkLog {
 
     public static void tmark(String phase, long elapsedMs, WorldPoint goal, WorldPoint at, String detail) {
         LOG.info("[WebWalk] tmark | phase={} elapsed={}ms goal={} at={} detail={}",
+                phase, elapsedMs, goal, at, detail == null ? "-" : detail);
+    }
+
+    /**
+     * Phase marker for per-pass investigation rather than an outcome. Same shape as {@link #tmark},
+     * at DEBUG so it appears only under "Verbose console logging" — the post-transport family alone
+     * accounted for 35 of the ~60 INFO lines a single 45-second walk produced.
+     */
+    public static void tmarkDebug(String phase, long elapsedMs, WorldPoint goal, WorldPoint at, String detail) {
+        LOG.debug("[WebWalk] tmark | phase={} elapsed={}ms goal={} at={} detail={}",
                 phase, elapsedMs, goal, at, detail == null ? "-" : detail);
     }
 }

@@ -11,6 +11,7 @@ import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.util.camera.Rs2Camera;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.math.Rs2Random;
+import net.runelite.client.plugins.microbot.util.menu.NewMenuEntry;
 import net.runelite.client.plugins.microbot.util.models.RS2Item;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.reflection.Rs2Reflection;
@@ -110,33 +111,17 @@ public class Rs2GroundItem {
             Rectangle bounds = canvas == null
                     ? new Rectangle(1, 1, Microbot.getClient().getCanvasWidth(), Microbot.getClient().getCanvasHeight())
                     : canvas.getBounds();
-            MenuAction selectedMenuAction = menuAction;
-            String selectedAction = action;
             int worldViewId = localPoint1.getWorldView();
-            Microbot.getClientThread().runOnClientThreadOptional(() -> {
-                MenuEntry entry = Microbot.getClient().getMenu().createMenuEntry(-1)
-                        .setOption(selectedAction)
-                        .setTarget(target)
-                        .setIdentifier(identifier)
-                        .setType(selectedMenuAction)
-                        .setParam0(param0)
-                        .setParam1(param1)
-                        .setItemId(-1)
-                        .setWorldViewId(worldViewId);
-                Microbot.getClient().setMenuEntries(new MenuEntry[]{entry});
-                return true;
-            });
-            Rs2Reflection.invokeMenu(
-                    param0,
-                    param1,
-                    menuAction.getId(),
-                    identifier,
-                    -1,
-                    worldViewId,
-                    action,
-                    target,
-                    (int) bounds.getCenterX(),
-                    (int) bounds.getCenterY());
+            Microbot.doInvoke(new NewMenuEntry()
+                            .option(action)
+                            .target(target)
+                            .identifier(identifier)
+                            .opcode(menuAction.getId())
+                            .param0(param0)
+                            .param1(param1)
+                            .itemId(-1)
+                            .worldViewId(worldViewId),
+                    bounds);
             return true;
         } catch (Exception ex) {
             Microbot.logStackTrace("Rs2GroundItem", ex);

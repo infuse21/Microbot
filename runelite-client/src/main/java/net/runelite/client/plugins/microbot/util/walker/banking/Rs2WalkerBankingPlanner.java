@@ -8,7 +8,8 @@ import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.Pathfinder;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Spells;
-import net.runelite.client.plugins.microbot.shortestpath.ShortestPathPlugin;
+import net.runelite.client.plugins.microbot.util.walker.Rs2PathApi;
+import net.runelite.client.plugins.microbot.shortestpath.PurchasableItemCatalog;
 import net.runelite.client.plugins.microbot.shortestpath.Transport;
 import net.runelite.client.plugins.microbot.shortestpath.TransportType;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
@@ -40,11 +41,11 @@ public final class Rs2WalkerBankingPlanner {
             return new ArrayList<>();
         }
 
-        boolean originalUseBankItems = ShortestPathPlugin.getPathfinderConfig().isUseBankItems();
+        boolean originalUseBankItems = Rs2PathApi.getPathfinderConfig().isUseBankItems();
         try {
-            ShortestPathPlugin.getPathfinderConfig().setUseBankItems(useBankItems);
-            ShortestPathPlugin.getPathfinderConfig().refresh();
-            Pathfinder pf = new Pathfinder(ShortestPathPlugin.getPathfinderConfig(), Rs2Player.getWorldLocation(), destination);
+            Rs2PathApi.getPathfinderConfig().setUseBankItems(useBankItems);
+            Rs2PathApi.getPathfinderConfig().refresh();
+            Pathfinder pf = new Pathfinder(Rs2PathApi.getPathfinderConfig(), Rs2Player.getWorldLocation(), destination);
             pf.run();
 
             List<WorldPoint> path = pf.getPath();
@@ -57,9 +58,32 @@ public final class Rs2WalkerBankingPlanner {
             transports.forEach(t -> log.debug("Transport found: " + t));
             return transports;
         } finally {
-            ShortestPathPlugin.getPathfinderConfig().setUseBankItems(originalUseBankItems);
-            ShortestPathPlugin.getPathfinderConfig().refresh();
+            Rs2PathApi.getPathfinderConfig().setUseBankItems(originalUseBankItems);
+            Rs2PathApi.getPathfinderConfig().refresh();
         }
+    }
+
+    /**
+     * Whether a plain {@link TransportType#TRANSPORT} takes part in bank planning.
+     *
+     * <p>Previously only currency-bearing ones did, so an item-gated obstacle — a machete for a
+     * jungle bush, a pickaxe for a rockfall, a Shantay pass — fell through
+     * {@link #hasRequiredTransportItems} to its catch-all {@code return true}, was never reported as
+     * missing, and was never withdrawn. That contradicted the pathfinder:
+     * {@code PathfinderConfig.hasRequiredItems} counts <em>bank</em> contents when
+     * {@code useBankItems} is set, so a route was planned through the obstacle on the strength of a
+     * banked item the planner then declined to fetch, stranding the walk at the obstacle.
+     *
+     * <p>This only widens which transports are <em>eligible</em>. Collection is path-scoped —
+     * {@link #getTransportsForDestination} pathfinds first and inspects only transports on the
+     * resulting route — so an item is fetched solely when the chosen route actually needs it.
+     */
+    static boolean planningCoversPlainTransport(Transport transport) {
+        if (transport == null || transport.getType() != TransportType.TRANSPORT) {
+            return false;
+        }
+        return transport.getCurrencyAmount() > 0
+                || (transport.getItemIdRequirements() != null && !transport.getItemIdRequirements().isEmpty());
     }
 
     public static boolean hasRequiredTransportItems(Transport transport) {
@@ -80,7 +104,8 @@ public final class Rs2WalkerBankingPlanner {
                 || transport.getType() == TransportType.CHARTER_SHIP
                 || transport.getType() == TransportType.SHIP
                 || transport.getType() == TransportType.MINECART
-                || transport.getType() == TransportType.MAGIC_CARPET) {
+                || transport.getType() == TransportType.MAGIC_CARPET
+                || planningCoversPlainTransport(transport)) {
             if (transport.getType() == TransportType.TELEPORTATION_SPELL && transport.getDisplayInfo() != null) {
                 String spellName = transport.getDisplayInfo().contains(":")
                         ? transport.getDisplayInfo().split(":")[0].trim()
@@ -150,6 +175,25 @@ public final class Rs2WalkerBankingPlanner {
                 return;
             }
 
+            // Pure currency transports (charter fares, magic carpets, the Shantay 5-coin gate row) have
+            // EMPTY itemIdRequirements, so the item loop below never runs for them — their coins were
+            // never added to the withdrawal map. The transport was correctly detected as missing, but the
+            // fare was never fetched: the post-bank replan (inventory-only) then dropped the transport and
+            // produced the long overland route ("banked walking does not withdraw gold"). Sum fares across
+            // every currency transport on the route.
+            if (isCurrencyBasedTransport(transport.getType())
+                    && transport.getCurrencyAmount() > 0
+                    && (transport.getItemIdRequirements() == null || transport.getItemIdRequirements().isEmpty())) {
+                int currencyItemId = getCurrencyItemId(transport.getCurrencyName());
+                if (currencyItemId > 0) {
+                    int currentQuantity = itemQuantityMap.getOrDefault(currencyItemId, 0);
+                    itemQuantityMap.put(currencyItemId, currentQuantity + transport.getCurrencyAmount());
+                    log.debug("Added currency fare requirement: itemId={} x{} for {}",
+                            currencyItemId, transport.getCurrencyAmount(), transport.getType());
+                }
+                return;
+            }
+
             if (transport.getItemIdRequirements() != null) {
                 for (Set<Integer> alternativeItems : transport.getItemIdRequirements()) {
                     int requiredQuantity = (isCurrencyBasedTransport(transport.getType()) && transport.getCurrencyAmount() > 0)
@@ -171,6 +215,27 @@ public final class Rs2WalkerBankingPlanner {
                         }
                     }
 
+                    // The bank holds none of the alternatives — withdrawing the item is impossible.
+                    // If one of them is vendor-purchasable at its transport (the Shantay pass
+                    // pattern), withdraw the fare instead so the buy-at-transport step can run.
+                    if (preferredItemId != null && preferredBankQuantity == 0) {
+                        PurchasableItemCatalog.PurchasableItem purchasable = alternativeItems.stream()
+                                .map(PurchasableItemCatalog::byItemId)
+                                .filter(java.util.Objects::nonNull)
+                                .findFirst()
+                                .orElse(null);
+                        int currencyItemId = purchasable == null ? -1 : getCurrencyItemId(purchasable.costCurrencyName);
+                        if (currencyItemId > 0) {
+                            // One fare per required ITEM. requiredQuantity above is a currency
+                            // amount for currency-based rows, so it must not be used as a count.
+                            int itemsNeeded = isCurrencyBasedTransport(transport.getType()) ? 1 : requiredQuantity;
+                            int fare = purchasable.costAmount * itemsNeeded;
+                            itemQuantityMap.merge(currencyItemId, fare, Integer::sum);
+                            log.debug("Transport item {} not banked but purchasable — withdrawing fare {} x{} instead",
+                                    purchasable.itemId, purchasable.costCurrencyName, fare);
+                            break;
+                        }
+                    }
                     if (preferredItemId != null) {
                         int currentQuantity = itemQuantityMap.getOrDefault(preferredItemId, 0);
                         itemQuantityMap.put(preferredItemId, currentQuantity + requiredQuantity);
@@ -222,10 +287,10 @@ public final class Rs2WalkerBankingPlanner {
             int bankingRouteDistance = -1;
 
             try {
-                boolean originalUseBankItems = ShortestPathPlugin.getPathfinderConfig().isUseBankItems();
+                boolean originalUseBankItems = Rs2PathApi.getPathfinderConfig().isUseBankItems();
                 try {
-                    ShortestPathPlugin.getPathfinderConfig().setUseBankItems(true);
-                    ShortestPathPlugin.getPathfinderConfig().refresh(target);
+                    Rs2PathApi.getPathfinderConfig().setUseBankItems(true);
+                    Rs2PathApi.getPathfinderConfig().refresh(target);
 
                     performanceLog.append("\t-Bank items available: ").append(Rs2Bank.bankItems().size()).append("\n");
 
@@ -306,8 +371,8 @@ public final class Rs2WalkerBankingPlanner {
                                 .append("\t -> No accessible bank found\n");
                     }
                 } finally {
-                    ShortestPathPlugin.getPathfinderConfig().setUseBankItems(originalUseBankItems);
-                    ShortestPathPlugin.getPathfinderConfig().refresh();
+                    Rs2PathApi.getPathfinderConfig().setUseBankItems(originalUseBankItems);
+                    Rs2PathApi.getPathfinderConfig().refresh();
                 }
             } catch (Exception e) {
                 performanceLog.append("Banking route calculation failed: ").append(e.getMessage()).append("\n");
@@ -328,7 +393,7 @@ public final class Rs2WalkerBankingPlanner {
 
             final boolean tie = directDistance == bankingRouteDistance;
             final boolean directStrictlyFaster = directDistance < bankingRouteDistance;
-            final boolean preferTransportToTarget = ShortestPathPlugin.override("preferTransportToTarget", false);
+            final boolean preferTransportToTarget = Rs2PathApi.override("preferTransportToTarget", false);
             final String recommendation;
             final String verdictOneLine;
             if (tie) {
@@ -400,12 +465,14 @@ public final class Rs2WalkerBankingPlanner {
         return runeRequirements;
     }
 
-    private static boolean isCurrencyBasedTransport(TransportType transportType) {
+    /** Package-private so the planning tests can select the same rows this collector accepts. */
+    static boolean isCurrencyBasedTransport(TransportType transportType) {
         return transportType == TransportType.BOAT
                 || transportType == TransportType.CHARTER_SHIP
                 || transportType == TransportType.SHIP
                 || transportType == TransportType.MINECART
-                || transportType == TransportType.MAGIC_CARPET;
+                || transportType == TransportType.MAGIC_CARPET
+                || transportType == TransportType.TRANSPORT;
     }
 
     private static int getCurrencyItemId(String currencyName) {

@@ -152,3 +152,31 @@ Do not make call sites compensate by assuming `index == 0` when the action array
 **Where this applies:** `Rs2Reflection.getGroundItemActions`, `Rs2GroundItem.interact`, `Rs2TileItemModel.click`, and any future ground-item interaction helper that derives a `MenuAction` from item actions.
 
 **Defensive check:** Live smoke with ExampleScript's "Drop and loot item" check after any RuneLite or injected-client version bump.
+
+---
+
+## 9. Dispatch ground-item actions through the synthetic target menu
+
+Resolve the ground item's action and `MenuAction` first, then dispatch it with `Microbot.doInvoke(NewMenuEntry, bounds)`. Do not call `Rs2Reflection.invokeMenu` directly for ground-item interactions.
+
+**Why this matters:** A raw canvas click can select a door or NPC that visually overlaps the ground item's tile. The reflected client-menu call can loot successfully but still emit `Unable to find clicked menu op` engine messages because it bypasses the normal clicked-menu correlation. `Microbot.doInvoke` sets `Microbot.targetMenu` before clicking, allowing `MicrobotPlugin` to replace the generated scene menu with the intended ground-item entry regardless of what is under the cursor.
+
+**Pattern to follow:**
+
+```java
+Microbot.doInvoke(new NewMenuEntry()
+        .option(action)
+        .target(target)
+        .identifier(itemId)
+        .opcode(menuAction.getId())
+        .param0(sceneX)
+        .param1(sceneY)
+        .itemId(-1)
+        .worldViewId(worldViewId), bounds);
+```
+
+Keep action discovery and dispatch separate: `Rs2Reflection.getGroundItemActions` retains the third-slot `Take` fallback described above, while `Microbot.doInvoke` owns the interaction.
+
+**Where this applies:** `Rs2GroundItem.interact`, `Rs2TileItemModel.click`, and future ground-item interaction helpers.
+
+**Defensive check:** Drop loot on a tile visually overlapped by an NPC and beside an openable door. Verify the intended item is taken from multiple camera angles and no `Unable to find clicked menu op` engine message appears.

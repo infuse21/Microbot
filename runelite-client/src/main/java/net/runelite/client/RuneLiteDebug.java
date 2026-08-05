@@ -49,9 +49,6 @@ import net.runelite.client.ui.ClientUI;
 import net.runelite.client.ui.FatalErrorDialog;
 import net.runelite.client.ui.SplashScreen;
 import net.runelite.client.ui.overlay.OverlayManager;
-import net.runelite.client.ui.overlay.WidgetOverlay;
-import net.runelite.client.ui.overlay.tooltip.TooltipOverlay;
-import net.runelite.client.ui.overlay.worldmap.WorldMapOverlay;
 import net.runelite.client.util.OSType;
 import net.runelite.client.util.ReflectUtil;
 import net.runelite.client.util.CrashReportFormatter;
@@ -63,7 +60,6 @@ import okhttp3.Response;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
-import javax.inject.Provider;
 import javax.inject.Singleton;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
@@ -129,12 +125,6 @@ public class RuneLiteDebug {
 
     @Inject
     private OverlayManager overlayManager;
-
-    @Inject
-    private Provider<TooltipOverlay> tooltipOverlay;
-
-    @Inject
-    private Provider<WorldMapOverlay> worldMapOverlay;
 
     @Inject
     @Nullable
@@ -386,9 +376,7 @@ public class RuneLiteDebug {
 
         if (!isOutdated) {
             // Add core overlays
-            WidgetOverlay.createOverlays(overlayManager, client).forEach(overlayManager::add);
-            overlayManager.add(worldMapOverlay.get());
-            overlayManager.add(tooltipOverlay.get());
+            overlayManager.init();
         }
 
         clientUI.show();
