@@ -894,11 +894,23 @@ public interface ShortestPathConfig extends Config {
         return true;
     }
 
+	@ConfigItem(
+		keyName = "navigationEngineOrdinaryWalking",
+		name = "Unified navigation engine",
+		description = "Use the new executor for walking and transport/obstacle families already migrated to it.",
+		position = 2,
+		section = sectionDeveloper
+	)
+	default boolean navigationEngineOrdinaryWalking()
+	{
+		return false;
+	}
+
     @ConfigItem(
             keyName = "resetLearnedCollision",
             name = "Reset learned collision",
             description = "Turn ON to wipe the accumulated live-collision store — both in memory and on disk (~/.runelite/microbot/live-collision). Saves OFF automatically. Use if a bad capture ever corrupts routing; with Live collision still ON it re-learns from scratch as you travel.",
-            position = 2,
+            position = 3,
             section = sectionDeveloper
     )
     default boolean resetLearnedCollision() {

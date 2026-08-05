@@ -19,7 +19,6 @@
 
 package net.runelite.client.plugins.microbot.shortestpath;
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.google.inject.Inject;
 import com.google.inject.Provides;
 import lombok.AccessLevel;
@@ -62,6 +61,11 @@ import net.runelite.client.plugins.microbot.shortestpath.pathfinder.SplitFlagMap
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.tile.Rs2Tile;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
+import net.runelite.client.plugins.microbot.util.walker.navigation.NavigationEngineRuntime;
+import net.runelite.client.plugins.microbot.util.walker.navigation.NavigationRequest;
+import net.runelite.client.plugins.microbot.util.walker.navigation.NavigationRouteOptions;
+import net.runelite.client.plugins.microbot.util.walker.navigation.RoutePlan;
+import net.runelite.client.plugins.microbot.util.walker.navigation.RoutePlannerRuntime;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.JagexColors;
 import net.runelite.client.ui.NavigationButton;
@@ -79,10 +83,6 @@ import java.awt.geom.Ellipse2D;
 import java.awt.image.BufferedImage;
 import java.util.List;
 import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.ThreadFactory;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 
@@ -186,18 +186,7 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
     private BufferedImage minimapSpriteResizeable;
     private Rectangle minimapRectangle = new Rectangle();
 
-    @Getter
-    @Setter
-    public static volatile ExecutorService pathfindingExecutor = Executors.newSingleThreadExecutor();
-    @Getter
-    @Setter
-    public static volatile Future<?> pathfinderFuture;
-    @Getter
-    public static final Object pathfinderMutex = new Object();
 	private static final Map<String, Object> configOverride = new HashMap<>(50);
-    @Getter
-    @Setter
-    public static volatile Pathfinder pathfinder;
     @Getter
     public static PathfinderConfig pathfinderConfig;
     @Getter
@@ -207,6 +196,12 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
     private static int reachedDistance;
     @Getter(AccessLevel.PACKAGE)
     private ShortestPathScript shortestPathScript;
+
+	/** Read-only compatibility view while the legacy walker migrates to immutable RoutePlan snapshots. */
+	public static Pathfinder getPathfinder()
+	{
+		return RoutePlannerRuntime.getPathfinder();
+	}
 
     // Set by onGameStateChanged when the client transitions to LOGGED_IN. Consumed on the next
     // game tick so varbits, quest states, inventory, and bank containers are hydrated before
@@ -325,29 +320,26 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
 
     //Method from microbot
     public static void exit() {
-        if (pathfindingExecutor != null) {
-            Rs2Walker.clearWalkingRoute("shortest-path-plugin:exit");
-            pathfindingExecutor.shutdownNow();
-            pathfindingExecutor = null;
-        }
+        Rs2Walker.clearWalkingRoute("shortest-path-plugin:exit");
+        RoutePlannerRuntime.shutdown();
     }
 
     public void restartPathfinding(WorldPoint start, Set<WorldPoint> ends, boolean canReviveFiltered) {
-        ExecutorService executor;
-        synchronized (pathfinderMutex) {
-            if (pathfinder != null) {
-                pathfinder.cancel();
-                pathfinderFuture.cancel(true);
-            }
+        restartPathfinding(start, ends, canReviveFiltered, false);
+    }
 
-            if ((executor = pathfindingExecutor) == null) {
-                ThreadFactory shortestPathNaming = new ThreadFactoryBuilder().setNameFormat("shortest-path-%d").build();
-                executor = Executors.newSingleThreadExecutor(shortestPathNaming);
-                pathfindingExecutor = executor;
-            }
+    private void restartPathfinding(WorldPoint start, Set<WorldPoint> ends,
+                                    boolean canReviveFiltered, boolean newRequest) {
+        final RoutePlannerRuntime.Preparation preparation = newRequest
+                ? RoutePlannerRuntime.beginNewRequest()
+                : RoutePlannerRuntime.beginReplan();
+        if (ends != null && !ends.isEmpty()) {
+            NavigationRouteOptions routeOptions = new NavigationRouteOptions(true,
+                    config.useAgilityShortcuts(), config.walkWithBankedTransports(),
+                    config.navigationEngineOrdinaryWalking(), config.recalculateDistance());
+            NavigationEngineRuntime.ensureRequest(new NavigationRequest(preparation.getRequestId(), ends,
+                    Math.max(0, reachedDistance), routeOptions, "shortest-path-ui"));
         }
-
-        final ExecutorService finalExecutor = executor;
         final long scheduleTime = System.currentTimeMillis();
         getClientThread().invokeLater(() -> {
             long invokeLaterDelay = System.currentTimeMillis() - scheduleTime;
@@ -355,13 +347,11 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
             pathfinderConfig.refresh();
             long refreshTime = System.currentTimeMillis() - refreshStart;
             pathfinderConfig.filterLocations(ends, canReviveFiltered);
-            synchronized (pathfinderMutex) {
-                if (ends.isEmpty()) {
-                    setTarget(null);
-                } else {
-                    pathfinder = new Pathfinder(pathfinderConfig, start, ends);
-                    pathfinderFuture = finalExecutor.submit(pathfinder);
-                }
+            if (ends.isEmpty()) {
+                setTarget(null);
+            } else {
+                RoutePlannerRuntime.submit(preparation,
+                        new Pathfinder(pathfinderConfig, start, ends));
             }
             log.info("[ShortestPath] restartPathfinding: invokeLater delay={}ms, config.refresh={}ms",
                     invokeLaterDelay, refreshTime);
@@ -377,6 +367,7 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
     }
 
     public boolean isNearPath(WorldPoint location) {
+        Pathfinder pathfinder = getPathfinder();
         if (pathfinder == null || !pathfinder.isDone() || pathfinder.getPath() == null || pathfinder.getPath().isEmpty() ||
                 config.recalculateDistance() < 0 || lastLocation.equals(lastLocation = location)) {
             return true;
@@ -466,6 +457,7 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
         // One-shot developer action: wipe everything the live overlay has learned (memory + disk).
         if (RESET_LEARNED_COLLISION_KEY.equals(event.getKey()) && Boolean.parseBoolean(event.getNewValue())) {
             resetLearnedCollision();
+            Pathfinder pathfinder = getPathfinder();
             if (pathfinder != null) {
                 restartPathfinding(pathfinder.getStart(), pathfinder.getTargets());
             }
@@ -487,6 +479,7 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
             if (pathfinderConfig != null) {
                 pathfinderConfig.invalidateTransportRefreshCache();
             }
+            Pathfinder pathfinder = getPathfinder();
             if (pathfinder != null) {
                 restartPathfinding(pathfinder.getStart(), pathfinder.getTargets());
             }
@@ -565,6 +558,7 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
 				}
 			}
 
+			Pathfinder pathfinder = getPathfinder();
 			boolean useOld = targets.isEmpty() && pathfinder != null;
 			restartPathfinding(start, useOld ? pathfinder.getTargets() : targets, useOld);
 		} else if (PLUGIN_MESSAGE_CLEAR.equals(action)) {
@@ -817,7 +811,7 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
         if (now - lastLiveRecalcMs < LIVE_RECALC_COOLDOWN_MS) {
             return false;
         }
-        final Pathfinder pf = ShortestPathPlugin.pathfinder;
+        final Pathfinder pf = getPathfinder();
         if (pf == null || !pf.isDone()) {
             return false;
         }
@@ -836,9 +830,15 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
         final int blocked = LiveRouteValidator.firstBlockedStep(path, from, LIVE_RECALC_LOOKAHEAD, map);
         if (blocked >= 0) {
             lastLiveRecalcMs = now;
-            log.debug("[LiveCollision] route step {} -> {} now blocked; recalculating",
-                    path.get(blocked), path.get(blocked + 1));
-            Rs2Walker.recalculatePath();
+            RoutePlan publishedPlan = RoutePlannerRuntime.getPublishedPlan();
+            boolean engineQueued = publishedPlan != null
+                    && NavigationEngineRuntime.reportBlockedEdge(
+                    publishedPlan.getGeneration(), blocked);
+            log.debug("[LiveCollision] route step {} -> {} now blocked; recoveryOwner={}",
+                    path.get(blocked), path.get(blocked + 1), engineQueued ? "engine" : "legacy");
+            if (!engineQueued) {
+                Rs2Walker.recalculatePath();
+            }
         }
         return true;
     }
@@ -853,7 +853,7 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
         }
 
         final WorldPoint myLoc = Rs2Player.getWorldLocation();
-        final Pathfinder pathfinder = ShortestPathPlugin.pathfinder;
+        final Pathfinder pathfinder = getPathfinder();
         if (myLoc == null || pathfinder == null || !pathfinder.isDone()) {
             return;
         }
@@ -874,6 +874,7 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
 
     @Subscribe
     public void onMenuEntryAdded(MenuEntryAdded event) {
+        final Pathfinder pathfinder = getPathfinder();
         if (client.isKeyPressed(KeyCode.KC_SHIFT)
                 && event.getType() == MenuAction.WALK.getId()) {
             addMenuEntry(event, SET, TARGET, 1);
@@ -910,7 +911,6 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
             if (Microbot.isDebug()) {
                 addMenuEntry(event, SET, TEST, 0);
             }
-            final Pathfinder pathfinder = ShortestPathPlugin.pathfinder;
             if (pathfinder != null) {
                 if (!pathfinder.getTargets().isEmpty()) {
                     addMenuEntry(event, SET, TARGET + ColorUtil.wrapWithColorTag(" " +
@@ -1076,12 +1076,7 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
 
     private void setTargets(Set<WorldPoint> targets, boolean append) {
         if (targets == null || targets.isEmpty()) {
-            synchronized (pathfinderMutex) {
-                if (pathfinder != null) {
-                    pathfinder.cancel();
-                }
-                pathfinder = null;
-            }
+            RoutePlannerRuntime.cancel();
 
             worldMapPointManager.removeIf(x -> x == marker);
             marker = null;
@@ -1100,7 +1095,7 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
                 worldMapPointManager.add(marker);
             }
 
-            final Pathfinder pathfinder = ShortestPathPlugin.pathfinder;
+            final Pathfinder pathfinder = getPathfinder();
             final WorldPoint start;
             if (startPointSet && pathfinder != null) {
                 start = pathfinder.getStart();
@@ -1132,11 +1127,12 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
             if (pathfinder != null && append) {
                 destinations.addAll(pathfinder.getTargets());
             }
-            restartPathfinding(start, destinations, append);
+            restartPathfinding(start, destinations, append, true);
         }
     }
 
     private void setStart(WorldPoint start) {
+        Pathfinder pathfinder = getPathfinder();
         if (pathfinder == null) {
             return;
         }

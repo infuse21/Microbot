@@ -1,6 +1,5 @@
 package net.runelite.client.plugins.microbot.util.walker.lifecycle;
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.Player;
@@ -11,12 +10,15 @@ import net.runelite.client.plugins.microbot.shortestpath.pathfinder.Pathfinder;
 import net.runelite.client.plugins.microbot.util.walker.Rs2PathApi;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
+import net.runelite.client.plugins.microbot.util.walker.door.DoorInteractionOwnership;
+import net.runelite.client.plugins.microbot.util.walker.navigation.NavigationEngineRuntime;
+import net.runelite.client.plugins.microbot.util.walker.navigation.NavigationRequest;
+import net.runelite.client.plugins.microbot.util.walker.navigation.NavigationRouteOptions;
+import net.runelite.client.plugins.microbot.util.walker.navigation.RoutePlannerRuntime;
 import net.runelite.client.ui.overlay.worldmap.WorldMapPoint;
 import net.runelite.client.ui.overlay.worldmap.WorldMapPointManager;
 
 import java.util.Set;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadFactory;
 
 @Slf4j
 public final class Rs2WalkerLifecycleRuntime {
@@ -25,6 +27,10 @@ public final class Rs2WalkerLifecycleRuntime {
     }
 
     public static void applyWalkerDestination(WorldPoint target) {
+        applyWalkerDestination(target, false);
+    }
+
+    public static void applyWalkerDestination(WorldPoint target, boolean newRequest) {
         if (target == null) {
             return;
         }
@@ -79,7 +85,8 @@ public final class Rs2WalkerLifecycleRuntime {
                 ? pathfinder.getStart()
                 : start;
         Rs2PathApi.setLastLocation(effectiveStart);
-        Microbot.getClientThread().runOnSeperateThread(() -> restartPathfinding(effectiveStart, target));
+        Microbot.getClientThread().runOnSeperateThread(
+                () -> restartPathfinding(effectiveStart, Set.of(target), newRequest));
     }
 
     public static boolean restartPathfinding(WorldPoint start, WorldPoint end) {
@@ -87,26 +94,32 @@ public final class Rs2WalkerLifecycleRuntime {
     }
 
     public static boolean restartPathfinding(WorldPoint start, Set<WorldPoint> ends) {
-        Pathfinder pathfinder = Rs2PathApi.getPathfinder();
-        if (pathfinder != null) {
-            pathfinder.cancel();
-            if (Rs2PathApi.getPathfinderFuture() != null) {
-                Rs2PathApi.getPathfinderFuture().cancel(true);
-            }
-        }
+        return restartPathfinding(start, ends, false);
+    }
 
-        if (Rs2PathApi.getPathfindingExecutor() == null) {
-            ThreadFactory shortestPathNaming = new ThreadFactoryBuilder().setNameFormat("shortest-path-%d").build();
-            Rs2PathApi.setPathfindingExecutor(Executors.newSingleThreadExecutor(shortestPathNaming));
+    private static boolean restartPathfinding(WorldPoint start, Set<WorldPoint> ends, boolean newRequest) {
+        RoutePlannerRuntime.Preparation preparation = newRequest
+                ? RoutePlannerRuntime.beginNewRequest()
+                : RoutePlannerRuntime.beginReplan();
+        if (ends != null && !ends.isEmpty()) {
+            int reachedDistance = Rs2Walker.config != null ? Math.max(0, Rs2Walker.config.reachedDistance()) : 0;
+            boolean ordinaryEngineAllowed = Rs2Walker.config != null
+                    && Rs2Walker.config.navigationEngineOrdinaryWalking()
+                    && DoorInteractionOwnership.ordinaryEngineAllowed(start, ends);
+            NavigationRouteOptions routeOptions = new NavigationRouteOptions(!Rs2Walker.disableTeleports,
+                    Rs2Walker.config == null || Rs2Walker.config.useAgilityShortcuts(),
+                    Rs2Walker.config != null && Rs2Walker.config.walkWithBankedTransports(),
+                    ordinaryEngineAllowed,
+                    Rs2Walker.config == null ? 10 : Rs2Walker.config.recalculateDistance());
+            NavigationEngineRuntime.ensureRequest(new NavigationRequest(preparation.getRequestId(), ends,
+                    reachedDistance, routeOptions, "rs2walker"));
         }
-
         WorldPoint refreshTarget = ends != null && !ends.isEmpty() ? ends.iterator().next() : null;
         Rs2PathApi.getPathfinderConfig().refresh(refreshTarget);
         if (Rs2Player.isInCave()) {
-            // Cave pathfinding runs synchronously, so no Future represents the pathfinder installed below.
-            // Clear the cancelled asynchronous handle instead of leaving stale "work in flight" state.
-            Rs2PathApi.setPathfinderFuture(null);
-            pathfinder = new Pathfinder(Rs2PathApi.getPathfinderConfig(), start, ends);
+            // Cave pathfinding runs synchronously; the planner preparation above already
+            // invalidated any asynchronous work in flight.
+            Pathfinder pathfinder = new Pathfinder(Rs2PathApi.getPathfinderConfig(), start, ends);
             pathfinder.run();
             try {
                 Rs2PathApi.getPathfinderConfig().setIgnoreTeleportAndItems(true);
@@ -116,7 +129,8 @@ public final class Rs2WalkerLifecycleRuntime {
                 boolean noTeleportPathAvailable = !pathfinderWithoutTeleports.getPath().isEmpty();
                 boolean basePathAvailable = pathfinder != null && !pathfinder.getPath().isEmpty();
                 if (!noTeleportPathAvailable) {
-                    Rs2PathApi.setPathfinder(basePathAvailable ? pathfinder : pathfinderWithoutTeleports);
+                    RoutePlannerRuntime.publishCompleted(preparation,
+                            basePathAvailable ? pathfinder : pathfinderWithoutTeleports);
                     return true;
                 }
 
@@ -126,16 +140,17 @@ public final class Rs2WalkerLifecycleRuntime {
                 if (pathWithoutTeleportsIsReachable
                         && basePathAvailable
                         && pathfinder.getPath().size() >= pathfinderWithoutTeleports.getPath().size()) {
-                    Rs2PathApi.setPathfinder(pathfinderWithoutTeleports);
+                    RoutePlannerRuntime.publishCompleted(preparation, pathfinderWithoutTeleports);
                 } else {
-                    Rs2PathApi.setPathfinder(basePathAvailable ? pathfinder : pathfinderWithoutTeleports);
+                    RoutePlannerRuntime.publishCompleted(preparation,
+                            basePathAvailable ? pathfinder : pathfinderWithoutTeleports);
                 }
             } finally {
                 Rs2PathApi.getPathfinderConfig().setIgnoreTeleportAndItems(false);
             }
         } else {
-            Rs2PathApi.setPathfinder(new Pathfinder(Rs2PathApi.getPathfinderConfig(), start, ends));
-            Rs2PathApi.setPathfinderFuture(Rs2PathApi.getPathfindingExecutor().submit(Rs2PathApi.getPathfinder()));
+            RoutePlannerRuntime.submit(preparation,
+                    new Pathfinder(Rs2PathApi.getPathfinderConfig(), start, ends));
         }
         return true;
     }

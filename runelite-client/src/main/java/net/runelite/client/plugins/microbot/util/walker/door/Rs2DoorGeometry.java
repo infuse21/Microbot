@@ -3,6 +3,7 @@ package net.runelite.client.plugins.microbot.util.walker.door;
 import net.runelite.api.TileObject;
 import net.runelite.api.WallObject;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.client.plugins.microbot.Microbot;
 
 /**
  * Stateless geometry helpers for deciding whether a door / gate object actually sits on the
@@ -66,13 +67,38 @@ public final class Rs2DoorGeometry {
     public static boolean wallDoorTouchesSegment(WallObject wall, WorldPoint wallLocation,
                                                  WorldPoint fromWp, WorldPoint toWp) {
         if (wall == null || wallLocation == null || fromWp == null || toWp == null) return false;
+        int[] orientations = wallOrientations(wall);
+        return wallDoorTouchesSegment(wallLocation, orientations[0], orientations[1],
+                fromWp, toWp);
+    }
+
+    /** Captures wall orientation API state on the client thread for pure edge matching. */
+    public static int[] wallOrientations(WallObject wall) {
+        if (wall == null) {
+            return new int[] {0, 0};
+        }
+		if (Microbot.getClientThread() == null) {
+			return DoorOrientationSnapshot.capture(wall);
+		}
+        // An empty hop result (shutdown, or a stubbed client thread in a shared-suite test)
+        // must not read as "no blocking orientation": capture the plain getters directly.
+        return Microbot.getClientThread().runOnClientThreadOptional(() ->
+				DoorOrientationSnapshot.capture(wall))
+                .orElseGet(() -> DoorOrientationSnapshot.capture(wall));
+    }
+
+    /** Pure snapshot form used when wall orientations were captured on the client thread. */
+    public static boolean wallDoorTouchesSegment(WorldPoint wallLocation, int orientationA,
+                                                 int orientationB, WorldPoint fromWp,
+                                                 WorldPoint toWp) {
+        if (wallLocation == null || fromWp == null || toWp == null) return false;
         if (wallLocation.getPlane() != fromWp.getPlane() || fromWp.getPlane() != toWp.getPlane()) return false;
 
         WorldPoint doorTile = wallLocation;
         // A door panel can advertise a blocked edge on either orientation; check both so a
         // legitimately-on-path door is never missed.
-        WorldPoint blockedNeighborA = getWallDoorNeighborPoint(wall.getOrientationA(), doorTile);
-        WorldPoint blockedNeighborB = getWallDoorNeighborPoint(wall.getOrientationB(), doorTile);
+        WorldPoint blockedNeighborA = getWallDoorNeighborPoint(orientationA, doorTile);
+        WorldPoint blockedNeighborB = getWallDoorNeighborPoint(orientationB, doorTile);
         if (blockedNeighborA == null && blockedNeighborB == null) return false;
 
         if (fromWp.getX() != toWp.getX() && fromWp.getY() != toWp.getY()) {

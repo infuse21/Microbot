@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.shortestpath.Transport;
+import net.runelite.client.plugins.microbot.shortestpath.TransportEdgeMatcher;
 import net.runelite.client.plugins.microbot.shortestpath.TransportType;
 import net.runelite.client.plugins.microbot.shortestpath.WorldPointUtil;
 import net.runelite.client.plugins.microbot.util.walker.WebWalkLog;
@@ -199,6 +200,21 @@ public class Pathfinder implements Runnable {
             }
         }
         return anchors;
+    }
+
+    /** Whether the published raw edge coincides with an enabled explicit transport. */
+    public boolean isTransportEdge(WorldPoint from, WorldPoint to) {
+        if (from == null || to == null || config.getTransports() == null) {
+            return false;
+        }
+        Set<Transport> transports = config.getTransports().get(from);
+        return transports != null && transports.stream()
+                .anyMatch(transport -> to.equals(transport.getDestination()));
+    }
+
+    /** Enabled catalog rows matching one directed raw-path edge. */
+    public Set<Transport> getTransportsForEdge(WorldPoint from, WorldPoint to) {
+        return TransportEdgeMatcher.find(config.getTransports(), from, to);
     }
 
     private void addNeighbors(Node node) {

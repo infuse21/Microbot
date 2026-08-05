@@ -4,6 +4,9 @@ import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.Pathfinder;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.PathfinderConfig;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.SplitFlagMap;
+import net.runelite.client.plugins.microbot.util.walker.navigation.PathfinderRouteCalculation;
+import net.runelite.client.plugins.microbot.util.walker.navigation.RouteEdge;
+import net.runelite.client.plugins.microbot.util.walker.navigation.RoutePlan;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -117,6 +120,21 @@ public class WalkerRouteCorpusTest {
     }
 
     private static final WorldPoint LUMBRIDGE = new WorldPoint(3222, 3218, 0);
+
+    @Test
+    public void faladorCastleStairChain_isOwnedByUnifiedEngine() {
+        WorldPoint start = new WorldPoint(2962, 3338, 0);
+        WorldPoint goal = new WorldPoint(2959, 3338, 3);
+        Pathfinder pathfinder = new Pathfinder(configWith(WalkerRouteCorpusTest::unrestricted), start, goal);
+
+        RoutePlan plan = new PathfinderRouteCalculation(pathfinder).calculate(1, 1);
+        List<RouteEdge> unsupported = plan.getRouteEdges().stream()
+                .filter(edge -> edge.getKind() == RouteEdge.Kind.TRANSPORT)
+                .collect(Collectors.toList());
+
+        assertTrue("Falador stair route did not arrive: " + plan.getEndpoint(), plan.isComplete());
+        assertTrue("unified engine rejected stair edges: " + unsupported, plan.isEngineSupported());
+    }
 
     // ---- baseline ----------------------------------------------------------------------------------
 

@@ -37,7 +37,8 @@ public class PathTileOverlay extends Overlay {
     private void renderTransports(Graphics2D graphics) {
         if (plugin == null) return;
         if (ShortestPathPlugin.getTransports() == null) return;
-        if (ShortestPathPlugin.getPathfinderFuture() == null || !ShortestPathPlugin.getPathfinderFuture().isDone()) return;
+        Pathfinder pathfinder = ShortestPathPlugin.getPathfinder();
+        if (pathfinder == null || !pathfinder.isDone()) return;
         for (WorldPoint a : ShortestPathPlugin.getTransports().keySet()) {
             drawTile(graphics, a, plugin.colourTransports, -1, true);
 

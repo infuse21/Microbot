@@ -657,7 +657,6 @@ public class PathfinderConfig {
             Set<Transport> usableTransports = new HashSet<>(entry.getValue().size());
             for (Transport transport : entry.getValue()) {
                 totalTransports++;
-                updateActionBasedOnQuestState(transport);
 
                 long t0 = System.nanoTime();
                 boolean usable = useTransport(transport);
@@ -1338,13 +1337,12 @@ public class PathfinderConfig {
 
     /**
      * Same gating as the main {@link #refreshTransports} loop, for rows injected after the merge pass
-     * (Leagues catalog / Area teleports): quest action patch, {@link #useTransport}, {@link Rs2LeaguesTransport#isTransportAllowed}.
+     * (Leagues catalog / Area teleports): {@link #useTransport}, {@link Rs2LeaguesTransport#isTransportAllowed}.
      */
     public boolean isTransportUsableWithLeaguesContext(Transport transport, Rs2LeaguesTransport.LeaguesContext leaguesCtx) {
         if (transport == null || leaguesCtx == null) {
             return false;
         }
-        updateActionBasedOnQuestState(transport);
         if (!useTransport(transport)) {
             return false;
         }
@@ -1376,16 +1374,6 @@ public class PathfinderConfig {
         return IntStream.range(0, requiredLevels.length)
             .filter(i -> requiredLevels[i] > 0)
             .allMatch(i -> Microbot.getClient().getBoostedSkillLevel(skills[i]) >= requiredLevels[i]);
-    }
-
-    private void updateActionBasedOnQuestState(Transport transport) {
-        if (Objects.equals(transport.getType(), TransportType.SHIP) &&
-                (Objects.equals(transport.getName(), "Veos") || Objects.equals(transport.getName(), "Captain Magoro"))) {
-            QuestState questState = Rs2Player.getQuestState(Quest.CLIENT_OF_KOUREND);
-            if (questState != QuestState.FINISHED && !Objects.equals(transport.getAction(), "Talk-to")) {
-                transport.setAction("Talk-to");
-            }
-        }
     }
 
     /**

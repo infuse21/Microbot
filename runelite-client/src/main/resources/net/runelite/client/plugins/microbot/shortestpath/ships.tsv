@@ -1,7 +1,7 @@
 # Origin	Destination	menuOption menuTarget objectID	Skills	Currency	Quests	isMembers	Duration	Display info
 # Port Sarim, Musa Point								
-3029 3217 0	2956 3143 1	Musa Point;Captain Tobias;3644		30 Coins			10	Musa Point
-2956 3146 0	3032 3217 1	Port Sarim;Customs officer;3648		30 Coins			10	Port Sarim
+3029 3217 0	2956 3146 0	Travel;Captain Tobias;14978		30 Coins			10	Musa Point
+2956 3146 0	3029 3217 0	Travel;Customs officer;14984		30 Coins			10	Port Sarim
 # Ardougne, Brimhaven, Rimmington								
 2673 3275 0	2775 3233 1	Brimhaven;Captain Barnaby;9250		30 Coins		Y	6	Brimhaven
 2673 3275 0	2915 3221 1	Rimmington;Captain Barnaby;9250		30 Coins		Y	6	Rimmington
@@ -29,14 +29,14 @@
 2222 3796 2	2138 3899 2	Travel;Captain Bentley;6650				Y	12	
 2138 3899 2	2222 3796 2	Travel;Captain Bentley;6650				Y	12	
 # Port Sarim, Port Piscarilius, Land's End
-3055 3245 0	1824 3695 1	Port Piscarilius;Veos;10724			A Kingdom Divided=NOT_STARTED	Y	6	Port Piscarilius
-3055 3245 0	1504 3395 1	Land's End;Veos;10724			A Kingdom Divided=NOT_STARTED	Y	6	Land's End
-1824 3691 0	3055 3242 1	Port Sarim;Veos;10724			A Kingdom Divided=NOT_STARTED	Y	6	Port Sarim
-1824 3691 0	1504 3395 1	Land's End;Veos;10724			A Kingdom Divided=NOT_STARTED	Y	6	Land's End
-3055 3245 0	1824 3695 1	Port Piscarilius;Cabin Boy Herbert;10932			A Kingdom Divided	Y	6	Port Piscarilius
-3055 3245 0	1504 3395 1	Land's End;Cabin Boy Herbert;10932			A Kingdom Divided	Y	6	Land's End
-1824 3691 0	3055 3242 1	Port Sarim;Cabin Boy Herbert;10932			A Kingdom Divided	Y	6	Port Sarim
-1824 3691 0	1504 3395 1	Land's End;Cabin Boy Herbert;10932			A Kingdom Divided	Y	6	Land's End
+3055 3245 0	1824 3695 1	Port Piscarilius;Veos;8630			A Kingdom Divided=NOT_STARTED	Y	6	Port Piscarilius
+3055 3245 0	1504 3395 1	Land's End;Veos;8630			A Kingdom Divided=NOT_STARTED	Y	6	Land's End
+1824 3691 0	3055 3242 1	Port Sarim;Veos;10726			A Kingdom Divided=NOT_STARTED	Y	6	Port Sarim
+1824 3691 0	1504 3395 1	Land's End;Veos;10726			A Kingdom Divided=NOT_STARTED	Y	6	Land's End
+3055 3245 0	1824 3695 1	Talk-to;Cabin Boy Herbert;10933			A Kingdom Divided	Y	6	Port Piscarilius
+3055 3245 0	1504 3395 1	Talk-to;Cabin Boy Herbert;10933			A Kingdom Divided	Y	6	Land's End
+1824 3691 0	3055 3242 1	Talk-to;Cabin Boy Herbert;10932			A Kingdom Divided	Y	6	Port Sarim
+1824 3691 0	1504 3395 1	Talk-to;Cabin Boy Herbert;10932			A Kingdom Divided	Y	6	Land's End
 1504 3399 0	3055 3242 1	Port Sarim;Captain Magoro;7471				Y	6	Port Sarim
 1504 3399 0	1824 3695 1	Port Piscarilius;Captain Magoro;7471				Y	6	Port Piscarilius
 								

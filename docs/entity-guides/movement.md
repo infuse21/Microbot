@@ -1,5 +1,16 @@
 # Movement Gotchas
 
+> **How to read these.** Each entry records a failure mode observed while working on the walker.
+> Two caveats for reviewers:
+>
+> - **"Pattern to follow" blocks are illustrative.** They may use shortened or pseudo-code names
+>   (`atTransportDestination`, `isRouteActive`, `clickOptimisticRecoveryTarget`, …) that do not exist
+>   verbatim in the source. The **"Where this applies"** line is the authoritative list of real symbols.
+> - **Some entries record approaches that were tried and reverted** (#19, #20). They are kept
+>   deliberately so the reverted idea is not reintroduced from an older note. Where an entry cites a
+>   measured log line, that measurement is the evidence; where it does not, treat it as a hypothesis
+>   that happened to hold at the time of writing.
+
 ## 1. Do not recurse on failed minimap clicks without changing the click target
 
 `Rs2Walker.processWalk` holds the walker lock while processing a path. If a minimap click is rejected because the calculated point is outside the minimap clip, immediately recursing with the same target can spin forever while still holding the lock. Shrink the click target toward the player or otherwise change the condition before retrying.
@@ -24,6 +35,17 @@ if (!clicked)
 ## 2. Probe raw path obstacles before declaring the walker stuck
 
 Path smoothing can collapse many adjacent raw path tiles into one minimap waypoint. Some doors and gates are not represented as blocking collision in the pathfinder map, so the smoothed segment may legally cross them while hiding the exact tile the object handler needs to inspect. Run nearby raw-path door/object checks as soon as the raw path is longer than the smoothed path and the obstacle is in scene range; do not wait for `stuckCount` to increment first.
+
+`Rs2GameObject.getGameObject(WorldPoint)` treats the point as a search anchor and returns a nearby
+game object; it is not an exact-tile lookup. Route-edge classification and interaction verification
+must additionally require the object's world location (or footprint, for genuinely multi-tile
+objects) to occupy the planned edge tile. Otherwise the walker opens or mines unrelated objects one
+tile beside the route.
+
+Once an exact route-blocking object is loaded and within a conservative handler range, its object
+interaction may supersede an active ground-movement command. The server can complete the approach;
+forcing a separate walk to the object's edge adds redundant clicks and prevents natural ranged
+interaction. Keep the range bounded and retain post-interaction clearance/crossing verification.
 
 **Why this matters:** A walk from Varrock castle's upper floors toward Varrock fountain can descend correctly, then stall at the plane-1 castle door because the smoothed waypoint skips over the door tile and the normal per-segment door check never sees it.
 
@@ -77,9 +99,11 @@ waitForDoorInteractionProgress(fromWp, toWp);
 
 **Defensive check:** In live testing, a door should produce one interaction followed by movement/path progress, not repeated `Raw path door handler resolved obstacle` messages every tick while the player is moving.
 
+If a previous minimap click is still moving the player, do not attribute that movement to a new gate interaction. A valid gate can be blacklisted when the walker clicks an interim waypoint, notices the gate while movement is still in flight, then compares the pre/post positions from the old minimap movement against the gate edge. Wrong-traversal blacklisting should only run when the player started near the attempted door edge.
+
 ## 5. Suppress the inverse adjacent transport after crossing a same-plane door
 
-Some doors are represented in `transports.tsv` as two adjacent same-plane transports, one for each direction. After the walker clicks one side and arrives on the other, immediately accepting the inverse transport can bounce the player back through the same door instead of letting the next minimap step continue away from it. Mark both tiles of a successful adjacent same-plane transport as recently handled for a short window.
+Some doors are represented in `transports.tsv` as two adjacent same-plane transports, one for each direction. After the walker clicks one side and arrives on the other, immediately accepting the inverse transport can bounce the player back through the same door instead of letting the next minimap step continue away from it. Mark both tiles of a successful adjacent same-plane transport as recently handled for a short window. **This is necessary but not sufficient — see #22:** suppression must also run when the landing check *fails*, because an adjacent transport requires landing on the exact destination tile and a crossing can succeed while that check reports failure.
 
 **Why this matters:** Leaving Draynor Manor through the east/back door can alternate between `3123,3360,0` and `3123,3361,0`, repeatedly logging raw-path/current-tile transport handling and burning the route timeout before walking back to Draynor.
 
@@ -235,9 +259,9 @@ if (isStuckTooLong()) {
 
 For long open routes, retarget before the player fully stops when they are already close to the interim checkpoint, and keep normal minimap clicks slightly inside the observed minimap edge. This reduces visible stop/start pauses and outside-clip fallback clicks without reintroducing rapid click thrash.
 
-## 12. Do not let optimistic recovery override unresolved door blockers
+## 12. Do not let local recovery override unresolved door blockers
 
-Unreachable-tile recovery is useful for outdoor false negatives, but in tight rooms it can fight the door resolver. If a route edge still has a door-like scene object on or adjacent to the raw path, suppress broad minimap recovery and let the door scanners retry after their normal cooldowns. Do not permanently blacklist a path-adjacent fallback door just because one attempt traversed the wrong way; in small door clusters the same object may be the correct blocker again once the player has moved to the other side.
+Local-reachability recovery is useful for outdoor false negatives, but in tight rooms it can fight the door resolver. If a route edge still has a door-like scene object on or adjacent to the raw path, suppress broad minimap recovery and let the door scanners retry after their normal cooldowns. Do not permanently blacklist a path-adjacent fallback door just because one attempt traversed the wrong way; in small door clusters the same object may be the correct blocker again once the player has moved to the other side.
 
 **Why this matters:** In POH-style tight rooms with several doors close together, a fallback door click can move the player away from the intended route. If that door tile is session-blacklisted and optimistic recovery keeps clicking route tiles beyond the blocker, the walker loops around the room until a user manually opens the final door.
 
@@ -255,7 +279,7 @@ clickOptimisticRecoveryTarget();
 
 **Where this applies:** `Rs2Walker.processWalk` unreachable-tile handling, `tryResolvePathAdjacentBlocker`, and any fallback that issues minimap recovery clicks after door/path-adjacent scans fail.
 
-**Defensive check:** Reproduce a route through a small room with three nearby doors and a POH portal. The walker should retry the route-door blocker and avoid repeated `unreachable optimistic recovery` loops around the room; it should not need the user to manually open the final door.
+**Defensive check:** Reproduce a route through a small room with three nearby doors and a POH portal. The walker should retry the route-door blocker and avoid repeated `route-backed local recovery click` loops around the room; it should not need the user to manually open the final door.
 
 ## 13. Stall recalculation must also issue fresh movement
 
@@ -286,12 +310,689 @@ if (isStuckTooLong()) {
 
 After a handled transport, avoid expensive path-adjacent or raw transport scans on ordinary open-ground segments unless a nearby planned transport or recent door attempt exists. Those scans are recovery tools, and on long outdoor routes a no-op scan can add several seconds before the next minimap click.
 
-For long-route minimap walking, let the next checkpoint selection happen before the current minimap target is fully consumed. Waiting until the player is only a few tiles from the interim makes the walker visibly stop before issuing the next click; handing off at a moderate remaining distance keeps movement continuous without rapid re-clicking. If an interim clears as close and no nearby route door/transport is pending, issue the next route-aligned continuation click immediately instead of waiting for idle-nudge recovery.
+For long-route minimap walking, let the next checkpoint selection happen before the current minimap target is fully consumed. Waiting until the player is only a few tiles from the interim makes the walker visibly stop before issuing the next click; handing off at a moderate remaining distance keeps movement continuous without rapid re-clicking. If an interim clears as close and no nearby route door/transport is pending, issue the next route-aligned continuation click immediately instead of waiting for idle-nudge recovery. Stale-progress checks must also count distance progress toward the actual interim checkpoint, not only smoothed path index progress; sparse smoothed paths can otherwise clear valid raw-path checkpoints as stale while the player is still walking toward them.
+
+Before the first movement click, avoid timeout-backed speculative segment scans for doors, blockers, rockfalls, or transports. Let the first minimap click move the player toward the route; actual visible doors can still be handled by the dedicated pre-click route-door guard, and steady-state handling can resolve later obstacles once movement has started. Spending startup time scanning every nearby raw segment creates a visible cold start.
 
 Continuation clicks that keep an active route moving should be tail-exempt like `interim-in-flight`; otherwise very long routes can exhaust `MAX_PROCESS_WALK_TAIL_ITERATIONS` while still making progress and trigger an unnecessary auto-retry.
 
 Sticky interim targets should also clear when route-index progress goes stale. If the player keeps moving but the closest path index does not advance for `INTERIM_PROGRESS_TIMEOUT_MS`, treat the checkpoint as stale and select a fresh route-aligned target instead of waiting for max-age expiry.
 
-When a route-following minimap click is outside the minimap clip, fallback clicks must stay on the raw path. A generic "reachable tile closer to target" fallback can select a tile far away from the route in open areas, especially near the final destination.
+When a route-following minimap click is outside the minimap clip, fallback clicks must stay on the raw path. This includes the "clicked but no movement yet" retry after a route click and route-backed direct short-walks near the final destination. A generic "reachable tile closer to target" fallback can select a tile far away from the route in open areas, especially near fences and the final destination. Raw fallback must be anchored from the stabilized route index, not a fresh nearest-raw-tile lookup, or the walker can snap backward to an already-travelled branch.
 
-For adjacent same-plane shortcuts, do not treat any movement away from the origin as success. Some shortcuts, such as stepping stones, can fail and place the player on a fallback tile; once the player is settled away from the expected destination, stop the landing wait and replan from the actual tile.
+For adjacent same-plane shortcuts, do not treat any movement away from the origin as success. Some shortcuts, such as stepping stones, can fail and place the player on a fallback tile; once the player is settled away from the expected destination, stop the landing wait and replan from the actual tile. If the player is settled within one tile of the expected destination and is no longer on the origin, accept the landing instead of waiting for an exact tile that server pathing may not choose.
+
+## 14. Keep local recovery clicks route-backed and paced
+
+Local-reachability recovery is a fallback for bounded reachability false negatives, not a license to pick an arbitrary minimap point. Recovery clicks should use the same route-backed raw-path fallback as normal route movement, then store the actual clicked target as the sticky interim checkpoint. After issuing the click, wait only for movement to start or the checkpoint/goal to be reached; do not wait for a full idle cycle before returning to the walk loop.
+
+**Why this matters:** Bounded local reachability can report a valid route tile as unreachable even though the server pathfinder can still walk toward it. Arbitrary or repeated recovery clicks can pull the player away from the planned route and create visible stop-start movement.
+
+**Pattern to follow:**
+
+```java
+int reach = STALL_RECOVERY_MINIMAP_REACH_EUCLIDEAN;
+WorldPoint clickTarget = clampToEuclideanRadius(playerLoc, recoverTarget, reach - 1);
+WorldPoint clickedTarget = clickMiniMapOrFallback(rawPath, clickTarget, playerLoc, reach - 1, false, rawAnchorIndex);
+if (clickedTarget != null) {
+    interimTargetWp = clickedTarget;
+    waitForMovementStartAfterRecovery(target, playerLoc, clickedTarget, target, finishThreshold);
+}
+```
+
+**Where this applies:** `Rs2Walker.processWalk` local-reachability recovery, route-backed direct short-walks, and any fallback that runs after local reachability says a route tile is not currently reachable.
+
+**Defensive check:** Exercise a long outdoor route and a route with gates or transports. Recovery logs should select route-backed points, and there should be no long idle pause between `route-backed local recovery click` and the next route-aligned movement.
+
+After recovery sets a sticky interim target, do not issue another optimistic recovery while that interim is still active and movement/progress is fresh. Yield as `interim-in-flight` or another tail-exempt movement state until the checkpoint is close, stale, or expired. Otherwise the walker can loop through several recovery clicks while the player is already moving, especially when local reachability reports the next smoothed tile as unreachable.
+
+## 15. Keep primary route clicks on the raw route
+
+When a shortest-path raw route exists, choose the next minimap target from that raw route before applying smoothed-waypoint wall-distance nudges, bounded reachability shortcuts, or generic directional fallbacks. Sideways reachable tiles can be valid server walk targets while still being the wrong side of a fence, gate, or corridor corner. Generic fallback is only appropriate when no route-backed raw point is available.
+
+**Why this matters:** Tight routes near gates and fences can fail when the walker clicks a tile left or right of the drawn route line. The game then chooses its own path around the obstacle, which fights the planned door/transport handlers and produces stop-start recovery.
+
+**Pattern to follow:**
+
+```java
+WorldPoint rawTarget = findFurthestRawPathPointMatching(rawPath, playerLoc, reach, rawAnchor,
+        Rs2Walker::isKnownWalkableOrUnloaded);
+WorldPoint clickTarget = rawTarget != null ? rawTarget : getPointWithWallDistance(smoothedTarget);
+```
+
+**Where this applies:** `Rs2Walker.processWalk`, recovery clicks after false unreachable reports, route continuation clicks, direct short-walk fallbacks, and any minimap click helper used while a shortest-path raw route exists.
+
+**Defensive check:** Unit-test raw-route target selection with a route that doubles back near an earlier branch; the selected tile must stay at or ahead of the anchored raw route index.
+
+## 16. Yield before scans while an interim route click is in flight
+
+Sticky interim targets only reduce click thrash if they are checked before broad route scans. When a fresh interim checkpoint is still far away and the player is moving or has very recent checkpoint progress, yield before raw-scene scans, current-tile transport scans, direct short-walk attempts, and path segment scans. Resume normal route work once the checkpoint is close, stale, expired, on another plane, or movement has genuinely stopped.
+
+**Why this matters:** Long post-transport routes can otherwise run several no-op scans and select several small follow-up clicks while the previous minimap flag is still carrying the player. That looks like stop-start walking and burns tail iterations even though the route is making progress.
+
+**Pattern to follow:**
+
+```java
+if (shouldYieldForActiveRouteInterim(playerLoc, path, nowMs)) {
+    exitReason = "interim-in-flight";
+    continue;
+}
+```
+
+**Where this applies:** `Rs2Walker.processWalk` before broad raw-scene handling, current-tile transport handling, direct short-walk handling, and the main path loop.
+
+**Defensive check:** Start a long route immediately after a transport. While the player is still moving toward the active minimap checkpoint, the walker should log a tail-exempt `interim-in-flight` yield instead of repeated `post_transport_path_selected` clicks for nearby path indices.
+
+## 17. Dispatch immediate planned transports before idle nudges
+
+When the current route index is an explicit shortest-path transport edge, let the segment transport handler run even during startup, before route idle nudges or stall recovery clicks. Keep startup door/rockfall probes skipped, but do not postpone teleports, ships, ladders, or other catalog-backed route transports that start at the player's current segment.
+
+**Why this matters:** Originless spell/item teleports can be the first edge in a route. If startup logic suppresses the segment handler and idle recovery runs first, the walker can sit on the origin, spam no-op route nudges, trigger stall recovery, and only then cast the teleport.
+
+**Pattern to follow:**
+
+```java
+boolean immediateTransport = hasImmediatePlannedTransportStep(path, routeStartIdx, playerLoc);
+if (shouldRunActiveRouteIdleNudge(idleNudgeDue, immediateTransport)) {
+    tryIssueRouteRecoveryClick(rawPath, path, target, "active route idle nudge");
+}
+```
+
+**Where this applies:** `Rs2Walker.processWalk` startup handling, active route idle nudges, stall recovery clicks, and segment transport dispatch.
+
+**Defensive check:** Start a route whose first planned edge is Home Teleport. Logs should show `transport_handoff_enter` for `TELEPORTATION_SPELL` without several `active route idle nudge: clicked=false` entries first.
+
+## 18. Model conditional paid gates as transports plus blocked edges
+
+When a gate can be crossed by either a quest unlock or a currency payment, do not model the gate tiles as quest-only restrictions. A tile restriction cannot express "quest complete OR pay coins", and it can prevent the walker from reaching the paid transport origin. Model each crossing as explicit paid/free transports and add a blocked edge override so normal walking cannot bypass the unavailable transport.
+
+**Why this matters:** The Lumbridge-to-Al Kharid toll gate can be opened freely after Prince Ali Rescue or paid through with 10 coins. A quest-only restriction blocks the paid route for accounts without the quest, while no edge block can let the pathfinder walk through the gate without paying.
+
+**Pattern to follow:**
+
+```java
+// Wrong: restrict both sides of the gate to one quest state.
+3267 3227 0        Prince Ali Rescue
+
+// Right: transport data decides availability; blocked_edges prevents free walking.
+3267 3227 0    3268 3227 0    Pay-toll(10gp);Gate;2786    ...    10 Coins
+3267 3227 0    3268 3227 0    Open;Gate;2786              ...    Prince Ali Rescue
+```
+
+**Where this applies:** `transports.tsv`, `blocked_edges.tsv`, `restrictions.tsv`, `PathfinderConfig`, and `Rs2Walker.handleTransports`.
+
+**Defensive check:** Add resource tests that assert both paid and quest-free transports load, the gate tiles are not quest-only restricted, and the gate edge is blocked without a usable transport.
+
+## 19. Reachability-gate the FALLBACK click paths, and allow bidirectional rejoin
+
+A tile being *walkable* (`Rs2Tile.isWalkable`, i.e. not `BLOCK_MOVEMENT_FULL`) is not the same as being *reachable from the player*. Next to a wall the two diverge hard: a tile flush on the far side of a castle wall is walkable and Euclidean-close, but only reachable via a long detour. This matters for click targets that are **invented** rather than taken from the route:
+
+- `getPointWithWallDistance` picks a neighbour reachable *from the target*, from an unordered set, so its nudge can land on the far side of a wall or inside a building. Pass the player position so it prefers a neighbour reachable from and nearest to the player, and verify the result with `Rs2Tile.isTileReachable` before clicking it.
+- The scaled-radius directional fallback in `walkMiniMapToward` invents a geometric point toward an off-clip target. Only click it if it is actually reachable, otherwise a fresh teleport produces clicks far off the route.
+
+Forward-only anchoring (introduced to stop the walker snapping back to already-travelled branches) overcorrects when the player is pushed *off* the path: if nothing ahead is reachable, forward-only recovery returns nothing and the walker stalls. Recovery must therefore be **bidirectional**: scan a bounded index window on both sides of the anchor and rejoin via the nearest reachable raw point, preferring the furthest-forward one so normal progress is never sacrificed. This is a rejoin path for the off-path case only; steady-state progress stays forward-only.
+
+**Do NOT extend this to primary selection.** An earlier revision selected the primary click from the player's bounded reachable set. That was reverted: a BFS bounded by click radius can exclude legitimate around-a-corner points and shorten clicks for no benefit, because a point taken from the raw route is safe by construction regardless of how the server walks to it (see #20). Reachability gating belongs only on targets that are *not* route points.
+
+**Why this matters:** Walking past the Varrock West Bank, the wall-distance nudge and a stale-anchor fallback produced clicks that were off the planned route, so the game improvised a detour. The route-membership rule in #20 fixes the primary path; these guards fix the invented-target paths.
+
+**Pattern to follow:**
+
+```java
+// Primary: an on-route point (see #20) — no reachability gate needed.
+WorldPoint rawRouteTarget = selectRouteClickTarget(rawPath, playerLoc, reach, rawAnchorIndex);
+if (rawRouteTarget != null) {
+    clickTarget = rawRouteTarget;
+} else {
+    // Invented target: now reachability matters.
+    clickTarget = getPointWithWallDistance(targetWp, playerLoc);
+    if (!Rs2Tile.isTileReachable(clickTarget)) {
+        WorldPoint rejoin = findReachableRejoinRawPathPoint(rawPath, playerLoc, reach, rawAnchorIndex);
+        if (rejoin != null) clickTarget = rejoin; // step back onto the line if needed
+    }
+}
+if (!reachable.contains(scaledFallback)) continue; // directional guesses too
+```
+
+**Where this applies:** `Rs2Walker.findReachableRejoinRawPathPoint`, `Rs2Walker.walkMiniMapToward`, `getPointWithWallDistance` consumers. **Not** `selectRouteClickTarget`.
+
+**Defensive check:** Unit-test the rejoin core with an injected reachability predicate: (a) player pushed one tile off-path with nothing ahead reachable must return a point *behind* the anchor; (b) with points ahead reachable it must return the furthest-forward one inside the reach circle; (c) nothing reachable must return null so stall/recalc can take over.
+
+## 20. Keep minimap click targets on the raw route — do NOT clamp them to line-of-sight
+
+A minimap click is resolved by the **game's own pathing**, so line of sight is irrelevant to walking: a player clicks past a corner, through a doorway, or around a building and the server routes them there. The invariant that matters is that the click target sits **on the raw route** — then wherever the server chooses to walk, we arrive on the planned path. Do not select the click by clamping a far smoothed waypoint to a Euclidean radius either; that is what produced an off-route target in the first place.
+
+**Why this matters:** Walking past the Varrock West Bank, selection returned null on a stale anchor (see #24), so the caller clamped a far smoothed waypoint to a ~10 tile radius and clicked `(3176,3428)` — a tile that is *not* on the raw route. The game pathed there its own way, deviating wide and backtracking.
+
+**Do not "fix" this with line-of-sight.** An earlier revision clamped clicks to a straight walkable line. It removed the symptom but made the walker advance corner-to-corner — stopping at every corner to re-aim, because it would only click as far as it could see in a straight line. That is a visible behavioural tell and it bought no correctness: an on-route target is safe regardless of how the server walks to it. It was reverted.
+
+**Pattern to follow:**
+
+```java
+// Furthest forward point ON THE RAW ROUTE within minimap reach. No LOS requirement.
+WorldPoint forward = findFurthestRawPathPointMatching(rawPath, playerLoc, maxEuclidean,
+        rawAnchorIndex, Rs2Walker::isKnownWalkableOrUnloaded);
+```
+
+**Where this applies:** `Rs2Walker.selectRouteClickTarget`, `findFurthestVisibleKnownRawPathPoint`, and any minimap click selection while a raw route exists. Pending doors/gates are handled by `handlePendingDoorBeforeRouteClick` — not by shortening the click.
+
+**Defensive check:** `RouteClickTargetRegressionTest` asserts the historic `(3176,3428)` is not on the raw route, and that the route offers several on-route candidates within minimap reach so a click is never artificially shortened to the nearest corner.
+
+## 21. Route continuation is one-shot — keep the idle-nudge window short
+
+`tryIssueRouteContinuationClick` only runs on the single pass where `clearInterimTargetIfReachedOrExpired` returns `true` (the transition where the interim checkpoint is cleared). If any guard blocks it on that exact pass — `isInteracting`, `isAnimating`, door/transport settling, or its own unresolved-door / upcoming-transport checks — the opportunity is lost and **nothing retries it**. The route then only resumes via the active-route idle nudge, so that stationary window is the visible dead stop between hops. Keep it to a few ticks; do not treat it as a rare recovery path, because in practice it is what continues normal routes.
+
+**Why this matters:** A 41-tile walk from `(3183,3435)` to `(3173,3399)` clicked correctly, walked to its checkpoint, then sat fully stopped for the whole `2500ms` idle window before issuing the next click — roughly a third of the total walk time spent standing still, once per hop.
+
+**Pattern to follow:**
+
+```java
+// One-shot: only fires on the pass that clears the interim checkpoint.
+if (clearedInterimTarget && !Rs2Player.isInteracting() && !Rs2Player.isAnimating()
+        && tryIssueRouteContinuationClick(rawPath, path, target)) { ... }
+
+// So the nudge window is the real continuation path — keep it a few ticks, not seconds.
+private static final long ACTIVE_ROUTE_IDLE_NUDGE_MS = 1_200L;
+```
+
+**Where this applies:** `Rs2Walker.tryIssueRouteContinuationClick`, `clearInterimTargetIfReachedOrExpired`, `shouldIssueActiveRouteIdleNudge`, and `ACTIVE_ROUTE_IDLE_NUDGE_MS` / `ACTIVE_ROUTE_IDLE_NUDGE_COOLDOWN_MS`.
+
+**Defensive check:** On a multi-hop route, the gap between `first_minimap_click` / route-fallback clicks and the next `active route idle nudge` should be roughly the walk time plus a few ticks — not walk time plus a full idle window. A repeating ~2.5s stationary gap per hop means continuation is being missed and only the nudge is driving the route.
+
+## 22. Suppress the inverse adjacent transport even when the landing check fails
+
+Gotcha #5 suppresses the inverse of an adjacent same-plane transport after a crossing, but only on the success path. Adjacent same-plane transports require landing on the *exact* destination tile, and agility shortcuts routinely deposit the player a tile off it — so a crossing can physically succeed while the landing check reports failure. On that path nothing was suppressed, leaving the inverse entry immediately eligible. Record the suppression whenever the player is no longer on the origin, regardless of the landing verdict; the landing result itself should stay unchanged so the route still replans.
+
+**Why this matters:** Near `(3150..3151, 3363)` the walker crossed an `AGILITY_SHORTCUT`, landed a tile off the catalogued destination, logged `post-handleObject landing unresolved`, then immediately took the opposing entry back across and stranded itself — roughly 19s of a 2m26s walk spent bouncing and recovering.
+
+**Pattern to follow:**
+
+```java
+boolean landed = waitForPostHandleObjectLanding(transport, destWait, maxInclusive);
+if (!landed) {
+    WorldPoint after = Rs2Player.getWorldLocation();
+    // Off the origin => we crossed, even though the strict landing check failed.
+    if (isAdjacentSamePlaneTransport(transport) && after != null && !after.equals(transport.getOrigin())) {
+        markAdjacentSamePlaneTransportHandled(transport, object);
+    }
+}
+```
+
+**Where this applies:** `Rs2Walker.handleTransports` object interactions, `waitForPostHandleObjectLanding` callers, `markAdjacentSamePlaneTransportHandled`, and any adjacent same-plane transport regardless of `TransportType` — suppression is deliberately type-agnostic, so shortcuts and doors are covered alike.
+
+**Defensive check:** A crossed shortcut should produce at most one `post-handleObject landing unresolved` followed by route progress away from the shortcut — not a second interaction with the opposing entry at an adjacent destination tile (`dest=3150,3363` then `dest=3151,3363`).
+
+## 23. Never hash a raw cooldown timer into the transport cache key
+
+The transport refresh verification hash must contain values that change only when a transport's *usability* changes. A `COOLDOWN_MINUTES` varplayer compares against wall-clock minutes, so its raw value advances continuously — hashing it guarantees cache misses forever. Worse, casting Home Teleport writes `LAST_HOME_TELEPORT`, which is one of the hashed varplayers, so **the teleport invalidated the transport cache simply by being used**, forcing a full re-evaluation of every transport (~2.6s) immediately after the teleport it had just performed. Hash the condition *verdict* (`TransportVarPlayer.matches`) plus the condition identity instead of the raw value: the verdict flips exactly once, when the cooldown expires and the transport actually becomes usable.
+
+This is the same rule as #19's skill fix: only inputs that can flip a transport's usability may participate. Timers, regenerating stats, and other monotonically-drifting values must not.
+
+**Why this matters:** A Camelot -> Draynor walk beginning with a Home Teleport logged
+`transport_handoff ... ms=16562` with `refresh_transports cache_miss reason=verify ... changed=varplayers` firing inside that window — about 2.9s of a 16.5s teleport was the teleport invalidating its own cache.
+
+**Pattern to follow:**
+
+```java
+// Wrong: raw value ticks every minute, and casting the spell writes it.
+h = 31 * h + Microbot.getVarbitPlayerValue(id);
+
+// Right: only a usability flip participates.
+boolean satisfied = new TransportVarPlayer(id, value, operator).matches(actualValue);
+h = 31 * h + id; h = 31 * h + operatorOrdinal; h = 31 * h + value;
+h = 31 * h + (satisfied ? 1 : 0);
+```
+
+**Where this applies:** `PathfinderConfig.hashVarplayerConditionVerdicts`, `PathfinderConfig.hashVarbitConditionVerdicts`, `computeTransportRefreshVerificationHash`, the transport refresh snapshot, and any future cache key covering varbits/varplayers/skills. Varbits get the identical treatment: a raw varbit moving without flipping a condition verdict must not invalidate, which is what produced the ~2.4s dead time between pressing go and the first action.
+
+**Defensive check:** `refresh_transports cache_miss reason=verify ... changed=varplayers` should not appear immediately after a teleport. Unit-test that two different raw values inside the same cooldown window hash identically, and that crossing the threshold does not.
+
+## 24. Vary click reach, not click direction
+
+Route selection otherwise always returns the furthest candidate inside a fixed radius, so every click covers the same tile span — a deterministic signature. Jitter the reach per click instead (`routeClickReach`), which only changes how far **along** the route the target sits. Do **not** offset the target sideways: a lateral tile offset leaves the planned route, which is what produces clicks on the wrong side of a fence or inside a building (#15), and route membership is the property that keeps the server's own pathing on our route (#20). Lateral randomness belongs *inside* the tile, in click-point jitter, where it changes the pixel without changing the destination.
+
+Two bounds are load-bearing. The floor must stay clear of `INTERIM_CLOSE_TILES`, or a short click lands inside the interim-close threshold, clears the checkpoint immediately and produces click thrash with visible stop-start movement. The ceiling is the caller's reach, already tuned to the minimap clip; above it clicks simply fall outside the clip and take the fallback path. A shortened reach must also never be the reason selection fails — retry at full reach before falling through, or the click drops onto the off-route wall-nudge clamp (#19).
+
+**Pattern to follow:**
+
+```java
+int jitteredReach = routeClickReach(maxEuclidean);
+WorldPoint selected = selectRouteClickTargetAnchored(rawPath, playerLoc, jitteredReach, rawAnchorIndex);
+if (selected == null && jitteredReach < maxEuclidean) {
+    selected = selectRouteClickTargetAnchored(rawPath, playerLoc, maxEuclidean, rawAnchorIndex);
+}
+```
+
+**Where this applies:** `Rs2Walker.routeClickReach`, `Rs2Walker.selectRouteClickTarget`, and any future click-target randomisation.
+
+**Defensive check:** Unit-test that the jittered reach never exceeds the caller's reach, never drops to the interim-close threshold, actually varies across calls, and passes a degenerate reach through unchanged.
+
+## 25. Never charge a retry budget for an iteration that made progress
+
+A "give up after N attempts" counter must count *failures to advance*, not loop iterations. Two things break it otherwise.
+
+First, **a partial path is a persistent condition, not an event.** `partialPath` is recomputed every iteration as "the path end is further than `distance` from the goal", so any goal the pathfinder cannot fully reach — a tile short of an underground destination, a gated area, a dynamic-region target — makes it true from the first snapshot to the last. The budget is then armed for the entire walk rather than for a stuck stretch.
+
+Second, **the path loop exits for good reasons too.** Opening a door, taking a transport, clearing a rockfall, or having movement already in flight all end the iteration and land in the same branch as "we failed to move". Charging those spends the budget while the walker is doing exactly what it should.
+
+Together they are quietly fatal on long multi-leg routes. Observed: a walk to an underground goal whose path end sat 31 tiles short burned retry 1 at the end of the first segment, walked ~100 tiles over 46 seconds, then spent retries 2 and 3 within one second of opening a single door — the second without the player moving at all. It reported `UNREACHABLE` standing at the entrance, having never reached the ladder. Nothing in the log said "stuck", because it never was.
+
+So: refill the budget when route progress has advanced since the last charge, and exempt exit reasons that denote work done. Keep the exemption **narrow** — reasons meaning the walker failed to advance (`not-near-path`, `click-failed-off-minimap`, waiting/retry states) must still consume it, or a genuinely unreachable goal never terminates and instead spins until the outer tail cap trips.
+
+**Where this applies:** `Rs2Walker.processWalk` partial-retry branch, `Rs2Walker.isRouteProgressExit`, and any future attempt-capped recovery loop.
+
+**Defensive check:** Unit-test both directions of the classifier — every progress reason exempt, every stuck reason still charged, `null` treated as not-progress.
+
+## 26. Telemetry must report measurements, not placeholders
+
+`recordUnreachable` was called with the player's location as `pathEndpoint` and a literal `0` as `pathSize`. The emitted line read as *"the pathfinder returned an empty path ending at your feet"* — a completely different and much scarier failure than the real one, and it sent diagnosis after a phantom pathfinder bug.
+
+It also corrupted the derived field. `endpointToTarget` is computed from `pathEndpoint`, so instead of the true 31-tile shortfall it printed `6346`: the raw y-delta between a surface tile and an underground one. Both are plane 0 — underground is the same plane at `y + 6400` — so `WorldPoint.distanceTo` does not bail out, it just returns a meaningless number. Any distance compared across that boundary is nonsense, and any threshold against it can never be met.
+
+Pass the real endpoint and the real size. If a value is genuinely unavailable, log it as absent rather than substituting a plausible-looking stand-in.
+
+**Where this applies:** `Rs2Walker.Telemetry.*`, `WebWalkLog`, and any diagnostic that derives a field from an argument.
+
+**Defensive check:** When a log line drives a diagnosis, confirm at the call site that each value is measured rather than hardcoded before trusting it.
+
+## 27. Gate direct minimap clicks by Euclidean distance
+
+`WorldPoint.distanceTo` / `distanceTo2D` use Chebyshev distance, but the usable minimap area is
+approximately circular. A diagonally offset endpoint can therefore pass a short-walk distance check
+while lying outside the minimap clip. Before trying a direct endpoint click, apply an explicit
+Euclidean-radius check. When a raw route exists and the endpoint is outside that radius, select a
+forward route tile immediately; this is normal continuation, not an exceptional fallback.
+
+**Why this matters:** Near the end of a long route, the walker tried an endpoint that was diagonally
+within 13 Chebyshev tiles, predictably failed the circular minimap clip, and then logged a forward
+raw-route tile as a seemingly random fallback.
+
+**Pattern to follow:**
+
+```java
+if (shouldAttemptDirectMinimapTarget(end, player, maxEuclidean) && walkMiniMap(end)) {
+    return true;
+}
+WorldPoint continuation = findFurthestVisibleKnownRawPathPoint(rawPath, player, maxEuclidean, anchor);
+return continuation != null && walkMiniMap(continuation);
+```
+
+**Where this applies:** `Rs2Walker.tryDirectShortWalk`, route-backed final clicks, and any helper
+that converts a Chebyshev proximity check into a minimap click.
+
+**Defensive check:** Test a diagonal delta such as `(11, 11)` against a 12-tile minimap radius; it
+must be rejected even though its Chebyshev distance is only 11.
+
+## 28. Distinguish spatial proximity from route proximity
+
+A route that detours around a mountain, fence, or building can pass close to itself. A future
+smoothed waypoint may then be only a few world tiles from the player while remaining hundreds of raw
+route steps ahead. Do not treat that waypoint as the immediate locally unreachable blocker and do
+not anchor recovery to it. Bound local recovery candidates by forward raw-route distance; when the
+candidate belongs to a distant route fold, continue from the stabilized current route frontier.
+
+**Why this matters:** South of White Wolf Mountain, the route from Catherby toward Taverley first
+travels around the mountain and later returns near `(2867,3442)`. Local recovery selected that
+spatially close future branch from around `(2855,3440)`, causing every minimap click to fight the
+mountain collision and route the player back west indefinitely.
+
+**Pattern to follow:**
+
+```java
+if (!isLocalRecoveryCandidateOnForwardRoute(rawPath, smoothedToRaw,
+        routeStartIdx, candidateIdx, maxRawSteps)) {
+    issueRouteContinuationFromCurrentFrontier();
+    return;
+}
+recoverToward(candidate);
+```
+
+**Where this applies:** `Rs2Walker.processWalk` local-reachability recovery, route progress
+stabilization, and any fallback that chooses a waypoint using world distance on a self-near route.
+
+**Defensive check:** Construct a raw route whose final branch returns near its beginning. A
+spatially close waypoint beyond the raw-step budget must be rejected while an ordinary nearby
+forward waypoint remains eligible.
+
+## 29. Let the owning walker thread evaluate early-completion conditions
+
+When a script can interact before reaching the coordinate destination, pass a read-only
+completion condition to `Rs2Walker.walkUntil`. Do not run `walkTo` in one executor task while
+another task polls entities and calls `clearWalkingRoute` or interrupts the walk. The walker
+already owns its route lock and cancellation checkpoints; evaluating the condition there lets it
+stop issuing movement clicks and release its state before the script performs the interaction.
+
+**Why this matters:** A companion polling task that cancelled a walk during plugin shutdown could
+contend with the walker and client-thread calls. The plugin stopped, then unrelated scripts began
+timing out on the client thread and the client appeared frozen.
+
+**Pattern to follow:**
+
+```java
+boolean ready = Rs2Walker.walkUntil(destination, interactionDistance,
+        () -> isTargetInteractable());
+if (ready && isTargetInteractable()) {
+    interactWithTarget();
+}
+```
+
+The condition must only inspect state. It must not click, walk, sleep, or otherwise mutate game
+state. Re-query the entity before interacting because cache results are snapshots.
+
+**Where this applies:** `Rs2Walker.walkUntil`, scripts approaching moving NPCs, fishing spots,
+banks, shops, or any destination whose interactable entity can become ready before coordinate
+arrival.
+
+**Defensive check:** Existing `walkTo` and `walkWithState` overloads must not install or evaluate a
+completion condition. Test immediate condition completion without walker setup, and test that an
+exception from the condition falls back to ordinary distance-based walking instead of retaining
+the walker lock.
+
+## 30. Do not let distance arrival overtake a pending route interaction
+
+A player can enter the configured finish radius while a door, gate, or mineable edge is still
+pending. Resolve that interaction lifecycle first: verify clearance, cross the exact route edge,
+and retire the pending interaction before returning `ARRIVED`. The finish radius remains a caller
+policy and must not be silently reduced by the engine.
+
+**Why this matters:** A ranged door command placed the player within the sidebar's five-tile finish
+distance. Because arrival was checked before interaction verification, the walk completed beside
+the opened door without crossing toward the selected target.
+
+**Pattern to follow:**
+
+```java
+if (hasArrived(player) && !hasUnresolvedRouteInteraction(observation)) {
+    return COMPLETE;
+}
+return handleRouteInteraction(observation);
+```
+
+**Where this applies:** `NavigationEngine`, `WalkSession.pendingInteraction`, and any future
+distance-based terminal predicate added to the unified walker.
+
+**Defensive check:** Start inside the requested finish radius with a door interaction on the next
+raw edge. The engine must interact, verify, cross, and retire the edge before it may complete.
+
+## 31. Chain exact route interactions before issuing a crossing nudge
+
+After an interaction clears, a second exact route interaction may already be loaded and within the
+bounded dispatch range. Dispatch that successor directly and let the server path through the
+cleared edge. Keep the cleared edge recorded until raw-route progress proves it was crossed. Use the
+one-edge minimap crossing only when no safe successor is ready.
+
+**Why this matters:** A corridor containing several ordinary doors produced an alternating sequence
+of door clicks and one-tile minimap clicks. Each subsequent door click would already have carried
+the player through the previously opened door, making those ground clicks redundant and visibly
+mechanical.
+
+**Pattern to follow:**
+
+```java
+if (current.isCleared() && next != null && next.isReady()) {
+    rememberClearedEdgeUntilCrossed(current);
+    return interact(next);
+}
+return crossClearedEdge(current);
+```
+
+**Where this applies:** All `RouteInteraction` families, including ordinary doors, gates,
+mineables, and later migrated shortcuts or transports that use the common interaction lifecycle.
+
+**Defensive check:** Present two consecutive ready interactions. Clearing the first must issue the
+second interaction with no intervening tile click, while arrival remains blocked until every saved
+cleared edge has been crossed.
+
+## 32. Do not let live collision invalidate an engine-owned interaction edge
+
+Dynamic doors, gates, and blockers can disagree with the static collision map while their common
+interaction lifecycle is opening or crossing them. Suppress live-collision recovery temporarily
+for each pending or cleared-but-uncrossed raw edge and its immediate index neighbour. Continue to
+report unrelated blocked edges normally, and remove the protection as soon as route progress proves
+the interaction edge was crossed.
+
+**Why this matters:** A successful multi-door chain was interrupted twice by `BLOCKED_EDGE`
+replans. The validator reported indices one step after the active door edges while the server was
+still resolving the object commands, replacing otherwise valid route generations.
+
+**Pattern to follow:**
+
+```java
+if (snapshot.isInteractionCollisionProtected(blockedEdgeIndex)) {
+    consumeCollisionObservation();
+    return;
+}
+reportBlockedEdge(blockedEdgeIndex);
+```
+
+**Where this applies:** `NavigationEngineRuntime`, `NavigationSnapshot`, live route collision
+validation, and future interaction families using dynamic collision.
+
+**Defensive check:** A collision on a pending interaction edge or its adjacent anchor must not queue
+recovery; a collision several edges ahead must still queue `BLOCKED_EDGE` recovery.
+
+## 33. Classify interaction ownership before treating a door action as ordinary
+
+A door-like name and an `Open`, `Pass`, or `Walk-through` action do not prove that an interaction is
+an ordinary one-step door. Region-specific doors can open a question dialogue, while `Pick-lock`
+and `Pay-toll` edges are catalog transports with requirements or confirmation UI. Decide ownership
+before the ordinary route scanner or engine can issue the interaction.
+
+**Why this matters:** Stronghold of Security question doors look ordinary to the scene classifier.
+Letting the engine claim them would bypass the only handler that can answer the question, leaving a
+pending door that repeatedly appears available. Conversely, treating toll and lock-pick rows as
+ordinary doors would bypass transport eligibility and post-interaction handling.
+
+**Pattern to follow:** Keep specialised regions legacy-owned until their dialogue flow is modeled as
+non-blocking session state; reject their objects in the ordinary scene adapter as a second guard.
+Keep catalog-backed toll and lock-pick edges transport-owned and migrate them with their transport
+family.
+
+**Defensive check:** A route starting or ending in a Stronghold of Security region must not enable
+ordinary engine execution. A normal surface route must remain eligible, and the ordinary scene must
+never return a Stronghold question door.
+
+## 34. Publish transport-family eligibility with the route
+
+Do not let a runtime object scan silently decide that an otherwise legacy transport route is safe
+for engine execution. Classify each explicit transport edge when the immutable route is published,
+using the enabled catalog rows that actually connect its directed endpoints. Engine ownership is
+allowed only when every edge belongs to a migrated family.
+
+**Why this matters:** Once adjacent gates and shortcuts share the common interaction lifecycle, the
+old boolean distinction between an "ordinary" route and "any transport" is too coarse. Conversely,
+making every adjacent transport engine-owned would accidentally include toll gates, lock-picking,
+dialogue, item preparation, and other flows the engine cannot yet complete.
+
+**Pattern to follow:** Give migrated families explicit `RouteEdge.Kind` values. Apply a conservative
+eligibility policy at path publication, repeat that policy while resolving the live object, and keep
+unsupported rows `LEGACY_LOCKED` before any input is issued. A pending persistent shortcut whose
+object disappears is unavailable; only actions known to transform/open their object may treat
+disappearance as clearance.
+
+**Defensive check:** A one-tile object-backed direct action must produce an engine-supported edge and
+one interaction command. A toll, lock-pick, dialogue, cross-plane, non-adjacent, or specialised row
+must keep the complete request legacy-owned.
+
+## 35. Arrival tolerance cannot skip a published interaction edge
+
+Being within the caller's destination tolerance is not sufficient for arrival when the selected
+route still contains an uncrossed engine-owned interaction edge. The destination can be only a few
+tiles beyond a closed door or gate, so a distance-only arrival check can finish on the wrong side
+before the live scanner gets a chance to publish the interaction.
+
+**Pattern to follow:** Gate distance-based arrival on route topology as well as pending live state.
+Every published engine-owned interaction edge at or beyond raw progress must be crossed first. Do
+not rely only on finding the live object: an absent `Open` object may mean the door is already open,
+in which case the route must still walk through the edge before completing.
+
+**Defensive check:** Start inside the arrival radius but before an adjacent transport edge. The
+engine must issue movement or interaction rather than `COMPLETE`; after raw progress crosses the
+edge, the same destination tolerance may complete normally.
+
+## 36. Catalog ownership outranks door-like appearance
+
+A transport-catalog object can be named `Door` or `Gate` and expose an `Open` action without being
+an ordinary door. Toll gates commonly publish mutually exclusive paid and quest-completed rows for
+the same physical object. Classifying from its scene name alone can bypass payment, dialogue, or
+quest handling.
+
+**Pattern to follow:** Once an enabled catalog row owns an object or crossed boundary, exclude it
+from ordinary-door classification. Match route crossings by directed boundary, not only exact
+endpoint equality: a diagonal raw step across either lane of a two-tile gate still crosses that
+catalog transport. Apply migrated-family eligibility only after this ownership match.
+
+**Defensive check:** An Al Kharid toll-gate route for an account that must pay remains
+`LEGACY_LOCKED` and never emits `selection=interaction-door`. A free/open eligible row may become an
+adjacent transport, but it must emit `selection=interaction-adjacent_transport` instead.
+
+When a route plan already labels an edge as a transport, do not allow an object-level ordinary
+scanner to compete for that edge. Scene object ids can change through impostors or object state;
+use the route kind as the primary ownership boundary. A transformed-id fallback may use the
+catalog boundary plus exact object name and action, but proximity alone is insufficient.
+
+## 37. Do not use a one-tile minimap nudge as normal post-interaction continuation
+
+After a door, gate, or mineable clears, clicking only the immediately adjacent route tile can land
+inside the minimap's centre dead zone. The adapter may report an issued click even though the
+client never registers a new movement destination. Recovery then replans from the interaction
+boundary and can reopen or repeat the same interaction.
+
+**Pattern to follow:** If the forward interaction scan found no next blocker, select the next
+bounded raw-route checkpoint beyond the cleared edge and let that command carry the player through.
+If another interaction prevents forward lookahead, retain the exact one-edge crossing as a fallback
+but prefer a canvas/local-tile click before minimap input.
+
+**Defensive check:** Opening the Al Kharid gate in either direction must be followed by one forward
+route command and progress, without `NO_ACKNOWLEDGEMENT`, generation churn, or redispatching the
+same gate interaction.
+
+The interaction-command deadline must include server approach distance. A fixed timeout suitable
+for an adjacent click can expire while a valid ranged click is still pathing to the object, causing
+an unnecessary second interaction before the first command has had time to execute.
+
+## 38. Persistent transport objects cannot acknowledge their own crossing
+
+Some gates and shortcuts remain present and interactable from both sides after a successful
+interaction. Object disappearance and raw-route progress are therefore insufficient acknowledgements:
+a ranged interaction can put the player on the destination side while the route anchor still points
+at the blocking edge. Redispatching the same object from there can pull the player back across it.
+
+**Pattern to follow:** Preserve the enabled catalog row's directed origin and destination in the
+pending interaction. Retire the interaction as soon as the player is on or just beyond that
+destination boundary, even if the live object still resolves. Use the catalog boundary rather than
+the raw path step because a parallel double gate may be represented by a neighbouring diagonal edge.
+
+**Defensive check:** A ranged click on either direction of the Al Kharid double gate must produce one
+interaction. Reaching the destination-side catalog tile must clear it without a second gate click,
+generation change, or return to the origin side; remaining on the origin side must not clear it.
+
+## 39. Scene transitions complete at their catalog landing, not at object transformation
+
+Stairs, ladders, caves, and trapdoors often jump to another plane or a distant coordinate. Their
+object may remain visible, disappear immediately, or transform before the player actually travels.
+None of those states proves that the transition completed.
+
+**Pattern to follow:** Carry the catalog destination in the pending interaction and acknowledge the
+command only when the player reaches the destination plane within a small coordinate tolerance.
+Keep direct object clicks separate from dialogue, currency, and item-use transports. A closed
+trapdoor is a two-stage interaction: `Open` advances the live object stage, then the catalog action
+such as `Climb-down` must be dispatched; it is not clearance by itself.
+
+**Defensive check:** A direct ladder/stair/cave interaction remains pending on the origin side and
+clears after its catalog landing. When a closed trapdoor changes from `Open` to `Climb-down`, the
+second action dispatches without waiting for the first action's acknowledgement deadline.
+
+## 40. Originless teleports still need exact route-edge ownership
+
+Item and spell teleports have no fixed catalog origin. During a search the pathfinder attaches each
+currently usable teleport to the node where it may be invoked, so looking up only the transport's
+declared origin cannot recover the row selected by the route.
+
+**Pattern to follow:** Resolve the teleport from the enabled transport snapshot at the published raw
+edge's `from` tile and require its destination to equal the edge's `to` tile. Preserve the transport
+type and display identity through dispatch, then acknowledge only from arrival near the catalog
+destination. Keep multi-stage interfaces (destination submenus, confirmations, scroll books, and
+long home teleports) outside the direct-teleport family until their UI states are modelled. A generic
+item action such as `Break` or `Teleport` must return whether that input was issued; landing remains
+a separate observation and a successful click must not be reported as command rejection. Once that
+command is accepted, consumption of the last item/runes may remove the row from the refreshed usable
+catalog before landing; preserve the pending interaction until landing or its acknowledgement
+deadline instead of treating this expected disappearance as immediate unavailability.
+
+**Defensive check:** A direct spell/tablet edge is engine-owned, issues exactly one interaction, and
+remains pending until the destination landing. A colon-delimited destination menu or Lumbridge Home
+Teleport remains `LEGACY_LOCKED` and receives no unified-engine input.
+
+## 41. NPC travel ownership must be narrower than the transport type
+
+`SHIP`, `BOAT`, and `NPC` catalog rows do not describe one interaction protocol. Some expose a
+direct destination action, while others start a conversation, charge currency, display a
+destination menu, or run named quest dialogue. Treating the enum alone as engine eligibility can
+issue the first click and then strand the engine in an unmodelled interface.
+
+**Pattern to follow:** Initially migrate only exact NPC-id rows with a direct non-`Talk-to` action,
+no currency or item requirement, and no separate display/destination choice. Resolve the enabled
+directed catalog edge and exact NPC name/id before dispatch. Keep the catalog destination as the
+acknowledgement predicate because the source NPC commonly unloads as the voyage begins; its
+disappearance is not interaction failure. A valid voyage can also pass through a temporary ship
+deck or departure scene far away from both route endpoints. While its bounded command window is
+active, the pending transport owns that intermediate position and ordinary off-route recovery must
+not replan. Raw progress alone must not retire an NPC voyage: an intermediate scene can share the
+destination plane and therefore look like the destination raw index despite being hundreds of
+tiles away. Require the catalog landing observation. Size the family deadline for boarding plus
+travel animation, not ordinary object-click latency.
+
+**Defensive check:** A direct `Travel`/`Follow` ship, boat, or NPC edge is engine-owned and issues
+one NPC interaction, then clears only near its catalog landing. A `Talk-to`, paid, or
+destination-selection row remains `LEGACY_LOCKED` and receives no unified-engine input.
+
+## 42. A voyage landing may still be aboard the destination ship
+
+An NPC-backed ship edge can finish on a ship deck rather than on ordinary land. For example, the
+Void Knights-to-Port Sarim catalog lands on plane 1 and then uses a separate one-tile-origin
+`Cross;Gangplank` transport to reach plane 0. Migrating the NPC voyage alone therefore leaves the
+whole route legacy-locked even though the outward route can appear accepted when its requested
+endpoint is the ship landing itself.
+
+**Pattern to follow:** Treat an exact direct `Cross` action on a catalogued `Gangplank` as a scene
+transition, resolve its exact object/action through the tile-object cache, and retain the common
+interaction-chain lifecycle between the voyage landing and disembark edge. Do not generalise this
+eligibility to arbitrary bridges or unrelated `Cross` actions.
+
+**Defensive check:** A reverse ship route containing `NPC_TRANSPORT`, an optional ordinary deck
+step, and `CATALOG_TRANSITION` remains engine-supported and dispatches the gangplank only after the
+catalogued voyage landing is observed.
+
+## 43. Paid menu transports are multi-stage commands
+
+A charter ship is not one transport click. The catalog row first opens the charter interface from
+an exact Trader Crewmember, the interface selects one named destination, a dialogue confirms the
+fare, and only then does the remote voyage begin. Treating any successful stage as clearance can
+resume ground walking aboard the source ship or redispatch the NPC while a widget is open.
+
+**Pattern to follow:** Publish paid coin-only charter rows as their own route family. Preserve the
+directed catalog edge and advance one pending interaction through exact NPC, destination-widget,
+and `Yes` confirmation stages. After confirmation, keep the interaction pending while the NPC and
+widgets unload, and acknowledge only near the catalog landing. Do not use handler-owned sleeps or
+infer success merely because the fare item or enabled row disappears.
+
+**Defensive check:** A charter edge issues exactly one input at each UI stage, waits without input
+during the voyage, and clears only at its directed landing. Unpaid rows, non-coin requirements, and
+other ship protocols remain outside this family.
+
+## 44. Catalog NPC ids may transform in the live scene
+
+Transport data can correctly identify an NPC definition while the loaded actor exposes another id
+after a varbit-driven transform. Port Sarim's charter row names Trader Crewmember `9342`, while a
+live accepted state exposed the nearby charter actor as `9377`. An exact-id-only lookup therefore
+made an otherwise valid engine-owned route end at the charter origin without publishing its next
+interaction.
+
+**Pattern to follow:** Keep the catalog id as the preferred route identity, but permit a transformed
+live id only when the actor has the exact catalog name, exact action, correct plane, and lies within
+a small radius of the directed catalog origin. Rank the exact catalog id first when both variants
+are present. Do not fall back to name alone where multiple same-named NPCs share a scene.
+
+**Defensive check:** A transformed charter NPC beside the origin resolves, while the same name with
+the wrong action or an actor beyond the origin tolerance remains unavailable.

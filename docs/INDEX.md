@@ -1,4 +1,6 @@
 - [Architecture](ARCHITECTURE.md)
+- [Walker Unification Plan](walker-unification-plan.md)
+- [Rs2Walker API Inventory](walker-api-inventory.md)
 - [Decision Records](decisions/)
 - [Development Setup](development.md)
 - [Installation](installation.md)

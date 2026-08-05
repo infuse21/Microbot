@@ -87,6 +87,52 @@ public final class WebWalkLog {
         LOG.info("[WebWalk] recalc | {}", reason);
     }
 
+	/** One line per Phase 3 movement command, including route selection and adapter outcome. */
+	public static void navigationCommand(long requestId, long generation, WorldPoint target,
+			int rawIndex, int smoothedIndex, int distance, int reach, int handoffDistance, String selection,
+			String actionType, boolean issued, String reason) {
+		LOG.info("[WebWalk] nav_cmd | req={} gen={} to={} raw={} smooth={} distE={} reach={} handoff={} "
+				+ "selection={} action={} issued={} reason={}", requestId, generation, target, rawIndex,
+				smoothedIndex, distance, reach, handoffDistance, selection, actionType, issued, reason);
+	}
+
+	/**
+	 * One line per interaction command. {@code stage} is the interaction's action string, so
+	 * staged families (dialogue, charter) show which presented stage each command answered.
+	 */
+	public static void navigationInteractionCommand(long requestId, long generation,
+			WorldPoint target, int rawIndex, int distance, int reach, String selection,
+			String stage, String actionType, boolean issued, String reason) {
+		LOG.info("[WebWalk] nav_cmd | req={} gen={} to={} raw={} smooth=-1 distE={} reach={} handoff=0 "
+				+ "selection={} stage={} action={} issued={} reason={}", requestId, generation, target,
+				rawIndex, distance, reach, selection, stage, actionType, issued, reason);
+	}
+
+	/** Once per request: which published route edges forced the legacy executor. */
+	public static void navigationMode(long requestId, long generation, String unsupportedEdges) {
+		LOG.info("[WebWalk] nav_mode | req={} gen={} mode=LEGACY_LOCKED unsupported={}",
+				requestId, generation, unsupportedEdges);
+	}
+
+	/** One line for each input, replan, or failure produced by Phase 4 recovery. */
+	public static void navigationRecovery(long requestId, long generation, String decision,
+			String cause, int attempt, int budget, long ageMs, int blockedEdgeIndex,
+			WorldPoint player, int rawProgressIndex, int routeDistance, String reason) {
+		LOG.info("[WebWalk] nav_recovery | req={} gen={} decision={} cause={} attempt={}/{} "
+				+ "ageMs={} edge={} at={} raw={} routeDist={} reason={}", requestId, generation,
+				decision, cause, attempt, budget, ageMs, blockedEdgeIndex, player,
+				rawProgressIndex, routeDistance, reason);
+	}
+
+	/** Logged only when the game registers a destination that is clearly outside the route. */
+	public static void navigationAcknowledgementMismatch(long requestId, long generation,
+			WorldPoint expected, WorldPoint observed, WorldPoint player, int attempt, int budget,
+			long ageMs, int rawProgressIndex, int routeDistance, String reason) {
+		LOG.info("[WebWalk] nav_ack | req={} gen={} expected={} observed={} at={} attempt={}/{} "
+				+ "ageMs={} raw={} routeDist={} reason={}", requestId, generation, expected,
+				observed, player, attempt, budget, ageMs, rawProgressIndex, routeDistance, reason);
+	}
+
     public static void partialRecalc(int remainingSteps, int distToSeg, int distToGoal, WorldPoint segEnd, WorldPoint goal) {
         LOG.info("[WebWalk] partial_recalc | remSteps={} dSeg={} dGoal={} segEnd={} goal={}",
                 remainingSteps, distToSeg, distToGoal, segEnd, goal);
