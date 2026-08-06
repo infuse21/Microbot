@@ -6392,6 +6392,41 @@ public class Rs2Walker {
         return !doorStillHasAction(probe, fromWp, toWp, doorActions, action, true);
     }
 
+    /**
+     * What the door observation actually sees, for the {@code door_await} log.
+     * <p>
+     * Two live runs have now ended without a single {@code releasedBy=door-opened}, and neither could
+     * say why: the poll count proves the check ran, but not what it read. This names every object the
+     * strict match considers and the action currently on it, which separates the remaining candidates
+     * — nothing matched the tile at all, versus something matched and still offers the opening action.
+     */
+    private static String describeDoorObservation(WorldPoint probe, WorldPoint fromWp, WorldPoint toWp,
+                                                  List<String> doorActions, String action) {
+        WorldPoint player = Rs2Player.getWorldLocation();
+        if (player == null || probe == null) {
+            return "no-player";
+        }
+        if (player.getPlane() != probe.getPlane()) {
+            return "plane-mismatch";
+        }
+        int distance = player.distanceTo2D(probe);
+        if (distance > HANDLER_RANGE) {
+            return "out-of-range dist=" + distance;
+        }
+        try {
+            // Only the two existing readings, so this adds no new off-client-thread call site of its
+            // own. They separate the remaining candidates on their own:
+            //   strict=false  -> the check said OPEN, so a release that is not door-opened is plumbing
+            //   strict=true   -> the door on this very tile still offers the opening action
+            //   strict!=loose -> the tighten worked and a neighbour was answering before
+            boolean strict = doorStillHasAction(probe, fromWp, toWp, doorActions, action, true);
+            boolean loose = doorStillHasAction(probe, fromWp, toWp, doorActions, action, false);
+            return "strict=" + strict + " loose=" + loose + " dist=" + distance + " want=" + action;
+        } catch (RuntimeException ex) {
+            return "scan-error:" + ex.getClass().getSimpleName();
+        }
+    }
+
     private static boolean doorStillHasAction(WorldPoint probe, WorldPoint fromWp, WorldPoint toWp,
                                               List<String> doorActions, String action) {
         return doorStillHasAction(probe, fromWp, toWp, doorActions, action, false);
@@ -7329,8 +7364,11 @@ public class Rs2Walker {
                 (probe == null || action == null || !doorInteractionWhileApproachingEnabled())
                         ? null
                         : () -> doorObservedOpen(probe, fromWp, toWp, doorActions, action);
+        java.util.function.Supplier<String> observation =
+                (probe == null || action == null) ? null
+                        : () -> describeDoorObservation(probe, fromWp, toWp, doorActions, action);
         try {
-            Rs2WalkerAwaits.awaitDoorInteractionProgress(ticket, fromWp, toWp, doorOpened);
+            Rs2WalkerAwaits.awaitDoorInteractionProgress(ticket, fromWp, toWp, doorOpened, observation);
         } finally {
             if (rawScanWallSnapshot != null || rawScanGameObjectSnapshot != null) {
                 rawScanDoorInteractionWaitMs += System.currentTimeMillis() - startedAt;

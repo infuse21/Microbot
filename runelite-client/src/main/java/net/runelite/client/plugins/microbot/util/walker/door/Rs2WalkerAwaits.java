@@ -54,6 +54,18 @@ public final class Rs2WalkerAwaits {
      */
     public static void awaitDoorInteractionProgress(AwaitTicket ticket, WorldPoint fromWp, WorldPoint toWp,
                                                     java.util.function.BooleanSupplier doorOpened) {
+        awaitDoorInteractionProgress(ticket, fromWp, toWp, doorOpened, null);
+    }
+
+    /**
+     * @param doorObservation describes what the door observation last SAW, carried onto the slow log.
+     *                        Two live runs failed to explain why {@code door-opened} never fires, and
+     *                        "the poll ran and said no" is not an explanation without the reading
+     *                        behind it. Evaluated once, only when the log is about to print.
+     */
+    public static void awaitDoorInteractionProgress(AwaitTicket ticket, WorldPoint fromWp, WorldPoint toWp,
+                                                    java.util.function.BooleanSupplier doorOpened,
+                                                    java.util.function.Supplier<String> doorObservation) {
         if (ticket == null) {
             return;
         }
@@ -136,8 +148,17 @@ public final class Rs2WalkerAwaits {
         long traversalWaitMs = System.currentTimeMillis() - traversalPhaseAt;
 
         if (startWaitMs + traversalWaitMs >= DOOR_AWAIT_SLOW_LOG_MS) {
-            WebWalkLog.spInfo("door_await | releasedBy={} startWaitMs={} traversalWaitMs={} openPolls={} from={} to={}",
-                    releasedBy[0], startWaitMs, traversalWaitMs, openPolls[0], fromWp, toWp);
+            String saw = "-";
+            if (doorObservation != null && !"door-opened".equals(releasedBy[0])) {
+                try {
+                    String detail = doorObservation.get();
+                    saw = detail == null ? "-" : detail;
+                } catch (RuntimeException ignored) {
+                    saw = "error";
+                }
+            }
+            WebWalkLog.spInfo("door_await | releasedBy={} startWaitMs={} traversalWaitMs={} openPolls={} saw={} from={} to={}",
+                    releasedBy[0], startWaitMs, traversalWaitMs, openPolls[0], saw, fromWp, toWp);
         }
     }
 
