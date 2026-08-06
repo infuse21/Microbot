@@ -115,15 +115,22 @@ public final class Rs2WalkerAwaits {
             // instead of the single tick the door itself takes. Observing the DOOR releases us as soon
             // as it is open, while the server keeps walking us through, so the next door on the route
             // can be clicked immediately. Throttled because this one is a scene scan, not a field read.
-            if (doorOpened != null) {
-                long nowMs = System.currentTimeMillis();
-                if (shouldPollDoorOpen(nowMs - traversalPhaseAt, nowMs - lastOpenPollAt[0])) {
-                    lastOpenPollAt[0] = nowMs;
-                    openPolls[0]++;
-                    if (doorOpened.getAsBoolean()) {
-                        releasedBy[0] = "door-opened";
-                        return true;
-                    }
+            long nowMs = System.currentTimeMillis();
+            if (shouldPollDoorOpen(nowMs - traversalPhaseAt, nowMs - lastOpenPollAt[0])) {
+                lastOpenPollAt[0] = nowMs;
+                openPolls[0]++;
+                // The collision edge is the authoritative answer to "can I walk through it now": the
+                // client's flags are server-driven, so an opened door clears its block on the same
+                // tick. Asked first because it is one flag read, and because it holds for doors whose
+                // menu actions do not change when they open — the case the action check below could
+                // never explain across two live runs.
+                if (Rs2Tile.isEdgePassable(fromWp, toWp)) {
+                    releasedBy[0] = "door-edge-open";
+                    return true;
+                }
+                if (doorOpened != null && doorOpened.getAsBoolean()) {
+                    releasedBy[0] = "door-opened";
+                    return true;
                 }
             }
             if (Rs2WalkerProgress.isWithinChebyshev(now, toWp, 1)) {
