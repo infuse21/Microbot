@@ -5606,15 +5606,22 @@ public class Rs2Walker {
     }
 
     /**
-     * "Is the door still shut?" — a radius-{@link #HANDLER_RANGE} rescan that resolves a composition per
+     * "Is THIS door still shut?" — a radius-{@link #HANDLER_RANGE} rescan that resolves a composition per
      * candidate OUTSIDE the scan-scoped memo, so nothing is cached. Only runs when traversal failed, but
      * that is exactly the slow path a stuck door repeats, so it is timed separately.
+     * <p>
+     * STRICT on the probe tile, for the same reason {@code doorObservedOpen} is: this answer decides
+     * whether the door we just interacted with opened, and the loose two-tile radius let a NEIGHBOURING
+     * shut door answer for it. Measured live as {@code saw=strict=false loose=true} — this door open,
+     * a neighbour shut — reading as "did not traverse", which suppressed markStationaryDoorOpened and
+     * the post-door route click entirely; the walker stood still ~2s until the generic click machinery
+     * caught up. In a door-heavy area (the exact place chaining matters) that was every door.
      */
     private static boolean doorStillHasActionTimed(WorldPoint probe, WorldPoint fromWp, WorldPoint toWp,
                                                    List<String> doorActions, String action) {
         long startedAt = System.currentTimeMillis();
         try {
-            return doorStillHasAction(probe, fromWp, toWp, doorActions, action);
+            return doorStillHasAction(probe, fromWp, toWp, doorActions, action, true);
         } finally {
             if (rawScanWallSnapshot != null || rawScanGameObjectSnapshot != null) {
                 rawScanDoorVerifyMs += System.currentTimeMillis() - startedAt;
@@ -6435,15 +6442,12 @@ public class Rs2Walker {
         }
     }
 
-    private static boolean doorStillHasAction(WorldPoint probe, WorldPoint fromWp, WorldPoint toWp,
-                                              List<String> doorActions, String action) {
-        return doorStillHasAction(probe, fromWp, toWp, doorActions, action, false);
-    }
-
     /**
      * @param strictTile match only the door ON the probe tile or ON the {@code fromWp -> toWp} edge,
      *                   instead of anything within two tiles. Required when the answer decides whether
      *                   THIS door opened; the loose radius lets a neighbouring shut door answer for it.
+     *                   Every decision-making caller is strict now — loose remains only for the
+     *                   {@code saw=} diagnostic, which reports both readings side by side.
      */
     private static boolean doorStillHasAction(WorldPoint probe, WorldPoint fromWp, WorldPoint toWp,
                                               List<String> doorActions, String action, boolean strictTile) {
