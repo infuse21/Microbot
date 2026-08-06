@@ -3604,10 +3604,27 @@ public class Rs2Walker {
         }
     }
 
+    /**
+     * Explicit-zoom variant, kept for external callers that genuinely want a particular zoom. The
+     * walker itself never uses it: {@code Perspective.localToMinimap} reads the LIVE zoom, so the
+     * click math is correct at any setting, and pinning the minimap at max zoom on every click both
+     * looked bot-like and fought the user's own zoom the moment they changed it.
+     */
     public static boolean walkMiniMap(WorldPoint worldPoint, double zoomDistance) {
         if (Microbot.getClient().getMinimapZoom() != zoomDistance)
             Microbot.getClient().setMinimapZoom(zoomDistance);
+        return walkMiniMap(worldPoint);
+    }
 
+    /**
+     * Clicks {@code worldPoint} on the minimap at whatever zoom the user has. Zoom only moves the
+     * trade-off between reach and pixel precision — zoomed IN shrinks clickable range (~16 tiles at
+     * zoom 5, ~40 zoomed out), zoomed out shrinks pixels-per-tile — and every caller already has a
+     * fallback for an unclickable point (nearer route point, canvas click), which is exactly what a
+     * human at that zoom would do. Tile-exact clicks near walls use the canvas path, which is
+     * pixel-precise at any zoom.
+     */
+    public static boolean walkMiniMap(WorldPoint worldPoint) {
         Point point = Rs2MiniMap.worldToMinimap(worldPoint);
 
         if (point == null) return false;
@@ -3617,17 +3634,10 @@ public class Rs2Walker {
         return true;
     }
 
-
-    public static boolean walkMiniMap(WorldPoint worldPoint) {
-        return walkMiniMap(worldPoint, 5);
-    }
-
-    private static boolean isMiniMapClickable(WorldPoint worldPoint, double zoomDistance) {
+    /** Side-effect free: a "could I click this?" probe must never move the user's zoom. */
+    private static boolean isMiniMapClickable(WorldPoint worldPoint) {
         if (worldPoint == null) {
             return false;
-        }
-        if (Microbot.getClient().getMinimapZoom() != zoomDistance) {
-            Microbot.getClient().setMinimapZoom(zoomDistance);
         }
         Point point = Rs2MiniMap.worldToMinimap(worldPoint);
         return point != null && (disableWalkerUpdate || Rs2MiniMap.isPointInsideMinimap(point));
@@ -4033,7 +4043,7 @@ public class Rs2Walker {
         return findFurthestRawPathPointMatchingGated(rawPath, playerLoc, maxEuclidean, rawAnchorIndex,
                 candidate -> !candidate.equals(playerLoc)
                         && isKnownWalkableOrUnloaded(candidate)
-                        && isMiniMapClickable(candidate, 5));
+                        && isMiniMapClickable(candidate));
     }
 
     // rawPathStepDistance (pure) moved to geometry/WalkerPathGeometry (P1) alongside its only caller,
@@ -5990,7 +6000,7 @@ public class Rs2Walker {
     // findForwardRecoveryIndex extracted to recovery/RouteRecovery (P1 walker decomposition)
 
     private static boolean isMiniMapRecoveryClickable(WorldPoint worldPoint) {
-        return isMiniMapClickable(worldPoint, 5);
+        return isMiniMapClickable(worldPoint);
     }
 
     // interpolateClickableTarget extracted to recovery/RouteRecovery (P1)
