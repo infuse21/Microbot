@@ -2426,4 +2426,100 @@ public class Rs2WalkerUnitTest {
         assertNull(Rs2Walker.firstWalledRawEdge(java.util.Collections.emptyList(), p, reachableSet(p), 12));
         assertNull(Rs2Walker.firstWalledRawEdge(java.util.Arrays.asList(p), p, null, 12));
     }
+
+    // ---- post-door route target (chain the click past the opened door) ------------------------------
+
+    /**
+     * After a door opens, the follow-through click should make route progress, not step one tile.
+     * Every candidate must sit in the player-origin reachability map — the tile the previous attempt
+     * at this feature clicked was one the walled-route net had just refused, precisely because the
+     * selection ran ungated.
+     */
+
+    private static java.util.List<WorldPoint> northRoute(int startY, int count) {
+        java.util.List<WorldPoint> route = new java.util.ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            route.add(new WorldPoint(3100, startY + i, 0));
+        }
+        return route;
+    }
+
+    @Test
+    public void postDoorTarget_picksTheFurthestReachableRoutePoint() {
+        java.util.List<WorldPoint> route = northRoute(3200, 8); // door edge 3201 -> 3202
+        WorldPoint from = route.get(1);
+        WorldPoint to = route.get(2);
+        WorldPoint player = route.get(1);
+        java.util.Map<WorldPoint, Integer> reachable =
+                reachableSet(route.get(3), route.get(4), route.get(5));
+        assertEquals(route.get(5),
+                Rs2Walker.selectPostDoorRouteTarget(route, from, to, player, reachable, 13));
+    }
+
+    /** An unreachable far candidate must not be clicked; the furthest REACHABLE one wins instead. */
+    @Test
+    public void postDoorTarget_skipsTilesTheBfsCannotVouchFor() {
+        java.util.List<WorldPoint> route = northRoute(3200, 8);
+        WorldPoint from = route.get(1);
+        WorldPoint to = route.get(2);
+        WorldPoint player = route.get(1);
+        java.util.Map<WorldPoint, Integer> reachable = reachableSet(route.get(3), route.get(4));
+        assertEquals(route.get(4),
+                Rs2Walker.selectPostDoorRouteTarget(route, from, to, player, reachable, 13));
+    }
+
+    /** Nothing reachable past the door: null, and the caller keeps the single-tile nudge. */
+    @Test
+    public void postDoorTarget_nullWhenNothingPastTheDoorIsReachable() {
+        java.util.List<WorldPoint> route = northRoute(3200, 8);
+        java.util.Map<WorldPoint, Integer> reachable = reachableSet(route.get(0), route.get(1));
+        assertNull(Rs2Walker.selectPostDoorRouteTarget(route, route.get(1), route.get(2),
+                route.get(1), reachable, 13));
+    }
+
+    /** The edge must be ON the route: a route that merely passes nearby proves nothing beyond the door. */
+    @Test
+    public void postDoorTarget_nullWhenTheEdgeIsNotOnTheRoute() {
+        java.util.List<WorldPoint> route = northRoute(3200, 8);
+        WorldPoint offRouteFrom = new WorldPoint(3105, 3201, 0);
+        WorldPoint offRouteTo = new WorldPoint(3105, 3202, 0);
+        java.util.Map<WorldPoint, Integer> reachable = reachableSet(route.get(4));
+        assertNull(Rs2Walker.selectPostDoorRouteTarget(route, offRouteFrom, offRouteTo,
+                route.get(1), reachable, 13));
+    }
+
+    /** Candidates stop at the Euclidean cap and at a plane change — the same rules as route clicks. */
+    @Test
+    public void postDoorTarget_respectsTheCapAndThePlane() {
+        java.util.List<WorldPoint> route = northRoute(3200, 12);
+        WorldPoint player = route.get(1);
+        java.util.Map<WorldPoint, Integer> reachable =
+                reachableSet(route.get(3), route.get(9));
+        // route.get(9) is 8 tiles from the player — inside a cap of 13, outside a cap of 6.
+        assertEquals(route.get(9),
+                Rs2Walker.selectPostDoorRouteTarget(route, route.get(1), route.get(2), player, reachable, 13));
+        assertEquals(route.get(3),
+                Rs2Walker.selectPostDoorRouteTarget(route, route.get(1), route.get(2), player, reachable, 6));
+
+        java.util.List<WorldPoint> upstairs = new java.util.ArrayList<>(northRoute(3200, 4));
+        upstairs.add(new WorldPoint(3100, 3204, 1));
+        java.util.Map<WorldPoint, Integer> upstairsReachable = reachableSet(route.get(3));
+        assertEquals(route.get(3),
+                Rs2Walker.selectPostDoorRouteTarget(upstairs, upstairs.get(1), upstairs.get(2),
+                        upstairs.get(1), upstairsReachable, 13));
+    }
+
+    @Test
+    public void postDoorTarget_toleratesMissingInputs() {
+        java.util.List<WorldPoint> route = northRoute(3200, 4);
+        WorldPoint p = route.get(0);
+        java.util.Map<WorldPoint, Integer> reachable = reachableSet(route.get(3));
+        assertNull(Rs2Walker.selectPostDoorRouteTarget(null, p, route.get(1), p, reachable, 13));
+        assertNull(Rs2Walker.selectPostDoorRouteTarget(route, null, route.get(1), p, reachable, 13));
+        assertNull(Rs2Walker.selectPostDoorRouteTarget(route, p, null, p, reachable, 13));
+        assertNull(Rs2Walker.selectPostDoorRouteTarget(route, p, route.get(1), null, reachable, 13));
+        assertNull(Rs2Walker.selectPostDoorRouteTarget(route, p, route.get(1), p, null, 13));
+        assertNull(Rs2Walker.selectPostDoorRouteTarget(route, p, route.get(1), p,
+                new java.util.HashMap<>(), 13));
+    }
 }

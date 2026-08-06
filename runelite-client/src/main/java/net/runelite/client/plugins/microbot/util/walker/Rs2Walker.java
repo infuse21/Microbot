@@ -2463,7 +2463,7 @@ public class Rs2Walker {
                                 exitReason = "interim-in-flight";
                                 break;
                             }
-                            if (tryRecentDoorAttemptEdgeNudge(playerLoc, target)) {
+                            if (tryRecentDoorAttemptEdgeNudge(playerLoc, target, rawPath)) {
                                 exitReason = "recent-door-edge-nudge";
                                 break;
                             }
@@ -6060,7 +6060,7 @@ public class Rs2Walker {
             }
             if (snapshotDoor instanceof WallObject) {
                 return tryHandleDoorObject(snapshotDoor, snapshotDoor.getWorldLocation(),
-                        fromWp, toWp, doorActions, true);
+                        fromWp, toWp, doorActions, true, path);
             }
         }
 
@@ -6223,7 +6223,7 @@ public class Rs2Walker {
                                         probe, fromWp, toWp);
                             } else {
                                 markStationaryDoorOpened(probe);
-                                if (tryDoorEdgeCrossNudge(fromWp, toWp, currentTarget)) {
+                                if (tryDoorEdgeCrossNudge(fromWp, toWp, currentTarget, path)) {
                                     markNearbyDoorFamilyOpened(object, probe, action, SEGMENT_DOOR_FAMILY_MARK_RADIUS);
                                     return true;
                                 }
@@ -6239,7 +6239,7 @@ public class Rs2Walker {
         }
 
         TileObject nearbyDoor = allowSegmentProbe ? findDoorNearSegmentTimed(fromWp, toWp, doorActions) : null;
-        if (nearbyDoor != null && tryHandleDoorObject(nearbyDoor, nearbyDoor.getWorldLocation(), fromWp, toWp, doorActions, true)) {
+        if (nearbyDoor != null && tryHandleDoorObject(nearbyDoor, nearbyDoor.getWorldLocation(), fromWp, toWp, doorActions, true, path)) {
             return true;
         }
 
@@ -6250,7 +6250,8 @@ public class Rs2Walker {
 
 
     private static boolean tryHandleDoorObject(TileObject object, WorldPoint probe, WorldPoint fromWp, WorldPoint toWp,
-                                               List<String> doorActions, boolean allowSegmentProbe) {
+                                               List<String> doorActions, boolean allowSegmentProbe,
+                                               List<WorldPoint> routePath) {
         if (object == null || probe == null) return false;
         WorldPoint playerLoc = Rs2Player.getWorldLocation();
         if (!Rs2DoorGeometry.isDoorInteractionWithinRange(object, probe, fromWp, toWp, playerLoc, HANDLER_RANGE)) {
@@ -6352,7 +6353,7 @@ public class Rs2Walker {
                     probe, fromWp, toWp);
         } else {
             markStationaryDoorOpened(probe);
-            if (tryDoorEdgeCrossNudge(fromWp, toWp, currentTarget)) {
+            if (tryDoorEdgeCrossNudge(fromWp, toWp, currentTarget, routePath)) {
                 markNearbyDoorFamilyOpened(object, probe, action, SEGMENT_DOOR_FAMILY_MARK_RADIUS);
                 return true;
             }
@@ -6620,6 +6621,24 @@ public class Rs2Walker {
     }
 
     private static boolean tryDoorEdgeCrossNudge(WorldPoint fromWp, WorldPoint toWp, WorldPoint target) {
+        return tryDoorEdgeCrossNudge(fromWp, toWp, target, null);
+    }
+
+    /**
+     * Route-aware variant: with the route in hand, the follow-through click goes to the furthest
+     * REACHABLE route point past the door instead of the single far-side tile. Crossing the edge is
+     * still crossing it if the destination is further along — the server paths us through the open
+     * door either way — so one click replaces the nudge-then-route-click pair, which is both faster
+     * and what a player actually does after opening a door.
+     * <p>
+     * The reachability gate is the whole safety argument. The previous attempt at this (reverted)
+     * clicked a tile the walled-route net had just REFUSED, because it selected without the gate.
+     * Here every candidate must be in the player-origin BFS — the same collision evidence the refusal
+     * uses — and the BFS runs AFTER the door opened, so it sees through the doorway. No candidate, or
+     * no route: the single-tile nudge behaves exactly as before. The success test is unchanged.
+     */
+    private static boolean tryDoorEdgeCrossNudge(WorldPoint fromWp, WorldPoint toWp, WorldPoint target,
+                                                 List<WorldPoint> routePath) {
         if (fromWp == null || toWp == null || fromWp.getPlane() != toWp.getPlane()) {
             return false;
         }
@@ -6637,15 +6656,27 @@ public class Rs2Walker {
             return false;
         }
 
-        boolean clicked = walkFastCanvas(toWp);
+        WorldPoint clickTo = toWp;
+        if (routePath != null && !routePath.isEmpty()) {
+            Map<WorldPoint, Integer> reachable = getClosestIndexReachableTiles(before);
+            WorldPoint routeTarget = selectPostDoorRouteTarget(routePath, fromWp, toWp, before, reachable,
+                    POST_DOOR_FAST_CLICK_MAX_EUCLIDEAN);
+            if (routeTarget != null) {
+                clickTo = routeTarget;
+            }
+        }
+
+        boolean clicked = walkFastCanvas(clickTo);
         if (!clicked) {
-            clicked = walkMiniMapToward(toWp, before, POST_DOOR_FAST_CLICK_MAX_EUCLIDEAN - 1);
+            clicked = walkMiniMapToward(clickTo, before, POST_DOOR_FAST_CLICK_MAX_EUCLIDEAN - 1);
         }
         if (!clicked) {
             return false;
         }
 
-        markFirstMovementClick("first_door_edge_nudge", target, before, "to=" + compactWorldPoint(toWp));
+        markFirstMovementClick("first_door_edge_nudge", target, before,
+                "to=" + compactWorldPoint(clickTo)
+                        + (clickTo.equals(toWp) ? "" : " pastDoorOf=" + compactWorldPoint(toWp)));
         sleepUntil(() -> {
             if (isWalkCancelled(target)) {
                 return true;
@@ -6669,6 +6700,11 @@ public class Rs2Walker {
     }
 
     private static boolean tryRecentDoorAttemptEdgeNudge(WorldPoint playerLoc, WorldPoint target) {
+        return tryRecentDoorAttemptEdgeNudge(playerLoc, target, null);
+    }
+
+    private static boolean tryRecentDoorAttemptEdgeNudge(WorldPoint playerLoc, WorldPoint target,
+                                                         List<WorldPoint> routePath) {
         WorldPoint from = routeState.lastDoorAttemptFrom;
         WorldPoint to = routeState.lastDoorAttemptTo;
         long attemptedAt = routeState.lastDoorAttemptAtMs;
@@ -6685,12 +6721,59 @@ public class Rs2Walker {
         if (Rs2Player.isMoving() || Rs2Player.isAnimating()) {
             return false;
         }
-        boolean nudged = tryDoorEdgeCrossNudge(from, to, target);
+        boolean nudged = tryDoorEdgeCrossNudge(from, to, target, routePath);
         if (nudged) {
             WebWalkLog.tmark("recent_door_edge_nudge", System.currentTimeMillis() - routeState.walkSessionStartedAtMs,
                     target, playerLoc, "from=" + compactWorldPoint(from) + " to=" + compactWorldPoint(to));
         }
         return nudged;
+    }
+
+    /**
+     * The furthest route point past the just-opened door that the player can PROVABLY walk to.
+     * <p>
+     * Pure selection over the supplied reachability map — one BFS in the caller, map lookups here —
+     * rather than a reachability probe per candidate, which is the client-thread cost that froze
+     * MLM's loop. The edge must be located ON the route (a fold that merely passes nearby proves
+     * nothing about what lies beyond the door), candidates keep to the player's plane and the
+     * Euclidean cap, and each must be in the map: a tile the BFS cannot reach is on the far side of
+     * some OTHER wall, and clicking it is the exact regression the walled-route net exists to refuse.
+     * Null when nothing qualifies — the caller then keeps the single-tile nudge.
+     */
+    static WorldPoint selectPostDoorRouteTarget(List<WorldPoint> routePath, WorldPoint fromWp, WorldPoint toWp,
+                                                WorldPoint player, Map<WorldPoint, Integer> reachable,
+                                                int maxEuclidean) {
+        if (routePath == null || routePath.size() < 2 || fromWp == null || toWp == null
+                || player == null || reachable == null || reachable.isEmpty()) {
+            return null;
+        }
+        int edgeIdx = -1;
+        for (int i = 0; i + 1 < routePath.size(); i++) {
+            if (fromWp.equals(routePath.get(i)) && toWp.equals(routePath.get(i + 1))) {
+                edgeIdx = i;
+                break;
+            }
+        }
+        if (edgeIdx < 0) {
+            return null;
+        }
+        WorldPoint best = null;
+        for (int i = edgeIdx + 2; i < routePath.size(); i++) {
+            WorldPoint wp = routePath.get(i);
+            if (wp == null || wp.getPlane() != player.getPlane()) {
+                break;
+            }
+            if (player.distanceTo2D(wp) > maxEuclidean) {
+                break;
+            }
+            if (wp.equals(player)) {
+                continue;
+            }
+            if (reachable.containsKey(wp)) {
+                best = wp;
+            }
+        }
+        return best;
     }
 
     static boolean isDoorEdgeNudgeResolved(WorldPoint before, WorldPoint after, WorldPoint fromWp, WorldPoint toWp) {
