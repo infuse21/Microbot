@@ -94,6 +94,7 @@ public final class Rs2WalkerAwaits {
         // observation never ran" and "it ran and the door was shut", and the first live run could not
         // tell those apart. The count settles it without another round trip.
         final int[] openPolls = {0};
+        final String[] lastEdge = {"-"};
         long traversalPhaseAt = System.currentTimeMillis();
         sleepUntil(() -> {
             if (Thread.currentThread().isInterrupted() || conversationOpened()) {
@@ -124,7 +125,12 @@ public final class Rs2WalkerAwaits {
                 // tick. Asked first because it is one flag read, and because it holds for doors whose
                 // menu actions do not change when they open — the case the action check below could
                 // never explain across two live runs.
-                if (Rs2Tile.isEdgePassable(fromWp, toWp)) {
+                boolean edgeOpen = Rs2Tile.isEdgePassable(fromWp, toWp);
+                // Captured HERE, not when the log prints: the previous diagnostic read the door after
+                // the wait had already released and reported the state at the wrong instant (it
+                // produced a strict/loose pair that the predicate cannot actually produce).
+                lastEdge[0] = Rs2Tile.lastEdgeDecision();
+                if (edgeOpen) {
                     releasedBy[0] = "door-edge-open";
                     return true;
                 }
@@ -164,8 +170,8 @@ public final class Rs2WalkerAwaits {
                     saw = "error";
                 }
             }
-            WebWalkLog.spInfo("door_await | releasedBy={} startWaitMs={} traversalWaitMs={} openPolls={} saw={} from={} to={}",
-                    releasedBy[0], startWaitMs, traversalWaitMs, openPolls[0], saw, fromWp, toWp);
+            WebWalkLog.spInfo("door_await | releasedBy={} startWaitMs={} traversalWaitMs={} openPolls={} edge={} saw={} from={} to={}",
+                    releasedBy[0], startWaitMs, traversalWaitMs, openPolls[0], lastEdge[0], saw, fromWp, toWp);
         }
     }
 

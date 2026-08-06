@@ -522,29 +522,68 @@ public abstract class Rs2Tile implements Tile {
         return runClientReadBoolean(() -> isEdgePassableInternal(from, to));
     }
 
+    /**
+     * Why the last {@link #isEdgePassable} call answered as it did. A bare {@code false} is ambiguous
+     * between "the door is shut" and "this could not be decided", and callers that release a wait on
+     * {@code true} behave very differently depending on which it was.
+     */
+    private static volatile String lastEdgeDecision = "-";
+
+    /** @see #lastEdgeDecision */
+    public static String lastEdgeDecision() {
+        return lastEdgeDecision;
+    }
+
     private static boolean isEdgePassableInternal(WorldPoint from, WorldPoint to) {
-        if (from == null || to == null || from.getPlane() != to.getPlane()) return false;
+        if (from == null || to == null || from.getPlane() != to.getPlane()) {
+            lastEdgeDecision = "bad-args";
+            return false;
+        }
 
         final int dx = to.getX() - from.getX();
         final int dy = to.getY() - from.getY();
-        if (dx == 0 && dy == 0) return true;
-        if (Math.abs(dx) > 1 || Math.abs(dy) > 1) return false;
+        if (dx == 0 && dy == 0) {
+            lastEdgeDecision = "same-tile";
+            return true;
+        }
+        if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
+            lastEdgeDecision = "not-adjacent";
+            return false;
+        }
 
         final WorldView wv = Microbot.getClient().getTopLevelWorldView();
-        if (wv == null || wv.getPlane() != from.getPlane()) return false;
+        if (wv == null) {
+            lastEdgeDecision = "no-worldview";
+            return false;
+        }
+        if (wv.getPlane() != from.getPlane()) {
+            lastEdgeDecision = "plane-not-loaded";
+            return false;
+        }
         // Instance scenes repeat template chunks, so world -> scene by base offset is wrong there.
-        if (wv.getScene() != null && wv.getScene().isInstance()) return false;
+        if (wv.getScene() != null && wv.getScene().isInstance()) {
+            lastEdgeDecision = "instance";
+            return false;
+        }
 
         final int[][] flags = getFlagsInternal();
-        if (flags == null) return false;
+        if (flags == null) {
+            lastEdgeDecision = "no-flags";
+            return false;
+        }
 
         final int fx = from.getX() - Microbot.getClient().getBaseX();
         final int fy = from.getY() - Microbot.getClient().getBaseY();
         final int tx = fx + dx;
         final int ty = fy + dy;
-        if (!isWithinBounds(fx, fy) || !isWithinBounds(tx, ty)) return false;
+        if (!isWithinBounds(fx, fy) || !isWithinBounds(tx, ty)) {
+            lastEdgeDecision = "off-scene";
+            return false;
+        }
 
-        return isStepAllowed(flags, fx, fy, dx, dy);
+        boolean allowed = isStepAllowed(flags, fx, fy, dx, dy);
+        lastEdgeDecision = allowed ? "open" : "blocked";
+        return allowed;
     }
 
     /**
