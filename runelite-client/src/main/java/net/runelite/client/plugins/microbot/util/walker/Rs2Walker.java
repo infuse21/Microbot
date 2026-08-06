@@ -8959,8 +8959,26 @@ public class Rs2Walker {
                                         sleepTickJitter(2);
                                         Rs2Dialogue.clickContinue();
                                     }
+                                    // Right-clicking the destination is always preferred and needs no
+                                    // dialogue — that is what DIRECT means. But the mode is decided
+                                    // statically from a name whitelist, so an NPC whose row names a
+                                    // destination it no longer offers (Veos: the row says
+                                    // "Port Piscarilius", the game now asks in conversation) resolved
+                                    // to DIRECT, skipped destination selection entirely, and left the
+                                    // walker staring at the destination menu.
+                                    //
+                                    // resolveTerminalNpcInteractionAction already told us which action
+                                    // the NPC actually offered. If it had to fall back to a generic one
+                                    // then the destination was NOT chosen by the click and has to be
+                                    // chosen in the dialogue, whatever the static mode says.
+                                    Rs2TerminalTravelMode effectiveTravelMode = terminalTravelMode;
+                                    if (!npcAction.equalsIgnoreCase(transport.getAction())
+                                            && transport.getDisplayInfo() != null
+                                            && !transport.getDisplayInfo().isBlank()) {
+                                        effectiveTravelMode = Rs2TerminalTravelMode.DIALOGUE_DESTINATION;
+                                    }
                                     if (!selectTerminalTravelDialogueDestination(
-                                            transport, terminalTravelMode)) {
+                                            transport, effectiveTravelMode)) {
                                         break originLoop;
                                     }
                                     final int terminalDestinationIndex = precomputedIndexOfDest;
@@ -10148,6 +10166,16 @@ public class Rs2Walker {
                 || transportType == TransportType.BOAT;
     }
 
+    /**
+     * Options that open the destination list on NPCs whose right-click menu has no per-destination
+     * entry. Veos answers "Can you take me somewhere?" with the Port Piscarilius / Land's End menu.
+     */
+    private static final List<String> TERMINAL_TRAVEL_MENU_OPENERS = List.of(
+            "Can you take me somewhere?",
+            "Can you take me somewhere",
+            "take me somewhere",
+            "Travel");
+
     private static boolean selectTerminalTravelDialogueDestination(
             Transport transport, Rs2TerminalTravelMode mode) {
         if (mode == Rs2TerminalTravelMode.DIRECT) {
@@ -10165,13 +10193,27 @@ public class Rs2Walker {
                     transport.getName(), transport.getDisplayInfo());
             return false;
         }
-        if (!Rs2Dialogue.clickOption(transport.getDisplayInfo())) {
-            WebWalkLog.spWarn(
-                    "terminal travel destination option missing name={} dest={}",
-                    transport.getName(), transport.getDisplayInfo());
-            return false;
+        if (Rs2Dialogue.clickOption(transport.getDisplayInfo())) {
+            return true;
         }
-        return true;
+        // The destination is not in THIS menu. Several ferrymen answer a "can you take me somewhere"
+        // option with the destination list, so open it and look again rather than giving up — the
+        // walker previously stopped here with the destination menu on screen and walked away.
+        for (String opener : TERMINAL_TRAVEL_MENU_OPENERS) {
+            if (!Rs2Dialogue.hasSelectAnOption() || !Rs2Dialogue.clickOption(opener)) {
+                continue;
+            }
+            WebWalkLog.spInfo("terminal travel menu opened via '{}' name={} dest={}",
+                    opener, transport.getName(), transport.getDisplayInfo());
+            sleepUntil(Rs2Dialogue::hasSelectAnOption, 5000);
+            if (Rs2Dialogue.clickOption(transport.getDisplayInfo())) {
+                return true;
+            }
+        }
+        WebWalkLog.spWarn(
+                "terminal travel destination option missing name={} dest={}",
+                transport.getName(), transport.getDisplayInfo());
+        return false;
     }
 
     private static TileObject findTerminalTravelObject(Transport transport) {
