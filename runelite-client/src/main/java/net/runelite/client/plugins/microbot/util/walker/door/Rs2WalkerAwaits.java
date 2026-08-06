@@ -78,6 +78,10 @@ public final class Rs2WalkerAwaits {
         // from four rounds of guessing to a one-shot fix.
         final String[] releasedBy = {"timeout"};
         final long[] lastOpenPollAt = {0L};
+        // Carried into the slow log: a release that is NOT door-opened is ambiguous between "the
+        // observation never ran" and "it ran and the door was shut", and the first live run could not
+        // tell those apart. The count settles it without another round trip.
+        final int[] openPolls = {0};
         long traversalPhaseAt = System.currentTimeMillis();
         sleepUntil(() -> {
             if (Thread.currentThread().isInterrupted() || conversationOpened()) {
@@ -103,6 +107,7 @@ public final class Rs2WalkerAwaits {
                 long nowMs = System.currentTimeMillis();
                 if (shouldPollDoorOpen(nowMs - traversalPhaseAt, nowMs - lastOpenPollAt[0])) {
                     lastOpenPollAt[0] = nowMs;
+                    openPolls[0]++;
                     if (doorOpened.getAsBoolean()) {
                         releasedBy[0] = "door-opened";
                         return true;
@@ -131,8 +136,8 @@ public final class Rs2WalkerAwaits {
         long traversalWaitMs = System.currentTimeMillis() - traversalPhaseAt;
 
         if (startWaitMs + traversalWaitMs >= DOOR_AWAIT_SLOW_LOG_MS) {
-            WebWalkLog.spInfo("door_await | releasedBy={} startWaitMs={} traversalWaitMs={} from={} to={}",
-                    releasedBy[0], startWaitMs, traversalWaitMs, fromWp, toWp);
+            WebWalkLog.spInfo("door_await | releasedBy={} startWaitMs={} traversalWaitMs={} openPolls={} from={} to={}",
+                    releasedBy[0], startWaitMs, traversalWaitMs, openPolls[0], fromWp, toWp);
         }
     }
 

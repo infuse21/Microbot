@@ -6361,32 +6361,49 @@ public class Rs2Walker {
     }
 
     /**
-     * The door itself is open: its opening action is gone while we are still close enough to see it.
+     * THE door we clicked is open — not "some door near here is open".
      * <p>
-     * The proximity guard is what makes this safe to release a wait on. {@link #doorStillHasAction}
-     * cannot distinguish "the action is gone" from "no object matched", and the second reading happens
-     * whenever the probe falls outside the scan radius — which would otherwise report a shut door as
-     * open the moment we drifted away from it.
+     * The first version of this delegated to {@link #doorStillHasAction}, whose predicate accepts any
+     * door-like object within TWO tiles of the probe. That is right for its own job (verify, then
+     * retry) but wrong as a release condition, and it is why the first live run produced no
+     * {@code releasedBy=door-opened} at all: in a door-heavy area a neighbouring shut door keeps the
+     * answer "still closed" forever, so the wait ran on to its positional conditions exactly as before.
+     * Matching on the probe tile itself, or on the geometry of the edge we are crossing, asks about the
+     * one door the click was aimed at.
+     * <p>
+     * The other half of the old reading was an ambiguity: "no object matched" was indistinguishable
+     * from "the action is gone", so anything that put the door out of scan range reported a shut door
+     * as open. Here the two are separated — an opened door must actually be SEEN without its opening
+     * action. Seeing nothing is unknown, and unknown is not open, so the wait falls through to the
+     * positional conditions rather than releasing on an absence.
      * <p>
      * TRANSPORT DOORS (the moves-you class) stay correct through this. They keep their action after
-     * relocating us, so this returns false and the positional conditions release the wait instead —
-     * and those fire at once, because being moved is exactly what they detect. If a relocation is far
-     * enough to put the door out of scan range, the guard below suppresses the reading rather than
-     * letting an out-of-range miss masquerade as an opened door.
+     * relocating us, so this stays false and the positional conditions release the wait instead — and
+     * those fire at once, because being moved is precisely what they detect.
      */
     private static boolean doorObservedOpen(WorldPoint probe, WorldPoint fromWp, WorldPoint toWp,
                                             List<String> doorActions, String action) {
         WorldPoint player = Rs2Player.getWorldLocation();
-        if (player == null || probe == null
+        if (player == null || probe == null || action == null
                 || player.getPlane() != probe.getPlane()
                 || player.distanceTo2D(probe) > HANDLER_RANGE) {
             return false;
         }
-        return !doorStillHasAction(probe, fromWp, toWp, doorActions, action);
+        return !doorStillHasAction(probe, fromWp, toWp, doorActions, action, true);
     }
 
     private static boolean doorStillHasAction(WorldPoint probe, WorldPoint fromWp, WorldPoint toWp,
                                               List<String> doorActions, String action) {
+        return doorStillHasAction(probe, fromWp, toWp, doorActions, action, false);
+    }
+
+    /**
+     * @param strictTile match only the door ON the probe tile or ON the {@code fromWp -> toWp} edge,
+     *                   instead of anything within two tiles. Required when the answer decides whether
+     *                   THIS door opened; the loose radius lets a neighbouring shut door answer for it.
+     */
+    private static boolean doorStillHasAction(WorldPoint probe, WorldPoint fromWp, WorldPoint toWp,
+                                              List<String> doorActions, String action, boolean strictTile) {
         if (probe == null || action == null) {
             return false;
         }
@@ -6396,7 +6413,8 @@ public class Rs2Walker {
             anchor = probe;
         }
 
-        TileObject object = Rs2GameObject.getAll(o -> doorObjectStillHasAction(o, probe, fromWp, toWp, doorActions, action),
+        TileObject object = Rs2GameObject.getAll(
+                        o -> doorObjectStillHasAction(o, probe, fromWp, toWp, doorActions, action, strictTile),
                         anchor, Math.max(3, HANDLER_RANGE))
                 .stream()
                 .findFirst()
@@ -6405,7 +6423,7 @@ public class Rs2Walker {
     }
 
     private static boolean doorObjectStillHasAction(TileObject object, WorldPoint probe, WorldPoint fromWp, WorldPoint toWp,
-                                                    List<String> doorActions, String action) {
+                                                    List<String> doorActions, String action, boolean strictTile) {
         if (object == null || object.getWorldLocation() == null || action == null) {
             return false;
         }
@@ -6419,7 +6437,10 @@ public class Rs2Walker {
         if (Rs2DoorProbe.isCatalogTransportObject(object) && !Rs2DoorDetection.isDoorLikeSceneObject(object)) {
             return false;
         }
-        boolean nearProbe = probe != null && loc.distanceTo2D(probe) <= 2;
+        // The two-tile radius is right for "is anything here still shut" (verify, then retry) but wrong
+        // for "did THIS door open" — a neighbouring shut door answers for it and the answer never changes.
+        boolean nearProbe = probe != null
+                && (strictTile ? loc.equals(probe) : loc.distanceTo2D(probe) <= 2);
         boolean onSegment = fromWp != null && toWp != null && Rs2DoorGeometry.isDoorOnSegment(object, fromWp, toWp);
         if (!nearProbe && !onSegment) {
             return false;

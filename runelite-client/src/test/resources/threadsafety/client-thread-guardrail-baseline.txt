@@ -738,7 +738,7 @@ net.runelite.client.plugins.microbot.util.walker.Rs2Walker#charterWidgetMatchesD
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#closeWorldMap(): boolean  ->  net.runelite.api.widgets.Widget#getBounds(): Rectangle
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#distanceToRegion(int, int): int  ->  net.runelite.api.Client#getTopLevelWorldView(): WorldView
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#distanceToRegion(int, int): int  ->  net.runelite.api.WorldView#getPlane(): int
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#doorObjectStillHasAction(TileObject, WorldPoint, WorldPoint, WorldPoint, List, String): boolean  ->  net.runelite.api.TileObject#getWorldLocation(): WorldPoint
+net.runelite.client.plugins.microbot.util.walker.Rs2Walker#doorObjectStillHasAction(TileObject, WorldPoint, WorldPoint, WorldPoint, List, String, boolean): boolean  ->  net.runelite.api.TileObject#getWorldLocation(): WorldPoint
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#findCharterDestinationTextWidget(Widget, String): Widget  ->  net.runelite.api.widgets.Widget#getDynamicChildren(): Widget[]
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#findCharterDestinationTextWidget(Widget, String): Widget  ->  net.runelite.api.widgets.Widget#getStaticChildren(): Widget[]
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#findCharterDestinationTextWidget(Widget, String): Widget  ->  net.runelite.api.widgets.Widget#isHidden(): boolean
