@@ -1645,6 +1645,53 @@ public class Rs2WalkerUnitTest {
                 new WorldPoint(3241, 3302, 0)));
     }
 
+    /**
+     * The nudge now clicks a route point PAST the door, so a successful crossing keeps going. The
+     * live log's exact case: south door 3369->3368, player observed at 3365 — through the door and
+     * three tiles beyond — reported unresolved by the near-toWp rule.
+     */
+    @Test
+    public void isDoorEdgeNudgeResolved_ranOnPastTheDoor_returnsTrue() {
+        assertTrue(Rs2Walker.isDoorEdgeNudgeResolved(
+                new WorldPoint(3106, 3369, 0),
+                new WorldPoint(3106, 3365, 0),
+                new WorldPoint(3106, 3369, 0),
+                new WorldPoint(3106, 3368, 0)));
+    }
+
+    /**
+     * A running player covers two tiles a tick and may NEVER be observed on toWp itself: a nudge
+     * starting on fromWp has beforeTo=1, so "afterTo < beforeTo" could only fire on exactly toWp.
+     * Observed live as 3369 -> 3367 -> 3365 with every poll reading unresolved.
+     */
+    @Test
+    public void isDoorEdgeNudgeResolved_runningSkipsTheFarSideTile_returnsTrue() {
+        assertTrue(Rs2Walker.isDoorEdgeNudgeResolved(
+                new WorldPoint(3106, 3369, 0),
+                new WorldPoint(3106, 3367, 0),
+                new WorldPoint(3106, 3369, 0),
+                new WorldPoint(3106, 3368, 0)));
+    }
+
+    /** Walking parallel along the NEAR side of the wall is not a crossing, however far it gets. */
+    @Test
+    public void isDoorEdgeNudgeResolved_parallelOnTheNearSide_returnsFalse() {
+        assertFalse(Rs2Walker.isDoorEdgeNudgeResolved(
+                new WorldPoint(3106, 3369, 0),
+                new WorldPoint(3103, 3369, 0),
+                new WorldPoint(3106, 3369, 0),
+                new WorldPoint(3106, 3368, 0)));
+    }
+
+    @Test
+    public void isDoorEdgeNudgeResolved_eastDoorCrossedAtSpeed_returnsTrue() {
+        assertTrue(Rs2Walker.isDoorEdgeNudgeResolved(
+                new WorldPoint(3240, 3301, 0),
+                new WorldPoint(3243, 3301, 0),
+                new WorldPoint(3240, 3301, 0),
+                new WorldPoint(3241, 3301, 0)));
+    }
+
     @Test
     public void shouldClearInterimTarget_closeToCheckpoint_returnsTrue() {
         assertTrue(Rs2Walker.shouldClearInterimTarget(

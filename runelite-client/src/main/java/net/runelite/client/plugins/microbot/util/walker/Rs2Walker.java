@@ -6793,7 +6793,35 @@ public class Rs2Walker {
         if (after.equals(toWp) || afterTo == 0) {
             return true;
         }
-        return afterTo <= 1 && afterTo < beforeTo;
+        if (afterTo <= 1 && afterTo < beforeTo) {
+            return true;
+        }
+        // The near-toWp rule alone cannot see a crossing that keeps going, and with the nudge now
+        // clicking a route point PAST the door, keeping going is the intended outcome. It also has a
+        // blind spot the live log caught even for short hops: a nudge starts on fromWp (beforeTo=1),
+        // so afterTo < beforeTo only fires on exactly toWp — and a RUNNING player covers two tiles a
+        // tick and skips that tile entirely (observed 3369 -> 3367 -> 3365, reported unresolved).
+        // Crossing the door's axis is the fact being tested, so test it directly.
+        return hasCrossedDoorAxis(fromWp, toWp, after);
+    }
+
+    /**
+     * Whether {@code after} lies at or beyond the far side of the {@code fromWp -> toWp} door edge,
+     * measured along the edge's own axis. Door edges are cardinal; anything else answers false and
+     * the strict near-toWp rule stands alone.
+     */
+    static boolean hasCrossedDoorAxis(WorldPoint fromWp, WorldPoint toWp, WorldPoint after) {
+        int dx = toWp.getX() - fromWp.getX();
+        int dy = toWp.getY() - fromWp.getY();
+        if (dx != 0 && dy == 0) {
+            int travelled = after.getX() - fromWp.getX();
+            return dx > 0 ? travelled >= 1 : travelled <= -1;
+        }
+        if (dy != 0 && dx == 0) {
+            int travelled = after.getY() - fromWp.getY();
+            return dy > 0 ? travelled >= 1 : travelled <= -1;
+        }
+        return false;
     }
 
     private static int interimPreclickTiles() {
