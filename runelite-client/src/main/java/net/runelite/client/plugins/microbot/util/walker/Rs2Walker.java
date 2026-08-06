@@ -363,6 +363,13 @@ public class Rs2Walker {
         // makes the new walk yield to (and report progress against) a stale objective — repeatedly seen as
         // interim=<old goal> camping at Clock Tower when the script restarts walks every ~40s.
         clearInterimTarget("walk-start");
+        // Same staleness, door flavour: the recent-attempt edge belongs to the PREVIOUS walk, and its
+        // 6s window comfortably spans a script's walk-to-walk gap. A fresh walk re-nudged the old
+        // door — observed as a first_door_edge_nudge pointing BACKWARD at walk start, ~2s of standing
+        // still (or worse, a step the wrong way) before the new route's first click.
+        routeState.lastDoorAttemptFrom = null;
+        routeState.lastDoorAttemptTo = null;
+        routeState.lastDoorAttemptAtMs = 0L;
         resetRouteProgress();
         synchronized (expectedTransportDestinations) {
             expectedTransportDestinations.clear();
@@ -6163,7 +6170,7 @@ public class Rs2Walker {
                                     compactWorldPoint(probe), compactWorldPoint(fromWp), compactWorldPoint(toWp));
                             return false;
                         }
-                        if (shouldThrottleGlobalDoorInteraction()) {
+                        if (shouldThrottleGlobalDoorInteraction(fromWp, toWp)) {
                             WebWalkLog.spInfo("door_global_await | mode=segment-door probe={} from={} to={}",
                                     compactWorldPoint(probe), compactWorldPoint(fromWp), compactWorldPoint(toWp));
                             return false;
@@ -6297,7 +6304,7 @@ public class Rs2Walker {
                     compactWorldPoint(probe), compactWorldPoint(fromWp), compactWorldPoint(toWp));
             return false;
         }
-        if (shouldThrottleGlobalDoorInteraction()) {
+        if (shouldThrottleGlobalDoorInteraction(fromWp, toWp)) {
             WebWalkLog.spInfo("door_global_await | mode=segment-probe probe={} from={} to={}",
                     compactWorldPoint(probe), compactWorldPoint(fromWp), compactWorldPoint(toWp));
             return false;
@@ -7084,8 +7091,21 @@ public class Rs2Walker {
         routeState.interimLastRetargetAtMs = 0L;
     }
 
-    private static boolean shouldThrottleGlobalDoorInteraction() {
-        return Rs2DoorHandler.shouldThrottleGlobalDoorInteraction(routeState.nextDoorInteractionAllowedAtMs)
+    /** One game tick: the floor a DIFFERENT door still owes after any door click. */
+    private static final long DOOR_INTERACTION_CROSS_EDGE_COOLDOWN_MS = 600L;
+
+    /**
+     * Edge-aware variant: the full window only binds a re-click of the SAME edge; a different door
+     * right after a successful open is chaining, not hammering, and owes one tick. The dialogue
+     * defer is unconditional either way — an open quest dialogue blocks every door equally.
+     */
+    private static boolean shouldThrottleGlobalDoorInteraction(WorldPoint fromWp, WorldPoint toWp) {
+        boolean sameEdge = fromWp != null && toWp != null
+                && fromWp.equals(routeState.lastDoorAttemptFrom)
+                && toWp.equals(routeState.lastDoorAttemptTo);
+        return Rs2DoorHandler.shouldThrottleGlobalDoorInteraction(System.currentTimeMillis(),
+                routeState.nextDoorInteractionAllowedAtMs, sameEdge,
+                DOOR_INTERACTION_GLOBAL_COOLDOWN_MS, DOOR_INTERACTION_CROSS_EDGE_COOLDOWN_MS)
                 || shouldDeferDoorInteractionForDialogue();
     }
 
@@ -8193,7 +8213,7 @@ public class Rs2Walker {
             }
 			return false;
 		}
-		if (shouldThrottleGlobalDoorInteraction()) {
+		if (shouldThrottleGlobalDoorInteraction(bestFrom, bestTo)) {
 			WebWalkLog.spInfo("door_global_await | mode=path-adj probe={} from={} to={}",
 					compactWorldPoint(bestLoc), compactWorldPoint(bestFrom), compactWorldPoint(bestTo));
 			return false;

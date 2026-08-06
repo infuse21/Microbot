@@ -61,6 +61,25 @@ public final class Rs2DoorHandler {
         return System.currentTimeMillis() < nextDoorInteractionAllowedAtMs;
     }
 
+    /**
+     * Edge-scoped variant. The full window is anti-hammer for ONE door — re-clicking the same edge
+     * before the world has caught up. A DIFFERENT door immediately after a successful open is not
+     * hammering, it is chaining, and holding it for the full window serialised every pair of nearby
+     * doors. A different edge owes only the cross-edge floor (one game tick): enough that two clicks
+     * cannot land inside the same tick, no more.
+     *
+     * @param fullCooldownMs      the window {@code nextAllowedAtMs} was stamped with
+     * @param crossEdgeCooldownMs the floor a different edge still owes
+     */
+    public static boolean shouldThrottleGlobalDoorInteraction(long nowMs, long nextAllowedAtMs,
+                                                              boolean sameEdgeAsLastAttempt,
+                                                              long fullCooldownMs, long crossEdgeCooldownMs) {
+        if (sameEdgeAsLastAttempt) {
+            return nowMs < nextAllowedAtMs;
+        }
+        return nowMs < nextAllowedAtMs - (fullCooldownMs - crossEdgeCooldownMs);
+    }
+
     public static long markGlobalDoorInteractionCooldown(long cooldownMs) {
         return System.currentTimeMillis() + cooldownMs;
     }
