@@ -33,4 +33,31 @@ public class Rs2WalkerAwaitsTest {
         assertFalse(Rs2WalkerAwaits.shouldAcceptIdleDoorAwait(false, false, 1200L, true));
         assertFalse(Rs2WalkerAwaits.shouldAcceptIdleDoorAwait(false, false, 800L, true));
     }
+
+    // ---- door-open observation throttle -------------------------------------------------------------
+
+    /**
+     * An unlocked door opens within one game tick, so an observation before then can only report
+     * "still shut". The observation is a scene scan, not a field read, which is why it is rationed at
+     * all rather than run on every poll of the surrounding wait.
+     */
+    @Test
+    public void shouldPollDoorOpen_notBeforeADoorCouldHaveOpened() {
+        assertFalse(Rs2WalkerAwaits.shouldPollDoorOpen(0L, 10_000L));
+        assertFalse(Rs2WalkerAwaits.shouldPollDoorOpen(100L, 10_000L));
+    }
+
+    @Test
+    public void shouldPollDoorOpen_onceTheFirstTickHasPassed() {
+        assertTrue(Rs2WalkerAwaits.shouldPollDoorOpen(250L, 10_000L));
+        assertTrue(Rs2WalkerAwaits.shouldPollDoorOpen(600L, 10_000L));
+    }
+
+    /** Rationed: a fresh observation is not worth a scene scan on every poll of the wait. */
+    @Test
+    public void shouldPollDoorOpen_notMoreOftenThanTheInterval() {
+        assertFalse(Rs2WalkerAwaits.shouldPollDoorOpen(1_000L, 0L));
+        assertFalse(Rs2WalkerAwaits.shouldPollDoorOpen(1_000L, 100L));
+        assertTrue(Rs2WalkerAwaits.shouldPollDoorOpen(1_000L, 250L));
+    }
 }

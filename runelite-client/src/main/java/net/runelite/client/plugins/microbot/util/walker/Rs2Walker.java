@@ -6190,7 +6190,7 @@ public class Rs2Walker {
                             return false;
                         }
                         markDoorInteractionSettling(toWp);
-                        waitForDoorInteractionProgress(fromWp, toWp);
+                        waitForDoorInteractionProgress(fromWp, toWp, probe, doorActions, action);
                         WorldPoint posAfter = Rs2Player.getWorldLocation();
                         boolean traversed = didTraverseInteractedDoor(posBefore, posAfter, probe, fromWp, toWp);
                         if (!traversed && isQuestLockedDoorDialogue()) {
@@ -6323,7 +6323,7 @@ public class Rs2Walker {
             return false;
         }
         markDoorInteractionSettling(toWp);
-        waitForDoorInteractionProgress(fromWp, toWp);
+        waitForDoorInteractionProgress(fromWp, toWp, probe, doorActions, action);
         WorldPoint posAfter = Rs2Player.getWorldLocation();
         boolean traversed = didTraverseInteractedDoor(posBefore, posAfter, probe, fromWp, toWp);
         if (traversed) {
@@ -6358,6 +6358,31 @@ public class Rs2Walker {
             }
         }
         return false;
+    }
+
+    /**
+     * The door itself is open: its opening action is gone while we are still close enough to see it.
+     * <p>
+     * The proximity guard is what makes this safe to release a wait on. {@link #doorStillHasAction}
+     * cannot distinguish "the action is gone" from "no object matched", and the second reading happens
+     * whenever the probe falls outside the scan radius — which would otherwise report a shut door as
+     * open the moment we drifted away from it.
+     * <p>
+     * TRANSPORT DOORS (the moves-you class) stay correct through this. They keep their action after
+     * relocating us, so this returns false and the positional conditions release the wait instead —
+     * and those fire at once, because being moved is exactly what they detect. If a relocation is far
+     * enough to put the door out of scan range, the guard below suppresses the reading rather than
+     * letting an out-of-range miss masquerade as an opened door.
+     */
+    private static boolean doorObservedOpen(WorldPoint probe, WorldPoint fromWp, WorldPoint toWp,
+                                            List<String> doorActions, String action) {
+        WorldPoint player = Rs2Player.getWorldLocation();
+        if (player == null || probe == null
+                || player.getPlane() != probe.getPlane()
+                || player.distanceTo2D(probe) > HANDLER_RANGE) {
+            return false;
+        }
+        return !doorStillHasAction(probe, fromWp, toWp, doorActions, action);
     }
 
     private static boolean doorStillHasAction(WorldPoint probe, WorldPoint fromWp, WorldPoint toWp,
@@ -7264,10 +7289,27 @@ public class Rs2Walker {
      */
 
     private static void waitForDoorInteractionProgress(WorldPoint fromWp, WorldPoint toWp) {
+        waitForDoorInteractionProgress(fromWp, toWp, null, null, null);
+    }
+
+    /**
+     * Door-identified variant: lets the await release the moment the door is OPEN rather than when we
+     * have finished walking through it. An unlocked door opens within a game tick, so the traversal
+     * that used to be waited out is time the server is already spending walking us — time in which the
+     * next door on the route could be clicked. Falls back to the positional conditions when the door
+     * cannot be identified or the config switch is off.
+     */
+    private static void waitForDoorInteractionProgress(WorldPoint fromWp, WorldPoint toWp,
+                                                       WorldPoint probe, List<String> doorActions,
+                                                       String action) {
         long startedAt = System.currentTimeMillis();
         AwaitTicket ticket = Rs2WalkerAwaits.beginTicket();
+        java.util.function.BooleanSupplier doorOpened =
+                (probe == null || action == null || !doorInteractionWhileApproachingEnabled())
+                        ? null
+                        : () -> doorObservedOpen(probe, fromWp, toWp, doorActions, action);
         try {
-            Rs2WalkerAwaits.awaitDoorInteractionProgress(ticket, fromWp, toWp);
+            Rs2WalkerAwaits.awaitDoorInteractionProgress(ticket, fromWp, toWp, doorOpened);
         } finally {
             if (rawScanWallSnapshot != null || rawScanGameObjectSnapshot != null) {
                 rawScanDoorInteractionWaitMs += System.currentTimeMillis() - startedAt;

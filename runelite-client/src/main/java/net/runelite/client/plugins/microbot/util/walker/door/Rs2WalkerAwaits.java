@@ -18,6 +18,13 @@ public final class Rs2WalkerAwaits {
     private static final long DOOR_IDLE_ACCEPT_MIN_MS = 1_200L;
     /** Above this combined wait, say which condition released the door await. */
     private static final long DOOR_AWAIT_SLOW_LOG_MS = 900L;
+    /**
+     * An unlocked door opens within one game tick of the click landing, so there is nothing to observe
+     * before then and polling earlier only spends client-thread time. Checked on an interval rather
+     * than every poll because the observation is a scene scan (~60ms measured), not a field read.
+     */
+    private static final long DOOR_OPEN_POLL_START_MS = 250L;
+    private static final long DOOR_OPEN_POLL_INTERVAL_MS = 250L;
 
     private Rs2WalkerAwaits() {
     }
@@ -38,6 +45,15 @@ public final class Rs2WalkerAwaits {
     }
 
     public static void awaitDoorInteractionProgress(AwaitTicket ticket, WorldPoint fromWp, WorldPoint toWp) {
+        awaitDoorInteractionProgress(ticket, fromWp, toWp, null);
+    }
+
+    /**
+     * @param doorOpened observes the DOOR (its "Open" action is gone), as opposed to every other
+     *                   release condition here, which observes the PLAYER. May be {@code null}.
+     */
+    public static void awaitDoorInteractionProgress(AwaitTicket ticket, WorldPoint fromWp, WorldPoint toWp,
+                                                    java.util.function.BooleanSupplier doorOpened) {
         if (ticket == null) {
             return;
         }
@@ -61,6 +77,7 @@ public final class Rs2WalkerAwaits {
         // "doors feel slow" into a specific target — the same play that took the transport problem
         // from four rounds of guessing to a one-shot fix.
         final String[] releasedBy = {"timeout"};
+        final long[] lastOpenPollAt = {0L};
         long traversalPhaseAt = System.currentTimeMillis();
         sleepUntil(() -> {
             if (Thread.currentThread().isInterrupted() || conversationOpened()) {
@@ -75,6 +92,22 @@ public final class Rs2WalkerAwaits {
             if (edgeResolved) {
                 releasedBy[0] = "edge-resolved";
                 return true;
+            }
+            // Every condition around this one observes the PLAYER — "edge resolved" means we already
+            // walked through. That is why doors could not chain: nothing could look at the next door
+            // until we were physically past this one, so each door cost a full approach plus traversal
+            // instead of the single tick the door itself takes. Observing the DOOR releases us as soon
+            // as it is open, while the server keeps walking us through, so the next door on the route
+            // can be clicked immediately. Throttled because this one is a scene scan, not a field read.
+            if (doorOpened != null) {
+                long nowMs = System.currentTimeMillis();
+                if (shouldPollDoorOpen(nowMs - traversalPhaseAt, nowMs - lastOpenPollAt[0])) {
+                    lastOpenPollAt[0] = nowMs;
+                    if (doorOpened.getAsBoolean()) {
+                        releasedBy[0] = "door-opened";
+                        return true;
+                    }
+                }
             }
             if (Rs2WalkerProgress.isWithinChebyshev(now, toWp, 1)) {
                 releasedBy[0] = "arrived-far-side";
@@ -119,6 +152,20 @@ public final class Rs2WalkerAwaits {
      * {@code edgeResolved} is retained in the signature because callers pass their own observation
      * and it keeps the decision table explicit about the case that used to be the only one accepted.
      */
+    /**
+     * Whether to spend a door-open observation on this poll.
+     * <p>
+     * Two rules, both about cost rather than correctness. An unlocked door opens within one game tick
+     * of the click landing, so an observation before {@link #DOOR_OPEN_POLL_START_MS} can only ever
+     * report "still shut" and is pure waste. And the observation is a scene scan (~60ms measured), not
+     * a field read, so at the poll rate of the surrounding wait it would otherwise run several times a
+     * second for the whole budget — the cost that made door handling expensive in the first place.
+     */
+    static boolean shouldPollDoorOpen(long sinceTraversalStartMs, long sinceLastPollMs) {
+        return sinceTraversalStartMs >= DOOR_OPEN_POLL_START_MS
+                && sinceLastPollMs >= DOOR_OPEN_POLL_INTERVAL_MS;
+    }
+
     @SuppressWarnings("unused")
     static boolean shouldAcceptIdleDoorAwait(boolean moving, boolean animating, long elapsedMs, boolean edgeResolved) {
         if (moving || animating) {
