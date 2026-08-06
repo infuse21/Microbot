@@ -6817,22 +6817,11 @@ public class Rs2Walker {
     }
 
     /**
-     * Whether {@code after} lies at or beyond the far side of the {@code fromWp -> toWp} door edge,
-     * measured along the edge's own axis. Door edges are cardinal; anything else answers false and
-     * the strict near-toWp rule stands alone.
+     * Whether {@code after} lies at or beyond the far side of the {@code fromWp -> toWp} door edge.
+     * Shared with the ranged door await, which uses the same reading as its "passed the door" release.
      */
     static boolean hasCrossedDoorAxis(WorldPoint fromWp, WorldPoint toWp, WorldPoint after) {
-        int dx = toWp.getX() - fromWp.getX();
-        int dy = toWp.getY() - fromWp.getY();
-        if (dx != 0 && dy == 0) {
-            int travelled = after.getX() - fromWp.getX();
-            return dx > 0 ? travelled >= 1 : travelled <= -1;
-        }
-        if (dy != 0 && dx == 0) {
-            int travelled = after.getY() - fromWp.getY();
-            return dy > 0 ? travelled >= 1 : travelled <= -1;
-        }
-        return false;
+        return Rs2DoorGeometry.crossedDoorAxis(fromWp, toWp, after);
     }
 
     private static int interimPreclickTiles() {
@@ -7502,14 +7491,23 @@ public class Rs2Walker {
         java.util.function.Supplier<String> observation =
                 (probe == null || action == null) ? null
                         : () -> describeDoorObservation(probe, fromWp, toWp, doorActions, action);
-        // Ranged budgets can hold for seconds, so a walk that was cancelled or re-targeted mid-await
-        // must release it: currentTarget is captured NOW, and the supplier answers true the moment
-        // that walk stops being the active one.
+        // Ranged budgets can hold for seconds, so a hold must release when the plan it belongs to
+        // stops existing — the walk cancelled or re-targeted, OR the route replanned under the same
+        // target. The second case is what live collision does when it sees the awaited edge blocked:
+        // it recalculates and routes around, and holding the old plan's door after that is pure
+        // waste (measured: the replan fired a second before a 6.9s ranged timeout expired).
+        // A new Pathfinder instance IS the replan signal; the reference is captured at click time.
         WorldPoint walkTarget = currentTarget;
-        // isWalkCancelled(null) answers true, and a door can legitimately be handled outside a walk
-        // session (recovery paths); no target means there is nothing to be cancelled.
-        java.util.function.BooleanSupplier cancelled =
-                walkTarget == null ? null : () -> isWalkCancelled(walkTarget);
+        Object plannerAtClick = Rs2PathApi.getPathfinder();
+        java.util.function.BooleanSupplier cancelled = () -> {
+            // isWalkCancelled(null) answers true, and a door can legitimately be handled outside a
+            // walk session (recovery paths); no target means there is nothing to be cancelled.
+            if (walkTarget != null && isWalkCancelled(walkTarget)) {
+                return true;
+            }
+            Object plannerNow = Rs2PathApi.getPathfinder();
+            return plannerAtClick != null && plannerNow != null && plannerNow != plannerAtClick;
+        };
         try {
             Rs2WalkerAwaits.awaitDoorInteractionProgress(ticket, fromWp, toWp, doorOpened, observation, cancelled);
         } finally {

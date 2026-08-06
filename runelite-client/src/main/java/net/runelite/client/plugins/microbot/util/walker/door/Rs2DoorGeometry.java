@@ -19,6 +19,30 @@ public final class Rs2DoorGeometry {
         return isDoorOnSegment(object, object == null ? null : object.getWorldLocation(), fromWp, toWp);
     }
 
+    /**
+     * Whether {@code at} lies at or beyond the far side of the cardinal {@code from -> to} door edge,
+     * measured along the edge's own axis. This is the unambiguous "we are past the door" reading —
+     * unlike near-side proximity, which fires while still approaching. Door edges are cardinal;
+     * anything else answers false.
+     */
+    public static boolean crossedDoorAxis(WorldPoint from, WorldPoint to, WorldPoint at) {
+        if (from == null || to == null || at == null
+                || from.getPlane() != to.getPlane() || at.getPlane() != to.getPlane()) {
+            return false;
+        }
+        int dx = to.getX() - from.getX();
+        int dy = to.getY() - from.getY();
+        if (dx != 0 && dy == 0) {
+            int travelled = at.getX() - from.getX();
+            return dx > 0 ? travelled >= 1 : travelled <= -1;
+        }
+        if (dy != 0 && dx == 0) {
+            int travelled = at.getY() - from.getY();
+            return dy > 0 ? travelled >= 1 : travelled <= -1;
+        }
+        return false;
+    }
+
     /** As above, with the object's location supplied (see {@link #wallDoorTouchesSegment}). */
     public static boolean isDoorOnSegment(TileObject object, WorldPoint objectLocation,
                                           WorldPoint fromWp, WorldPoint toWp) {

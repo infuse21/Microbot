@@ -133,6 +133,9 @@ public final class Rs2WalkerAwaits {
         // tell those apart. The count settles it without another round trip.
         final int[] openPolls = {0};
         final String[] lastEdge = {"-"};
+        final int[] totalPolls = {0};
+        final int[] movingPolls = {0};
+        final int[] animatingPolls = {0};
 
         // A ranged click is an APPROACH, not a traversal: the server walks us to the door, the door
         // opens on arrival (its 0-1 tick is measured from the interaction, not from the click), and
@@ -155,7 +158,7 @@ public final class Rs2WalkerAwaits {
                 return true;
             }
             if (cancelled != null && cancelled.getAsBoolean()) {
-                releasedBy[0] = "walk-cancelled";
+                releasedBy[0] = "cancelled-or-replanned";
                 return true;
             }
             WorldPoint now = Rs2Player.getWorldLocation();
@@ -165,6 +168,15 @@ public final class Rs2WalkerAwaits {
             boolean edgeResolved = !ranged && isDoorEdgeResolved(fromWp, toWp);
             if (edgeResolved) {
                 releasedBy[0] = "edge-resolved";
+                return true;
+            }
+            // The one positional reading a ranged hold may trust: we are ON the far side, or past the
+            // door along its own axis. Near-side proximity stays disabled for ranged clicks — that was
+            // the premature release — but "past" is unambiguous, and it is how a hold ends when the
+            // server walks us to the far side through another opening without the door ever needing to
+            // open. Measured as a 6.9s ranged timeout with the player standing on toWp, door shut.
+            if (ranged && (now.equals(toWp) || Rs2DoorGeometry.crossedDoorAxis(fromWp, toWp, now))) {
+                releasedBy[0] = "passed-door";
                 return true;
             }
             // The door observations. The collision edge is authoritative — the client's flags are
@@ -199,11 +211,19 @@ public final class Rs2WalkerAwaits {
                 return true;
             }
             long elapsedMs = System.currentTimeMillis() - ticket.startedAtMs();
-            boolean idleAccepted = shouldAcceptIdleDoorAwait(
-                    Rs2Player.isMoving(),
-                    Rs2Player.isAnimating(),
-                    elapsedMs,
-                    edgeResolved);
+            // Counted so a timeout can say why the stall release never fired — "idle-accept was
+            // silent" is ambiguous between the player walking the whole budget (correct silence)
+            // and the pose-based isMoving trap (a bug). The tally answers it from one log line.
+            boolean moving = Rs2Player.isMoving();
+            boolean animating = Rs2Player.isAnimating();
+            totalPolls[0]++;
+            if (moving) {
+                movingPolls[0]++;
+            }
+            if (animating) {
+                animatingPolls[0]++;
+            }
+            boolean idleAccepted = shouldAcceptIdleDoorAwait(moving, animating, elapsedMs, edgeResolved);
             if (idleAccepted) {
                 releasedBy[0] = "idle-accepted";
             }
@@ -221,8 +241,9 @@ public final class Rs2WalkerAwaits {
                     saw = "error";
                 }
             }
-            WebWalkLog.spInfo("door_await | releasedBy={} startWaitMs={} traversalWaitMs={} clickDist={} ranged={} openPolls={} edge={} saw={} from={} to={}",
-                    releasedBy[0], startWaitMs, traversalWaitMs, clickDistance, ranged, openPolls[0], lastEdge[0], saw, fromWp, toWp);
+            WebWalkLog.spInfo("door_await | releasedBy={} startWaitMs={} traversalWaitMs={} clickDist={} ranged={} openPolls={} edge={} polls={} movingPolls={} animPolls={} saw={} from={} to={}",
+                    releasedBy[0], startWaitMs, traversalWaitMs, clickDistance, ranged, openPolls[0], lastEdge[0],
+                    totalPolls[0], movingPolls[0], animatingPolls[0], saw, fromWp, toWp);
         }
     }
 
