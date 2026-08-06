@@ -310,20 +310,38 @@ public class Transport {
                 int level = Integer.parseInt(levelAndSkill[0]);
                 String skillName = levelAndSkill[1].trim();
 
+                boolean resolved = false;
                 Skill[] skills = Skill.values();
                 for (int i = 0; i < skills.length; i++) {
                     if (skills[i].getName().equals(skillName)) {
                         skillLevels[i] = level;
+                        resolved = true;
                         break;
                     }
                 }
                 String normalizedSkillName = skillName.toLowerCase(Locale.ROOT);
                 if (normalizedSkillName.startsWith("total")) {
                     skillLevels[TOTAL_LEVEL_INDEX] = level;
+                    resolved = true;
                 } else if (normalizedSkillName.startsWith("combat")) {
                     skillLevels[COMBAT_LEVEL_INDEX] = level;
+                    resolved = true;
                 } else if (normalizedSkillName.startsWith("quest")) {
                     skillLevels[QUEST_POINTS_INDEX] = level;
+                    resolved = true;
+                }
+                // A requirement we cannot resolve used to vanish without a word, and an unset level is
+                // indistinguishable from "no requirement" — so the transport became usable by everyone.
+                // That is how "42 Agility<spaces>7" (a Duration separated by spaces instead of a tab)
+                // turned the Draynor underwall tunnel into a free shortcut: the name read as
+                // "Agility      7", matched nothing, and the 42 was silently dropped. Worse than a
+                // no-op, because blocksWalkingEdgeWhenUnavailable would otherwise have routed AROUND
+                // an unusable shortcut; with the gate erased the planner actively prefers it.
+                if (!resolved) {
+                    log.warn("Transport skill requirement '{}' does not name a known skill (raw field '{}') "
+                                    + "— the requirement is being DROPPED, which makes this transport usable "
+                                    + "by any account. Check for spaces where the TSV needs a tab.",
+                            requirement.trim(), value.trim());
                 }
             }
         }
