@@ -56,6 +56,7 @@ import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveCol
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveCollisionConflicts;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveCollisionOverlay;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveCollisionPersistence;
+import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveCollisionView;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveCollisionSnapshot;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveRouteValidator;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.SplitFlagMap;
@@ -662,7 +663,7 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
      * decision with magnitudes instead of anecdotes. Runs off the fresh immutable snapshot, never on
      * the pathfinder hot path.
      */
-    private void logLiveStaticConflicts(LiveCollisionSnapshot snapshot) {
+    private void logLiveStaticConflicts(LiveCollisionSnapshot snapshot, LiveCollisionView priorOverlayView) {
         if (staticCollisionData == null) {
             return;
         }
@@ -675,9 +676,14 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
             return;
         }
         lastCollisionConflictLogAtMs = now;
-        WebWalkLog.spInfo("collision_conflict | liveOpensStatic={} liveBlocksStatic={} sealedOpens={} base={},{} — live scene disagrees with the shipped map",
+        LiveCollisionConflicts.Coverage coverage =
+                LiveCollisionConflicts.coverage(snapshot, staticCollisionData, priorOverlayView);
+        WebWalkLog.spInfo("collision_conflict | liveOpensStatic={} liveBlocksStatic={} sealedOpens={} base={},{}"
+                        + " | overlayKnew={}% (known={} new={} changed={}) — live scene disagrees with the shipped map",
                 tally.liveOpensStatic, tally.liveBlocksStatic, tally.liveOpensSealed,
-                snapshot.getBaseX(), snapshot.getBaseY());
+                snapshot.getBaseX(), snapshot.getBaseY(),
+                coverage.alreadyKnownPercent(), coverage.alreadyKnown,
+                coverage.newInformation, coverage.changed);
     }
 
     private void resetLearnedCollision() {
@@ -787,8 +793,12 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
                 return;
             }
 
+            // Pinned BEFORE the merge: this is what we knew on arrival, which is the only way to tell
+            // whether the persistent store spared us a blind first visit. mergeScene replaces regions
+            // rather than mutating them, so this view stays a true "before".
+            final LiveCollisionView priorOverlayView = overlay.current();
             overlay.set(snapshot);
-            logLiveStaticConflicts(snapshot);
+            logLiveStaticConflicts(snapshot, priorOverlayView);
             // Persist the regions this capture just changed so the learned collision survives a restart.
             if (liveCollisionPersistence != null) {
                 liveCollisionPersistence.persist(overlay.drainDirty());
