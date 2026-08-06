@@ -2556,6 +2556,26 @@ public class Rs2WalkerUnitTest {
                         upstairs.get(1), upstairsReachable, 13));
     }
 
+    // ---- short-walk fast path budget -----------------------------------------------------------------
+
+    /**
+     * The budget bounds how long a single proven-reachable click may own the walk before the full
+     * pipeline takes over: walking pace per tile plus slack. Too tight hands healthy walks to the
+     * pipeline mid-stride; too loose delays recovery when the click did not take.
+     */
+    @Test
+    public void shortWalkBudget_scalesWithDistanceAtWalkingPace() {
+        assertEquals(600L + 2_400L, Rs2Walker.shortWalkBudgetMs(1));
+        assertEquals(5 * 600L + 2_400L, Rs2Walker.shortWalkBudgetMs(5));
+        assertEquals(12 * 600L + 2_400L, Rs2Walker.shortWalkBudgetMs(12));
+    }
+
+    @Test
+    public void shortWalkBudget_neverBelowTheOneTileFloor() {
+        assertEquals(600L + 2_400L, Rs2Walker.shortWalkBudgetMs(0));
+        assertEquals(600L + 2_400L, Rs2Walker.shortWalkBudgetMs(-3));
+    }
+
     @Test
     public void postDoorTarget_toleratesMissingInputs() {
         java.util.List<WorldPoint> route = northRoute(3200, 4);

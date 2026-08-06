@@ -1322,12 +1322,114 @@ public class Rs2Walker {
             }
         }
         try {
+            WalkerState shortWalk = tryShortWalkFastPath(target, distance);
+            if (shortWalk != null) {
+                return shortWalk;
+            }
 			return withShadowExecutionEvidence(() -> config.walkWithBankedTransports()
 					? walkWithBankedTransportsAndStateLocked(target, distance, false)
 					: walkWithStateInternal(target, distance));
         } finally {
             walkerLock.unlock();
         }
+    }
+
+    /** The fast path only ever helps within minimap reach; beyond it the full pipeline is correct. */
+    private static final int SHORT_WALK_FAST_PATH_MAX_TILES = 12;
+    /** Position unchanged this long means the click did not take; the full pipeline takes over. */
+    private static final long SHORT_WALK_STALL_MS = 1_800L;
+
+    /** Walking pace plus slack; anything longer means something interfered and the pipeline should own it. */
+    static long shortWalkBudgetMs(int euclideanTiles) {
+        return 600L * Math.max(1, euclideanTiles) + 2_400L;
+    }
+
+    /**
+     * One click IS the whole walk, when that can be proven up front.
+     * <p>
+     * Scripts call {@link #walkTo} for five-tile hops, and every such call paid the pipeline's fixed
+     * head — transport refresh, pathfinder, session setup, the startup handler pass — measured at
+     * 1.3-1.5s before the first click, for moves a human does with one click in ~0.3s. The existing
+     * short-circuit ({@code tryDirectShortWalk}) sits INSIDE the pipeline and only saves its tail.
+     * <p>
+     * The gate is a reachability proof, not a distance guess: a CLOSE target that is BFS-reachable on
+     * the client's live collision flags needs no door, no transport and no plan — a shut door on the
+     * way reads as blocked and fails the gate, so anything that needs the pipeline still gets it.
+     * Deliberately strict: the target TILE itself must be reachable. Walk-beside-an-object calls
+     * (bank booths, trees) decline and take the full pipeline, because "within distance" with a wall
+     * between is exactly the false-arrival the pipeline's richer checks exist to refuse.
+     * <p>
+     * Declining ({@code null}) always falls through to today's behaviour, and so does a click that
+     * stalls — the budget and stall checks make the degraded case "what always happened", never a
+     * new failure mode.
+     */
+    private static WalkerState tryShortWalkFastPath(WorldPoint target, int distance) {
+        WorldPoint start = Rs2Player.getWorldLocation();
+        if (start == null || target == null || start.getPlane() != target.getPlane()) {
+            return null;
+        }
+        int euclidean = start.distanceTo2D(target);
+        if (euclidean > SHORT_WALK_FAST_PATH_MAX_TILES) {
+            return null;
+        }
+        // Already within range: the internal arrival checks answer richer questions (unwalkable
+        // targets, reachable neighbours) than this path should re-implement.
+        if (start.distanceTo(target) <= distance) {
+            return null;
+        }
+        if (!Rs2Tile.isTileReachable(target)) {
+            return null;
+        }
+
+        manageRunEnergy(euclidean);
+        long startedAt = System.currentTimeMillis();
+        boolean clicked = walkFastCanvas(target);
+        if (!clicked) {
+            clicked = walkMiniMap(target);
+        }
+        if (!clicked) {
+            return null;
+        }
+
+        WalkCompletionContext completion = walkCompletionContext.get();
+        final WorldPoint[] lastPos = {start};
+        final long[] lastMoveAt = {System.currentTimeMillis()};
+        sleepUntil(() -> {
+            if (Thread.currentThread().isInterrupted()) {
+                return true;
+            }
+            if (completion != null && evaluateWalkCompletion(completion)) {
+                return true;
+            }
+            WorldPoint now = Rs2Player.getWorldLocation();
+            if (now == null) {
+                return false;
+            }
+            if (!now.equals(lastPos[0])) {
+                lastPos[0] = now;
+                lastMoveAt[0] = System.currentTimeMillis();
+            }
+            if (now.distanceTo(target) <= distance) {
+                return true;
+            }
+            // Position-diffed, not isMoving(): the pose-based read stays true while turning on the
+            // spot, and a stalled click must hand over to the pipeline promptly.
+            return System.currentTimeMillis() - lastMoveAt[0] > SHORT_WALK_STALL_MS;
+        }, (int) shortWalkBudgetMs(euclidean));
+
+        WorldPoint end = Rs2Player.getWorldLocation();
+        boolean arrived = end != null && end.distanceTo(target) <= distance;
+        boolean completionMet = completion != null && completion.met;
+        WebWalkLog.spInfo("short_walk | result={} to={} euclid={} elapsedMs={} from={}",
+                arrived ? "arrived" : completionMet ? "completion" : "handoff",
+                compactWorldPoint(target), euclidean, System.currentTimeMillis() - startedAt,
+                compactWorldPoint(start));
+        if (arrived || completionMet) {
+            return WalkerState.ARRIVED;
+        }
+        // Not there: the click stalled, or something interfered. The pipeline owns it from here,
+        // exactly as if this path had never existed.
+        return null;
     }
 
     /**
