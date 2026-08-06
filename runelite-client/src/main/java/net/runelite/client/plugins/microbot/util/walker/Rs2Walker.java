@@ -6822,6 +6822,31 @@ public class Rs2Walker {
         return progressed;
     }
 
+    /** How long a door attempt claims its edge against outside interference (route revalidation). */
+    private static final long ACTIVE_DOOR_EDGE_CLAIM_MS = 10_000L;
+
+    /**
+     * Whether {@code a -> b} (either direction) is the door edge this walker most recently attempted,
+     * within the claim window. The live-collision route validator uses this as "the executor owns
+     * that edge, leave it alone": a shut door on the route honestly reads blocked, and recalculating
+     * the route out from under an in-progress door interaction was observed on a quest door
+     * (fightarena_door1, 2585,3141) that is in no transport catalog — the catalog check alone cannot
+     * cover doors the walker handles purely as scene objects.
+     */
+    public static boolean isActiveDoorEdge(WorldPoint a, WorldPoint b) {
+        WorldPoint from = routeState.lastDoorAttemptFrom;
+        WorldPoint to = routeState.lastDoorAttemptTo;
+        long attemptedAt = routeState.lastDoorAttemptAtMs;
+        if (a == null || b == null || from == null || to == null || attemptedAt <= 0L) {
+            return false;
+        }
+        long ageMs = System.currentTimeMillis() - attemptedAt;
+        if (ageMs < 0L || ageMs > ACTIVE_DOOR_EDGE_CLAIM_MS) {
+            return false;
+        }
+        return (a.equals(from) && b.equals(to)) || (a.equals(to) && b.equals(from));
+    }
+
     private static boolean tryRecentDoorAttemptEdgeNudge(WorldPoint playerLoc, WorldPoint target) {
         return tryRecentDoorAttemptEdgeNudge(playerLoc, target, null);
     }

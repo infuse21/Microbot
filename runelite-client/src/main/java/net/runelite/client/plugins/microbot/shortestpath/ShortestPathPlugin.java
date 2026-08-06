@@ -852,6 +852,12 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
         // here yanked the route out from under the walker while it stood at the door handling it.
         final int blocked = LiveRouteValidator.firstBlockedStep(path, from, LIVE_RECALC_LOOKAHEAD, map,
                 (a, b) -> {
+                    // The walker's door subsystem has claimed this edge — catalog or not. Quest doors
+                    // (fightarena_door1) are in no catalog, yet the recalc mid-interaction is just as
+                    // wrong there.
+                    if (Rs2Walker.isActiveDoorEdge(a, b)) {
+                        return true;
+                    }
                     for (Transport t : pathfinderConfig.getTransportsPacked()
                             .getOrDefault(WorldPointUtil.packWorldPoint(a), java.util.Collections.emptySet())) {
                         if (b.equals(t.getDestination())) {
