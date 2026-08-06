@@ -6167,6 +6167,19 @@ public class Rs2Walker {
             return false;
         }
 
+        // A door edge the player has already CROSSED (in route direction) is resolved for this walk,
+        // whatever the door reads now. The Fight Arena quest doors shut themselves the moment you are
+        // through, so "shut door on my route" stayed true after crossing and the machinery kept
+        // re-engaging a door behind the player — watched live as the character stepping BACK through
+        // the door it had just passed, then oscillating. The axis reading is directional, so a walk
+        // genuinely routed back the other way derives the reversed edge from its own route tiles and
+        // is unaffected.
+        WorldPoint playerForCrossing = Rs2Player.getWorldLocation();
+        if (playerForCrossing != null
+                && Rs2DoorGeometry.crossedDoorAxis(fromWp, toWp, playerForCrossing)) {
+            return false;
+        }
+
         if (shouldDeferDoorHandlingToTransport(path, index)) {
             return false;
         }
@@ -6769,7 +6782,10 @@ public class Rs2Walker {
         if (before == null || before.getPlane() != toWp.getPlane()) {
             return false;
         }
-        if (before.equals(toWp)) {
+        // At or past the far side: the crossing this nudge exists to produce has happened. Without
+        // this, a player one step BEYOND toWp still passed the distance gate and the fallback click
+        // aimed at toWp — one tile backward, straight back into a self-closing door.
+        if (before.equals(toWp) || Rs2DoorGeometry.crossedDoorAxis(fromWp, toWp, before)) {
             return true;
         }
         if (before.distanceTo2D(toWp) > POST_DOOR_EDGE_NUDGE_MAX_FROM_PLAYER) {
