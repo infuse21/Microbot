@@ -2313,4 +2313,62 @@ public class Rs2WalkerUnitTest {
     public void walkUntil_rejectsNullCondition() {
         Rs2Walker.walkUntil(new WorldPoint(3200, 3200, 0), 2, null);
     }
+
+    // ---- arrival beside an unwalkable target (false-success near interactables) ---------------------
+
+    /**
+     * "Within distance of an object" was reported as ARRIVED on straight-line distance alone. With a
+     * wall between, the caller then interacted from the wrong side and failed while the walker claimed
+     * success — the silent-wrong-success case.
+     */
+    @Test
+    public void hasReachableNeighbour_trueWhenWeCanStandBesideTheTarget() {
+        WorldPoint chest = new WorldPoint(3200, 3200, 0);
+        java.util.Map<WorldPoint, Integer> reachable = new java.util.HashMap<>();
+        reachable.put(new WorldPoint(3200, 3199, 0), 1);   // directly south of it
+        assertTrue(Rs2Walker.hasReachableNeighbour(chest, reachable));
+    }
+
+    @Test
+    public void hasReachableNeighbour_acceptsDiagonalNeighbours() {
+        WorldPoint chest = new WorldPoint(3200, 3200, 0);
+        java.util.Map<WorldPoint, Integer> reachable = new java.util.HashMap<>();
+        reachable.put(new WorldPoint(3201, 3201, 0), 1);
+        assertTrue(Rs2Walker.hasReachableNeighbour(chest, reachable));
+    }
+
+    /** Near in a straight line, but every adjacent tile is on the far side of a wall. */
+    @Test
+    public void hasReachableNeighbour_falseWhenOnlyDistantTilesAreReachable() {
+        WorldPoint chest = new WorldPoint(3200, 3200, 0);
+        java.util.Map<WorldPoint, Integer> reachable = new java.util.HashMap<>();
+        reachable.put(new WorldPoint(3205, 3200, 0), 5);
+        reachable.put(new WorldPoint(3200, 3205, 0), 5);
+        assertFalse(Rs2Walker.hasReachableNeighbour(chest, reachable));
+    }
+
+    /** The target's own tile being reachable is not the question — we must stand BESIDE it. */
+    @Test
+    public void hasReachableNeighbour_targetTileItselfDoesNotCount() {
+        WorldPoint chest = new WorldPoint(3200, 3200, 0);
+        java.util.Map<WorldPoint, Integer> reachable = new java.util.HashMap<>();
+        reachable.put(chest, 0);
+        assertFalse(Rs2Walker.hasReachableNeighbour(chest, reachable));
+    }
+
+    /** A neighbour on another plane is not somewhere we can stand to use it. */
+    @Test
+    public void hasReachableNeighbour_ignoresOtherPlanes() {
+        WorldPoint chest = new WorldPoint(3200, 3200, 0);
+        java.util.Map<WorldPoint, Integer> reachable = new java.util.HashMap<>();
+        reachable.put(new WorldPoint(3200, 3199, 1), 1);
+        assertFalse(Rs2Walker.hasReachableNeighbour(chest, reachable));
+    }
+
+    @Test
+    public void hasReachableNeighbour_toleratesMissingInputs() {
+        assertFalse(Rs2Walker.hasReachableNeighbour(null, new java.util.HashMap<>()));
+        assertFalse(Rs2Walker.hasReachableNeighbour(new WorldPoint(3200, 3200, 0), null));
+        assertFalse(Rs2Walker.hasReachableNeighbour(new WorldPoint(3200, 3200, 0), new java.util.HashMap<>()));
+    }
 }

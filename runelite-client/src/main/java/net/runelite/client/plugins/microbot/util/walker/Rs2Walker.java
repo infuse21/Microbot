@@ -1405,10 +1405,30 @@ public class Rs2Walker {
         int distToTarget = playerLocWalk.distanceTo(target);
         LocalPoint localTarget = LocalPoint.fromWorld(Microbot.getClient().getTopLevelWorldView(), target);
         boolean walkableCheck = Rs2Tile.isWalkable(localTarget);
-        boolean reachableTileCheck = distToTarget <= distance && Rs2Tile.getReachableTilesFromTile(playerLocWalk, distance).containsKey(target);
+        Map<WorldPoint, Integer> reachableWithinDistance = distToTarget <= distance
+                ? Rs2Tile.getReachableTilesFromTile(playerLocWalk, distance)
+                : Collections.emptyMap();
+        boolean reachableTileCheck = distToTarget <= distance && reachableWithinDistance.containsKey(target);
 
-        if (reachableTileCheck || (!walkableCheck && distToTarget <= distance)) {
+        // An unwalkable target is normal — you cannot stand ON a door, chest or bank booth, so the
+        // walk has to finish beside it. But distanceTo is straight-line and knows nothing about walls,
+        // so "within distance of an object" was reported as ARRIVED even with a wall between: the
+        // caller then tried to interact from the wrong side of it and the script failed with the
+        // walker claiming success. Require somewhere we can actually STAND next to the target.
+        //
+        // Falls back to the old distance-only answer when the BFS is unavailable, so a reachability
+        // hiccup cannot turn arrival into a walk that never terminates.
+        boolean unwalkableTargetReached = !walkableCheck && distToTarget <= distance
+                && (reachableWithinDistance.isEmpty()
+                || hasReachableNeighbour(target, reachableWithinDistance));
+
+        if (reachableTileCheck || unwalkableTargetReached) {
             return WalkerState.ARRIVED;
+        }
+        if (!walkableCheck && distToTarget <= distance && !reachableWithinDistance.isEmpty()) {
+            WebWalkLog.spInfo("arrival_declined_unreachable | target={} player={} dist={} — within distance "
+                            + "but no reachable tile beside it; continuing",
+                    compactWorldPoint(target), compactWorldPoint(playerLocWalk), distToTarget);
         }
 
         final Rs2ActiveRouteStatus routeStatus = Rs2PathApi.getActiveRouteStatus();
@@ -1594,6 +1614,31 @@ public class Rs2Walker {
      * @param target
      * @param distance
      */
+    /**
+     * Whether any tile orthogonally or diagonally adjacent to {@code target} is in the player-origin
+     * reachable set — i.e. there is somewhere we can actually stand to interact with it.
+     * <p>
+     * This is the difference between "close to the object" and "able to use the object". Straight-line
+     * distance says yes through a wall; this says no.
+     */
+    static boolean hasReachableNeighbour(WorldPoint target, Map<WorldPoint, Integer> reachable) {
+        if (target == null || reachable == null || reachable.isEmpty()) {
+            return false;
+        }
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dy = -1; dy <= 1; dy++) {
+                if (dx == 0 && dy == 0) {
+                    continue;
+                }
+                if (reachable.containsKey(
+                        new WorldPoint(target.getX() + dx, target.getY() + dy, target.getPlane()))) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     private static WalkerState processWalk(WorldPoint target, int distance) {
         // Solve the Draynor basement lever puzzle first if walking to a basement tile, so the
         // door-transports are unlocked before pathfinding. No-op outside the basement. The
