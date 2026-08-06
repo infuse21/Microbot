@@ -5326,6 +5326,8 @@ public class Rs2Walker {
         rawScanDoorInteractionWaitMs = 0L;
         rawScanDoorEdgeWaitMs = 0L;
         rawScanDoorFindMs = 0L;
+        rawScanDoorInteractMs = 0L;
+        rawScanDoorVerifyMs = 0L;
         // Route order guard for ranged transport dispatch: set once a transport step is passed over,
         // so nothing further along the route can be actioned ahead of the obstacle in front of us.
         boolean sawUndispatchedTransportStep = false;
@@ -5448,14 +5450,19 @@ public class Rs2Walker {
                 long doorFindMs = rawScanDoorFindMs;
                 // What is left after the probe and both waits: the menu interaction and the
                 // post-interaction verification. Previously all of this was reported as "doorProbe".
-                long doorOtherMs = Math.max(0L, doorMs - doorWaitMs - doorEdgeWaitMs - doorFindMs);
-                log.info("[Walker] slow raw scene scan: total={}ms idx={} snapshot={}ms doorFind={}ms doorEdgeWait={}ms doorOther={}ms doorWait={}ms doorCand={}ms rockfall={}ms transports={}ms resolved={} allowTransports={}",
-                        totalMs, scannedIdx, snapshotMs, doorFindMs, doorEdgeWaitMs, doorOtherMs, doorWaitMs, doorCandidateMs, rockfallMs, transportMs,
+                long doorInteractMs = rawScanDoorInteractMs;
+                long doorVerifyMs = rawScanDoorVerifyMs;
+                long doorOtherMs = Math.max(0L, doorMs - doorWaitMs - doorEdgeWaitMs - doorFindMs
+                        - doorInteractMs - doorVerifyMs);
+                log.info("[Walker] slow raw scene scan: total={}ms idx={} snapshot={}ms doorFind={}ms doorInteract={}ms doorVerify={}ms doorEdgeWait={}ms doorOther={}ms doorWait={}ms doorCand={}ms rockfall={}ms transports={}ms resolved={} allowTransports={}",
+                        totalMs, scannedIdx, snapshotMs, doorFindMs, doorInteractMs, doorVerifyMs, doorEdgeWaitMs, doorOtherMs, doorWaitMs, doorCandidateMs, rockfallMs, transportMs,
                         resolved, allowTransportHandlers);
             }
             rawScanDoorInteractionWaitMs = 0L;
             rawScanDoorEdgeWaitMs = 0L;
             rawScanDoorFindMs = 0L;
+            rawScanDoorInteractMs = 0L;
+            rawScanDoorVerifyMs = 0L;
         }
     }
 
@@ -5500,6 +5507,43 @@ public class Rs2Walker {
     private static volatile long rawScanDoorEdgeWaitMs = 0L;
     /** Time inside the door segment probe during a raw scan (the actual geometry/snapshot work). */
     private static volatile long rawScanDoorFindMs = 0L;
+    /** Time spent issuing the door menu click itself (composition resolve + menu entry + mouse). */
+    private static volatile long rawScanDoorInteractMs = 0L;
+    /** Time spent verifying the outcome: traversal check, and the re-scan that asks if it is still shut. */
+    private static volatile long rawScanDoorVerifyMs = 0L;
+
+    /**
+     * The door menu click, timed. "doorOther" is the residual left after the probe and both waits, and
+     * at ~790ms of a 3181ms scan it is the only part of door handling that is neither the player
+     * walking nor a scan — so it needs its own number before anyone optimises against it.
+     */
+    private static boolean interactDoorTimed(TileObject object, String action) {
+        long startedAt = System.currentTimeMillis();
+        try {
+            return Rs2GameObject.interact(object, action);
+        } finally {
+            if (rawScanWallSnapshot != null || rawScanGameObjectSnapshot != null) {
+                rawScanDoorInteractMs += System.currentTimeMillis() - startedAt;
+            }
+        }
+    }
+
+    /**
+     * "Is the door still shut?" — a radius-{@link #HANDLER_RANGE} rescan that resolves a composition per
+     * candidate OUTSIDE the scan-scoped memo, so nothing is cached. Only runs when traversal failed, but
+     * that is exactly the slow path a stuck door repeats, so it is timed separately.
+     */
+    private static boolean doorStillHasActionTimed(WorldPoint probe, WorldPoint fromWp, WorldPoint toWp,
+                                                   List<String> doorActions, String action) {
+        long startedAt = System.currentTimeMillis();
+        try {
+            return doorStillHasAction(probe, fromWp, toWp, doorActions, action);
+        } finally {
+            if (rawScanWallSnapshot != null || rawScanGameObjectSnapshot != null) {
+                rawScanDoorVerifyMs += System.currentTimeMillis() - startedAt;
+            }
+        }
+    }
 
     /**
      * The door segment probe, timed. "doorProbe" in the slow-scan line is a RESIDUAL — the whole
@@ -6064,7 +6108,7 @@ public class Rs2Walker {
                         WorldPoint posBefore = Rs2Player.getWorldLocation();
                         boolean interacted;
                         try {
-                            interacted = Rs2GameObject.interact(object, action);
+                            interacted = interactDoorTimed(object, action);
                         } catch (Exception ex) {
                             WebWalkLog.spInfo("door_interact_exception | mode=segment-door probe={} from={} to={} ex={}",
                                     compactWorldPoint(probe), compactWorldPoint(fromWp), compactWorldPoint(toWp), ex.getClass().getSimpleName());
@@ -6104,7 +6148,7 @@ public class Rs2Walker {
                                 Rs2PathApi.learnBlockedEdge(fromWp, toWp,
                                         "wrong-traversal door @ " + compactWorldPoint(probe));
                             }
-                            if (doorStillHasAction(probe, fromWp, toWp, doorActions, action)) {
+                            if (doorStillHasActionTimed(probe, fromWp, toWp, doorActions, action)) {
                                 log.debug("[Walker] Door interaction did not traverse; action still present at {} ({} -> {})",
                                         probe, fromWp, toWp);
                             } else {
@@ -6197,7 +6241,7 @@ public class Rs2Walker {
         WorldPoint posBefore = Rs2Player.getWorldLocation();
         boolean interacted;
         try {
-            interacted = Rs2GameObject.interact(object, action);
+            interacted = interactDoorTimed(object, action);
         } catch (Exception ex) {
             WebWalkLog.spInfo("door_interact_exception | mode=segment-probe probe={} from={} to={} ex={}",
                     compactWorldPoint(probe), compactWorldPoint(fromWp), compactWorldPoint(toWp), ex.getClass().getSimpleName());
@@ -6233,7 +6277,7 @@ public class Rs2Walker {
             return true;
         }
 
-        if (doorStillHasAction(probe, fromWp, toWp, doorActions, action)) {
+        if (doorStillHasActionTimed(probe, fromWp, toWp, doorActions, action)) {
             log.debug("[Walker] Segment door interaction did not traverse; action still present at {} ({} -> {})",
                     probe, fromWp, toWp);
         } else {
