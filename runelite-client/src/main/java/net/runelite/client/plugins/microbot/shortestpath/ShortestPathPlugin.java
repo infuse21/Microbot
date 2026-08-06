@@ -846,7 +846,20 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
         final CollisionMap map = pathfinderConfig.getMap();
         map.beginSearch(); // pin the freshly captured snapshot for this validation
         final int from = LiveRouteValidator.nearestIndex(path, me);
-        final int blocked = LiveRouteValidator.firstBlockedStep(path, from, LIVE_RECALC_LOOKAHEAD, map);
+        // A door transport joins two adjacent same-plane tiles, so to the validator its step looks
+        // like walking — and while the door is SHUT the edge honestly reads blocked. That is its
+        // normal state, not an obstruction: the walker's executor opens it on contact. Recalculating
+        // here yanked the route out from under the walker while it stood at the door handling it.
+        final int blocked = LiveRouteValidator.firstBlockedStep(path, from, LIVE_RECALC_LOOKAHEAD, map,
+                (a, b) -> {
+                    for (Transport t : pathfinderConfig.getTransportsPacked()
+                            .getOrDefault(WorldPointUtil.packWorldPoint(a), java.util.Collections.emptySet())) {
+                        if (b.equals(t.getDestination())) {
+                            return true;
+                        }
+                    }
+                    return false;
+                });
         if (blocked >= 0) {
             lastLiveRecalcMs = now;
             log.debug("[LiveCollision] route step {} -> {} now blocked; recalculating",
