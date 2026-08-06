@@ -2,6 +2,7 @@ package net.runelite.client.plugins.microbot.util.walker.door;
 
 import org.junit.Test;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -59,5 +60,34 @@ public class Rs2WalkerAwaitsTest {
         assertFalse(Rs2WalkerAwaits.shouldPollDoorOpen(1_000L, 0L));
         assertFalse(Rs2WalkerAwaits.shouldPollDoorOpen(1_000L, 100L));
         assertTrue(Rs2WalkerAwaits.shouldPollDoorOpen(1_000L, 250L));
+    }
+
+    // ---- traversal budget by click distance ---------------------------------------------------------
+
+    /** Adjacent clicks keep the flat cap they were sized for — no behaviour change for the legacy band. */
+    @Test
+    public void traversalBudget_adjacentClicksKeepTheLegacyCap() {
+        assertEquals(2_200L, Rs2WalkerAwaits.traversalBudgetMs(0));
+        assertEquals(2_200L, Rs2WalkerAwaits.traversalBudgetMs(1));
+        assertEquals(2_200L, Rs2WalkerAwaits.traversalBudgetMs(2));
+    }
+
+    /**
+     * A ranged click spends its first seconds being WALKED to the door, at one tile per 0.6s. The
+     * flat cap expired mid-approach — measured releasedBy=timeout at 11 tiles with the player still
+     * walking — which handed the recovery machinery its window and cost a second interaction.
+     */
+    @Test
+    public void traversalBudget_rangedClicksAreGivenTheApproachTime() {
+        assertEquals(2_200L + 600L, Rs2WalkerAwaits.traversalBudgetMs(3));
+        assertEquals(2_200L + 5 * 600L, Rs2WalkerAwaits.traversalBudgetMs(7));
+        assertEquals(2_200L + 9 * 600L, Rs2WalkerAwaits.traversalBudgetMs(11));
+    }
+
+    /** The stall release bounds a wedged approach, but a hard ceiling still caps the worst case. */
+    @Test
+    public void traversalBudget_isCapped() {
+        assertEquals(8_000L, Rs2WalkerAwaits.traversalBudgetMs(12));
+        assertEquals(8_000L, Rs2WalkerAwaits.traversalBudgetMs(50));
     }
 }

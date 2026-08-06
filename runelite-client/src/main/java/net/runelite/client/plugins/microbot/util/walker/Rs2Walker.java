@@ -7367,8 +7367,16 @@ public class Rs2Walker {
         java.util.function.Supplier<String> observation =
                 (probe == null || action == null) ? null
                         : () -> describeDoorObservation(probe, fromWp, toWp, doorActions, action);
+        // Ranged budgets can hold for seconds, so a walk that was cancelled or re-targeted mid-await
+        // must release it: currentTarget is captured NOW, and the supplier answers true the moment
+        // that walk stops being the active one.
+        WorldPoint walkTarget = currentTarget;
+        // isWalkCancelled(null) answers true, and a door can legitimately be handled outside a walk
+        // session (recovery paths); no target means there is nothing to be cancelled.
+        java.util.function.BooleanSupplier cancelled =
+                walkTarget == null ? null : () -> isWalkCancelled(walkTarget);
         try {
-            Rs2WalkerAwaits.awaitDoorInteractionProgress(ticket, fromWp, toWp, doorOpened, observation);
+            Rs2WalkerAwaits.awaitDoorInteractionProgress(ticket, fromWp, toWp, doorOpened, observation, cancelled);
         } finally {
             if (rawScanWallSnapshot != null || rawScanGameObjectSnapshot != null) {
                 rawScanDoorInteractionWaitMs += System.currentTimeMillis() - startedAt;

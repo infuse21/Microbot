@@ -809,34 +809,34 @@ net.runelite.client.plugins.microbot.util.walker.Rs2Walker#isUnresolvedRouteDoor
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#isUnresolvedRouteDoorObject(TileObject, WorldPoint, WorldPoint, WorldPoint, int): boolean  ->  net.runelite.api.TileObject#getWorldLocation(): WorldPoint
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$getPointWithWallDistance$15(WorldView, int[][], WorldPoint): boolean  ->  net.runelite.api.coords.LocalPoint#fromWorld(WorldView, WorldPoint): LocalPoint
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$getPointWithWallDistance$16(WorldView, int[][], WorldPoint): boolean  ->  net.runelite.api.coords.LocalPoint#fromWorld(WorldView, WorldPoint): LocalPoint
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$handleCanoe$187(Transport, String): boolean  ->  net.runelite.api.ObjectComposition#getActions(): String[]
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$handleCanoe$190(Transport, String): boolean  ->  net.runelite.api.ObjectComposition#getActions(): String[]
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$handleCanoe$192(Transport, String): boolean  ->  net.runelite.api.ObjectComposition#getActions(): String[]
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$handleFairyRing$212(Transport, TileObject): boolean  ->  net.runelite.api.TileObject#getWorldLocation(): WorldPoint
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$handleMinigameTeleport$181(Widget, Object[]): boolean  ->  net.runelite.api.widgets.Widget#getOnOpListener(): Object[]
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$handleMinigameTeleport$183(String): boolean  ->  net.runelite.api.widgets.Widget#getText(): String
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$handleObjectExceptions$150(int, TileObject): boolean  ->  net.runelite.api.TileObject#getId(): int
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$handleObjectExceptions$156(WorldPoint, TileObject): boolean  ->  net.runelite.api.TileObject#getId(): int
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$handleObjectExceptions$156(WorldPoint, TileObject): boolean  ->  net.runelite.api.TileObject#getWorldLocation(): WorldPoint
+net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$handleCanoe$188(Transport, String): boolean  ->  net.runelite.api.ObjectComposition#getActions(): String[]
+net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$handleCanoe$191(Transport, String): boolean  ->  net.runelite.api.ObjectComposition#getActions(): String[]
+net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$handleCanoe$193(Transport, String): boolean  ->  net.runelite.api.ObjectComposition#getActions(): String[]
+net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$handleFairyRing$213(Transport, TileObject): boolean  ->  net.runelite.api.TileObject#getWorldLocation(): WorldPoint
+net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$handleMinigameTeleport$182(Widget, Object[]): boolean  ->  net.runelite.api.widgets.Widget#getOnOpListener(): Object[]
+net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$handleMinigameTeleport$184(String): boolean  ->  net.runelite.api.widgets.Widget#getText(): String
+net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$handleObjectExceptions$151(int, TileObject): boolean  ->  net.runelite.api.TileObject#getId(): int
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$handleObjectExceptions$157(WorldPoint, TileObject): boolean  ->  net.runelite.api.TileObject#getId(): int
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$handleObjectExceptions$157(WorldPoint, TileObject): boolean  ->  net.runelite.api.TileObject#getWorldLocation(): WorldPoint
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$handleSelectedTransport$118(int, Integer, TileObject): boolean  ->  net.runelite.api.TileObject#getId(): int
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$handleSelectedTransport$120(TileObject): boolean  ->  net.runelite.api.ObjectComposition#getActions(): String[]
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$handleSelectedTransport$120(TileObject): boolean  ->  net.runelite.api.ObjectComposition#getName(): String
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$handleSelectedTransport$122(Transport, TileObject): int  ->  net.runelite.api.TileObject#getWorldLocation(): WorldPoint
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$handleSelectedTransport$123(TileObject): boolean  ->  net.runelite.api.TileObject#getWorldLocation(): WorldPoint
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$handleSelectedTransport$124(Transport, Object): Integer  ->  net.runelite.api.TileObject#getWorldLocation(): WorldPoint
+net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$handleObjectExceptions$158(WorldPoint, TileObject): boolean  ->  net.runelite.api.TileObject#getId(): int
+net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$handleObjectExceptions$158(WorldPoint, TileObject): boolean  ->  net.runelite.api.TileObject#getWorldLocation(): WorldPoint
+net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$handleSelectedTransport$119(int, Integer, TileObject): boolean  ->  net.runelite.api.TileObject#getId(): int
+net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$handleSelectedTransport$121(TileObject): boolean  ->  net.runelite.api.ObjectComposition#getActions(): String[]
+net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$handleSelectedTransport$121(TileObject): boolean  ->  net.runelite.api.ObjectComposition#getName(): String
+net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$handleSelectedTransport$123(Transport, TileObject): int  ->  net.runelite.api.TileObject#getWorldLocation(): WorldPoint
+net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$handleSelectedTransport$124(TileObject): boolean  ->  net.runelite.api.TileObject#getWorldLocation(): WorldPoint
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$handleSelectedTransport$125(Transport, Object): Integer  ->  net.runelite.api.TileObject#getWorldLocation(): WorldPoint
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$handleSelectedTransport$127(int, List, TileObject): boolean  ->  net.runelite.api.ObjectComposition#getActions(): String[]
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$handleSelectedTransport$127(int, List, TileObject): boolean  ->  net.runelite.api.TileObject#getId(): int
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$handleSelectedTransport$128(Transport, TileObject): int  ->  net.runelite.api.TileObject#getWorldLocation(): WorldPoint
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$handleWildernessObelisk$164(Transport, GameObject): boolean  ->  net.runelite.api.GameObject#getId(): int
+net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$handleSelectedTransport$126(Transport, Object): Integer  ->  net.runelite.api.TileObject#getWorldLocation(): WorldPoint
+net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$handleSelectedTransport$128(int, List, TileObject): boolean  ->  net.runelite.api.ObjectComposition#getActions(): String[]
+net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$handleSelectedTransport$128(int, List, TileObject): boolean  ->  net.runelite.api.TileObject#getId(): int
+net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$handleSelectedTransport$129(Transport, TileObject): int  ->  net.runelite.api.TileObject#getWorldLocation(): WorldPoint
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$handleWildernessObelisk$165(Transport, GameObject): boolean  ->  net.runelite.api.GameObject#getId(): int
+net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$handleWildernessObelisk$166(Transport, GameObject): boolean  ->  net.runelite.api.GameObject#getId(): int
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$processWalk$6(): boolean  ->  net.runelite.api.widgets.Widget#getSpriteId(): int
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$processWalk$7(): boolean  ->  net.runelite.api.widgets.Widget#getSpriteId(): int
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$resolveProbeGameObject$38(WorldPoint, GameObject): boolean  ->  net.runelite.api.GameObject#getWorldLocation(): WorldPoint
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$resolveProbeGameObject$39(WorldPoint, GameObject): boolean  ->  net.runelite.api.GameObject#getWorldLocation(): WorldPoint
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$tryHandleBlockingPathObjectsWithTimeout$70(WorldPoint, GameObject): boolean  ->  net.runelite.api.GameObject#getWorldLocation(): WorldPoint
+net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$tryHandleBlockingPathObjectsWithTimeout$71(WorldPoint, GameObject): boolean  ->  net.runelite.api.GameObject#getWorldLocation(): WorldPoint
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#localPointForWorld(WorldPoint): LocalPoint  ->  net.runelite.api.Client#getTopLevelWorldView(): WorldView
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#localPointForWorld(WorldPoint): LocalPoint  ->  net.runelite.api.WorldView#isInstance(): boolean
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#localPointForWorld(WorldPoint): LocalPoint  ->  net.runelite.api.coords.LocalPoint#fromWorld(WorldView, WorldPoint): LocalPoint
