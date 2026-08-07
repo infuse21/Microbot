@@ -207,6 +207,42 @@ public class Rs2Walker {
      */
     private static final int LOCAL_RECOVERY_RAW_ROUTE_LOOKAHEAD_STEPS = 48;
     private static final int NORMAL_MINIMAP_REACH_EUCLIDEAN = 11;
+    /**
+     * Ceiling for zoom-extended minimap strides. NOT the minimap's limit — zoomed out it shows ~38
+     * tiles — but the walled-click net's: every stride target must sit inside the player-origin
+     * reachability BFS ({@link #CLOSEST_INDEX_REACHABLE_STEP_BUDGET} = 20 steps), or a wall between
+     * could not be detected and the Clock Tower click-through-the-wall class comes back. 18 leaves
+     * two steps of path-vs-Euclidean slack inside that budget.
+     */
+    private static final int ZOOMED_OUT_MINIMAP_REACH_CAP = 18;
+
+    /**
+     * How far a minimap stride may reach at {@code minimapZoom}, in tiles.
+     * <p>
+     * The minimap shows {@code 20 * 4 / zoom} tiles of radius (the scale Perspective.localToMinimap
+     * uses), so the old flat reach of {@value #NORMAL_MINIMAP_REACH_EUCLIDEAN} — tuned for the days
+     * the walker pinned zoom at 5, a 16-tile window — wastes most of a zoomed-out minimap: a player
+     * zoomed out clicks big strides, and since the zoom un-pinning that choice belongs to the user.
+     * Two tiles are kept off the rim so the click never lands on the very edge, and the floor keeps
+     * a fully zoomed-IN minimap exactly as reachable as today.
+     */
+    static int zoomAwareMinimapReach(double minimapZoom, int floorTiles, int capTiles) {
+        if (minimapZoom <= 0) {
+            return floorTiles;
+        }
+        int visibleRadius = (int) Math.floor(20.0 * 4.0 / minimapZoom) - 2;
+        return Math.max(floorTiles, Math.min(visibleRadius, capTiles));
+    }
+
+    /** Shell wrapper: the live zoom read, floored at today's reach, capped at the BFS horizon. */
+    private static int normalMinimapReach() {
+        try {
+            return zoomAwareMinimapReach(Microbot.getClient().getMinimapZoom(),
+                    NORMAL_MINIMAP_REACH_EUCLIDEAN, ZOOMED_OUT_MINIMAP_REACH_CAP);
+        } catch (Exception e) {
+            return NORMAL_MINIMAP_REACH_EUCLIDEAN;
+        }
+    }
     // UNREACHABLE_RECOVERY_FORWARD_SCAN_TILES moved into recovery/RouteRecovery (P1)
     /**
      * Stationary window before an active route issues a recovery nudge.
@@ -1658,8 +1694,9 @@ public class Rs2Walker {
         // target nor a planned-path point is clickable (e.g. the route needs a transport walkStep can't
         // cross), no click is issued and we hold on the line rather than wander off it — walkStep is not
         // built for transport routes; use the blocking walkTo/walkUntil for those.
-        boolean allowDirectionalFallback = playerLoc.distanceTo(target) <= NORMAL_MINIMAP_REACH_EUCLIDEAN;
-        clickMiniMapOrFallback(rawPath, target, playerLoc, NORMAL_MINIMAP_REACH_EUCLIDEAN - 1, allowDirectionalFallback, -1);
+        int walkStepReach = normalMinimapReach();
+        boolean allowDirectionalFallback = playerLoc.distanceTo(target) <= walkStepReach;
+        clickMiniMapOrFallback(rawPath, target, playerLoc, walkStepReach - 1, allowDirectionalFallback, -1);
         return WalkerState.MOVING;
     }
 
@@ -2871,7 +2908,7 @@ public class Rs2Walker {
                     // cardinal tiles reach ~13, diagonals ~9. Empirically 14 was too
                     // optimistic (clicks at 13.5–13.9 Euclidean missed the clip).
                     WorldPoint playerLoc = Rs2Player.getWorldLocation();
-                    final int MINIMAP_REACH_EUCLIDEAN = NORMAL_MINIMAP_REACH_EUCLIDEAN;
+                    final int MINIMAP_REACH_EUCLIDEAN = normalMinimapReach();
 
 					// Checkpoint-style walking: once we set a minimap flag, let the player actually
 					// travel toward it. Do not keep recalculating/clicking new targets mid-run.
@@ -3240,7 +3277,7 @@ public class Rs2Walker {
                         if (rawPath != null && !rawPath.isEmpty() && finalPlayerLoc != null) {
                             int rawAnchorIndex = rawAnchorIndexForPathPosition(rawPath, path, finalPlayerLoc);
                             finalClick = clickRouteBackedShortWalk(rawPath, canvasClickWp, finalPlayerLoc,
-                                    NORMAL_MINIMAP_REACH_EUCLIDEAN - 1, rawAnchorIndex);
+                                    normalMinimapReach() - 1, rawAnchorIndex);
                         } else {
                             finalClick = Rs2Walker.walkFastCanvas(canvasClickWp);
                         }
@@ -3478,7 +3515,7 @@ public class Rs2Walker {
             Set<WorldPoint> reachableFromPlayer = playerLoc == null
                     ? Collections.emptySet()
                     : Rs2Tile.getReachableTilesFromTile(playerLoc,
-                            Math.max(2, NORMAL_MINIMAP_REACH_EUCLIDEAN)).keySet();
+                            Math.max(2, normalMinimapReach())).keySet();
 
             if (hasMinimapRelevantMovementFlag(localPoint, flags)) {
                 WorldPoint best = bestWallDistanceNeighbor(tiles.keySet(), playerLoc, reachableFromPlayer,
@@ -4228,7 +4265,7 @@ public class Rs2Walker {
             return false;
         }
         return tryIssueRouteMovementClick(rawPath, path, target, configuredDistance, "interim close route click",
-                NORMAL_MINIMAP_REACH_EUCLIDEAN, false);
+                normalMinimapReach(), false);
     }
 
     private static boolean tryIssueRouteMovementClick(List<WorldPoint> rawPath,

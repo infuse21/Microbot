@@ -2556,6 +2556,32 @@ public class Rs2WalkerUnitTest {
                         upstairs.get(1), upstairsReachable, 13));
     }
 
+    // ---- zoom-aware minimap reach --------------------------------------------------------------------
+
+    /**
+     * The minimap shows 20*4/zoom tiles of radius. Reach scales with what the USER's zoom makes
+     * visible, floored at the flat reach the walker always had, and capped at the reachability BFS
+     * horizon — beyond it a wall between could not be detected and the click-through-wall class
+     * returns.
+     */
+    @Test
+    public void zoomAwareReach_zoomedOutStridesFurther() {
+        assertEquals(18, Rs2Walker.zoomAwareMinimapReach(4.0, 11, 18)); // default zoom: 20-2 -> cap
+        assertEquals(18, Rs2Walker.zoomAwareMinimapReach(2.0, 11, 18)); // fully out: 38 -> cap
+    }
+
+    @Test
+    public void zoomAwareReach_zoomedInKeepsTheOldFloor() {
+        assertEquals(14, Rs2Walker.zoomAwareMinimapReach(5.0, 11, 18)); // pinned-era zoom: 16-2
+        assertEquals(11, Rs2Walker.zoomAwareMinimapReach(8.0, 11, 18)); // fully in: 10-2 -> floor
+    }
+
+    @Test
+    public void zoomAwareReach_degenerateZoomFallsBackToTheFloor() {
+        assertEquals(11, Rs2Walker.zoomAwareMinimapReach(0.0, 11, 18));
+        assertEquals(11, Rs2Walker.zoomAwareMinimapReach(-1.0, 11, 18));
+    }
+
     // ---- short-walk fast path budget -----------------------------------------------------------------
 
     /**
