@@ -456,6 +456,12 @@ public class PathfinderConfig {
      * @param target Optional target destination for optimized filtering (null for standard filtering)
      */
     private void refreshTransports(WorldPoint target) {
+        // The 1.1s post-login client-thread freeze hid in the UNMEASURED parts of this method: the
+        // stage timers summed to ~30ms while the outer wrapper read 1154ms, and the slow-stage log
+        // never fired. Three regions were dark: this entry block (quest-state + bank/item gates),
+        // the cache-key phase, and the verify/capture block after filtering. Each now has a timer,
+        // carried on both the stage log and the slow log, so the next slow login names its stage.
+        long entryStart = System.currentTimeMillis();
         useFairyRings = ShortestPathPlugin.override("useFairyRings", config.useFairyRings())
                 && !QuestState.NOT_STARTED.equals(Rs2Player.getQuestState(Quest.FAIRYTALE_II__CURE_A_QUEEN))
                 && (Rs2Inventory.contains(ItemID.DRAMEN_STAFF, ItemID.LUNAR_MOONCLAN_LIMINAL_STAFF)
@@ -469,8 +475,12 @@ public class PathfinderConfig {
         useQuetzals = ShortestPathPlugin.override("useQuetzals", config.useQuetzals())
                 && QuestState.FINISHED.equals(Rs2Player.getQuestState(Quest.TWILIGHTS_PROMISE));
 
+        long entryTime = System.currentTimeMillis() - entryStart;
+
+        long keyStart = System.currentTimeMillis();
         final Rs2LeaguesTransport.LeaguesContext leaguesCtx = Rs2LeaguesTransport.leaguesContext();
         final int refreshCacheKeyHash = computeTransportRefreshCacheKeyHash(target, leaguesCtx);
+        long keyTime = System.currentTimeMillis() - keyStart;
 
         TransportRefreshSnapshot snap = transportRefreshSnapshots.get(refreshCacheKeyHash);
         if (snap != null && client != null) {
@@ -721,6 +731,7 @@ public class PathfinderConfig {
                 typeStats);
         long filterTime = System.currentTimeMillis() - filterStart;
 
+        long verifyStart = System.currentTimeMillis();
         int[] sortedVarbitConditions = encodeSortedConditionTriples(varbitConditions);
         int[] sortedVarplayerConditions = encodeSortedConditionTriples(varplayerConditions);
         int[] sortedQuestIds = mergedList.values().stream()
@@ -739,10 +750,13 @@ public class PathfinderConfig {
                 sortedVarbitConditions, sortedVarplayerConditions, sortedQuestIds);
         int[] verificationComponents = computeTransportRefreshVerificationComponents(refreshBoostedLevels,
                 sortedSkillOrdinals, sortedVarbitConditions, sortedVarplayerConditions, sortedQuestIds);
+        long verifyTime = System.currentTimeMillis() - verifyStart;
+        long captureStart = System.currentTimeMillis();
         transportRefreshSnapshots.put(refreshCacheKeyHash, TransportRefreshSnapshot.capture(
                 refreshCacheKeyHash, verificationHash, verificationComponents,
                 sortedSkillOrdinals, sortedVarbitConditions, sortedVarplayerConditions, sortedQuestIds,
                 transports, usableTeleports));
+        long captureTime = System.currentTimeMillis() - captureStart;
 
         long similarStart = System.currentTimeMillis();
         if (useBankItems && config.maxSimilarTransportDistance() > 0) {
@@ -757,16 +771,19 @@ public class PathfinderConfig {
         refreshVarplayerValues = null;
 
         // varbit/varplayer counts = distinct ids referenced by merged transport definitions this refresh, not total client var space.
-        WebWalkLog.cfg("refresh_transports merge={}ms cache={}ms filter={}ms useTrans={}ms similar={}ms total/chk={}/{} usablePost={} vb={} vp={}",
-                mergeTime, cacheTime, filterTime, useTransportTimeNanos / 1_000_000, similarTime,
+        WebWalkLog.cfg("refresh_transports entry={}ms key={}ms merge={}ms cache={}ms filter={}ms useTrans={}ms verify={}ms capture={}ms similar={}ms total/chk={}/{} usablePost={} vb={} vp={}",
+                entryTime, keyTime, mergeTime, cacheTime, filterTime, useTransportTimeNanos / 1_000_000,
+                verifyTime, captureTime, similarTime,
                 totalTransports, checkedTransports, usableTeleports.size(), varbitIds.size(), varplayerIds.size());
 
         // Surface the same breakdown at INFO when the miss is slow enough to be the visible cold
         // start, so the dominant stage is identifiable without enabling debug logging.
-        long refreshTransportsTotalMs = mergeTime + cacheTime + filterTime + similarTime;
+        long refreshTransportsTotalMs = entryTime + keyTime + mergeTime + cacheTime + filterTime
+                + verifyTime + captureTime + similarTime;
         if (refreshTransportsTotalMs >= SLOW_REFRESH_LOG_THRESHOLD_MS) {
-            WebWalkLog.cfgSlow("slow refresh_transports merge={}ms cache={}ms filter={}ms useTrans={}ms similar={}ms total/chk={}/{} vb={} vp={}",
-                    mergeTime, cacheTime, filterTime, useTransportTimeNanos / 1_000_000, similarTime,
+            WebWalkLog.cfgSlow("slow refresh_transports entry={}ms key={}ms merge={}ms cache={}ms filter={}ms useTrans={}ms verify={}ms capture={}ms similar={}ms total/chk={}/{} vb={} vp={}",
+                    entryTime, keyTime, mergeTime, cacheTime, filterTime, useTransportTimeNanos / 1_000_000,
+                    verifyTime, captureTime, similarTime,
                     totalTransports, checkedTransports, varbitIds.size(), varplayerIds.size());
             typeStats.entrySet().stream()
                     .sorted((a, b) -> Integer.compare(b.getValue()[2], a.getValue()[2]))
