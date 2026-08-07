@@ -608,11 +608,19 @@ public class WalkerRouteCorpusTest {
     public void shantaySouthbound_withNothing_neverCrossesTheGate() {
         List<WorldPoint> path = route(configWith(WalkerRouteCorpusTest::unrestricted),
                 NORTH_OF_GATE, SOUTH_OF_GATE);
-        // Same predicate as the positive tests. The old form required BOTH tiles either side of the
-        // gate at radius 0, so a diagonal step across the gate satisfied neither and the assertion
-        // passed while the route did cross.
-        assertFalse("without a ticket or coins the route must not cross the gate",
-                visits(path, GATE, 2));
+        // Crossing means a path tile strictly SOUTH of the gate line at the pass. The previous
+        // proximity proxy (visits within 2 of the gate) also failed a route that walks UP TO the
+        // gate's north side and stops — which is exactly what the sealed-target fast path now
+        // produces, and exactly what a player without coins does. (The proxy before THAT required
+        // both flanking tiles at radius 0 and missed a diagonal crossing; measuring the crossing
+        // itself ends the proxy games.)
+        boolean crossed = path.stream().anyMatch(p -> p != null
+                && p.getPlane() == GATE.getPlane()
+                && p.getY() < GATE.getY()
+                && Math.abs(p.getX() - GATE.getX()) <= 4);
+        assertFalse("without a ticket or coins the route must not cross the gate", crossed);
+        assertFalse("without a ticket or coins the route must not arrive south",
+                arrives(path, SOUTH_OF_GATE, 3));
     }
 
     // ---- Port Sarim, Wydin's shop (the door-poisoning incident) ------------------------------------
