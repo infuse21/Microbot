@@ -626,21 +626,24 @@ public class WalkerRouteCorpusTest {
     // ---- Varrock museum interior (the Kudos dead-end) ----------------------------------------------
 
     /**
-     * The museum's south doors and interior gate sat in restrictions.tsv unconditionally (Feb 2025
-     * bulk commit, no stated reason), so every interior target was unroutable: the Kudos script's
-     * museum interactions all dead-ended at the gate, and the can't-reach recovery cannot open a
-     * door the PLANNER refuses to route through. The doors are ordinary openable scene doors the
-     * runtime handles. Route in from outside the south door, across the (3261,3446)->(3261,3447)
-     * gate line, to a display-pen tile.
+     * The museum guard barrier (24536) is a MOVES-YOU gate, measured 2026-08-08 through the agent
+     * server: one click on "Open" relocates the player across it (3447 -> 3446 -> 3447, reproduced
+     * three times) and the gate never enters an open state, so the runtime door pipeline can never
+     * resolve it. Two independent defects kept the museum interior unroutable: restrictions.tsv
+     * banned the doorway tiles outright (planner could not stand there), and the barrier had no
+     * catalog rows (executor had nothing to click). Assert the route SELECTS the transport rather
+     * than merely passing near the gate tile — an earlier version of this test checked proximity and
+     * would have passed on a route that never crossed.
      */
     @Test
-    public void varrockMuseumInteriorIsRoutable() {
-        List<WorldPoint> path = route(configWith(WalkerRouteCorpusTest::unrestricted),
-                new WorldPoint(3264, 3439, 0), new WorldPoint(3261, 3449, 0));
-        assertTrue("route must reach the museum interior past the gate",
-                arrives(path, new WorldPoint(3261, 3449, 0), 1));
-        assertTrue("route must cross AT the interior gate",
-                visits(path, new WorldPoint(3261, 3446, 0), 1));
+    public void varrockMuseumGuardBarrierIsATransport() {
+        PathfinderConfig config = configWith(WalkerRouteCorpusTest::unrestricted);
+        Pathfinder pf = runPathfinder(config,
+                new WorldPoint(3261, 3449, 0), new WorldPoint(3261, 3443, 0));
+        assertTrue("route across the museum barrier must select gate 24536",
+                selectsTransportObject(pf, 24536));
+        assertTrue("route must arrive south of the barrier",
+                arrives(pf.getPath(), new WorldPoint(3261, 3443, 0), 1));
     }
 
     // ---- Port Sarim, Wydin's shop (the door-poisoning incident) ------------------------------------
