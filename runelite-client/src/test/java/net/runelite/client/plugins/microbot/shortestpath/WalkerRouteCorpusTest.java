@@ -623,6 +623,26 @@ public class WalkerRouteCorpusTest {
                 arrives(path, SOUTH_OF_GATE, 3));
     }
 
+    // ---- Varrock museum interior (the Kudos dead-end) ----------------------------------------------
+
+    /**
+     * The museum's south doors and interior gate sat in restrictions.tsv unconditionally (Feb 2025
+     * bulk commit, no stated reason), so every interior target was unroutable: the Kudos script's
+     * museum interactions all dead-ended at the gate, and the can't-reach recovery cannot open a
+     * door the PLANNER refuses to route through. The doors are ordinary openable scene doors the
+     * runtime handles. Route in from outside the south door, across the (3261,3446)->(3261,3447)
+     * gate line, to a display-pen tile.
+     */
+    @Test
+    public void varrockMuseumInteriorIsRoutable() {
+        List<WorldPoint> path = route(configWith(WalkerRouteCorpusTest::unrestricted),
+                new WorldPoint(3264, 3439, 0), new WorldPoint(3261, 3449, 0));
+        assertTrue("route must reach the museum interior past the gate",
+                arrives(path, new WorldPoint(3261, 3449, 0), 1));
+        assertTrue("route must cross AT the interior gate",
+                visits(path, new WorldPoint(3261, 3446, 0), 1));
+    }
+
     // ---- Port Sarim, Wydin's shop (the door-poisoning incident) ------------------------------------
 
     @Test
