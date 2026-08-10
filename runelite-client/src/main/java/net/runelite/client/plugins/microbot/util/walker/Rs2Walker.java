@@ -415,6 +415,7 @@ public class Rs2Walker {
         // disabled for the whole pass, and off-path recalc bypassed entirely. setTarget(null) already
         // cleared all four on the normal completion path; this makes the two agree.
         clearRecentTransportContext();
+        lastExemptRunLocation = null;
         // The interim target belongs to the PREVIOUS route's click; letting it survive into a fresh walk
         // makes the new walk yield to (and report progress against) a stale objective — repeatedly seen as
         // interim=<old goal> camping at Clock Tower when the script restarts walks every ~40s.
@@ -1795,6 +1796,28 @@ public class Rs2Walker {
                         + " probable livelock; the tail cap cannot catch this because exempt exits refund it",
                 WALK_WALL_CLOCK_BUDGET_MS, nowMs - startedAt, target,
                 Rs2Player.getWorldLocation(), processWalkTail);
+    }
+
+    /** Player tile at the last tail-exempt iteration; a change means the run was making progress. */
+    private static volatile WorldPoint lastExemptRunLocation = null;
+
+    /**
+     * Counts consecutive tail-exempt iterations THAT DID NOT MOVE THE PLAYER.
+     *
+     * <p>Counting every exempt iteration was wrong, and a real farm-run log proved it: a completely
+     * healthy Catherby-to-Ardougne walk yielded {@code interim-in-flight} 28 times in a row while
+     * steadily covering ground, because that is simply what travelling between minimap clicks looks
+     * like. A bound on yields is a bound on walking; the state actually worth reporting is yielding
+     * while STATIONARY, which no number of tail refunds can ever surface through the iteration cap.
+     */
+    private static int trackExemptRun(int run, WorldPoint target, WalkExit exit, String detail) {
+        WorldPoint at = Rs2Player.getWorldLocation();
+        int next = (at != null && !at.equals(lastExemptRunLocation)) ? 1 : run + 1;
+        lastExemptRunLocation = at;
+        if (TailDecision.isExemptRunTooLong(next, MAX_CONSECUTIVE_EXEMPT_ITERATIONS)) {
+            reportExemptRunTooLong(target, exit.wireName(detail), next);
+        }
+        return next;
     }
 
     /**
@@ -3486,9 +3509,7 @@ public class Rs2Walker {
                 // Benign yields: outer for-loop increments processWalkTail each iteration; exempt so
                 // long minimap interim waits cannot exhaust MAX_PROCESS_WALK_TAIL_ITERATIONS and EXIT.
                 if (exit.isTailExempt()) {
-                    if (TailDecision.isExemptRunTooLong(++consecutiveExemptIterations, MAX_CONSECUTIVE_EXEMPT_ITERATIONS)) {
-                        reportExemptRunTooLong(target, exit.wireName(offPathDeferDetail), consecutiveExemptIterations);
-                    }
+                    consecutiveExemptIterations = trackExemptRun(consecutiveExemptIterations, target, exit, offPathDeferDetail);
                     walkerDiag("tail exempt exitReason=%s tailBefore=%d", exit.wireName(offPathDeferDetail), processWalkTail);
                     processWalkTail--;
                 } else {
@@ -4083,6 +4104,19 @@ public class Rs2Walker {
      * <p>
      * Both endpoints must sit inside the BFS budget, or "not reachable" means merely far away and the
      * edge is innocent — the same guard the refusal itself uses.
+     * <p>
+     * That proximity guard is Chebyshev, and the BFS budget counts STEPS, so on its own it does not
+     * mean what it looks like: a tile thirteen tiles away as the crow flies can be thirty steps away
+     * around a building, and it is then absent from the BFS for want of budget rather than because
+     * anything blocks it. Refusing a click on that evidence is merely conservative; LEARNING a blocked
+     * edge from it corrupts routing for the rest of the session.
+     * <p>
+     * Measured at the Port Sarim / Land's End docks: a click to (2760,3238) was refused as walled and
+     * the edge (2759,3230)->(2759,3231) was learned — and nine seconds later the walker was standing on
+     * (2760,3238), having simply walked there. So {@code a} must also be strictly INSIDE the frontier:
+     * the BFS expands every tile below its budget, so an interior {@code a} whose neighbour {@code b} is
+     * still missing proves {@code b} unreachable, whereas an {@code a} sitting AT the budget never had
+     * its neighbours enumerated at all and proves nothing.
      */
     static WorldPoint[] firstWalledRawEdge(List<WorldPoint> rawPath, WorldPoint playerLoc,
                                            Map<WorldPoint, Integer> reachable, int stepBudget) {
@@ -4106,7 +4140,13 @@ public class Rs2Walker {
             if (playerLoc.distanceTo2D(a) > maxDistance || playerLoc.distanceTo2D(b) > maxDistance) {
                 continue;
             }
-            if (reachable.containsKey(a) && !reachable.containsKey(b)) {
+            Integer stepsToA = reachable.get(a);
+            // At the budget, a's neighbours were never enumerated, so b's absence is ignorance, not a
+            // wall. Only an interior a can convict the edge.
+            if (stepsToA == null || stepsToA >= stepBudget) {
+                continue;
+            }
+            if (!reachable.containsKey(b)) {
                 return new WorldPoint[]{a, b};
             }
         }

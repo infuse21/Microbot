@@ -2466,6 +2466,50 @@ public class Rs2WalkerUnitTest {
         assertNull(Rs2Walker.firstWalledRawEdge(raw, p, reachableSet(p), 12));
     }
 
+    /**
+     * A tile sitting AT the BFS budget never had its neighbours enumerated, so the next route tile is
+     * missing for want of budget, not because anything blocks it. Convicting that edge writes a lie
+     * into the learned-blocked-edge store and routing believes it for the rest of the session.
+     *
+     * <p>Pinned from a real farm run at the Port Sarim / Land's End docks: a click to (2760,3238) was
+     * refused as walled and the edge (2759,3230)->(2759,3231) learned — nine seconds later the walker
+     * was standing on (2760,3238), having simply walked there. Chebyshev-near, step-far.
+     */
+    @Test
+    public void firstWalledRawEdge_doesNotConvictTheBfsFrontierItself() {
+        WorldPoint player = new WorldPoint(2772, 3234, 0);
+        WorldPoint onFrontier = new WorldPoint(2759, 3230, 0);
+        WorldPoint beyond = new WorldPoint(2759, 3231, 0);
+        java.util.List<WorldPoint> raw = java.util.Arrays.asList(player, onFrontier, beyond);
+
+        java.util.Map<WorldPoint, Integer> reachable = new java.util.HashMap<>();
+        reachable.put(player, 0);
+        // Thirteen tiles away as the crow flies, but twenty STEPS around the dock buildings — exactly
+        // the budget, so the BFS stopped here and knows nothing about what lies past it.
+        reachable.put(onFrontier, 20);
+
+        assertNull("a tile at the budget proves nothing about its neighbour",
+                Rs2Walker.firstWalledRawEdge(raw, player, reachable, 20));
+    }
+
+    /** An interior tile DID have its neighbours enumerated, so a missing neighbour is genuinely walled. */
+    @Test
+    public void firstWalledRawEdge_stillConvictsAnEdgeLeavingTheBfsInterior() {
+        WorldPoint player = new WorldPoint(2772, 3234, 0);
+        WorldPoint interior = new WorldPoint(2770, 3234, 0);
+        WorldPoint walled = new WorldPoint(2769, 3234, 0);
+        java.util.List<WorldPoint> raw = java.util.Arrays.asList(player, interior, walled);
+
+        java.util.Map<WorldPoint, Integer> reachable = new java.util.HashMap<>();
+        reachable.put(player, 0);
+        reachable.put(interior, 2);
+
+        WorldPoint[] edge = Rs2Walker.firstWalledRawEdge(raw, player, reachable, 20);
+        assertNotNull("the BFS had budget left at this tile and still could not reach the next one", edge);
+        assertEquals(interior, edge[0]);
+        assertEquals(walled, edge[1]);
+    }
+
     @Test
     public void firstWalledRawEdge_toleratesMissingInputs() {
         WorldPoint p = new WorldPoint(2740, 3469, 0);
