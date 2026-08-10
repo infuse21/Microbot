@@ -66,6 +66,7 @@ import net.runelite.client.plugins.microbot.util.walker.obstacle.MineableResolve
 import net.runelite.client.plugins.microbot.util.walker.obstacle.ObstacleResolution;
 import net.runelite.client.plugins.microbot.util.walker.obstacle.PlannedEdge;
 import net.runelite.client.plugins.microbot.util.walker.recovery.RouteRecovery;
+import net.runelite.client.plugins.microbot.util.walker.state.WalkExit;
 import net.runelite.client.plugins.microbot.util.walker.state.WalkerRouteState;
 import net.runelite.client.plugins.microbot.util.walker.door.Rs2DoorHandler;
 import net.runelite.client.plugins.microbot.util.walker.door.Rs2WalkerAwaits;
@@ -768,7 +769,13 @@ public class Rs2Walker {
     }
 
     /** Door / gate from main path loop vs {@link #handleNearbyRawPathSceneObjects} raw-path scan (same nudge UX). */
-    private static boolean shouldCanvasNudgeAfterDoorLikeExit(String exitReason) {
+    /**
+     * @deprecated superseded by {@link WalkExit#isDoorLike()}. Retained only so
+     * {@code WalkExitTest} can prove the enum classifies every reason exactly as this did.
+     * Delete once that characterization is no longer needed.
+     */
+    @Deprecated
+    static boolean shouldCanvasNudgeAfterDoorLikeExit(String exitReason) {
         if (exitReason == null) {
             return false;
         }
@@ -791,6 +798,7 @@ public class Rs2Walker {
      * walk, so an ordinary door could exhaust it ~100 tiles into a working route and report
      * UNREACHABLE while the player was still advancing. See {@code movement.md} #25.
      */
+    @Deprecated
     static boolean isRouteProgressExit(String exitReason) {
         if (exitReason == null) {
             return false;
@@ -813,6 +821,22 @@ public class Rs2Walker {
             default:
                 return false;
         }
+    }
+
+    /**
+     * The tail-exemption condition exactly as it was written inline in {@code processWalk}'s
+     * epilogue before {@link WalkExit} existed.
+     *
+     * @deprecated superseded by {@link WalkExit#isTailExempt()}. Retained only so
+     * {@code WalkExitTest} can prove the enum classifies every reason exactly as this did.
+     */
+    @Deprecated
+    static boolean isTailExemptExit(String exitReason) {
+        return "interim-in-flight".equals(exitReason)
+                || "recovery-move-in-flight".equals(exitReason)
+                || "route-move-in-flight".equals(exitReason)
+                || "route-fold-continuation-click".equals(exitReason)
+                || isOffPathRecalcDeferredExit(exitReason);
     }
 
     /** @return true only when a canvas click was actually issued, so the caller can size its minimap hold-off. */
@@ -2153,7 +2177,8 @@ public class Rs2Walker {
 
             boolean doorOrTransportResult = false;
             boolean inInstance = Microbot.getClient().getTopLevelWorldView().isInstance();
-            String exitReason = "end-of-path";
+            WalkExit exit = WalkExit.END_OF_PATH;
+            String offPathDeferDetail = "";
             Map<String, WorldPoint> doorEdgesAttemptedThisTail = new HashMap<>();
             ObstaclePolicy startupPolicy = obstaclePolicyForCurrentPhase();
 
@@ -2167,15 +2192,15 @@ public class Rs2Walker {
                     || activeInterimPlayer == null
                     || activeInterimPlayer.distanceTo(target) > immediateFinishTh)
                     && shouldYieldForActiveRouteInterim(activeInterimPlayer, path, activeInterimNowMs)) {
-                exitReason = "interim-in-flight";
-                WebWalkLog.earlyExit(exitReason,
+                exit = WalkExit.INTERIM_IN_FLIGHT;
+                WebWalkLog.earlyExit(exit.wireName(offPathDeferDetail),
                         activeInterimPlayer,
                         target,
                         path.get(path.size() - 1),
                         indexOfStartPoint,
                         path.size());
                 walkerDiag("tail exempt exitReason=%s tailBefore=%d early=true interim=%s",
-                        exitReason,
+                        exit.wireName(offPathDeferDetail),
                         processWalkTail,
                         routeState.interimTargetWp);
                 processWalkTail--;
@@ -2226,7 +2251,7 @@ public class Rs2Walker {
                     "handled=" + rawSceneHandled + " ms=" + (System.currentTimeMillis() - rawSceneStartAt));
             if (rawSceneHandled) {
                 doorOrTransportResult = true;
-                exitReason = "raw-path-scene-object-handled";
+                exit = WalkExit.RAW_PATH_SCENE_OBJECT_HANDLED;
             }
 
             long currentTileTransportStartAt = System.currentTimeMillis();
@@ -2237,7 +2262,7 @@ public class Rs2Walker {
                     "handled=" + currentTileTransportHandled + " ms=" + (System.currentTimeMillis() - currentTileTransportStartAt));
             if (currentTileTransportHandled) {
                 doorOrTransportResult = true;
-                exitReason = "current-tile-transport-handled";
+                exit = WalkExit.CURRENT_TILE_TRANSPORT_HANDLED;
             }
 
             if (!doorOrTransportResult) {
@@ -2284,7 +2309,7 @@ public class Rs2Walker {
                 if (isTransportInteractionSettling()) {
                     tmarkPostTransport("post_transport_settling_yield", target,
                             "at=" + compactWorldPoint(playerForPathCheck));
-                    exitReason = "transport-settling-yield";
+                    exit = WalkExit.TRANSPORT_SETTLING_YIELD;
                     break;
                 }
                 boolean nearPath = isNearPath();
@@ -2311,7 +2336,8 @@ public class Rs2Walker {
                                     playerForPathCheck,
                                     "defer=" + deferReason);
                         }
-                        exitReason = "off-path-deferred:" + deferReason;
+                        exit = WalkExit.OFF_PATH_DEFERRED;
+                        offPathDeferDetail = deferReason;
                         break;
                     }
                     Telemetry.recordOffPathRecalc(Rs2Player.getWorldLocation(), path.size());
@@ -2324,7 +2350,7 @@ public class Rs2Walker {
                     } else {
 						recalculatePathForRecovery();
                     }
-                    exitReason = "not-near-path";
+                    exit = WalkExit.NOT_NEAR_PATH;
                     break;
                 }
                 if (!nearPath && recentTransportWindow) {
@@ -2339,7 +2365,7 @@ public class Rs2Walker {
                 // and these calls do scene-object scans that add up across 100+ segment paths.
                 WorldPoint playerNearSeg = Rs2Player.getWorldLocation();
                 if (playerNearSeg == null) {
-                    exitReason = "player-location-null";
+                    exit = WalkExit.PLAYER_LOCATION_NULL;
                     break;
                 }
                 int segDistance = currentWorldPoint.distanceTo2D(playerNearSeg);
@@ -2413,7 +2439,7 @@ public class Rs2Walker {
                     if (doorOrTransportResult) {
                         tmarkPostTransport("post_transport_segment_handler", target,
                                 "stage=door handled=true i=" + i + " ms=" + (System.currentTimeMillis() - segmentHandlerStartAt));
-                        exitReason = "door-handled";
+                        exit = WalkExit.DOOR_HANDLED;
                         break;
                     }
 
@@ -2428,7 +2454,7 @@ public class Rs2Walker {
                                 obstaclePolicy.pathAdjacentProbeTimeoutMs(), doorEdgesAttemptedThisTail)) {
                             tmarkPostTransport("post_transport_segment_handler", target,
                                     "stage=path_adj handled=true i=" + i + " ms=" + (System.currentTimeMillis() - segmentHandlerStartAt));
-                            exitReason = "path-blocker-handled";
+                            exit = WalkExit.PATH_BLOCKER_HANDLED;
                             break;
                         }
                     }
@@ -2446,7 +2472,7 @@ public class Rs2Walker {
                     if (doorOrTransportResult) {
                         tmarkPostTransport("post_transport_segment_handler", target,
                                 "stage=rockfall handled=true i=" + i + " ms=" + (System.currentTimeMillis() - segmentHandlerStartAt));
-                        exitReason = "rockfall-handled";
+                        exit = WalkExit.ROCKFALL_HANDLED;
                         break;
                     }
 
@@ -2463,7 +2489,7 @@ public class Rs2Walker {
                     if (doorOrTransportResult) {
                         tmarkPostTransport("post_transport_segment_handler", target,
                                 "stage=transport handled=true i=" + i + " ms=" + (System.currentTimeMillis() - segmentHandlerStartAt));
-                        exitReason = "transport-handled";
+                        exit = WalkExit.TRANSPORT_HANDLED;
                         break;
                     }
                     tmarkPostTransport("post_transport_segment_handler", target,
@@ -2502,9 +2528,9 @@ public class Rs2Walker {
                                                 + "tile={} idx={}/{} routeStart={} player={}",
                                         currentWorldPoint, i, path.size(), indexOfStartPoint, playerLoc);
                                 if (tryIssueRouteContinuationClick(rawPath, path, target, distance)) {
-                                    exitReason = "route-fold-continuation-click";
+                                    exit = WalkExit.ROUTE_FOLD_CONTINUATION_CLICK;
                                 } else {
-                                    exitReason = "route-fold-continuation-pending";
+                                    exit = WalkExit.ROUTE_FOLD_CONTINUATION_PENDING;
                                 }
                                 break;
                             }
@@ -2550,7 +2576,7 @@ public class Rs2Walker {
                                     inInstance);
                             if (frontierObstacle.kind() == ObstacleResolution.Kind.INTERACTED) {
                                 // A rockfall was mined or an on-origin transport/shortcut was taken.
-                                exitReason = "frontier-obstacle-handled";
+                                exit = WalkExit.FRONTIER_OBSTACLE_HANDLED;
                                 break;
                             }
                             if (frontierObstacle.kind() == ObstacleResolution.Kind.ABORT) {
@@ -2563,9 +2589,9 @@ public class Rs2Walker {
                                 boolean resolvedAfterWait = waitForDoorEdgeResolution(edgeFrom, edgeTo,
                                         obstaclePolicy.edgeResolutionWaitTimeoutMs());
                                 if (resolvedAfterWait && tryPostDoorFastMinimapClick(path, edgeIdx, playerLoc, target)) {
-                                    exitReason = "door-edge-resolved-fast-click";
+                                    exit = WalkExit.DOOR_EDGE_RESOLVED_FAST_CLICK;
                                 } else {
-                                    exitReason = resolvedAfterWait ? "door-edge-resolved-after-wait" : "door-edge-waiting-retry";
+                                    exit = resolvedAfterWait ? WalkExit.DOOR_EDGE_RESOLVED_AFTER_WAIT : WalkExit.DOOR_EDGE_WAITING_RETRY;
                                 }
                                 break;
                             }
@@ -2577,14 +2603,14 @@ public class Rs2Walker {
                                         && !afterNearbyWait.equals(playerLoc);
                                 if (resolvedAfterNearbyWait && progressedAfterNearbyWait) {
                                     if (tryPostDoorFastMinimapClick(path, edgeIdx, afterNearbyWait, target)) {
-                                        exitReason = "door-edge-resolved-fast-click";
+                                        exit = WalkExit.DOOR_EDGE_RESOLVED_FAST_CLICK;
                                     } else {
-                                        exitReason = "door-edge-resolved-after-nearby-wait";
+                                        exit = WalkExit.DOOR_EDGE_RESOLVED_AFTER_NEARBY_WAIT;
                                     }
                                     break;
                                 }
                                 if (!resolvedAfterNearbyWait) {
-                                    exitReason = "door-edge-nearby-waiting-retry";
+                                    exit = WalkExit.DOOR_EDGE_NEARBY_WAITING_RETRY;
                                     break;
                                 }
                             }
@@ -2596,36 +2622,36 @@ public class Rs2Walker {
                             if (gateDoorInteraction) {
                                 // Avoid any follow-up door probing right after an interaction;
                                 // resolver is still settling and re-probes can loop.
-                                exitReason = "door-settling-yield";
+                                exit = WalkExit.DOOR_SETTLING_YIELD;
                                 break;
                             }
                             if (pendingDoorTraversal) {
                                 // Keep one-shot behavior after door open: let traversal finish
                                 // before issuing fallback path-adj/recovery actions.
-                                exitReason = "door-traversal-pending-yield";
+                                exit = WalkExit.DOOR_TRAVERSAL_PENDING_YIELD;
                                 break;
                             }
                             if (shouldYieldForActiveRecoveryInterim(playerLoc, path, System.currentTimeMillis())) {
-                                exitReason = "interim-in-flight";
+                                exit = WalkExit.INTERIM_IN_FLIGHT;
                                 break;
                             }
                             if (tryRecentDoorAttemptEdgeNudge(playerLoc, target, rawPath)) {
-                                exitReason = "recent-door-edge-nudge";
+                                exit = WalkExit.RECENT_DOOR_EDGE_NUDGE;
                                 break;
                             }
                             if (handlePendingDoorNearRawPath(rawPath, obstaclePolicy.unreachableDoorTimeoutMs(),
                                     doorEdgesAttemptedThisTail, playerLoc, 2, 14)) {
-                                exitReason = "door-handled-local-reachability-raw-scan";
+                                exit = WalkExit.DOOR_HANDLED_LOCAL_REACHABILITY_RAW_SCAN;
                                 break;
                             }
                             if (handleDoorsInRawSegment(rawPath, rawEdgeStart, rawEdgeEnd,
                                     obstaclePolicy.unreachableDoorTimeoutMs(), doorEdgesAttemptedThisTail,
                                     null)) {
-                                exitReason = "door-handled-local-reachability";
+                                exit = WalkExit.DOOR_HANDLED_LOCAL_REACHABILITY;
                                 break;
                             }
                             if (isRecoveryMovementInFlight()) {
-                                exitReason = "recovery-move-in-flight";
+                                exit = WalkExit.RECOVERY_MOVE_IN_FLIGHT;
                                 break;
                             }
                             boolean unresolvedDoorNearRawPath = hasUnresolvedDoorLikeObjectNearRawPath(rawPath,
@@ -2641,7 +2667,7 @@ public class Rs2Walker {
                                     UNREACHABLE_DOOR_RECOVERY_BACKTRACK_EDGES,
                                     UNREACHABLE_DOOR_RECOVERY_LOOKAHEAD_EDGES,
                                     HANDLER_RANGE)) {
-                                exitReason = "door-handled-nearby-route-door";
+                                exit = WalkExit.DOOR_HANDLED_NEARBY_ROUTE_DOOR;
                                 break;
                             }
                             // Fallback: only interact with objects on/adjacent to blocked path edges
@@ -2653,7 +2679,7 @@ public class Rs2Walker {
                                     && nowMs - routeState.lastDoorPathAdjAttemptAtMs > 1200) {
                                 routeState.lastDoorPathAdjAttemptAtMs = nowMs;
                                 if (tryResolvePathAdjacentBlocker(playerLoc, rawPath, rawEdgeStart, 3, 10)) {
-                                    exitReason = "door-handled-path-adj-scan";
+                                    exit = WalkExit.DOOR_HANDLED_PATH_ADJ_SCAN;
                                     break;
                                 }
                             }
@@ -2685,12 +2711,12 @@ public class Rs2Walker {
                                     routeState.lastUnreachableRecoveryClickAtMs = System.currentTimeMillis();
                                     WebWalkLog.spInfo("door_suppressed_approach | to={} idx={} tile={}",
                                             compactWorldPoint(doorApproach), rawEdgeStart, compactWorldPoint(currentWorldPoint));
-                                    exitReason = "door-suppressed-approach-click";
+                                    exit = WalkExit.DOOR_SUPPRESSED_APPROACH_CLICK;
                                     break;
                                 }
                                 WebWalkLog.spInfo("door_recovery_suppressed | reason=nearby-route-door idx={} tile={}",
                                         rawEdgeStart, compactWorldPoint(currentWorldPoint));
-                                exitReason = "door-recovery-suppressed";
+                                exit = WalkExit.DOOR_RECOVERY_SUPPRESSED;
                                 break;
                             }
 
@@ -2705,7 +2731,7 @@ public class Rs2Walker {
                             // obstacle by construction and may dispatch from range.
                             if ((PohTeleports.isInHouse() || !inInstance)
                                     && handleTransportsInRawSegment(rawPath, rawEdgeStart, rawEdgeEnd, true)) {
-                                exitReason = "transport-handled-local-reachability";
+                                exit = WalkExit.TRANSPORT_HANDLED_LOCAL_REACHABILITY;
                                 break;
                             }
 
@@ -2734,7 +2760,7 @@ public class Rs2Walker {
                             if (playerLocNow != null && !playerLocNow.equals(playerLoc)) {
                                 WebWalkLog.spInfo("recovery_position_stale | was={} now={} idx={} re-evaluating",
                                         compactWorldPoint(playerLoc), compactWorldPoint(playerLocNow), i);
-                                exitReason = "recovery-position-stale";
+                                exit = WalkExit.RECOVERY_POSITION_STALE;
                                 break;
                             }
                             final int recoveryMinimapReach = STALL_RECOVERY_MINIMAP_REACH_EUCLIDEAN;
@@ -2811,7 +2837,7 @@ public class Rs2Walker {
                                     System.currentTimeMillis(), routeState.lastWalledRecoveryReplanAtMs,
                                     WALLED_RECOVERY_REPLAN_COOLDOWN_MS);
                             if (clickAction == RouteRecovery.RecoveryClickAction.YIELD_ACTION_IN_FLIGHT) {
-                                exitReason = "recovery-click-preempted-by-action";
+                                exit = WalkExit.RECOVERY_CLICK_PREEMPTED_BY_ACTION;
                                 break;
                             }
                             if (clickAction == RouteRecovery.RecoveryClickAction.REPLAN_WALLED) {
@@ -2819,11 +2845,11 @@ public class Rs2Walker {
                                 WebWalkLog.spInfo("recovery_target_walled | to={} player={} replanning",
                                         compactWorldPoint(recoverTarget), compactWorldPoint(playerLoc));
 								recalculatePathForRecovery();
-                                exitReason = "recovery-target-walled-replan";
+                                exit = WalkExit.RECOVERY_TARGET_WALLED_REPLAN;
                                 break;
                             }
                             if (clickAction == RouteRecovery.RecoveryClickAction.WAIT_WALLED) {
-                                exitReason = "recovery-target-walled-waiting";
+                                exit = WalkExit.RECOVERY_TARGET_WALLED_WAITING;
                                 break;
                             }
                             WorldPoint clickedRecoveryTarget = null;
@@ -2874,10 +2900,10 @@ public class Rs2Walker {
                                 // spurious stall-recalc right after issuing recovery movement.
                                 routeState.lastMovedTimeMs = System.currentTimeMillis();
                                 routeState.stuckCount = 0;
-                                exitReason = "local-recovery-click";
+                                exit = WalkExit.LOCAL_RECOVERY_CLICK;
                                 break;
                             }
-                            exitReason = "local-reachability-miss-no-click";
+                            exit = WalkExit.LOCAL_REACHABILITY_MISS_NO_CLICK;
                             break;
                         }
                     }
@@ -2890,7 +2916,7 @@ public class Rs2Walker {
                 // unreachable / door-edge-resolution branch above is intentionally left alone — it
                 // waits on the door edge itself and issues its own resolution-aware fast click.
                 if (isDoorInteractionSettling()) {
-                    exitReason = "door-settling-yield";
+                    exit = WalkExit.DOOR_SETTLING_YIELD;
                     break;
                 }
                 nextWalkingDistance = path.size() <= 5 ? 0 : Rs2Random.between(9, 12);
@@ -2932,7 +2958,7 @@ public class Rs2Walker {
                                     routeState.interimLastDistanceToTarget = Integer.MAX_VALUE;
                                     routeState.interimLastRetargetAtMs = 0L;
                                     doorOrTransportResult = true;
-                                    exitReason = "door-handled-during-interim";
+                                    exit = WalkExit.DOOR_HANDLED_DURING_INTERIM;
                                     break;
                                 }
 								final WorldPoint posBeforeWait = playerLoc;
@@ -2950,7 +2976,7 @@ public class Rs2Walker {
                                 boolean closeEnoughForNextClick = posAfterWait != null
                                         && interimFinal.distanceTo2D(posAfterWait) <= INTERIM_CLOSE_TILES;
                                 if (!closeEnoughForNextClick && Rs2Player.isMoving()) {
-                                    exitReason = "interim-in-flight";
+                                    exit = WalkExit.INTERIM_IN_FLIGHT;
                                     walkerDiag("interim-in-flight interim=%s interimDist=%d player=%s moving=true",
                                             interimFinal,
                                             posAfterWait == null ? interimDist : interimFinal.distanceTo2D(posAfterWait),
@@ -3076,7 +3102,7 @@ public class Rs2Walker {
                             smoothedToRaw, obstaclePolicy.segmentDoorTimeoutMs(), doorEdgesAttemptedThisTail,
                             playerLoc)) {
                         doorOrTransportResult = true;
-                        exitReason = "door-handled-before-minimap-click";
+                        exit = WalkExit.DOOR_HANDLED_BEFORE_MINIMAP_CLICK;
                         break;
                     }
                     clickTarget = RouteRecovery.clampToEuclideanRadius(playerLoc, clickTarget, MINIMAP_REACH_EUCLIDEAN - 1);
@@ -3168,12 +3194,12 @@ public class Rs2Walker {
                         if (!Rs2Player.isMoving()) {
                             if (handleNearbyRawPathSceneObjects(rawPath, HANDLER_RANGE, target)) {
                                 doorOrTransportResult = true;
-                                exitReason = "post-click-raw-path-scene-object-handled";
+                                exit = WalkExit.POST_CLICK_RAW_PATH_SCENE_OBJECT_HANDLED;
                                 break;
                             }
                             if (handleCurrentTileTransportTowardPath(rawPath, path, target)) {
                                 doorOrTransportResult = true;
-                                exitReason = "post-click-current-tile-transport-handled";
+                                exit = WalkExit.POST_CLICK_CURRENT_TILE_TRANSPORT_HANDLED;
                                 break;
                             }
                         }
@@ -3189,7 +3215,7 @@ public class Rs2Walker {
                     // path tiles are further away and will also fail — break and let the outer
                     // loop wait for the player to walk closer before re-evaluating.
                     if (!clicked) {
-                        exitReason = "click-failed-off-minimap";
+                        exit = WalkExit.CLICK_FAILED_OFF_MINIMAP;
                         routeState.interimTargetWp = null;
                         routeState.interimTargetIdx = -1;
                         routeState.interimSetAtMs = 0L;
@@ -3210,7 +3236,7 @@ public class Rs2Walker {
                 }
             }
 
-            if (doorOrTransportResult && shouldCanvasNudgeAfterDoorLikeExit(exitReason)) {
+            if (doorOrTransportResult && exit.isDoorLike()) {
                 boolean canvasNudged = maybeCanvasNudgeAfterDoor(target, distance, path);
                 // Arm after nudge returns so the window does not expire during in-nudge waits. The long
                 // window exists to stop a minimap click landing on the heels of a CANVAS click, so it is
@@ -3233,15 +3259,15 @@ public class Rs2Walker {
                 }
             }
 
-            if (!"end-of-path".equals(exitReason)) {
-                WebWalkLog.earlyExit(exitReason,
+            if (exit != WalkExit.END_OF_PATH) {
+                WebWalkLog.earlyExit(exit.wireName(offPathDeferDetail),
                         Rs2Player.getWorldLocation(),
                         target,
                         path.get(path.size() - 1),
                         indexOfStartPoint,
                         path.size());
                 walkerDiag("early-exit detail reason=%s interim=%s doorOrTransport=%s partialPath=%s",
-                        exitReason,
+                        exit.wireName(offPathDeferDetail),
                         routeState.interimTargetWp,
                         doorOrTransportResult,
                         partialPath);
@@ -3250,7 +3276,7 @@ public class Rs2Walker {
             // Only do the final-tile canvas click if we iterated the whole path cleanly.
             // Exiting because the player left the path may still mean movement is active.
             // so don't clobber that destination.
-            if (!doorOrTransportResult && "end-of-path".equals(exitReason)) {
+            if (!doorOrTransportResult && exit == WalkExit.END_OF_PATH) {
                 if (walkCancelledDiag(target, "processWalk:before-final-canvas", processWalkTail)) {
                     return WalkerState.EXIT;
                 }
@@ -3294,9 +3320,9 @@ public class Rs2Walker {
             // the previous movement command. Charging those passes as failures can exhaust the
             // bounded tail loop before the player reaches a nearby transport origin.
             if (!doorOrTransportResult
-                    && "end-of-path".equals(exitReason)
+                    && exit == WalkExit.END_OF_PATH
                     && Rs2Player.isMoving()) {
-                exitReason = "route-move-in-flight";
+                exit = WalkExit.ROUTE_MOVE_IN_FLIGHT;
             }
             WorldPoint pathLastForFinish = path.get(path.size() - 1);
             int finishThreshold = tightFinishThreshold(target, pathLastForFinish, distance);
@@ -3329,9 +3355,9 @@ public class Rs2Walker {
                 }
                 // A handled door/transport/blocker ended the iteration because work was done, not
                 // because the walker is stuck. Still re-route, but do not charge the budget for it.
-                if (isRouteProgressExit(exitReason)) {
+                if (exit.isProgress()) {
                     walkerDiag("partial retry exempt exitReason=%s tail=%d spent=%d",
-                            exitReason, processWalkTail, partialRetriesWorking);
+                            exit.wireName(offPathDeferDetail), processWalkTail, partialRetriesWorking);
                     recalculatePath();
                     continue;
                 }
@@ -3356,10 +3382,10 @@ public class Rs2Walker {
                 setTarget(null, "rs2walker:processWalk:partial-retries-exhausted");
                 return WalkerState.UNREACHABLE;
             } else {
-                if (isOffPathRecalcDeferredExit(exitReason)) {
+                if (exit == WalkExit.OFF_PATH_DEFERRED) {
                     // Wait briefly for the player to re-enter the path or for the progress signal
                     // that deferred the recalc to expire. Prevents a tight loop around isNearPath().
-                    String deferReason = offPathDeferredReasonFromExit(exitReason);
+                    String deferReason = offPathDeferDetail;
                     long offPathWaitMs = offPathRecalcDeferredWaitMs(deferReason,
                             System.currentTimeMillis(),
                             routeState.lastMovedTimeMs,
@@ -3398,17 +3424,13 @@ public class Rs2Walker {
                 }
                 // Benign yields: outer for-loop increments processWalkTail each iteration; exempt so
                 // long minimap interim waits cannot exhaust MAX_PROCESS_WALK_TAIL_ITERATIONS and EXIT.
-                if ("interim-in-flight".equals(exitReason)
-                        || "recovery-move-in-flight".equals(exitReason)
-                        || "route-move-in-flight".equals(exitReason)
-                        || "route-fold-continuation-click".equals(exitReason)
-                        || isOffPathRecalcDeferredExit(exitReason)) {
-                    walkerDiag("tail exempt exitReason=%s tailBefore=%d", exitReason, processWalkTail);
+                if (exit.isTailExempt()) {
+                    walkerDiag("tail exempt exitReason=%s tailBefore=%d", exit.wireName(offPathDeferDetail), processWalkTail);
                     processWalkTail--;
                 }
                 walkerDiag("continue outer tail nextIdx=%d exitReason=%s finalDist=%d partialPath=%s",
                         processWalkTail + 1,
-                        exitReason,
+                        exit.wireName(offPathDeferDetail),
                         Rs2Player.getWorldLocation().distanceTo(target),
                         partialPath);
                 continue;
@@ -11729,11 +11751,12 @@ public class Rs2Walker {
                 Math.min(OFF_PATH_RECALC_DEFER_WAIT_MAX_MS, remainingMs));
     }
 
-    private static boolean isOffPathRecalcDeferredExit(String exitReason) {
+    static boolean isOffPathRecalcDeferredExit(String exitReason) {
         return exitReason != null && exitReason.startsWith("off-path-deferred:");
     }
 
-    private static String offPathDeferredReasonFromExit(String exitReason) {
+    @Deprecated
+    static String offPathDeferredReasonFromExit(String exitReason) {
         if (!isOffPathRecalcDeferredExit(exitReason)) {
             return "";
         }
