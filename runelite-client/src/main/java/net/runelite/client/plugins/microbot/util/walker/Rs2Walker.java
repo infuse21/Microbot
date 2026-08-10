@@ -66,6 +66,7 @@ import net.runelite.client.plugins.microbot.util.walker.obstacle.MineableResolve
 import net.runelite.client.plugins.microbot.util.walker.obstacle.ObstacleResolution;
 import net.runelite.client.plugins.microbot.util.walker.obstacle.PlannedEdge;
 import net.runelite.client.plugins.microbot.util.walker.recovery.RouteRecovery;
+import net.runelite.client.plugins.microbot.util.walker.segment.SegmentGate;
 import net.runelite.client.plugins.microbot.util.walker.recovery.TailDecision;
 import net.runelite.client.plugins.microbot.util.walker.state.WalkExit;
 import net.runelite.client.plugins.microbot.util.walker.state.WalkerRouteState;
@@ -623,21 +624,6 @@ public class Rs2Walker {
         return currentWalkerPhase() == WalkerPhase.STARTUP
                 ? STARTUP_OBSTACLE_POLICY
                 : STEADY_OBSTACLE_POLICY;
-    }
-
-    static boolean shouldSkipStartupPreclickSegmentHandlers(boolean startupBeforeFirstClick,
-                                                            int segmentIdx,
-                                                            int routeStartIdx,
-                                                            boolean recentDoorAttemptNearSegment,
-                                                            boolean doorSettling,
-                                                            boolean recoveryInFlight) {
-        if (!startupBeforeFirstClick || routeStartIdx < 0 || segmentIdx < routeStartIdx) {
-            return false;
-        }
-        if (recentDoorAttemptNearSegment || doorSettling || recoveryInFlight) {
-            return false;
-        }
-        return true;
     }
 
     static boolean shouldRunActiveRouteIdleNudge(boolean idleNudgeDue,
@@ -2473,31 +2459,19 @@ public class Rs2Walker {
                     boolean startupBeforeFirstClick = currentWalkerPhase() == WalkerPhase.STARTUP;
                     boolean immediateSegmentTransportStep = hasImmediatePlannedTransportStep(path, i, playerNearSeg);
                     boolean recentDoorAttemptNearSegment = hasRecentDoorAttemptNearIndex(path, i);
-                    boolean skipPostTransportSegmentHandlers = recentTransportWindow
-                            && !upcomingNearbyTransport
-                            && !recentDoorAttemptNearSegment
-                            && !isDoorInteractionSettling()
-                            && !isRecoveryMovementInFlight()
-                            && reachableTilesCache.containsKey(currentWorldPoint);
-                    boolean skipStartupPreclickSegmentHandlers = !immediateSegmentTransportStep
-                            && shouldSkipStartupPreclickSegmentHandlers(
-                            startupBeforeFirstClick,
-                            i,
-                            indexOfStartPoint,
-                            recentDoorAttemptNearSegment,
-                            isDoorInteractionSettling(),
-                            isRecoveryMovementInFlight());
-                    if (skipPostTransportSegmentHandlers || skipStartupPreclickSegmentHandlers) {
+                    SegmentGate.SegmentAction segmentAction = SegmentGate.decide(
+                            recentTransportWindow, upcomingNearbyTransport, recentDoorAttemptNearSegment,
+                            isDoorInteractionSettling(), isRecoveryMovementInFlight(),
+                            reachableTilesCache.containsKey(currentWorldPoint),
+                            startupBeforeFirstClick, immediateSegmentTransportStep, i, indexOfStartPoint);
+                    if (segmentAction.isSkip()) {
                         segmentSkippedThisPass = true;
-                        if (skipStartupPreclickSegmentHandlers) {
+                        if (segmentAction == SegmentGate.SegmentAction.SKIP_STARTUP_PRECLICK) {
                             markStartupPhase("preclick_segment_handler_skip", target,
-                                    "i=" + i + " reason=startup_before_first_click");
+                                    "i=" + i + " reason=" + segmentAction.wireReason());
                         }
                         tmarkPostTransport("post_transport_segment_handler_skip",
-                                target,
-                                "i=" + i + " reason=" + (skipPostTransportSegmentHandlers
-                                        ? "no_nearby_planned_transport"
-                                        : "startup_before_first_click"));
+                                target, "i=" + i + " reason=" + segmentAction.wireReason());
                     } else {
                     long segmentHandlerStartAt = System.currentTimeMillis();
                     int rawI = (i < smoothedToRaw.length) ? smoothedToRaw[i] : 0;
@@ -2523,7 +2497,8 @@ public class Rs2Walker {
                     //
                     // With an earlier segment skipped, doors fall back to the stationary requirement,
                     // which is the behaviour from before ranged door dispatch existed.
-                    boolean nearestSegmentDoor = !segmentHandlersRanThisPass && !segmentSkippedThisPass;
+                    boolean nearestSegmentDoor = SegmentGate.mayDispatchDoorAtRange(
+                            segmentHandlersRanThisPass, segmentSkippedThisPass);
                     segmentHandlersRanThisPass = true;
                     boolean doorMovementGateOk = !Rs2Player.isMoving()
                             || (nearestSegmentDoor && doorInteractionWhileApproachingEnabled());

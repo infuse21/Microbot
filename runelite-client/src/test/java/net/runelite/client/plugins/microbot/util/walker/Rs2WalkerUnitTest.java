@@ -1957,34 +1957,7 @@ public class Rs2WalkerUnitTest {
         assertFalse(Rs2Walker.shouldRunActiveRouteIdleNudge(false, false));
     }
 
-    @Test
-    public void shouldSkipStartupPreclickSegmentHandlers_skipsBeforeFirstMovementClick() {
-        assertTrue(Rs2Walker.shouldSkipStartupPreclickSegmentHandlers(
-                true,
-                5,
-                5,
-                false,
-                false,
-                false));
-    }
-
-    @Test
-    public void shouldSkipStartupPreclickSegmentHandlers_keepsDoorRecoveryAndSteadyEdges() {
-        assertFalse(Rs2Walker.shouldSkipStartupPreclickSegmentHandlers(
-                true,
-                8,
-                5,
-                true,
-                false,
-                false));
-        assertFalse(Rs2Walker.shouldSkipStartupPreclickSegmentHandlers(
-                false,
-                8,
-                5,
-                false,
-                false,
-                false));
-    }
+    // Startup-preclick skipping moved to SegmentGate; its cases live in SegmentGateTest.
 
     @Test
     public void rawPathForwardAnchorIndex_keepsFallbackAheadOfAnchor() {
