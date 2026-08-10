@@ -66,6 +66,7 @@ import net.runelite.client.plugins.microbot.util.walker.obstacle.MineableResolve
 import net.runelite.client.plugins.microbot.util.walker.obstacle.ObstacleResolution;
 import net.runelite.client.plugins.microbot.util.walker.obstacle.PlannedEdge;
 import net.runelite.client.plugins.microbot.util.walker.recovery.RouteRecovery;
+import net.runelite.client.plugins.microbot.util.walker.recovery.TailDecision;
 import net.runelite.client.plugins.microbot.util.walker.state.WalkExit;
 import net.runelite.client.plugins.microbot.util.walker.state.WalkerRouteState;
 import net.runelite.client.plugins.microbot.util.walker.door.Rs2DoorHandler;
@@ -1760,8 +1761,58 @@ public class Rs2Walker {
      * lines appear across the gap the loop is spinning without acting and the state here says why, and
      * if they stop the thread is blocked inside a wait and the last line says which pass entered it.
      */
+    /**
+     * How long a single walk may run before it is reported as a probable livelock.
+     *
+     * <p>Sized to catch a loop that will never finish, NOT a slow journey: a long banked walk across
+     * several transports is legitimately minutes. Currently OBSERVE-ONLY — it logs and does not
+     * abort — because a budget that kills a working walk would be a worse bug than the livelock it
+     * guards against. Promote to enforcement only after live logs show it firing on real livelocks
+     * and never on healthy walks.
+     */
+    private static final long WALK_WALL_CLOCK_BUDGET_MS = 300_000L;
+    /** Uninterrupted tail-exempt iterations before the loop is reported as yielding without advancing. */
+    private static final int MAX_CONSECUTIVE_EXEMPT_ITERATIONS = 24;
+    /** One budget report per walk session; 0 when this session has not reported yet. */
+    private static volatile long walkBudgetReportedForSessionAtMs = 0L;
+
+    /**
+     * Reports a walk that has outlived its wall-clock budget.
+     *
+     * <p>{@code MAX_PROCESS_WALK_TAIL_ITERATIONS} is not a bound on its own: several exit reasons
+     * decrement the tail counter, so a walk that keeps producing one of them loops forever, and
+     * nothing else in the call chain imposes a time limit. This makes that state visible in the log
+     * instead of silent.
+     */
+    private static void reportWalkBudgetIfExhausted(WorldPoint target, long nowMs, int processWalkTail) {
+        long startedAt = routeState.walkSessionStartedAtMs;
+        if (!TailDecision.isWallClockExhausted(startedAt, nowMs, WALK_WALL_CLOCK_BUDGET_MS)
+                || walkBudgetReportedForSessionAtMs == startedAt) {
+            return;
+        }
+        walkBudgetReportedForSessionAtMs = startedAt;
+        log.warn("[Walker] walk exceeded its {}ms budget (running {}ms) target={} at={} tail={} —"
+                        + " probable livelock; the tail cap cannot catch this because exempt exits refund it",
+                WALK_WALL_CLOCK_BUDGET_MS, nowMs - startedAt, target,
+                Rs2Player.getWorldLocation(), processWalkTail);
+    }
+
+    /**
+     * Reports a loop that keeps yielding without advancing. Every one of these iterations refunds
+     * its own tail charge, so no number of them can trip the iteration cap.
+     */
+    private static void reportExemptRunTooLong(WorldPoint target, String exitWireName, int run) {
+        if (run % MAX_CONSECUTIVE_EXEMPT_ITERATIONS != 1) {
+            return;
+        }
+        log.warn("[Walker] {} consecutive tail-exempt iterations (exit={}) target={} at={} —"
+                        + " the loop is yielding without advancing and cannot exhaust the tail cap",
+                run, exitWireName, target, Rs2Player.getWorldLocation());
+    }
+
     private static void walkerHeartbeat(WorldPoint target, int processWalkTail) {
         long now = System.currentTimeMillis();
+        reportWalkBudgetIfExhausted(target, now, processWalkTail);
         if (now - lastHeartbeatAtMs < WALKER_HEARTBEAT_INTERVAL_MS) {
             return;
         }
@@ -1867,6 +1918,7 @@ public class Rs2Walker {
         // budget. Without this the counter is monotonic for the entire walk.
         long lastPartialRetryAtMs = 0L;
         WorldPoint lastPartialRetryAtLoc = null;
+        int consecutiveExemptIterations = 0;
         WorldPoint lastAttemptedMinimapClick = null;
         boolean lastAttemptedMinimapClickOk = false;
         long lastAttemptedMinimapClickAtMs = 0L;
@@ -3353,38 +3405,28 @@ public class Rs2Walker {
                 if (walkCancelledDiag(target, "processWalk:partial-path-branch", processWalkTail)) {
                     return WalkerState.EXIT;
                 }
-                // Route progress since the last retry means the walk is working — refill the budget.
-                // It otherwise only ever increments, so "3 retries" meant three outer-loop iterations
-                // for the whole journey rather than three consecutive failures to advance.
-                //
-                // Standing somewhere new is required as well as the progress timestamp:
-                // routeState.routeProgressAdvancedAtMs is also bumped whenever the route is merely REPLACED, and
-                // each retry calls recalculatePath(), so the timestamp alone would let a retry refill
-                // the budget it just spent. When the target is genuinely unreachable the player stops
-                // moving, so requiring movement is what still lets the budget drain and terminate.
                 WorldPoint retryLoc = Rs2Player.getWorldLocation();
                 boolean movedSinceLastRetry = lastPartialRetryAtLoc == null
                         || (retryLoc != null && !retryLoc.equals(lastPartialRetryAtLoc));
-                if (partialRetriesWorking > 0
-                        && movedSinceLastRetry
-                        && routeState.routeProgressAdvancedAtMs > lastPartialRetryAtMs) {
+                if (TailDecision.shouldRefillPartialRetryBudget(partialRetriesWorking, movedSinceLastRetry,
+                        routeState.routeProgressAdvancedAtMs, lastPartialRetryAtMs)) {
                     walkerDiag("partial retry budget refilled progressAt=%d lastRetryAt=%d spent=%d at=%s",
                             routeState.routeProgressAdvancedAtMs, lastPartialRetryAtMs, partialRetriesWorking, retryLoc);
                     partialRetriesWorking = 0;
                 }
-                // A handled door/transport/blocker ended the iteration because work was done, not
-                // because the walker is stuck. Still re-route, but do not charge the budget for it.
-                if (exit.isProgress()) {
+                TailDecision.TailAction partialAction = TailDecision.decide(false, true, exit,
+                        partialRetriesWorking, TailDecision.MAX_PARTIAL_RETRIES);
+                if (partialAction == TailDecision.TailAction.PARTIAL_PROGRESS_REPLAN) {
                     walkerDiag("partial retry exempt exitReason=%s tail=%d spent=%d",
                             exit.wireName(offPathDeferDetail), processWalkTail, partialRetriesWorking);
                     recalculatePath();
                     continue;
                 }
-                if (partialRetriesWorking < 3) {
+                if (partialAction == TailDecision.TailAction.PARTIAL_RETRY_REPLAN) {
                     lastPartialRetryAtMs = System.currentTimeMillis();
                     lastPartialRetryAtLoc = retryLoc;
                     Telemetry.recordPartialRetry(partialRetriesWorking + 1, finalDist);
-                    WebWalkLog.partialRetry(finalDist, partialRetriesWorking + 1, 3);
+                    WebWalkLog.partialRetry(finalDist, partialRetriesWorking + 1, TailDecision.MAX_PARTIAL_RETRIES);
                     recalculatePath();
                     partialRetriesWorking++;
                     continue;
@@ -3444,8 +3486,13 @@ public class Rs2Walker {
                 // Benign yields: outer for-loop increments processWalkTail each iteration; exempt so
                 // long minimap interim waits cannot exhaust MAX_PROCESS_WALK_TAIL_ITERATIONS and EXIT.
                 if (exit.isTailExempt()) {
+                    if (TailDecision.isExemptRunTooLong(++consecutiveExemptIterations, MAX_CONSECUTIVE_EXEMPT_ITERATIONS)) {
+                        reportExemptRunTooLong(target, exit.wireName(offPathDeferDetail), consecutiveExemptIterations);
+                    }
                     walkerDiag("tail exempt exitReason=%s tailBefore=%d", exit.wireName(offPathDeferDetail), processWalkTail);
                     processWalkTail--;
+                } else {
+                    consecutiveExemptIterations = 0;
                 }
                 walkerDiag("continue outer tail nextIdx=%d exitReason=%s finalDist=%d partialPath=%s",
                         processWalkTail + 1,
