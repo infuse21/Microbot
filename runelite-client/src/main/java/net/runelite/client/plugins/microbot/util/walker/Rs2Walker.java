@@ -2780,6 +2780,23 @@ public class Rs2Walker {
                                     break;
                                 }
                             }
+                            // A shortcut / transport on the blocked frontier is TAKEN here rather than
+                            // routed around: the minimap fallback below would pick the tile on the FAR
+                            // side and send the server the long way around the gap. Recovery acts on the
+                            // edge blocking us right now, so it is the nearest obstacle by construction
+                            // and may dispatch from range.
+                            // Ordered BEFORE door suppression, which breaks out of recovery and so never
+                            // let the transport have its turn. Measured near Draynor: a catalog transport
+                            // at (3064,3282) was refused as walled, declined by the door handlers, then
+                            // suppressed as a "nearby route door" that was this very transport — four
+                            // seconds before the raw scan dispatched it. Suppression still guards the
+                            // generic recovery click below; it just no longer outranks this.
+                            if ((PohTeleports.isInHouse() || !inInstance)
+                                    && handleTransportsInRawSegment(rawPath, rawEdgeStart, rawEdgeEnd, true)) {
+                                exit = WalkExit.TRANSPORT_HANDLED_LOCAL_REACHABILITY;
+                                break;
+                            }
+
                             if (unresolvedDoorNearRawPath) {
                                 // An unresolved door sits on/near the blocked edge but every door handler above
                                 // declined (settling / recent-attempt cooldowns). Do NOT fall through to the
@@ -2814,21 +2831,6 @@ public class Rs2Walker {
                                 WebWalkLog.spInfo("door_recovery_suppressed | reason=nearby-route-door idx={} tile={}",
                                         rawEdgeStart, compactWorldPoint(currentWorldPoint));
                                 exit = WalkExit.DOOR_RECOVERY_SUPPRESSED;
-                                break;
-                            }
-
-                            // An agility shortcut / transport sitting on the blocked frontier is TAKEN
-                            // here rather than routed around. The minimap-click fallback below picks the
-                            // furthest path tile within Euclidean minimap reach, which for a stepping-stone
-                            // (or any gap/wall shortcut) is the tile on the FAR side -- clicking it makes the
-                            // server walk the long way around the gap it should have crossed. Taking the
-                            // transport first mirrors the segment-handler transport scan (which can be
-                            // skipped in the post-transport window) and the door/rockfall handling above.
-                            // Recovery acts on the edge blocking us RIGHT NOW, so it is the nearest
-                            // obstacle by construction and may dispatch from range.
-                            if ((PohTeleports.isInHouse() || !inInstance)
-                                    && handleTransportsInRawSegment(rawPath, rawEdgeStart, rawEdgeEnd, true)) {
-                                exit = WalkExit.TRANSPORT_HANDLED_LOCAL_REACHABILITY;
                                 break;
                             }
 
