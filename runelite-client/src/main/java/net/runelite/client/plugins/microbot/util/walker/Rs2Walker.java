@@ -2509,18 +2509,18 @@ public class Rs2Walker {
                 }
 
                 boolean tileReachable = reachableTilesCache.containsKey(currentWorldPoint);
+                // The handlers above block for seconds, so reachability computed from where we USED
+                // to be is not evidence about where we are. Recapture when the origin no longer
+                // matches — what reachableTilesCacheOrigin was declared for and never did. Same
+                // radius as the original capture: the old recapture used a smaller one and could
+                // answer "unreachable" for a tile the wider map had already reached.
                 if (!tileReachable && !inInstance) {
                     WorldPoint playerLoc = Rs2Player.getWorldLocation();
-                    if (playerLoc != null) {
-                        int unreachableDist = currentWorldPoint.distanceTo2D(playerLoc);
-                        if (unreachableDist <= HANDLER_RANGE + 2) {
-                            reachableTilesCache = Rs2Tile.getReachableTilesFromTile(playerLoc, HANDLER_RANGE + 5);
-                            reachableTilesCacheOrigin = playerLoc;
-                            tileReachable = reachableTilesCache.containsKey(currentWorldPoint);
-                            if (tileReachable) {
-                                log.debug("[Walker] tile {} reachable after cache refresh from {}", currentWorldPoint, playerLoc);
-                            }
-                        }
+                    if (playerLoc != null && !playerLoc.equals(reachableTilesCacheOrigin)) {
+                        reachableTilesCache = Rs2Tile.getReachableTilesFromTile(playerLoc, HANDLER_RANGE * 3);
+                        reachableTilesCacheOrigin = playerLoc;
+                        tileReachable = reachableTilesCache.containsKey(currentWorldPoint);
+                        WebWalkLog.spDebug("reachable_recapture | from={} tile={} reachableNow={}", compactWorldPoint(playerLoc), compactWorldPoint(currentWorldPoint), tileReachable);
                     }
                 }
                 if (!tileReachable && !inInstance) {
