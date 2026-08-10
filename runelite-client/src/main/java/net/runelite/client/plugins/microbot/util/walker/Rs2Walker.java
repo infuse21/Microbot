@@ -416,6 +416,8 @@ public class Rs2Walker {
         // cleared all four on the normal completion path; this makes the two agree.
         clearRecentTransportContext();
         lastExemptRunLocation = null;
+        reachableBfsCalls.set(0);
+        reachableBfsMillis.set(0L);
         // The interim target belongs to the PREVIOUS route's click; letting it survive into a fresh walk
         // makes the new walk yield to (and report progress against) a stale objective — repeatedly seen as
         // interim=<old goal> camping at Clock Tower when the script restarts walks every ~40s.
@@ -1844,7 +1846,7 @@ public class Rs2Walker {
         // DEBUG, not INFO: this fires every second for the whole of every walk, and it exists to
         // diagnose stalls, not to narrate healthy ones. Behind the verbose toggle it costs nothing
         // until someone is actually chasing a silent stretch in the log.
-        WebWalkLog.spDebug("walker_heartbeat | tail={} at={} goal={} moving={} animating={} interim={} interimAgeMs={} sinceMovedMs={} sinceDoorSettleMs={}",
+        WebWalkLog.spDebug("walker_heartbeat | tail={} at={} goal={} moving={} animating={} interim={} interimAgeMs={} sinceMovedMs={} sinceDoorSettleMs={} bfs={}/{}ms",
                 processWalkTail,
                 compactWorldPoint(playerLoc), compactWorldPoint(target),
                 Rs2Player.isMoving(), Rs2Player.isAnimating(),
@@ -1852,7 +1854,8 @@ public class Rs2Walker {
                 routeState.interimSetAtMs > 0L ? now - routeState.interimSetAtMs : -1L,
                 routeState.lastMovedTimeMs > 0L ? now - routeState.lastMovedTimeMs : -1L,
                 routeState.doorInteractionSettleStartedAtMs > 0L
-                        ? now - routeState.doorInteractionSettleStartedAtMs : -1L);
+                        ? now - routeState.doorInteractionSettleStartedAtMs : -1L,
+                reachableBfsCalls.get(), reachableBfsMillis.get());
     }
 
     /**
@@ -9056,11 +9059,27 @@ public class Rs2Walker {
     /** Step budget of {@link #getClosestIndexReachableTiles}'s BFS; also the route-blocked scan gate's bound. */
     private static final int CLOSEST_INDEX_REACHABLE_STEP_BUDGET = 20;
 
+    /**
+     * Calls and milliseconds spent in the player-origin BFS since the current walk started.
+     *
+     * <p>Every {@code getClosestTileIndex} runs one of these, and the walk loop asks for a route
+     * index many times per iteration — route progress, interim tracking, near-path checks, click
+     * selection, each recovery probe. Each one is a fresh breadth-first search executed on the CLIENT
+     * thread, so the cost is a round trip, not arithmetic, and it does not show up in any existing
+     * timing line. A walk that goes silent for seconds with no heartbeat is blocked inside something,
+     * and this is the leading candidate; these two numbers ride on the heartbeat so the next log
+     * settles it instead of another round of inference.
+     */
+    private static final AtomicInteger reachableBfsCalls = new AtomicInteger();
+    private static final AtomicLong reachableBfsMillis = new AtomicLong();
+
     private static HashMap<WorldPoint, Integer> getClosestIndexReachableTiles(WorldPoint playerLoc) {
         if (playerLoc == null) {
             return new HashMap<>();
         }
         HashMap<WorldPoint, Integer> tiles;
+        long bfsStartedAt = System.currentTimeMillis();
+        reachableBfsCalls.incrementAndGet();
         try {
             tiles = Rs2Tile.getReachableTilesFromTile(
                     playerLoc, CLOSEST_INDEX_REACHABLE_STEP_BUDGET);
@@ -9068,10 +9087,12 @@ public class Rs2Walker {
             if (!isClientThreadReadTimeout(failure)) {
                 throw failure;
             }
+            reachableBfsMillis.addAndGet(System.currentTimeMillis() - bfsStartedAt);
             WebWalkLog.spInfo("client_thread_timeout_fallback | op=closest_route_index");
             return nearbyTilesIgnoringCollision(
                     playerLoc, CLOSEST_INDEX_REACHABLE_STEP_BUDGET);
         }
+        reachableBfsMillis.addAndGet(System.currentTimeMillis() - bfsStartedAt);
 
         // If an animation/shortcut puts the player on a collision-odd tile, keep route progress
         // anchored by distance instead of repeatedly recalculating an empty reachable set.
@@ -9333,6 +9354,14 @@ public class Rs2Walker {
         WorldPoint goal = currentTarget;
         if (goal == null) {
             return;
+        }
+        // Startup marks are deduped per phase per walk, so a startup that REPLANS goes silent for its
+        // whole second pass — pf_wait_retry, pf_ready and path_snapshot have all been logged already.
+        // That is exactly the window a walled-click replan lands in, which is why the slowest starts
+        // are the least visible ones: a four-second gap with nothing in it but the replan itself.
+        // Re-arm them so each startup attempt narrates its own.
+        if (!routeState.firstMovementClickMarked) {
+            startupPhasesLogged.clear();
         }
         // Must not call setTarget(null)+setTarget(goal): that briefly clears {@link #currentTarget},
         // and processWalk on another thread treats null as cancel (isWalkCancelled).
