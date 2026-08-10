@@ -20,14 +20,32 @@ public final class WalkerRouteState {
     // ---- transport handoff: set when a transport (stairs, ladder, shortcut, teleport) is taken, read by
     // the post-transport settling/window logic in processWalk. ----
 
-    /** Wall-clock ms when the last transport was handled; 0 when none this session. */
+    /**
+     * Wall-clock ms when the last transport was handled; 0 when none this session.
+     *
+     * <p>This is the field every post-transport window check actually reads, so it is the one that
+     * decides whether handlers are suppressed. Clearing the locations below without clearing this
+     * leaves the window armed — see {@link #clearRecentTransportContext()}.
+     */
     public volatile long lastTransportHandledAtMs = 0L;
-    /** Player tile immediately after the last transport handoff. */
-    public volatile WorldPoint lastTransportHandledAtLocation = null;
     /** Origin tile of the last handled transport. */
     public volatile WorldPoint lastTransportOriginLocation = null;
     /** Destination tile of the last handled transport. */
     public volatile WorldPoint lastTransportDestinationLocation = null;
+
+    /**
+     * Ends the post-transport window: the handoff belongs to the route that took the transport.
+     *
+     * <p>Clear all of it together. Nulling only the locations leaves
+     * {@link #lastTransportHandledAtMs} set, and every window check keys off that timestamp — the
+     * window stays armed for its full duration while the destination it is supposed to be about is
+     * already gone.
+     */
+    public void clearRecentTransportContext() {
+        lastTransportHandledAtMs = 0L;
+        lastTransportOriginLocation = null;
+        lastTransportDestinationLocation = null;
+    }
 
     // ---- route progress: tracks how far along the current route the player has advanced, used to detect
     // real forward progress (vs thrashing) and to decide when to reset on a new/changed route. ----

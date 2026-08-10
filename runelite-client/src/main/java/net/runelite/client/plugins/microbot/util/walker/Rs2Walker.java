@@ -389,13 +389,31 @@ public class Rs2Walker {
 		{
 			evidence.started = true;
 		}
+        resetWalkSessionState();
+        WebWalkLog.tmark("walk_start", 0, target, Rs2Player.getWorldLocation(), "target_set");
+    }
+
+    /**
+     * The per-walk state reset. Split out from {@link #markWalkSessionStart} because it performs no
+     * game reads, so the staleness invariants below can be unit-tested instead of re-discovered live.
+     *
+     * <p>Every {@code processWalk} entry runs through here ({@code walkWithStateInternal} is its only
+     * caller, banked walks included), which is why clearing here is sufficient and the walk-ending
+     * paths do not each need their own clear.
+     */
+    static void resetWalkSessionState() {
         routeState.walkSessionStartedAtMs = System.currentTimeMillis();
         routeState.firstMovementClickMarked = false;
         startupPhasesLogged.clear();
         TERMINAL_TRAVEL_ATTEMPTED_EDGES.clear();
-        routeState.lastTransportHandledAtLocation = null;
-        routeState.lastTransportOriginLocation = null;
-        routeState.lastTransportDestinationLocation = null;
+        // The transport handoff belongs to the PREVIOUS walk. Only the three location fields used to
+        // be nulled here, leaving lastTransportHandledAtMs — the field every window check actually
+        // reads — armed for its full 15s. A walk starting inside that window (after an interrupted,
+        // errored or tail-exceeded walk, which do not clear the target) then ran degraded: raw scene
+        // scan skipped, per-segment door/rockfall/transport handlers skipped, ranged door dispatch
+        // disabled for the whole pass, and off-path recalc bypassed entirely. setTarget(null) already
+        // cleared all four on the normal completion path; this makes the two agree.
+        clearRecentTransportContext();
         // The interim target belongs to the PREVIOUS route's click; letting it survive into a fresh walk
         // makes the new walk yield to (and report progress against) a stale objective — repeatedly seen as
         // interim=<old goal> camping at Clock Tower when the script restarts walks every ~40s.
@@ -411,14 +429,15 @@ public class Rs2Walker {
         synchronized (expectedTransportDestinations) {
             expectedTransportDestinations.clear();
         }
-        WebWalkLog.tmark("walk_start", 0, target, Rs2Player.getWorldLocation(), "target_set");
+    }
+
+    /** Same package (e.g. unit tests) only — not part of the script API. */
+    static WalkerRouteState routeStateForTesting() {
+        return routeState;
     }
 
     private static void clearRecentTransportContext() {
-        routeState.lastTransportHandledAtMs = 0L;
-        routeState.lastTransportHandledAtLocation = null;
-        routeState.lastTransportOriginLocation = null;
-        routeState.lastTransportDestinationLocation = null;
+        routeState.clearRecentTransportContext();
     }
 
     private static void markFirstMovementClick(String phase, WorldPoint target, WorldPoint at, String detail) {
@@ -10603,7 +10622,6 @@ public class Rs2Walker {
     private static boolean finishHandledTransport(Transport transport) {
         long handoffStartedAt = System.currentTimeMillis();
         routeState.lastTransportHandledAtMs = handoffStartedAt;
-        routeState.lastTransportHandledAtLocation = Rs2Player.getWorldLocation();
         routeState.lastTransportOriginLocation = transport != null ? transport.getOrigin() : null;
         routeState.lastTransportDestinationLocation = transport != null ? transport.getDestination() : null;
         WorldPoint goal = currentTarget;
