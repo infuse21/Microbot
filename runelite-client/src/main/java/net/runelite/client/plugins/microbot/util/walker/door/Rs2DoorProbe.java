@@ -79,6 +79,13 @@ public final class Rs2DoorProbe {
 		if (transport == null || transport.getType() != Rs2TransportType.TRANSPORT) {
             return false;
         }
+        // The ACTION wins over the name. A stile is named door-like and a fence gap is not named at
+        // all, but both are crossed by moving through them, and the door cascade can only wait for an
+        // edge to open — a wait a moves-you obstacle can never satisfy. Deciding on the name alone is
+        // what handed a Climb-over stile to the door handler and cost twenty seconds per crossing.
+        if (Rs2DoorClassifier.isMovesYouAction(transport.getAction())) {
+            return false;
+        }
 		return Rs2DoorClassifier.isDoorLikeGameObjectName(transport.getTarget())
                 || Rs2DoorClassifier.isDoorLikeGameObjectName(transport.getDisplayInfo())
                 || isDoorLikeTransportAction(transport.getAction());

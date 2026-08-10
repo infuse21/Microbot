@@ -75,6 +75,33 @@ public class Rs2DoorProbeTest {
 				transport(Rs2TransportType.AGILITY_SHORTCUT, "Gate", "Gate", "Open")));
     }
 
+    /**
+     * The regression this class exists for after the Ardougne stile. A Stile is named door-like and
+     * would classify as a door on its name alone — but it is crossed by climbing over it, and the
+     * door cascade can only wait for an edge to open. That wait timed out
+     * ({@code door_edge_post_unresolved}) and cost twenty seconds of refused clicks, a recovery
+     * wander and a replan before the transport handler crossed it in a single action.
+     */
+    @Test
+    public void aMovesYouObstacleIsNotDoorLikeEvenWhenItsNameIs() {
+        assertFalse("a Climb-over stile belongs to the transport handler, not the door cascade",
+                Rs2DoorProbe.isDoorLikeCatalogTransport(
+                        transport(Rs2TransportType.TRANSPORT, "Stile", "Stile", "Climb-over")));
+        assertFalse(Rs2DoorProbe.isDoorLikeCatalogTransport(
+                transport(Rs2TransportType.TRANSPORT, "Gate", "Gate", "Squeeze-through")));
+        assertFalse(Rs2DoorProbe.isDoorLikeCatalogTransport(
+                transport(Rs2TransportType.TRANSPORT, "Gangplank", "Gangplank", "Cross")));
+    }
+
+    /** Opening actions are untouched: a named gate you Open is still the door cascade's job. */
+    @Test
+    public void anOpeningActionIsStillDoorLike() {
+        assertTrue(Rs2DoorProbe.isDoorLikeCatalogTransport(
+                transport(Rs2TransportType.TRANSPORT, "Gate", "Gate", "Open")));
+        assertTrue(Rs2DoorProbe.isDoorLikeCatalogTransport(
+                transport(Rs2TransportType.TRANSPORT, "Door", "Door", "Walk-through")));
+    }
+
     @Test
     public void nullIsNotDoorLike() {
         assertFalse(Rs2DoorProbe.isDoorLikeCatalogTransport(null));
