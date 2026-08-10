@@ -8,6 +8,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -32,15 +33,89 @@ public class WalkExitTest
 		return exit == WalkExit.OFF_PATH_DEFERRED ? exit.wireName(OFF_PATH_DETAIL) : exit.wireName();
 	}
 
+	/**
+	 * The fourteen reasons whose route-progress classification was deliberately corrected once the
+	 * enum made the set enumerable. Every one of them means the walker either just advanced the
+	 * route or is waiting on movement it issued itself, yet all fourteen were charged against the
+	 * partial-retry budget — three of them in a row on a partial route reported UNREACHABLE and
+	 * aborted a walk that was working.
+	 *
+	 * <p>Kept as an explicit list rather than folded away, because this set <em>is</em> the
+	 * behaviour change. Adding to it later means saying which reason and why.
+	 */
+	private static final Set<WalkExit> RECLASSIFIED_AS_PROGRESS = new HashSet<>(Arrays.asList(
+		// recovery resolved the blocked frontier
+		WalkExit.FRONTIER_OBSTACLE_HANDLED,
+		WalkExit.TRANSPORT_HANDLED_LOCAL_REACHABILITY,
+		// a click was issued and the player is walking
+		WalkExit.LOCAL_RECOVERY_CLICK,
+		WalkExit.DOOR_SUPPRESSED_APPROACH_CLICK,
+		WalkExit.RECENT_DOOR_EDGE_NUDGE,
+		WalkExit.ROUTE_MOVE_IN_FLIGHT,
+		// the door actually opened
+		WalkExit.DOOR_EDGE_RESOLVED_FAST_CLICK,
+		WalkExit.DOOR_EDGE_RESOLVED_AFTER_WAIT,
+		WalkExit.DOOR_EDGE_RESOLVED_AFTER_NEARBY_WAIT,
+		// waiting on an action we issued
+		WalkExit.DOOR_SETTLING_YIELD,
+		WalkExit.DOOR_TRAVERSAL_PENDING_YIELD,
+		WalkExit.TRANSPORT_SETTLING_YIELD,
+		WalkExit.RECOVERY_CLICK_PREEMPTED_BY_ACTION,
+		// the pass was abandoned because the player moved
+		WalkExit.RECOVERY_POSITION_STALE));
+
+	/**
+	 * Pins the correction: the enum must differ from the legacy predicate on exactly the reasons in
+	 * {@link #RECLASSIFIED_AS_PROGRESS}, and agree with it everywhere else. A drift in either
+	 * direction — an unlisted reason quietly changing meaning, or a listed one silently reverting —
+	 * fails here.
+	 */
 	@Test
 	@SuppressWarnings("deprecation")
-	public void progressClassificationMatchesTheLegacyPredicate()
+	public void progressClassificationDivergesFromLegacyExactlyWhereIntended()
 	{
 		for (WalkExit exit : WalkExit.values())
 		{
 			String wire = legacyWireName(exit);
-			assertEquals(exit.name() + " (\"" + wire + "\") changed its route-progress meaning",
-				Rs2Walker.isRouteProgressExit(wire), exit.isProgress());
+			boolean legacy = Rs2Walker.isRouteProgressExit(wire);
+			if (RECLASSIFIED_AS_PROGRESS.contains(exit))
+			{
+				assertFalse(exit.name() + " is listed as reclassified but the legacy predicate already "
+					+ "called it progress — remove it from the list", legacy);
+				assertTrue(exit.name() + " was reclassified as route progress and must report it",
+					exit.isProgress());
+			}
+			else
+			{
+				assertEquals(exit.name() + " (\"" + wire + "\") changed its route-progress meaning "
+						+ "without being listed as a deliberate reclassification",
+					legacy, exit.isProgress());
+			}
+		}
+	}
+
+	/**
+	 * The budget must still drain on the reasons that genuinely mean "not advancing", or a truly
+	 * unreachable goal never terminates and the walk spins until the tail cap trips.
+	 */
+	@Test
+	public void reasonsThatMeanStuckStillConsumeTheBudget()
+	{
+		for (WalkExit stuck : new WalkExit[]{
+			WalkExit.END_OF_PATH,
+			WalkExit.NOT_NEAR_PATH,
+			WalkExit.PLAYER_LOCATION_NULL,
+			WalkExit.CLICK_FAILED_OFF_MINIMAP,
+			WalkExit.DOOR_EDGE_WAITING_RETRY,
+			WalkExit.DOOR_EDGE_NEARBY_WAITING_RETRY,
+			WalkExit.DOOR_RECOVERY_SUPPRESSED,
+			WalkExit.LOCAL_REACHABILITY_MISS_NO_CLICK,
+			WalkExit.RECOVERY_TARGET_WALLED_REPLAN,
+			WalkExit.RECOVERY_TARGET_WALLED_WAITING,
+			WalkExit.ROUTE_FOLD_CONTINUATION_PENDING})
+		{
+			assertFalse(stuck.name() + " does not advance the route and must still spend a retry",
+				stuck.isProgress());
 		}
 	}
 

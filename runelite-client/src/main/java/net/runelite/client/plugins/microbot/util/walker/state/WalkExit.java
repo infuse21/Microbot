@@ -48,35 +48,49 @@ public enum WalkExit
 	POST_CLICK_RAW_PATH_SCENE_OBJECT_HANDLED("post-click-raw-path-scene-object-handled", true, false, true),
 
 	// ---- recovery acted, or resolved the blocked frontier ----
+	// Recovery doing its job is progress. These were all non-progress, which is how a walk that was
+	// mining a rockfall, taking a shortcut or clicking its way back onto the route could spend its
+	// whole retry budget and report UNREACHABLE while advancing.
 
-	FRONTIER_OBSTACLE_HANDLED("frontier-obstacle-handled", false, false, false),
-	TRANSPORT_HANDLED_LOCAL_REACHABILITY("transport-handled-local-reachability", false, false, false),
-	LOCAL_RECOVERY_CLICK("local-recovery-click", false, false, false),
+	/** A rockfall was mined or an on-origin transport/shortcut was taken at the blocked frontier. */
+	FRONTIER_OBSTACLE_HANDLED("frontier-obstacle-handled", true, false, false),
+	/** Recovery took a transport (e.g. an agility shortcut) on the blocked edge. */
+	TRANSPORT_HANDLED_LOCAL_REACHABILITY("transport-handled-local-reachability", true, false, false),
+	/** A recovery click was issued and movement was confirmed to start. */
+	LOCAL_RECOVERY_CLICK("local-recovery-click", true, false, false),
 	LOCAL_REACHABILITY_MISS_NO_CLICK("local-reachability-miss-no-click", false, false, false),
-	RECENT_DOOR_EDGE_NUDGE("recent-door-edge-nudge", false, false, false),
-	DOOR_SUPPRESSED_APPROACH_CLICK("door-suppressed-approach-click", false, false, false),
+	/** The door-edge nudge acted. */
+	RECENT_DOOR_EDGE_NUDGE("recent-door-edge-nudge", true, false, false),
+	/** A minimap click toward the door approach was issued; the player is walking to it. */
+	DOOR_SUPPRESSED_APPROACH_CLICK("door-suppressed-approach-click", true, false, false),
 	DOOR_RECOVERY_SUPPRESSED("door-recovery-suppressed", false, false, false),
-	RECOVERY_POSITION_STALE("recovery-position-stale", false, false, false),
-	RECOVERY_CLICK_PREEMPTED_BY_ACTION("recovery-click-preempted-by-action", false, false, false),
+	/** The pass was abandoned because the player MOVED mid-pass — movement is the definition of progress. */
+	RECOVERY_POSITION_STALE("recovery-position-stale", true, false, false),
+	/** Yielded because a door open / walker-owned movement is still in flight. */
+	RECOVERY_CLICK_PREEMPTED_BY_ACTION("recovery-click-preempted-by-action", true, false, false),
+	/** Genuinely walled: this is the "we are stuck" signal the retry budget exists for. */
 	RECOVERY_TARGET_WALLED_REPLAN("recovery-target-walled-replan", false, false, false),
 	RECOVERY_TARGET_WALLED_WAITING("recovery-target-walled-waiting", false, false, false),
 
 	// ---- door edge resolution around a recent attempt ----
+	// "Resolved" means the door opened. Only the waiting-retry pair is a failure to advance.
 
-	DOOR_EDGE_RESOLVED_FAST_CLICK("door-edge-resolved-fast-click", false, false, false),
-	DOOR_EDGE_RESOLVED_AFTER_WAIT("door-edge-resolved-after-wait", false, false, false),
-	DOOR_EDGE_RESOLVED_AFTER_NEARBY_WAIT("door-edge-resolved-after-nearby-wait", false, false, false),
+	DOOR_EDGE_RESOLVED_FAST_CLICK("door-edge-resolved-fast-click", true, false, false),
+	DOOR_EDGE_RESOLVED_AFTER_WAIT("door-edge-resolved-after-wait", true, false, false),
+	DOOR_EDGE_RESOLVED_AFTER_NEARBY_WAIT("door-edge-resolved-after-nearby-wait", true, false, false),
 	DOOR_EDGE_WAITING_RETRY("door-edge-waiting-retry", false, false, false),
 	DOOR_EDGE_NEARBY_WAITING_RETRY("door-edge-nearby-waiting-retry", false, false, false),
 
 	// ---- yields while one of our own actions is still in flight ----
+	// Waiting for an action we issued is not a failed attempt. Charging these meant three settle
+	// windows at one ordinary door could exhaust the budget and abort the walk.
 
 	INTERIM_IN_FLIGHT("interim-in-flight", true, true, false),
 	RECOVERY_MOVE_IN_FLIGHT("recovery-move-in-flight", true, true, false),
-	ROUTE_MOVE_IN_FLIGHT("route-move-in-flight", false, true, false),
-	DOOR_SETTLING_YIELD("door-settling-yield", false, false, false),
-	DOOR_TRAVERSAL_PENDING_YIELD("door-traversal-pending-yield", false, false, false),
-	TRANSPORT_SETTLING_YIELD("transport-settling-yield", false, false, false),
+	ROUTE_MOVE_IN_FLIGHT("route-move-in-flight", true, true, false),
+	DOOR_SETTLING_YIELD("door-settling-yield", true, false, false),
+	DOOR_TRAVERSAL_PENDING_YIELD("door-traversal-pending-yield", true, false, false),
+	TRANSPORT_SETTLING_YIELD("transport-settling-yield", true, false, false),
 
 	// ---- route geometry / fold handling ----
 
