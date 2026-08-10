@@ -419,6 +419,10 @@ public class Rs2Walker {
         lastExemptRunLocation = null;
         reachableBfsCalls.set(0);
         reachableBfsMillis.set(0L);
+        // Seed rather than zero: a fresh walk has not moved yet, and an unknown tile-change time
+        // credits the pose flag, which would hand a spinning player the benefit of the doubt for the
+        // whole first stall window.
+        routeState.lastTileChangeAtMs = System.currentTimeMillis();
         // The interim target belongs to the PREVIOUS route's click; letting it survive into a fresh walk
         // makes the new walk yield to (and report progress against) a stale objective — repeatedly seen as
         // interim=<old goal> camping at Clock Tower when the script restarts walks every ~40s.
@@ -11925,7 +11929,11 @@ public class Rs2Walker {
         boolean anim = Rs2Player.isAnimating();
         if (now != null && now.equals(routeState.lastPosition)) {
             boolean nearPath = isNearPath();
-            boolean poseWalkingNearPath = Rs2Player.isMoving() && nearPath;
+            long sinceTileChangeMs = routeState.lastTileChangeAtMs > 0L
+                    ? System.currentTimeMillis() - routeState.lastTileChangeAtMs
+                    : -1L;
+            boolean poseWalkingNearPath = Rs2WalkerStallPolicy.poseCountsAsProgress(
+                    Rs2Player.isMoving(), nearPath, sinceTileChangeMs, POSE_PROGRESS_TILE_CHANGE_WINDOW_MS);
             boolean animProgressNearPath = anim && !routeState.prevAnimatingForStuckCheck && nearPath;
             if (animProgressNearPath || poseWalkingNearPath) {
                 routeState.lastMovedTimeMs = System.currentTimeMillis();
@@ -11934,6 +11942,7 @@ public class Rs2Walker {
                 routeState.stuckCount++;
             }
         } else {
+            routeState.lastTileChangeAtMs = System.currentTimeMillis();
             routeState.stuckCount = 0;
             routeState.lastMovedTimeMs = System.currentTimeMillis();
         }
@@ -11955,6 +11964,12 @@ public class Rs2Walker {
      * segments sometimes delay tile deltas without {@link Rs2Player#isMoving()} flipping immediately.
      */
     private static final long MINIMAP_CLICK_STALL_GRACE_MS = 12_000L;
+    /**
+     * How recently the player must have actually changed tile for the pose-based movement flag to
+     * count as route progress. A walking step is ~600ms and a running one ~300ms, so a healthy walk
+     * refreshes this many times over; a player turning on the spot never does.
+     */
+    private static final long POSE_PROGRESS_TILE_CHANGE_WINDOW_MS = 2_500L;
 
     private static boolean interactingActorNearWalkablePath() {
         Rs2ActiveRouteStatus routeStatus = Rs2PathApi.getActiveRouteStatus();

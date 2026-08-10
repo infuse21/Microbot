@@ -99,6 +99,15 @@ public final class WalkerRouteState {
     public volatile WorldPoint lastPosition = null;
     /** Wall-clock ms the player last changed tiles (or a click granted grace). */
     public volatile long lastMovedTimeMs = 0L;
+    /**
+     * Wall-clock ms the player last actually CHANGED TILE — no click grace, no pose, no animation.
+     *
+     * <p>Distinct from {@link #lastMovedTimeMs}, which several places refresh to buy grace and which
+     * therefore cannot answer "is the player really covering ground". This one only ever moves when
+     * the observed tile differs from the previous sample, which is what makes it a usable check on
+     * the pose-based movement flag.
+     */
+    public volatile long lastTileChangeAtMs = 0L;
     /** Rising-edge detection for animation progress without tile delta in the stuck check. */
     public volatile boolean prevAnimatingForStuckCheck = false;
     /** Wall-clock ms of the last walled-recovery replan (cooldown selects replan vs wait). */
