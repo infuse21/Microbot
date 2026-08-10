@@ -2047,13 +2047,6 @@ public class Rs2Walker {
             }
 
             boolean shouldIssueActiveRouteIdleNudge = shouldIssueActiveRouteIdleNudge();
-            long nowTickGraceMs = System.currentTimeMillis();
-            if (lastAttemptedMinimapClickOk && lastAttemptedMinimapClickAtMs > 0L
-                    && !shouldIssueActiveRouteIdleNudge
-                    && nowTickGraceMs - lastAttemptedMinimapClickAtMs < MINIMAP_CLICK_STALL_GRACE_MS) {
-                routeState.lastMovedTimeMs = nowTickGraceMs;
-            }
-
             checkIfStuck();
             if (walkCancelledDiag(target, "processWalk:after-stuck-check", processWalkTail)) {
                 return WalkerState.EXIT;
@@ -11882,18 +11875,26 @@ public class Rs2Walker {
     // Base stall threshold. See stallThresholdMs() for activity-aware scaling.
     // RuneLite exposes no real-time ping, so we skip pure latency scaling and rely on
     // observable activity states that also correlate with legitimately-stuck players.
-    private static final long STALL_BASE_MS = 12_000;
-    private static final double STALL_COMBAT_MULTIPLIER = 2.0;
-    private static final double STALL_ANIMATING_MULTIPLIER = 1.5;
-    private static final double STALL_MOVING_MULTIPLIER = 1.35;
-    /** While a sticky minimap interim waypoint is active, path segments can exceed base stall easily. */
-    private static final double STALL_INTERIM_MINIMAP_MULTIPLIER = 1.75;
-    private static final double STALL_INTERACTING_MULTIPLIER = 1.5;
+    //
+    // Held at 12s deliberately. The longest LEGITIMATE stationary stretch measured across four live
+    // farm runs is ~7.1s, during a transport handoff — the player is standing still while a ship or
+    // teleport resolves and nothing is wrong. 12s keeps roughly five seconds of margin over that.
+    // Cutting the base is the obvious way to make recovery snappier and the wrong one: it trades a
+    // slow recovery for a walker that interrupts its own transports.
+    static final long STALL_BASE_MS = 12_000;
+    static final double STALL_COMBAT_MULTIPLIER = 2.0;
+    static final double STALL_ANIMATING_MULTIPLIER = 1.5;
+    static final double STALL_MOVING_MULTIPLIER = 1.35;
     /**
-     * After a successful minimap walk click, refresh the stall clock this long — blocked tiles / long
-     * segments sometimes delay tile deltas without {@link Rs2Player#isMoving()} flipping immediately.
+     * A sticky interim waypoint used to buy a 1.75x threshold, on the reasoning that a long segment
+     * can outlast the base stall. It cannot: while the player is walking toward the interim, every
+     * tile change refreshes the clock. The multiplier only ever bound the case where the player is
+     * STATIONARY with an interim live — and the idle nudge already rescues that within ~1-2s, long
+     * before any stall threshold is in sight. Kept above 1.0 for the tick or two between issuing a
+     * click and the first step.
      */
-    private static final long MINIMAP_CLICK_STALL_GRACE_MS = 12_000L;
+    static final double STALL_INTERIM_MINIMAP_MULTIPLIER = 1.25;
+    static final double STALL_INTERACTING_MULTIPLIER = 1.5;
     /**
      * How recently the player must have actually changed tile for the pose-based movement flag to
      * count as route progress. A walking step is ~600ms and a running one ~300ms, so a healthy walk

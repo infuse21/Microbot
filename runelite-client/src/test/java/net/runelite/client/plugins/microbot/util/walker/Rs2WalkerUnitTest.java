@@ -1,4 +1,5 @@
 package net.runelite.client.plugins.microbot.util.walker;
+import net.runelite.client.plugins.microbot.util.walker.stall.Rs2WalkerStallPolicy;
 import net.runelite.client.plugins.microbot.util.walker.geometry.WalkerPathGeometry;
 import net.runelite.client.plugins.microbot.util.walker.obstacle.Rs2ObstacleHandler;
 import net.runelite.client.plugins.microbot.util.walker.recovery.RouteRecovery;
@@ -985,6 +986,40 @@ public class Rs2WalkerUnitTest {
 
     // The partial-retry budget classification moved to WalkExit; its cases, including this
     // underground-goal regression, now live in WalkExitTest as explicit sets.
+
+    /**
+     * How long the walker will actually tolerate a motionless player before recovering.
+     *
+     * <p>Pinned as wall-clock seconds rather than as multipliers, because the multipliers are not the
+     * thing anyone cares about — "how long does it sit there" is. It used to be up to 36s: a flat 12s
+     * grace after every successful click, refreshed each pass, and then a 12s base scaled as far as
+     * 2x. The grace is gone (tile changes already refresh the clock, so it only ever bound the case
+     * where the player was NOT moving) and the interim multiplier is 1.25 rather than 1.75.
+     *
+     * <p>The base stays 12s on purpose: the longest legitimate motionless stretch measured across
+     * four live farm runs is ~7.1s, waiting out a transport handoff. Cutting the base is how you get
+     * a walker that interrupts its own ships.
+     */
+    @Test
+    public void stallBudgetStaysWithinItsMeasuredEnvelope() {
+        long plain = Rs2WalkerStallPolicy.computeThresholdMs(Rs2Walker.STALL_BASE_MS,
+                Rs2Walker.STALL_COMBAT_MULTIPLIER, Rs2Walker.STALL_ANIMATING_MULTIPLIER,
+                Rs2Walker.STALL_MOVING_MULTIPLIER, Rs2Walker.STALL_INTERIM_MINIMAP_MULTIPLIER,
+                Rs2Walker.STALL_INTERACTING_MULTIPLIER, false, false, false, false, false);
+        long withInterim = Rs2WalkerStallPolicy.computeThresholdMs(Rs2Walker.STALL_BASE_MS,
+                Rs2Walker.STALL_COMBAT_MULTIPLIER, Rs2Walker.STALL_ANIMATING_MULTIPLIER,
+                Rs2Walker.STALL_MOVING_MULTIPLIER, Rs2Walker.STALL_INTERIM_MINIMAP_MULTIPLIER,
+                Rs2Walker.STALL_INTERACTING_MULTIPLIER, false, false, false, true, false);
+        long worst = Rs2WalkerStallPolicy.computeThresholdMs(Rs2Walker.STALL_BASE_MS,
+                Rs2Walker.STALL_COMBAT_MULTIPLIER, Rs2Walker.STALL_ANIMATING_MULTIPLIER,
+                Rs2Walker.STALL_MOVING_MULTIPLIER, Rs2Walker.STALL_INTERIM_MINIMAP_MULTIPLIER,
+                Rs2Walker.STALL_INTERACTING_MULTIPLIER, true, true, true, true, true);
+
+        assertEquals("plain stall budget", 12_000L, plain);
+        assertEquals("the common case: a sticky interim is live for most of a walk", 15_000L, withInterim);
+        assertEquals("worst case, everything applying at once", 24_000L, worst);
+        assertTrue("must stay clear of the ~7.1s transport handoff measured live", plain >= 10_000L);
+    }
 
     /**
      * Off-path recovery must be able to step BACKWARD onto the route. When the player is pushed off
