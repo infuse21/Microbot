@@ -12,11 +12,12 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 /**
- * Characterization of {@link WalkExit} against the string predicates it replaced.
+ * The meaning of every walk-loop exit reason, held as data.
  *
- * <p>This test exists to make the {@code String exitReason} → enum refactor <em>provably inert</em>.
- * For every constant it asserts that the enum's three flags agree with the legacy predicates
- * evaluated on that constant's wire name. Green means the refactor changed no behaviour.
+ * <p>This began as a characterization against the string predicates {@link WalkExit} replaced, which
+ * is what made that refactor provably inert. Those predicates have now been deleted and their
+ * classification lives here instead: three explicit sets, checked exhaustively against every
+ * constant, so a reason cannot change meaning — or be added without one — unnoticed.
  *
  * <p>When a classification is deliberately corrected, the expectation moves <em>here</em>, and the
  * diff to this file is the record of exactly what changed — which is precisely what the string
@@ -25,14 +26,6 @@ import static org.junit.Assert.assertTrue;
  */
 public class WalkExitTest
 {
-	/** Detail used when exercising the parameterized reason; the legacy form always had a suffix. */
-	private static final String OFF_PATH_DETAIL = "recent-click";
-
-	private static String legacyWireName(WalkExit exit)
-	{
-		return exit == WalkExit.OFF_PATH_DEFERRED ? exit.wireName(OFF_PATH_DETAIL) : exit.wireName();
-	}
-
 	/**
 	 * The fourteen reasons whose route-progress classification was deliberately corrected once the
 	 * enum made the set enumerable. Every one of them means the walker either just advanced the
@@ -65,32 +58,72 @@ public class WalkExitTest
 		WalkExit.RECOVERY_POSITION_STALE));
 
 	/**
-	 * Pins the correction: the enum must differ from the legacy predicate on exactly the reasons in
-	 * {@link #RECLASSIFIED_AS_PROGRESS}, and agree with it everywhere else. A drift in either
-	 * direction — an unlisted reason quietly changing meaning, or a listed one silently reverting —
-	 * fails here.
+	 * The full progress classification, as data.
+	 *
+	 * <p>This started as a comparison against the string predicates the enum replaced. Those have now
+	 * been deleted, so the historical baseline lives here instead: every reason is either listed as
+	 * progress or it is not, and a constant that changes side has to change this list too.
 	 */
+	private static final Set<WalkExit> PROGRESS = new HashSet<>(Arrays.asList(
+		// an obstacle handler acted
+		WalkExit.DOOR_HANDLED,
+		WalkExit.DOOR_HANDLED_BEFORE_MINIMAP_CLICK,
+		WalkExit.DOOR_HANDLED_DURING_INTERIM,
+		WalkExit.DOOR_HANDLED_LOCAL_REACHABILITY,
+		WalkExit.DOOR_HANDLED_LOCAL_REACHABILITY_RAW_SCAN,
+		WalkExit.DOOR_HANDLED_NEARBY_ROUTE_DOOR,
+		WalkExit.DOOR_HANDLED_PATH_ADJ_SCAN,
+		WalkExit.PATH_BLOCKER_HANDLED,
+		WalkExit.ROCKFALL_HANDLED,
+		WalkExit.TRANSPORT_HANDLED,
+		WalkExit.CURRENT_TILE_TRANSPORT_HANDLED,
+		WalkExit.POST_CLICK_CURRENT_TILE_TRANSPORT_HANDLED,
+		WalkExit.RAW_PATH_SCENE_OBJECT_HANDLED,
+		WalkExit.POST_CLICK_RAW_PATH_SCENE_OBJECT_HANDLED,
+		WalkExit.ROUTE_FOLD_CONTINUATION_CLICK,
+		// recovery resolved the blocked frontier, or issued movement
+		WalkExit.FRONTIER_OBSTACLE_HANDLED,
+		WalkExit.TRANSPORT_HANDLED_LOCAL_REACHABILITY,
+		WalkExit.LOCAL_RECOVERY_CLICK,
+		WalkExit.DOOR_SUPPRESSED_APPROACH_CLICK,
+		WalkExit.RECENT_DOOR_EDGE_NUDGE,
+		WalkExit.RECOVERY_POSITION_STALE,
+		// the door opened
+		WalkExit.DOOR_EDGE_RESOLVED_FAST_CLICK,
+		WalkExit.DOOR_EDGE_RESOLVED_AFTER_WAIT,
+		WalkExit.DOOR_EDGE_RESOLVED_AFTER_NEARBY_WAIT,
+		// waiting on an action we issued
+		WalkExit.INTERIM_IN_FLIGHT_ROUTE,
+		WalkExit.INTERIM_IN_FLIGHT_RECOVERY,
+		WalkExit.INTERIM_IN_FLIGHT_CLICK,
+		WalkExit.RECOVERY_MOVE_IN_FLIGHT,
+		WalkExit.ROUTE_MOVE_IN_FLIGHT,
+		WalkExit.DOOR_SETTLING_YIELD,
+		WalkExit.DOOR_TRAVERSAL_PENDING_YIELD,
+		WalkExit.TRANSPORT_SETTLING_YIELD,
+		WalkExit.RECOVERY_CLICK_PREEMPTED_BY_ACTION));
+
 	@Test
-	@SuppressWarnings("deprecation")
-	public void progressClassificationDivergesFromLegacyExactlyWhereIntended()
+	public void progressClassificationIsExactlyThisSet()
 	{
 		for (WalkExit exit : WalkExit.values())
 		{
-			String wire = legacyWireName(exit);
-			boolean legacy = Rs2Walker.isRouteProgressExit(wire);
-			if (RECLASSIFIED_AS_PROGRESS.contains(exit))
-			{
-				assertFalse(exit.name() + " is listed as reclassified but the legacy predicate already "
-					+ "called it progress — remove it from the list", legacy);
-				assertTrue(exit.name() + " was reclassified as route progress and must report it",
-					exit.isProgress());
-			}
-			else
-			{
-				assertEquals(exit.name() + " (\"" + wire + "\") changed its route-progress meaning "
-						+ "without being listed as a deliberate reclassification",
-					legacy, exit.isProgress());
-			}
+			assertEquals(exit.name() + " changed its route-progress meaning; if that is deliberate, "
+					+ "move it in PROGRESS and say why in the commit",
+				PROGRESS.contains(exit), exit.isProgress());
+		}
+	}
+
+	/** Every reason listed as reclassified must in fact be progress; the list documents the change. */
+	@Test
+	public void theReclassifiedReasonsAreAllProgress()
+	{
+		for (WalkExit exit : RECLASSIFIED_AS_PROGRESS)
+		{
+			assertTrue(exit.name() + " was reclassified as route progress and must report it",
+				exit.isProgress());
+			assertTrue(exit.name() + " must also appear in the full PROGRESS set",
+				PROGRESS.contains(exit));
 		}
 	}
 
@@ -119,27 +152,45 @@ public class WalkExitTest
 		}
 	}
 
+	/** Benign yields that refund their own tail charge, so long waits cannot exhaust the cap. */
+	private static final Set<WalkExit> TAIL_EXEMPT = new HashSet<>(Arrays.asList(
+		WalkExit.INTERIM_IN_FLIGHT_ROUTE,
+		WalkExit.INTERIM_IN_FLIGHT_RECOVERY,
+		WalkExit.INTERIM_IN_FLIGHT_CLICK,
+		WalkExit.RECOVERY_MOVE_IN_FLIGHT,
+		WalkExit.ROUTE_MOVE_IN_FLIGHT,
+		WalkExit.ROUTE_FOLD_CONTINUATION_CLICK,
+		WalkExit.OFF_PATH_DEFERRED));
+
+	/** Exits that owe the post-door canvas nudge and its minimap hold-off. */
+	private static final Set<WalkExit> DOOR_LIKE = new HashSet<>(Arrays.asList(
+		WalkExit.DOOR_HANDLED,
+		WalkExit.DOOR_HANDLED_BEFORE_MINIMAP_CLICK,
+		WalkExit.DOOR_HANDLED_DURING_INTERIM,
+		WalkExit.DOOR_HANDLED_LOCAL_REACHABILITY,
+		WalkExit.DOOR_HANDLED_LOCAL_REACHABILITY_RAW_SCAN,
+		WalkExit.DOOR_HANDLED_NEARBY_ROUTE_DOOR,
+		WalkExit.DOOR_HANDLED_PATH_ADJ_SCAN,
+		WalkExit.RAW_PATH_SCENE_OBJECT_HANDLED,
+		WalkExit.POST_CLICK_RAW_PATH_SCENE_OBJECT_HANDLED));
+
 	@Test
-	@SuppressWarnings("deprecation")
-	public void tailExemptionMatchesTheLegacyPredicate()
+	public void tailExemptionIsExactlyThisSet()
 	{
 		for (WalkExit exit : WalkExit.values())
 		{
-			String wire = legacyWireName(exit);
-			assertEquals(exit.name() + " (\"" + wire + "\") changed its tail-exemption meaning",
-				Rs2Walker.isTailExemptExit(wire), exit.isTailExempt());
+			assertEquals(exit.name() + " changed its tail-exemption meaning",
+				TAIL_EXEMPT.contains(exit), exit.isTailExempt());
 		}
 	}
 
 	@Test
-	@SuppressWarnings("deprecation")
-	public void doorLikeClassificationMatchesTheLegacyPredicate()
+	public void doorLikeClassificationIsExactlyThisSet()
 	{
 		for (WalkExit exit : WalkExit.values())
 		{
-			String wire = legacyWireName(exit);
-			assertEquals(exit.name() + " (\"" + wire + "\") changed its door-like meaning",
-				Rs2Walker.shouldCanvasNudgeAfterDoorLikeExit(wire), exit.isDoorLike());
+			assertEquals(exit.name() + " changed its door-like meaning",
+				DOOR_LIKE.contains(exit), exit.isDoorLike());
 		}
 	}
 
@@ -184,7 +235,9 @@ public class WalkExitTest
 			"door-edge-resolved-after-nearby-wait",
 			"door-edge-waiting-retry",
 			"door-edge-nearby-waiting-retry",
-			"interim-in-flight",
+			"interim-in-flight:route",
+			"interim-in-flight:recovery",
+			"interim-in-flight:click",
 			"recovery-move-in-flight",
 			"route-move-in-flight",
 			"door-settling-yield",

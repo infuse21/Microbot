@@ -85,7 +85,17 @@ public enum WalkExit
 	// Waiting for an action we issued is not a failed attempt. Charging these meant three settle
 	// windows at one ordinary door could exhaust the budget and abort the walk.
 
-	INTERIM_IN_FLIGHT("interim-in-flight", true, true, false),
+	/**
+	 * Yielded to a live interim waypoint. Three separate places in the loop do this, and until they
+	 * were told apart a log line reading {@code interim-in-flight} could mean any of them — which
+	 * twice made a real stall undiagnosable from the log. The suffix names the site; the shared
+	 * {@code interim-in-flight} prefix keeps one grep matching all three.
+	 */
+	INTERIM_IN_FLIGHT_ROUTE("interim-in-flight:route", true, true, false),
+	/** The blocked-frontier recovery deferred to an interim it had already clicked. */
+	INTERIM_IN_FLIGHT_RECOVERY("interim-in-flight:recovery", true, true, false),
+	/** Click selection found the player still travelling to the previous interim. */
+	INTERIM_IN_FLIGHT_CLICK("interim-in-flight:click", true, true, false),
 	RECOVERY_MOVE_IN_FLIGHT("recovery-move-in-flight", true, true, false),
 	ROUTE_MOVE_IN_FLIGHT("route-move-in-flight", true, true, false),
 	DOOR_SETTLING_YIELD("door-settling-yield", true, false, false),

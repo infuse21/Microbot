@@ -39,7 +39,7 @@ public class TailDecisionTest
 	public void completeRouteExemptsBenignYieldsFromTheIterationCap()
 	{
 		assertEquals(TailAction.CONTINUE_TAIL_EXEMPT,
-			TailDecision.decide(false, false, WalkExit.INTERIM_IN_FLIGHT, 0, MAX));
+			TailDecision.decide(false, false, WalkExit.INTERIM_IN_FLIGHT_ROUTE, 0, MAX));
 		assertEquals(TailAction.CONTINUE_TAIL_EXEMPT,
 			TailDecision.decide(false, false, WalkExit.OFF_PATH_DEFERRED, 0, MAX));
 	}

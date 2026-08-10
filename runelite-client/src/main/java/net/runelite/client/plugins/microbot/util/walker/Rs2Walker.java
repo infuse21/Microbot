@@ -783,23 +783,6 @@ public class Rs2Walker {
 
     /** Door / gate from main path loop vs {@link #handleNearbyRawPathSceneObjects} raw-path scan (same nudge UX). */
     /**
-     * @deprecated superseded by {@link WalkExit#isDoorLike()}. Retained only so
-     * {@code WalkExitTest} can prove the enum classifies every reason exactly as this did.
-     * Delete once that characterization is no longer needed.
-     */
-    @Deprecated
-    static boolean shouldCanvasNudgeAfterDoorLikeExit(String exitReason) {
-        if (exitReason == null) {
-            return false;
-        }
-        if (exitReason.startsWith("door-handled")) {
-            return true;
-        }
-        return "raw-path-scene-object-handled".equals(exitReason)
-                || "post-click-raw-path-scene-object-handled".equals(exitReason);
-    }
-
-    /**
      * Exit reasons meaning the path loop ended because the walker <em>did</em> something that
      * advances the route — opened a door, took a transport, cleared a blocker — or because
      * movement is already in flight. These are progress, not a failed attempt.
@@ -811,47 +794,6 @@ public class Rs2Walker {
      * walk, so an ordinary door could exhaust it ~100 tiles into a working route and report
      * UNREACHABLE while the player was still advancing. See {@code movement.md} #25.
      */
-    @Deprecated
-    static boolean isRouteProgressExit(String exitReason) {
-        if (exitReason == null) {
-            return false;
-        }
-        if (exitReason.startsWith("door-handled")) {
-            return true;
-        }
-        switch (exitReason) {
-            case "raw-path-scene-object-handled":
-            case "post-click-raw-path-scene-object-handled":
-            case "current-tile-transport-handled":
-            case "post-click-current-tile-transport-handled":
-            case "transport-handled":
-            case "rockfall-handled":
-            case "path-blocker-handled":
-            case "interim-in-flight":
-            case "recovery-move-in-flight":
-            case "route-fold-continuation-click":
-                return true;
-            default:
-                return false;
-        }
-    }
-
-    /**
-     * The tail-exemption condition exactly as it was written inline in {@code processWalk}'s
-     * epilogue before {@link WalkExit} existed.
-     *
-     * @deprecated superseded by {@link WalkExit#isTailExempt()}. Retained only so
-     * {@code WalkExitTest} can prove the enum classifies every reason exactly as this did.
-     */
-    @Deprecated
-    static boolean isTailExemptExit(String exitReason) {
-        return "interim-in-flight".equals(exitReason)
-                || "recovery-move-in-flight".equals(exitReason)
-                || "route-move-in-flight".equals(exitReason)
-                || "route-fold-continuation-click".equals(exitReason)
-                || isOffPathRecalcDeferredExit(exitReason);
-    }
-
     /** @return true only when a canvas click was actually issued, so the caller can size its minimap hold-off. */
     private static boolean maybeCanvasNudgeAfterDoor(WorldPoint goal, int configuredDistance, List<WorldPoint> path) {
         if (goal == null || path == null || path.isEmpty()) {
@@ -2279,7 +2221,7 @@ public class Rs2Walker {
                     || activeInterimPlayer == null
                     || activeInterimPlayer.distanceTo(target) > immediateFinishTh)
                     && shouldYieldForActiveRouteInterim(activeInterimPlayer, path, activeInterimNowMs)) {
-                exit = WalkExit.INTERIM_IN_FLIGHT;
+                exit = WalkExit.INTERIM_IN_FLIGHT_ROUTE;
                 WebWalkLog.earlyExit(exit.wireName(offPathDeferDetail),
                         activeInterimPlayer,
                         target,
@@ -2708,7 +2650,7 @@ public class Rs2Walker {
                                 break;
                             }
                             if (shouldYieldForActiveRecoveryInterim(playerLoc, path, System.currentTimeMillis())) {
-                                exit = WalkExit.INTERIM_IN_FLIGHT;
+                                exit = WalkExit.INTERIM_IN_FLIGHT_RECOVERY;
                                 break;
                             }
                             if (tryRecentDoorAttemptEdgeNudge(playerLoc, target, rawPath)) {
@@ -3054,7 +2996,7 @@ public class Rs2Walker {
                                 boolean closeEnoughForNextClick = posAfterWait != null
                                         && interimFinal.distanceTo2D(posAfterWait) <= INTERIM_CLOSE_TILES;
                                 if (!closeEnoughForNextClick && Rs2Player.isMoving()) {
-                                    exit = WalkExit.INTERIM_IN_FLIGHT;
+                                    exit = WalkExit.INTERIM_IN_FLIGHT_CLICK;
                                     walkerDiag("interim-in-flight interim=%s interimDist=%d player=%s moving=true",
                                             interimFinal,
                                             posAfterWait == null ? interimDist : interimFinal.distanceTo2D(posAfterWait),
@@ -11864,18 +11806,6 @@ public class Rs2Walker {
         }
         return (int) Math.max(OFF_PATH_RECALC_DEFER_WAIT_MIN_MS,
                 Math.min(OFF_PATH_RECALC_DEFER_WAIT_MAX_MS, remainingMs));
-    }
-
-    static boolean isOffPathRecalcDeferredExit(String exitReason) {
-        return exitReason != null && exitReason.startsWith("off-path-deferred:");
-    }
-
-    @Deprecated
-    static String offPathDeferredReasonFromExit(String exitReason) {
-        if (!isOffPathRecalcDeferredExit(exitReason)) {
-            return "";
-        }
-        return exitReason.substring("off-path-deferred:".length());
     }
 
     private static boolean isRecentEvent(long nowMs, long eventAtMs, long graceMs) {
