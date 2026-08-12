@@ -42,6 +42,48 @@ public class FrontierDecisionTest
 		return map;
 	}
 
+	// ---- forwardScanStartIndex ------------------------------------------------------------------
+	//
+	// THE STRONGHOLD GATE BOUNCE (2026-08-12). A moves-you gate carried the player one raw tile
+	// through; the next smoothed point sat nine tiles out, so the closest smoothed index stayed on
+	// the near-side start tile — which now read unreachable through the auto-closed gate. Recovery
+	// chased the spent tile, clicked the same gate from the far side, and bounced every ~6s.
+
+	/** Player one raw tile past the start: the anchor must advance off the spent tile. */
+	@Test
+	public void anchorAdvancesPastRouteTilesTheRawPositionHasPassed()
+	{
+		int[] smoothedToRaw = {0, 9, 18, 27};
+		assertEquals(1, FrontierDecision.forwardScanStartIndex(smoothedToRaw, 0, 1));
+		// Deeper in: raw position 19 has spent indices 0..2.
+		assertEquals(3, FrontierDecision.forwardScanStartIndex(smoothedToRaw, 0, 19));
+	}
+
+	/** Standing at (or before) the start tile's raw position: nothing is spent. */
+	@Test
+	public void anchorHoldsWhenTheRawPositionHasNotPassedTheStart()
+	{
+		int[] smoothedToRaw = {0, 9, 18};
+		assertEquals(0, FrontierDecision.forwardScanStartIndex(smoothedToRaw, 0, 0));
+		assertEquals(0, FrontierDecision.forwardScanStartIndex(smoothedToRaw, 0, -1));
+	}
+
+	/** No evidence of "behind" must not read as "spent": an unmapped entry stops the advance. */
+	@Test
+	public void unmappedEntriesStopTheAdvance()
+	{
+		int[] smoothedToRaw = {0, -1, 18};
+		assertEquals(1, FrontierDecision.forwardScanStartIndex(smoothedToRaw, 0, 19));
+	}
+
+	/** Everything behind: the anchor clamps to the last index rather than running off the route. */
+	@Test
+	public void anchorClampsToTheLastIndex()
+	{
+		int[] smoothedToRaw = {0, 9, 18};
+		assertEquals(2, FrontierDecision.forwardScanStartIndex(smoothedToRaw, 0, 999));
+	}
+
 	// ---- earliestBlockedIndex -------------------------------------------------------------------
 
 	/**

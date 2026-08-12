@@ -123,4 +123,76 @@ public class TailDecisionTest
 		assertTrue(TailDecision.isExemptRunTooLong(25, 24));
 		assertFalse("a disabled cap must not fire", TailDecision.isExemptRunTooLong(1_000, 0));
 	}
+
+	// --- Route stagnation: the oscillation bound -------------------------------------------------
+	//
+	// Seeded from the Tithe Farm incident (2026-08-12): the walker ping-ponged between two tiles for
+	// 4+ minutes. The wall-clock budget (observe-only, sized for whole journeys) and the exempt-run
+	// counter (resets on any movement) both missed it; the signal that never lied was the route
+	// progress index, which sat at 7/10 the entire time.
+
+	private static final long STAGNATION_BUDGET = 60_000L;
+
+	@Test
+	public void recentProgressIsNotStagnation()
+	{
+		assertEquals(TailDecision.StagnationAction.NONE,
+			TailDecision.decideRouteStagnation(100_000L, 100_000L + STAGNATION_BUDGET, STAGNATION_BUDGET, 0, 2));
+	}
+
+	@Test
+	public void noRouteYetIsNotStagnation()
+	{
+		assertEquals(TailDecision.StagnationAction.NONE,
+			TailDecision.decideRouteStagnation(0L, 10_000_000L, STAGNATION_BUDGET, 0, 2));
+	}
+
+	@Test
+	public void aDisabledBudgetNeverFires()
+	{
+		assertEquals(TailDecision.StagnationAction.NONE,
+			TailDecision.decideRouteStagnation(100_000L, 10_000_000L, 0L, 0, 2));
+	}
+
+	/** One millisecond past the budget: replan while replans remain, exhaust when they are spent. */
+	@Test
+	public void stagnationSpendsReplansThenExhausts()
+	{
+		long stale = 100_000L;
+		long now = stale + STAGNATION_BUDGET + 1;
+		assertEquals(TailDecision.StagnationAction.REPLAN,
+			TailDecision.decideRouteStagnation(stale, now, STAGNATION_BUDGET, 0, 2));
+		assertEquals(TailDecision.StagnationAction.REPLAN,
+			TailDecision.decideRouteStagnation(stale, now, STAGNATION_BUDGET, 1, 2));
+		assertEquals(TailDecision.StagnationAction.EXHAUSTED,
+			TailDecision.decideRouteStagnation(stale, now, STAGNATION_BUDGET, 2, 2));
+	}
+
+	// --- Tail re-click suppression ----------------------------------------------------------------
+	//
+	// Seeded from the distance=0 dither (2026-08-12): ~10 re-clicks in 7 seconds on the last tile,
+	// each minimap click quantizing onto a neighbour of the goal while the player was already moving.
+
+	/** Moving inside the band: the click in flight already ends at the goal — leave it alone. */
+	@Test
+	public void movingInsideTheBandSuppressesTheReclick()
+	{
+		assertTrue(TailDecision.suppressTailReclick(true, 0, 5));
+		assertTrue(TailDecision.suppressTailReclick(true, 5, 5));
+	}
+
+	/** Mid-route chaining while moving is how the walker flows; only the tail band suppresses. */
+	@Test
+	public void movingBeyondTheBandStillChains()
+	{
+		assertFalse(TailDecision.suppressTailReclick(true, 6, 5));
+	}
+
+	/** A stationary player near the goal needs the follow-up click — never suppress it. */
+	@Test
+	public void stationaryPlayersAreNeverSuppressed()
+	{
+		assertFalse(TailDecision.suppressTailReclick(false, 0, 5));
+		assertFalse(TailDecision.suppressTailReclick(false, 3, 5));
+	}
 }

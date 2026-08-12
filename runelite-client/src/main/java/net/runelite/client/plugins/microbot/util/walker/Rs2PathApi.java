@@ -1756,6 +1756,25 @@ public final class Rs2PathApi
 		}
 	}
 
+	/**
+	 * Remove a learned block again. For blocks whose cause is condition-scoped rather than stable —
+	 * a door that refused to open for game-state reasons — the walker unlearns them at the next walk
+	 * session start so a later walk under changed conditions (the Tithe Farm seed gate with seeds in
+	 * the inventory) gets the door back.
+	 */
+	public static boolean unlearnBlockedEdge(WorldPoint origin, WorldPoint destination, String reason)
+	{
+		PathfinderConfig config = getPathfinderConfig();
+		if (config == null)
+		{
+			return false;
+		}
+		synchronized (getPathfinderMutex())
+		{
+			return config.unlearnBlockedEdge(origin, destination, reason);
+		}
+	}
+
 	/** Whether runtime recovery policy should avoid this dangerous-NPC adjacency tile. */
 	public static boolean shouldAvoidDangerousTile(WorldPoint tile)
 	{

@@ -86,6 +86,62 @@ public final class TailDecision
 			: TailAction.CONTINUE;
 	}
 
+	/** What to do about a route whose progress index has stopped advancing. */
+	public enum StagnationAction
+	{
+		/** Progress is recent (or there is no route yet): nothing to do. */
+		NONE,
+		/** Stagnant: spend one stagnation replan and restart the clock. */
+		REPLAN,
+		/** Stagnant with the replan budget spent: end the walk honestly. */
+		EXHAUSTED
+	}
+
+	/**
+	 * The oscillation bound the other two budgets cannot provide. The wall-clock budget is sized for
+	 * whole journeys (minutes), and the exempt-run counter resets on any movement — so a walk that
+	 * ping-pongs between two tiles forever (measured: 4+ minutes of door/recovery oscillation at the
+	 * Tithe Farm door until a human cancelled it) trips neither. Movement is not progress; the route
+	 * progress index is. When the index has not advanced for a full budget, the route is not working:
+	 * replan it, and when replanning has been given its chances, call the goal unreachable instead of
+	 * letting the loop run unbounded.
+	 *
+	 * <p>The budget must dwarf every legitimate index hold: ranged door waits (≤8s), transport
+	 * settles (~2s), off-path deferrals (~10s) — 60s is over six times the largest.
+	 *
+	 * @param routeProgressAdvancedAtMs when the stabilized route index last advanced (0 = no route yet;
+	 *                                  the caller restarts this clock when it spends a REPLAN, so each
+	 *                                  replan gets a full budget even when the new route is identical)
+	 */
+	public static StagnationAction decideRouteStagnation(long routeProgressAdvancedAtMs,
+														 long nowMs,
+														 long stagnationBudgetMs,
+														 int stagnationReplansSpent,
+														 int maxStagnationReplans)
+	{
+		if (routeProgressAdvancedAtMs <= 0L || stagnationBudgetMs <= 0L
+			|| nowMs - routeProgressAdvancedAtMs <= stagnationBudgetMs)
+		{
+			return StagnationAction.NONE;
+		}
+		return stagnationReplansSpent < maxStagnationReplans
+			? StagnationAction.REPLAN
+			: StagnationAction.EXHAUSTED;
+	}
+
+	/**
+	 * Whether a continuation re-click at the route tail is churn rather than flow. Mid-route,
+	 * clicking the next stretch while still moving is exactly how the walker chains minimap clicks —
+	 * that must stay. But inside the final band the click in flight already ends at (or beside) the
+	 * goal, and re-clicking every pass fights it: measured as ~10 clicks in 7 seconds on the last
+	 * tile, each minimap click quantizing onto a neighbour of the goal and restarting the dance.
+	 * Let the in-flight click land; a stationary miss gets one precise follow-up instead.
+	 */
+	public static boolean suppressTailReclick(boolean playerMoving, int distanceToGoal, int tailBandTiles)
+	{
+		return playerMoving && distanceToGoal >= 0 && distanceToGoal <= tailBandTiles;
+	}
+
 	/**
 	 * Whether the walk has run past its wall-clock budget.
 	 *

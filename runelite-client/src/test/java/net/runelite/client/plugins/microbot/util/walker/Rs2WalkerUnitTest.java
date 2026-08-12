@@ -2570,4 +2570,41 @@ public class Rs2WalkerUnitTest {
         assertNull(Rs2Walker.selectPostDoorRouteTarget(route, p, route.get(1), p,
                 new java.util.HashMap<>(), 13));
     }
+
+    // ---- zoom-aware minimap reach --------------------------------------------------------------------
+    //
+    // The minimap shows 20*4/zoom tiles of radius. Reach follows what the USER's zoom makes visible
+    // in BOTH directions: zoomed out, big strides (capped at the reachability BFS horizon — beyond
+    // it a wall between could not be detected); zoomed in, SHORT strides. The first cut of this
+    // floored at the old flat 11, which quietly broke the zoomed-in half: an 11-tile stride on a
+    // minimap showing ~8 tiles of radius selects a point on or past the rim.
+
+    private static final int MIN_REACH = 5;
+    private static final int CAP = 18;
+    private static final int FALLBACK = 11;
+
+    @Test
+    public void zoomAwareReach_zoomedOutStridesFurtherUpToTheBfsHorizon() {
+        assertEquals(18, Rs2Walker.zoomAwareMinimapReach(4.0, MIN_REACH, CAP, FALLBACK)); // default: 20-2 -> cap
+        assertEquals(18, Rs2Walker.zoomAwareMinimapReach(2.0, MIN_REACH, CAP, FALLBACK)); // fully out: 38 -> cap
+    }
+
+    @Test
+    public void zoomAwareReach_zoomedInStridesShorter() {
+        assertEquals(14, Rs2Walker.zoomAwareMinimapReach(5.0, MIN_REACH, CAP, FALLBACK)); // pinned-era zoom: 16-2
+        assertEquals(11, Rs2Walker.zoomAwareMinimapReach(6.0, MIN_REACH, CAP, FALLBACK)); // 13-2
+        // Fully zoomed in the visible radius is ~8: the stride must SHRINK below the old flat 11.
+        assertEquals(8, Rs2Walker.zoomAwareMinimapReach(8.0, MIN_REACH, CAP, FALLBACK));
+    }
+
+    @Test
+    public void zoomAwareReach_extremeZoomStopsAtTheFunctionalFloor() {
+        assertEquals(MIN_REACH, Rs2Walker.zoomAwareMinimapReach(16.0, MIN_REACH, CAP, FALLBACK)); // 5-2=3 -> floor
+    }
+
+    @Test
+    public void zoomAwareReach_degenerateZoomFallsBackToTheFlatReach() {
+        assertEquals(FALLBACK, Rs2Walker.zoomAwareMinimapReach(0.0, MIN_REACH, CAP, FALLBACK));
+        assertEquals(FALLBACK, Rs2Walker.zoomAwareMinimapReach(-1.0, MIN_REACH, CAP, FALLBACK));
+    }
 }

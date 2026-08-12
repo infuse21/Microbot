@@ -25,6 +25,38 @@ public final class FrontierDecision
 	}
 
 	/**
+	 * The recovery scan anchor: the first route index whose raw mapping is at or past the player's
+	 * own raw position. Route tiles mapped BEHIND the player are spent — the walk never needs to
+	 * stand on them again — and recovery must not chase them.
+	 *
+	 * <p>The smoothed closest index cannot express "one raw tile past a door". At the Stronghold of
+	 * Security's paired gates (2026-08-12) a moves-you gate carried the player one raw tile through;
+	 * the next smoothed point was nine tiles out, so the closest smoothed index stayed on the
+	 * near-side start tile, which now read unreachable through the auto-closed gate. Recovery chased
+	 * it, clicked the same gate from the far side, and the gate carried the player straight back —
+	 * a two-sided bounce that repeated every ~6 seconds for five minutes.
+	 *
+	 * <p>Unmapped entries ({@code smoothedToRaw[i] < 0}) stop the advance: no evidence of "behind"
+	 * must not read as "spent".
+	 */
+	public static int forwardScanStartIndex(int[] smoothedToRaw, int startIndex, int playerRawIdx)
+	{
+		if (smoothedToRaw == null || startIndex < 0 || startIndex >= smoothedToRaw.length
+			|| playerRawIdx <= 0)
+		{
+			return startIndex;
+		}
+		int index = startIndex;
+		while (index < smoothedToRaw.length - 1
+			&& smoothedToRaw[index] >= 0
+			&& smoothedToRaw[index] < playerRawIdx)
+		{
+			index++;
+		}
+		return index;
+	}
+
+	/**
 	 * The earliest route tile at or after {@code fromIndex} and before {@code missIndex} that the
 	 * player cannot reach, or {@link #NO_EARLIER_BLOCKED_INDEX}.
 	 *

@@ -93,10 +93,12 @@ public class WalkSessionStateResetTest
 	{
 		routeState.routeProgressIdx = 42;
 		routeState.routeProgressAdvancedAtMs = System.currentTimeMillis();
+		routeState.stagnationReplansSpent = 2;
 
 		Rs2Walker.resetWalkSessionState();
 
 		assertEquals(-1, routeState.routeProgressIdx);
 		assertEquals(0L, routeState.routeProgressAdvancedAtMs);
+		assertEquals("a fresh walk owes a fresh stagnation budget", 0, routeState.stagnationReplansSpent);
 	}
 }

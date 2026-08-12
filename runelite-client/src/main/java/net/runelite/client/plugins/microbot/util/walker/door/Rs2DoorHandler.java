@@ -84,6 +84,57 @@ public final class Rs2DoorHandler {
         return System.currentTimeMillis() + cooldownMs;
     }
 
+    /** Outcome of registering one concluded-but-uncrossed door attempt against an edge. */
+    public enum DoorStrike {
+        /** The sample cannot prove a refusal (player still moving, or the walk was cancelled mid-wait). */
+        NOT_COUNTED,
+        /** Counted; the edge has strikes left. */
+        COUNTED,
+        /** The edge has struck out: session-block it and replan. */
+        STRIKE_OUT
+    }
+
+    /**
+     * Counts attempts that CONCLUDED at the door without crossing it — a click that opened nothing
+     * (action still present), or a cross-click past an apparently open door that moved the player
+     * nowhere. Doors that refuse for game-state reasons (Tithe Farm's seed gate, key doors, favour
+     * gates) produce exactly this signature and nothing else: no dialogue, no traversal, no collision
+     * change. Without a strike-out the walker retries the same edge forever — measured at 4+ minutes
+     * of door/recovery ping-pong on Farm door 27445 before a human cancelled it.
+     * <p>
+     * {@code conclusiveSample} is the caller's evidence gate: the player must be stationary at the
+     * near side when sampled. A moving sample proves only that the approach was still in flight —
+     * the same trap that once blacklisted Wydin's door off a mid-walk position.
+     *
+     * @param strikesByEdge   edge key -> {count, lastStrikeAtMs}; entries older than {@code decayMs} reset
+     * @param conclusiveSample whether the failed attempt ended with the player stationary at the edge
+     */
+    public static DoorStrike registerDoorCrossFailure(Map<String, long[]> strikesByEdge,
+                                                      String edgeKey,
+                                                      boolean conclusiveSample,
+                                                      long nowMs,
+                                                      long decayMs,
+                                                      int strikeLimit) {
+        if (!conclusiveSample || edgeKey == null) {
+            return DoorStrike.NOT_COUNTED;
+        }
+        strikesByEdge.entrySet().removeIf(entry -> nowMs - entry.getValue()[1] > decayMs);
+        long[] entry = strikesByEdge.compute(edgeKey, (k, v) ->
+                v == null ? new long[]{1, nowMs} : new long[]{v[0] + 1, nowMs});
+        if (entry[0] >= strikeLimit) {
+            strikesByEdge.remove(edgeKey);
+            return DoorStrike.STRIKE_OUT;
+        }
+        return DoorStrike.COUNTED;
+    }
+
+    /** A successful crossing forgives the edge's strikes (transient refusals should not accumulate). */
+    public static void clearDoorCrossFailures(Map<String, long[]> strikesByEdge, String edgeKey) {
+        if (edgeKey != null) {
+            strikesByEdge.remove(edgeKey);
+        }
+    }
+
     private static String compactWorldPoint(WorldPoint wp) {
         if (wp == null) {
             return "?";

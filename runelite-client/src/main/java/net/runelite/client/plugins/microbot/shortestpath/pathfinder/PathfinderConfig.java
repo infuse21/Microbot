@@ -892,6 +892,30 @@ public class PathfinderConfig {
         return true;
     }
 
+    /**
+     * Reverse of {@link #learnBlockedEdge}: removes the learned block so the edge is plannable again.
+     * Exists for condition-scoped blocks (a door that refused to open for game-state reasons) that the
+     * walker withdraws at the next walk session start. Static rows from blocked_edges.tsv are not
+     * touched — they were never in {@code learnedBlockedEdgeKeys}, and {@code blockedTransportEdgesPacked}
+     * only drops the key when it was a learned one.
+     */
+    public boolean unlearnBlockedEdge(WorldPoint origin, WorldPoint destination, String reason) {
+        if (origin == null || destination == null) {
+            return false;
+        }
+        long key = transportEdgeKey(
+                WorldPointUtil.packWorldPoint(origin),
+                WorldPointUtil.packWorldPoint(destination));
+        if (!learnedBlockedEdgeKeys.remove(key)) {
+            return false;
+        }
+        if (!STATIC_BLOCKED_EDGES_PACKED.contains(key)) {
+            blockedTransportEdgesPacked.remove(key);
+        }
+        log.info("[Walker] Unlearned blocked edge {} -> {} ({})", origin, destination, reason);
+        return true;
+    }
+
     private void addBlockedEdge(WorldPoint origin, WorldPoint destination) {
         blockedTransportEdgesPacked.add(transportEdgeKey(
                 WorldPointUtil.packWorldPoint(origin),

@@ -62,6 +62,10 @@ public final class WalkerRouteState {
     public volatile int routeProgressPathSize = -1;
     /** Wall-clock ms when route progress last advanced. */
     public volatile long routeProgressAdvancedAtMs = 0L;
+    /** Stagnation replans this walk has spent (TailDecision.decideRouteStagnation). */
+    public volatile int stagnationReplansSpent = 0;
+    /** Furthest raw-path index the player has stood at on the current route; -1 when none. */
+    public volatile int rawProgressHighIdx = -1;
 
     // ---- interim target: a reachable point clicked toward when the true next tile is off the minimap;
     // held until the player gets close or progress stalls. ----
