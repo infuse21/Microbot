@@ -1,12 +1,14 @@
 package net.runelite.client.plugins.microbot.util.walker;
 
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.client.plugins.microbot.util.walker.door.DoorAttemptLedger;
 import net.runelite.client.plugins.microbot.util.walker.state.WalkerRouteState;
 import org.junit.Before;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 /**
  * The post-transport window must not survive into the next walk.
@@ -72,19 +74,26 @@ public class WalkSessionStateResetTest
 		assertNull(routeState.lastTransportDestinationLocation);
 	}
 
-	/** Walk start also drops the previous walk's door attempt, for the same staleness reason. */
+	/**
+	 * Walk start also withdraws the previous walk's door claim, for the same staleness reason —
+	 * but deliberately NOT the per-edge cooldowns: hammering one door across two walks is still
+	 * hammering. The two lifetimes used to live in two stores; the ledger keeps both facts and
+	 * this test pins that the reset touches only the claim.
+	 */
 	@Test
-	public void startingAWalkDropsThePreviousWalksDoorAttempt()
+	public void startingAWalkDropsThePreviousWalksDoorClaimButKeepsTheEdgeCooldown()
 	{
-		routeState.lastDoorAttemptFrom = new WorldPoint(3010, 3204, 0);
-		routeState.lastDoorAttemptTo = new WorldPoint(3011, 3204, 0);
-		routeState.lastDoorAttemptAtMs = System.currentTimeMillis();
+		DoorAttemptLedger ledger = Rs2Walker.doorAttemptLedgerForTesting();
+		WorldPoint from = new WorldPoint(3010, 3204, 0);
+		WorldPoint to = new WorldPoint(3011, 3204, 0);
+		long now = System.currentTimeMillis();
+		ledger.markAttempt(null, from, to, now);
 
 		Rs2Walker.resetWalkSessionState();
 
-		assertNull(routeState.lastDoorAttemptFrom);
-		assertNull(routeState.lastDoorAttemptTo);
-		assertEquals(0L, routeState.lastDoorAttemptAtMs);
+		assertNull("the latest claim belongs to the previous walk", ledger.latestAttempt());
+		assertTrue("the anti-hammer cooldown must survive the walk boundary",
+			ledger.shouldThrottleAttempt(null, from, to, 2_500, now + 100));
 	}
 
 	/** Route progress belongs to the route that made it. */

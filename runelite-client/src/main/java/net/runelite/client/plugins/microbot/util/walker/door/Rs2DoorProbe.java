@@ -99,7 +99,7 @@ public final class Rs2DoorProbe {
     }
 
     /** Whether {@code object} (at {@code objectLocation}) is a walk-through door lying on the segment. */
-    public static boolean isDoorCandidateOnSegment(DoorProbeContext ctx, Set<WorldPoint> blacklist,
+    public static boolean isDoorCandidateOnSegment(DoorProbeContext ctx, DoorAttemptLedger ledger,
                                                    TileObject object, WorldPoint objectLocation,
                                                    WorldPoint playerLoc, WorldPoint fromWp, WorldPoint toWp,
                                                    List<String> doorActions, int searchDistance) {
@@ -111,7 +111,7 @@ public final class Rs2DoorProbe {
         // stay live rather than memoised.
         if (loc.getPlane() != playerLoc.getPlane()
                 || loc.distanceTo2D(playerLoc) > searchDistance
-                || blacklist.contains(loc)
+                || ledger.isDoorBlacklisted(loc)
                 || (!(object instanceof WallObject) && !(object instanceof GameObject))) {
             return false;
         }
@@ -145,14 +145,14 @@ public final class Rs2DoorProbe {
     }
 
     /** Nearest walk-through door lying on the {@code fromWp -> toWp} segment, using scan snapshots when present. */
-    public static TileObject findDoorNearSegment(DoorProbeContext ctx, Set<WorldPoint> blacklist,
-                                                 Map<WorldPoint, Long> recentlyOpened, long stationaryDoorSuppressMs,
+    public static TileObject findDoorNearSegment(DoorProbeContext ctx, DoorAttemptLedger ledger,
+                                                 long stationaryDoorSuppressMs,
                                                  WorldPoint fromWp, WorldPoint toWp, List<String> doorActions) {
         WorldPoint playerLoc = Rs2Player.getWorldLocation();
         if (playerLoc == null || fromWp == null || toWp == null || fromWp.getPlane() != toWp.getPlane()) {
             return null;
         }
-        if (Rs2DoorHandler.recentlyOpenedStationaryDoorOnSegment(recentlyOpened, stationaryDoorSuppressMs, fromWp, toWp)) {
+        if (ledger.recentlyOpenedDoorOnSegment(fromWp, toWp, stationaryDoorSuppressMs, System.currentTimeMillis())) {
             return null;
         }
 
@@ -180,7 +180,7 @@ public final class Rs2DoorProbe {
                 candidates.addAll(gameObjectSnapshot);
             }
             TileObject match = candidates.stream()
-                    .filter(o -> isDoorCandidateOnSegment(ctx, blacklist, o, locations.get(o),
+                    .filter(o -> isDoorCandidateOnSegment(ctx, ledger, o, locations.get(o),
                             playerLoc, fromWp, toWp, doorActions, searchDistance))
                     .min(Comparator.comparingInt(o -> locations.get(o).distanceTo2D(playerLoc)))
                     .orElse(null);
@@ -189,7 +189,7 @@ public final class Rs2DoorProbe {
             }
             return match;
         }
-        return Rs2GameObject.getAll(o -> isDoorCandidateOnSegment(ctx, blacklist, o, o.getWorldLocation(),
+        return Rs2GameObject.getAll(o -> isDoorCandidateOnSegment(ctx, ledger, o, o.getWorldLocation(),
                         playerLoc, fromWp, toWp, doorActions, searchDistance), playerLoc, searchDistance).stream()
                 .min(Comparator.comparingInt(o -> o.getWorldLocation().distanceTo2D(playerLoc)))
                 .orElse(null);

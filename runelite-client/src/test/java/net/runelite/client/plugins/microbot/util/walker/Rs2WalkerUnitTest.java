@@ -358,14 +358,14 @@ public class Rs2WalkerUnitTest {
     public void resetTelemetry() {
         Rs2Walker.clearWalkerDedupeForTesting();
         Rs2Walker.Telemetry.reset();
-        Rs2Walker.sessionBlacklistedDoors.clear();
+        Rs2Walker.doorAttemptLedgerForTesting().clearBlacklist();
     }
 
     @After
     public void tearDown() {
         Rs2Walker.clearWalkerDedupeForTesting();
         Rs2Walker.Telemetry.reset();
-        Rs2Walker.sessionBlacklistedDoors.clear();
+        Rs2Walker.doorAttemptLedgerForTesting().clearBlacklist();
     }
 
     @Test
@@ -2186,26 +2186,107 @@ public class Rs2WalkerUnitTest {
     }
 
     // ---------------------------------------------------------------------------
+    // Goal-tile object guard (D3 requirement #1 — the Gift of Peace lesson)
+    // ---------------------------------------------------------------------------
+    //
+    // An object standing ON the walk target is the destination, not an obstacle en route. Seeded
+    // from the Stronghold corridor (2026-08-13): the goal chest was Open-clicked and its failed
+    // traversal waited out on three consecutive runs, ~9s each, before arrived-within-distance.
+
+    @Test
+    public void goalTileChestIsNotAnObstacleWhenTheWalkMayFinishBesideIt() {
+        WorldPoint goal = new WorldPoint(1907, 5223, 0);
+        WorldPoint beside = new WorldPoint(1906, 5224, 0);
+        assertTrue(Rs2Walker.goalTileObjectIsNotAnObstacle(false, goal, 4, goal, beside, goal));
+    }
+
+    @Test
+    public void aWallDoorOnTheGoalEdgeIsStillAnObstacle() {
+        // A door on the goal tile's EDGE may genuinely need opening to step onto the goal.
+        WorldPoint goal = new WorldPoint(1907, 5223, 0);
+        WorldPoint beside = new WorldPoint(1906, 5223, 0);
+        assertFalse(Rs2Walker.goalTileObjectIsNotAnObstacle(true, goal, 4, goal, beside, goal));
+    }
+
+    @Test
+    public void aDistanceZeroWalkStillAttemptsTheGoalTileObject() {
+        // The walk MUST end on the tile itself; if an openable object seals it, opening is honest.
+        WorldPoint goal = new WorldPoint(1907, 5223, 0);
+        WorldPoint beside = new WorldPoint(1906, 5224, 0);
+        assertFalse(Rs2Walker.goalTileObjectIsNotAnObstacle(false, goal, 0, goal, beside, goal));
+    }
+
+    @Test
+    public void anObjectShortOfTheGoalIsStillAnObstacle() {
+        // Only the goal tile's own object is exempt; a chest two tiles early still blocks the route
+        // even when its near side is adjacent to it.
+        WorldPoint goal = new WorldPoint(1907, 5223, 0);
+        WorldPoint doorTile = new WorldPoint(1905, 5225, 0);
+        WorldPoint besideDoor = new WorldPoint(1904, 5226, 0);
+        assertFalse(Rs2Walker.goalTileObjectIsNotAnObstacle(false, goal, 4, doorTile, besideDoor, doorTile));
+    }
+
+    @Test
+    public void aFarNearSideDoesNotQualifyForTheGoalSkip() {
+        // The skip is only honest when the walk can FINISH from the near side; a ranged detection
+        // several tiles out must still be handled as an obstacle if crossing is required later.
+        WorldPoint goal = new WorldPoint(1907, 5223, 0);
+        WorldPoint farAway = new WorldPoint(1900, 5230, 0);
+        assertFalse(Rs2Walker.goalTileObjectIsNotAnObstacle(false, goal, 4, goal, farAway, goal));
+    }
+
+    // ---------------------------------------------------------------------------
+    // Walled-net door adjacency (D3 requirement #2 — the double-gate wing lesson)
+    // ---------------------------------------------------------------------------
+
+    @Test
+    public void aGateWingParallelBesideTheEdgeCountsAsAdjacent() {
+        // Stronghold 2026-08-13 14:00: primary wing at (1875,5239); the slave wing's edge
+        // (1875,5240)->(1876,5240) was learned as walled while the primary was being opened.
+        assertTrue(Rs2Walker.doorTileAdjacentToEdgeEndpoints(
+                new WorldPoint(1875, 5239, 0), new WorldPoint(1875, 5240, 0), new WorldPoint(1876, 5240, 0)));
+    }
+
+    @Test
+    public void aGateSharingTheDiagonalEdgesCornerCountsAsAdjacent() {
+        // Same run: primary wing at (1903,5243); the diagonal step (1903,5242)->(1904,5243) learned.
+        assertTrue(Rs2Walker.doorTileAdjacentToEdgeEndpoints(
+                new WorldPoint(1903, 5243, 0), new WorldPoint(1903, 5242, 0), new WorldPoint(1904, 5243, 0)));
+    }
+
+    @Test
+    public void aDoorTwoTilesAwayDoesNotSuppressLearning() {
+        assertFalse(Rs2Walker.doorTileAdjacentToEdgeEndpoints(
+                new WorldPoint(1875, 5237, 0), new WorldPoint(1875, 5240, 0), new WorldPoint(1876, 5240, 0)));
+    }
+
+    @Test
+    public void aDoorOnAnotherPlaneDoesNotSuppressLearning() {
+        assertFalse(Rs2Walker.doorTileAdjacentToEdgeEndpoints(
+                new WorldPoint(1875, 5239, 1), new WorldPoint(1875, 5240, 0), new WorldPoint(1876, 5240, 0)));
+    }
+
+    // ---------------------------------------------------------------------------
     // Session blacklist invariants (#19 support)
     // ---------------------------------------------------------------------------
 
     @Test
     public void sessionBlacklist_addAndMembership() {
         WorldPoint door = new WorldPoint(3210, 3220, 0);
-        assertFalse(Rs2Walker.sessionBlacklistedDoors.contains(door));
-        Rs2Walker.sessionBlacklistedDoors.add(door);
-        assertTrue(Rs2Walker.sessionBlacklistedDoors.contains(door));
+        assertFalse(Rs2Walker.doorAttemptLedgerForTesting().isDoorBlacklisted(door));
+        Rs2Walker.doorAttemptLedgerForTesting().blacklistDoor(door);
+        assertTrue(Rs2Walker.doorAttemptLedgerForTesting().isDoorBlacklisted(door));
     }
 
     @Test
     public void sessionBlacklist_worldPointEqualityDrivesMembership() {
         // Two WorldPoints built from the same coords must hash/equal the same way —
         // otherwise the blacklist guard at handleDoors entry would miss re-attempts.
-        Rs2Walker.sessionBlacklistedDoors.add(new WorldPoint(3210, 3220, 0));
-        assertTrue(Rs2Walker.sessionBlacklistedDoors.contains(new WorldPoint(3210, 3220, 0)));
-        assertFalse(Rs2Walker.sessionBlacklistedDoors.contains(new WorldPoint(3210, 3221, 0)));
+        Rs2Walker.doorAttemptLedgerForTesting().blacklistDoor(new WorldPoint(3210, 3220, 0));
+        assertTrue(Rs2Walker.doorAttemptLedgerForTesting().isDoorBlacklisted(new WorldPoint(3210, 3220, 0)));
+        assertFalse(Rs2Walker.doorAttemptLedgerForTesting().isDoorBlacklisted(new WorldPoint(3210, 3221, 0)));
         assertFalse("different plane must not collide",
-                Rs2Walker.sessionBlacklistedDoors.contains(new WorldPoint(3210, 3220, 1)));
+                Rs2Walker.doorAttemptLedgerForTesting().isDoorBlacklisted(new WorldPoint(3210, 3220, 1)));
     }
 
     // ---------------------------------------------------------------------------

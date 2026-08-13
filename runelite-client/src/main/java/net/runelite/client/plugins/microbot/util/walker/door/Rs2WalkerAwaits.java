@@ -104,6 +104,22 @@ public final class Rs2WalkerAwaits {
                                                     java.util.function.BooleanSupplier doorOpened,
                                                     java.util.function.Supplier<String> doorObservation,
                                                     java.util.function.BooleanSupplier cancelled) {
+        awaitDoorInteractionProgress(ticket, fromWp, toWp, doorOpened, doorObservation, cancelled, null);
+    }
+
+    /**
+     * @param doorCrossed observes the WALL FACE: the player already stands on the far side of the
+     *                    door's own face relative to the approach tile. The one reading that stays
+     *                    true when a moves-you gate deposits the player DIAGONALLY off the planned
+     *                    to-tile — where arrived-far-side and crossedDoorAxis both go blind (the
+     *                    attempt edge itself can be diagonal, and the deposit tile is not toWp).
+     *                    Cheap per poll; may be {@code null} when the door is not a wall object.
+     */
+    public static void awaitDoorInteractionProgress(AwaitTicket ticket, WorldPoint fromWp, WorldPoint toWp,
+                                                    java.util.function.BooleanSupplier doorOpened,
+                                                    java.util.function.Supplier<String> doorObservation,
+                                                    java.util.function.BooleanSupplier cancelled,
+                                                    java.util.function.BooleanSupplier doorCrossed) {
         if (ticket == null) {
             return;
         }
@@ -168,6 +184,10 @@ public final class Rs2WalkerAwaits {
             boolean edgeResolved = !ranged && isDoorEdgeResolved(fromWp, toWp);
             if (edgeResolved) {
                 releasedBy[0] = "edge-resolved";
+                return true;
+            }
+            if (doorCrossed != null && doorCrossed.getAsBoolean()) {
+                releasedBy[0] = "crossed-face";
                 return true;
             }
             // The one positional reading a ranged hold may trust: we are ON the far side, or past the
