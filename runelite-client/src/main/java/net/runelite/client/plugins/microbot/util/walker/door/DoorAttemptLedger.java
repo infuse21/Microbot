@@ -254,4 +254,113 @@ public final class DoorAttemptLedger {
     public void clearBlacklist() {
         blacklistedDoorTiles.clear();
     }
+
+    // ---- walk-runtime facets (D3 slice 4): pass claims, settle window, cooldown, raw-scan focus ----
+
+    private final Map<String, WorldPoint> edgeAttemptPosByKeyThisPass = new ConcurrentHashMap<>();
+    private volatile long settleStartedAtMs;
+    private volatile long settleUntilMs;
+    private volatile WorldPoint settleFarSideWp;
+    private volatile long globalCooldownUntilMs;
+    private volatile Integer rawScanFocusDoorIdx;
+    private volatile long rawScanFocusSetAtMs;
+    private volatile int rawScanFocusAttempts;
+
+    /** A new tail pass gets a fresh per-edge attempt budget (formerly doorEdgesAttemptedThisTail). */
+    public void beginTailPass() {
+        edgeAttemptPosByKeyThisPass.clear();
+    }
+
+    /**
+     * One-shot budget per edge per pass, re-armed once the player has genuinely MOVED since the
+     * previous attempt (within one tile of the recorded position = still the same stand, refuse).
+     * A null recorded position never binds — preserving the old map's null-value semantics.
+     */
+    public boolean tryClaimEdgeThisPass(WorldPoint fromWp, WorldPoint toWp, WorldPoint playerBeforeAttempt) {
+        if (fromWp == null || toWp == null) {
+            return true;
+        }
+        String edgeKey = Rs2DoorHandler.doorAttemptKey(null, fromWp, toWp);
+        WorldPoint previous = edgeAttemptPosByKeyThisPass.get(edgeKey);
+        if (previous != null && playerBeforeAttempt != null
+                && previous.getPlane() == playerBeforeAttempt.getPlane()
+                && previous.distanceTo2D(playerBeforeAttempt) <= 1) {
+            return false;
+        }
+        if (playerBeforeAttempt != null) {
+            edgeAttemptPosByKeyThisPass.put(edgeKey, playerBeforeAttempt);
+        } else {
+            edgeAttemptPosByKeyThisPass.remove(edgeKey);
+        }
+        return true;
+    }
+
+    /** Hands the budget back when no interaction happened — a later resolver may try the edge this pass. */
+    public void releaseEdgeThisPass(WorldPoint fromWp, WorldPoint toWp) {
+        if (fromWp != null && toWp != null) {
+            edgeAttemptPosByKeyThisPass.remove(Rs2DoorHandler.doorAttemptKey(null, fromWp, toWp));
+        }
+    }
+
+    /** Starts the door settle window, remembering the far-side tile so it can end when the edge opens. */
+    public void markSettling(WorldPoint farSideWp, long nowMs, long settleMs) {
+        settleStartedAtMs = nowMs;
+        settleUntilMs = nowMs + settleMs;
+        settleFarSideWp = farSideWp;
+    }
+
+    public long settleStartedAtMs() {
+        return settleStartedAtMs;
+    }
+
+    public long settleUntilMs() {
+        return settleUntilMs;
+    }
+
+    public WorldPoint settleFarSide() {
+        return settleFarSideWp;
+    }
+
+    /** The far side proved reachable: the edge is open, there is nothing left to settle. */
+    public void endSettleEarly() {
+        settleUntilMs = 0L;
+        settleFarSideWp = null;
+    }
+
+    public void markGlobalCooldownUntil(long untilMs) {
+        globalCooldownUntilMs = untilMs;
+    }
+
+    public long globalCooldownUntilMs() {
+        return globalCooldownUntilMs;
+    }
+
+    /** The raw scene scan commits to one door index for a bounded number of attempts. */
+    public void setRawScanFocus(int index, long nowMs) {
+        rawScanFocusDoorIdx = index;
+        rawScanFocusSetAtMs = nowMs;
+        rawScanFocusAttempts = 0;
+    }
+
+    public Integer rawScanFocusDoorIdx() {
+        return rawScanFocusDoorIdx;
+    }
+
+    public long rawScanFocusSetAtMs() {
+        return rawScanFocusSetAtMs;
+    }
+
+    public int rawScanFocusAttempts() {
+        return rawScanFocusAttempts;
+    }
+
+    public void recordRawScanFocusAttempt() {
+        rawScanFocusAttempts++;
+    }
+
+    public void clearRawScanFocus() {
+        rawScanFocusDoorIdx = null;
+        rawScanFocusSetAtMs = 0L;
+        rawScanFocusAttempts = 0;
+    }
 }

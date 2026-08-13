@@ -17,7 +17,7 @@ import net.runelite.api.ObjectComposition;
 public final class Rs2DoorClassifier {
 
     private static final String[] DOOR_LIKE_NAME_FRAGMENTS = {
-            "door", "gate", "barrier", "stile", "portcullis", "archway", "cattlegate", "fence"
+            "door", "gate", "barrier", "stile", "portcullis", "archway", "cattlegate", "fence", "curtain"
     };
 
     /** {@code fence} must be whole-word — substring matches {@code defence} ("fence" inside) otherwise. */
@@ -145,6 +145,48 @@ public final class Rs2DoorClassifier {
             }
         }
         return false;
+    }
+
+    /**
+     * Actions whose VERB alone proves traversal — a chest never says Walk-through. Deliberately
+     * excludes open/enter/push/force/exit, which scenery shares (Open on a chest, Enter on a cave).
+     */
+    private static final List<String> TRAVERSAL_PROOF_ACTIONS = List.of(
+            "pay-toll", "pick-lock", "walk-through", "go-through", "pass"
+    );
+
+    public static boolean isTraversalProofAction(String action) {
+        if (action == null) {
+            return false;
+        }
+        String al = action.toLowerCase(Locale.ROOT).trim();
+        for (String t : TRAVERSAL_PROOF_ACTIONS) {
+            if (al.startsWith(t)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Route-door classification — the decide table's first column (D3 requirement #3).
+     *
+     * <p>WALL objects: any walk action proves doorhood — a wall that opens is a door, whatever its
+     * name (unchanged semantics).
+     *
+     * <p>GAME objects: the NAME must prove doorhood, or the ACTION must be traversal-proof. Bare
+     * Open/Enter/Push on a non-door name is scenery: the Gift of Peace chest (Stronghold,
+     * 2026-08-13) was Open-clicked as a route door en route, costing 7-9s of failed traversal per
+     * encounter — and any Open-actioned coffin, cupboard or sarcophagus on a route segment would do
+     * the same. Large double gates ARE GameObjects, which is why the rule is name-or-verb rather
+     * than a flat name filter.
+     */
+    public static boolean isRouteDoorObject(boolean wallObject, String name, String walkAction) {
+        if (wallObject) {
+            return isDoorLikeGameObjectName(name)
+                    || (walkAction != null && doorActionPriorityIndex(walkAction) < Integer.MAX_VALUE);
+        }
+        return isDoorLikeGameObjectName(name) || isTraversalProofAction(walkAction);
     }
 
     /** Whether a (real, non-impostor) composition exposes one of {@code doorActions}. */

@@ -123,7 +123,13 @@ public final class Rs2DoorProbe {
             return false;
         }
         ObjectComposition comp = resolveDoorComposition(ctx, object);
-        return Rs2DoorClassifier.isDoorComposition(comp, doorActions);
+        if (!Rs2DoorClassifier.isDoorComposition(comp, doorActions)) {
+            return false;
+        }
+        // The decide table's classification rule (D3 requirement #3): an Open-actioned GameObject
+        // with a non-door name is scenery, not a route door — see Rs2DoorClassifier.isRouteDoorObject.
+        return Rs2DoorClassifier.isRouteDoorObject(object instanceof WallObject, comp.getName(),
+                Rs2DoorClassifier.getDoorAction(comp, doorActions));
     }
 
     /**

@@ -544,11 +544,62 @@ recovery consumers become reporters and readers of the ledger instead of keepers
 > at gate deposits; corridor drops by the stall cost (~4-26s/run). The CROSSED-event formalization
 > still belongs to the ledger's decide table; this fix uses the geometric truth directly.
 
+> **D3 slice 4 DONE — ALL TEN STORES FOLDED** — `PluginTesting` b145854b0a. The walk-runtime
+> quartet (per-tail pass budget, settle window, global cooldown, raw-scan focus) joins the ledger;
+> WalkerRouteState loses seven fields and every door-handling signature loses its threaded Map
+> parameter (the budgeted/unbudgeted split survives as an explicit boolean). The ledger is now the
+> single owner of door state. Remaining D3 work: the DoorLifecycle.decide table (requirement #3's
+> home — chest-as-door classification) and pointing the three entry paths at it. Live gate PASSED
+> 2026-08-13 19:41: twelve gates, 115s, identical behaviour; the wing guard fired twice more (once
+> on the gate's OWN edge that the exact-edge check missed on snapshot timing — the adjacency net is
+> defense in depth). Same run: the slow-login refresh_transports instrumentation finally fired —
+> total=833ms with key=658ms, so the cost is the CACHE-KEY computation, not the filtering (task #13's
+> diagnosis, banked).
+
+> **Requirement #3 LANDED** — `PluginTesting` d555583c19. `Rs2DoorClassifier.isRouteDoorObject` is
+> the decide table's first column: walls open by action (unchanged), GAME objects need a door-like
+> name or a traversal-proof verb — bare Open on a non-door name is scenery. The walker previously
+> held FOUR different answers to this question across ten sites; all ten now call the one rule.
+> Live gate: chest-adjacent walks log gameobject-not-a-door rejects instead of Open-clicks.
+
 Sequencing: after B2's remaining live checks settle. Same slice discipline — one store folded into
 the ledger per slice, characterization first, the Stronghold corridor as the live gate for every
 slice. The file is 14,003 lines as of tonight (GROWN ~2k since the audit measured 12k, even as
 processWalk shrank under its guard): D3 is the first phase whose success metric is the file getting
 SMALLER, because each folded store deletes its scattered call sites.
+
+## Phase E — transport-handler extraction
+
+> **E1 DONE** — `PluginTesting` a8ee6893e4. Rs2Walker 14,119 -> 11,245 lines (-20%);
+> ~90 methods / 3,090 lines into `Rs2WalkerTransports` (same package, static-import sharing,
+> package-private dispatcher). The compiler corrected the static closure: seven methods moved back
+> (callers behind multi-line signatures), one restored to the nested Telemetry class. Baseline delta
+> verified an exact multiset re-home (61 out = 61 in, zero new/vanished violations). Full suite
+> green. Corridor gate 2026-08-13 22:55: NO REGRESSION (12 door legs, 120s, normal signature) —
+> but the walk started inside the corridor, so the moved dispatcher itself was not exercised; that
+> half of the gate rides the next walk that takes any transport. Also noted: the spawn-side first
+> gate logs did-not-traverse then crosses on continuation EVERY run (4/4, ~5s each; conclusive-gate
+> correctly refuses the strike — cosmetic cost, minor open item). E2/E3 subsumed — the whole
+> component moved in one verified step.
+
+## Phase E — original scope (superseded by E1-complete above)
+
+The line-count phase. ~2,400 lines of self-contained transport executors live inside Rs2Walker:
+`handleSelectedTransport` (639), `handleObjectExceptions` (177), `handleCanoe` (114),
+`handleObject` (104), `handleMinigameTeleport` (82), `handleInventoryTeleports` (80),
+`handleFairyRing` (77), `handleSeasonalTransport` (68), `handleGlider` (63),
+`interactWithAdventureLog` (59, + the minecart-947 machinery), `handleSpiritTree` (52),
+`handleAlKharidTollGate` (35), plus their private helpers.
+
+Slice discipline, one executor family per slice, biggest first: (E1) `handleSelectedTransport` +
+`handleObject`/`handleObjectExceptions` into `util/walker/transport/Rs2TransportExecutor`; (E2) the
+widget-flow teleports (fairy ring, glider, minecart/adventure log, spirit tree, minigame,
+inventory); (E3) canoe + seasonal + toll + Stronghold answer. Dependencies to thread:
+`expectedTransportDestinations`, route-state stamps, `WebWalkLog` tmarks, `currentTarget`. Each
+slice: characterization where a pure core exists, full suite, corridor unchanged, guardrail
+baseline regenerated deliberately (lambda renumbering will be extensive). DO THIS IN A FRESH
+SESSION — it is mechanical but chimera-prone, and it is the phase whose success metric is
+Rs2Walker finally getting SMALLER (14.1k today).
 
 ## Branch policy — settled 2026-08-12
 

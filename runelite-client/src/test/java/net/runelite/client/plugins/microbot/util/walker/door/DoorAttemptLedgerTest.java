@@ -276,6 +276,83 @@ public class DoorAttemptLedgerTest
 			ledger.drainWalkScopedBlocks().isEmpty());
 	}
 
+	// ---- the pass budget (formerly processWalk's doorEdgesAttemptedThisTail map) ----
+
+	@Test
+	public void anEdgeIsClaimableOncePerPassFromTheSameStand()
+	{
+		WorldPoint fromWp = new WorldPoint(2465, 3494, 0);
+		WorldPoint toWp = new WorldPoint(2465, 3493, 0);
+		WorldPoint stand = new WorldPoint(2465, 3494, 0);
+		assertTrue(ledger.tryClaimEdgeThisPass(fromWp, toWp, stand));
+		assertFalse(ledger.tryClaimEdgeThisPass(fromWp, toWp, stand));
+	}
+
+	@Test
+	public void theReverseEdgeIsTheSameClaim()
+	{
+		WorldPoint fromWp = new WorldPoint(2465, 3494, 0);
+		WorldPoint toWp = new WorldPoint(2465, 3493, 0);
+		WorldPoint stand = new WorldPoint(2465, 3494, 0);
+		assertTrue(ledger.tryClaimEdgeThisPass(fromWp, toWp, stand));
+		assertFalse(ledger.tryClaimEdgeThisPass(toWp, fromWp, stand));
+	}
+
+	@Test
+	public void movingReArmsTheClaim()
+	{
+		WorldPoint fromWp = new WorldPoint(2465, 3494, 0);
+		WorldPoint toWp = new WorldPoint(2465, 3493, 0);
+		assertTrue(ledger.tryClaimEdgeThisPass(fromWp, toWp, new WorldPoint(2465, 3494, 0)));
+		assertTrue("retry should be allowed after moving away from same-edge attempt tile",
+			ledger.tryClaimEdgeThisPass(fromWp, toWp, new WorldPoint(2462, 3491, 0)));
+	}
+
+	@Test
+	public void aNewPassAndAReleaseEachReArmTheClaim()
+	{
+		WorldPoint fromWp = new WorldPoint(2465, 3494, 0);
+		WorldPoint toWp = new WorldPoint(2465, 3493, 0);
+		WorldPoint stand = new WorldPoint(2465, 3494, 0);
+		ledger.tryClaimEdgeThisPass(fromWp, toWp, stand);
+		ledger.releaseEdgeThisPass(fromWp, toWp);
+		assertTrue("a released claim (no interaction happened) must be attemptable this pass",
+			ledger.tryClaimEdgeThisPass(fromWp, toWp, stand));
+		ledger.beginTailPass();
+		assertTrue("a new pass owes a fresh budget", ledger.tryClaimEdgeThisPass(fromWp, toWp, stand));
+	}
+
+	// ---- the settle window, global cooldown and raw-scan focus (walk-runtime facets) ----
+
+	@Test
+	public void theSettleWindowStoresAndEndsEarly()
+	{
+		WorldPoint farSide = new WorldPoint(1876, 5239, 0);
+		ledger.markSettling(farSide, T0, 900);
+		assertEquals(T0, ledger.settleStartedAtMs());
+		assertEquals(T0 + 900, ledger.settleUntilMs());
+		assertEquals(farSide, ledger.settleFarSide());
+		ledger.endSettleEarly();
+		assertEquals("early end clears the ceiling, not the start (heartbeat still reads it)",
+			0L, ledger.settleUntilMs());
+		assertNull(ledger.settleFarSide());
+		assertEquals(T0, ledger.settleStartedAtMs());
+	}
+
+	@Test
+	public void theRawScanFocusIsABoundedCommitment()
+	{
+		ledger.setRawScanFocus(7, T0);
+		assertEquals(Integer.valueOf(7), ledger.rawScanFocusDoorIdx());
+		assertEquals(T0, ledger.rawScanFocusSetAtMs());
+		ledger.recordRawScanFocusAttempt();
+		ledger.recordRawScanFocusAttempt();
+		assertEquals(2, ledger.rawScanFocusAttempts());
+		ledger.clearRawScanFocus();
+		assertNull(ledger.rawScanFocusDoorIdx());
+		assertEquals(0, ledger.rawScanFocusAttempts());
+	}
+
 	@Test
 	public void withdrawingTheClaimLeavesTheCooldownStanding()
 	{

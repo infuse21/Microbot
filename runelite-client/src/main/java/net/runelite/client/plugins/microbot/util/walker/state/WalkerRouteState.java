@@ -119,26 +119,13 @@ public final class WalkerRouteState {
     /** Cooldown so partial-segment in-transit path recalculation does not spam. */
     public volatile long lastPartialTransRecalcMs = 0L;
 
-    // ---- door interaction: settle windows, focused-door raw-scan state, attempt tracking and
-    // cooldowns shared by the door cascade, the recovery block and the movement-ownership check. ----
+    // ---- door interaction (D3 slice 4: settle window, raw-scan focus, pass budget and the global
+    // cooldown migrated to DoorAttemptLedger; the diagnostics timestamps below remain). ----
 
-    /** Path index of the door the raw scene scan is currently focused on; null when none. */
-    public volatile Integer rawScanFocusedDoorIdx = null;
-    /** Wall-clock ms the focused door was selected. */
-    public volatile long rawScanFocusedDoorSetAtMs = 0L;
-    /** Interaction attempts spent on the focused door so far. */
-    public volatile int rawScanFocusedDoorAttempts = 0;
-    /** Door settle window ceiling; 0 when no settle is pending. */
-    public volatile long doorInteractionSettleUntilMs = 0L;
-    /** When the current door settle window started, and the door's far-side tile — the early-exit signal. */
-    public volatile long doorInteractionSettleStartedAtMs = 0L;
-    public volatile WorldPoint doorSettleFarSideWp = null;
     /** Wall-clock ms a door-edge pass was last skipped (per-edge cooldown diagnostics). */
     public volatile long lastDoorEdgePassSkipAtMs = 0L;
     /** Cooldown for the expensive path-adjacent door scan on unreachable tiles. */
     public volatile long lastDoorPathAdjAttemptAtMs = 0L;
-    /** Global door-interaction throttle: no door interaction may fire before this wall-clock ms. */
-    public volatile long nextDoorInteractionAllowedAtMs = 0L;
     /**
      * When the walker first held off a door interaction because an option menu was open; 0 when no
      * such hold-off is active. Bounds the wait so an unanswered conversation cannot stall the walk.

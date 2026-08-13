@@ -479,6 +479,7 @@ public class PathfinderConfig {
 
         long keyStart = System.currentTimeMillis();
         final Rs2LeaguesTransport.LeaguesContext leaguesCtx = Rs2LeaguesTransport.leaguesContext();
+        lastKeyLeaguesMs = System.currentTimeMillis() - keyStart;
         final int refreshCacheKeyHash = computeTransportRefreshCacheKeyHash(target, leaguesCtx);
         long keyTime = System.currentTimeMillis() - keyStart;
 
@@ -785,6 +786,8 @@ public class PathfinderConfig {
                     entryTime, keyTime, mergeTime, cacheTime, filterTime, useTransportTimeNanos / 1_000_000,
                     verifyTime, captureTime, similarTime,
                     totalTransports, checkedTransports, varbitIds.size(), varplayerIds.size());
+            WebWalkLog.cfgSlow("slow refresh_transports keyDetail leagues={}ms inv={}ms equip={}ms bank={}ms",
+                    lastKeyLeaguesMs, lastKeyInvMs, lastKeyEquipMs, lastKeyBankMs);
             typeStats.entrySet().stream()
                     .sorted((a, b) -> Integer.compare(b.getValue()[2], a.getValue()[2]))
                     .limit(3)
@@ -2091,19 +2094,32 @@ public class PathfinderConfig {
         }
     }
 
+    // The cold-login key phase measured 658ms of an 833ms client-thread refresh (2026-08-13 19:40,
+    // reason=no_snapshot; warm refreshes read 1ms) — these name which read pays it. Written on every
+    // fingerprint, printed only on the slow log.
+    private volatile long lastKeyLeaguesMs;
+    private volatile long lastKeyInvMs;
+    private volatile long lastKeyEquipMs;
+    private volatile long lastKeyBankMs;
+
     private int fingerprintInventoryEquipmentBank() {
         final Set<Integer> ids = transportRelevantItemIds;
         final int[] h = {1};
+        long t = System.currentTimeMillis();
         Rs2Inventory.items().forEach(item -> {
             if (!itemAffectsTransportUsability(item.getId(), ids)) return;
             h[0] = 31 * h[0] + item.getId();
             h[0] = 31 * h[0] + item.getQuantity();
         });
+        lastKeyInvMs = System.currentTimeMillis() - t;
+        t = System.currentTimeMillis();
         Rs2Equipment.all().forEach(item -> {
             if (!itemAffectsTransportUsability(item.getId(), ids)) return;
             h[0] = 31 * h[0] + item.getId();
             h[0] = 31 * h[0] + item.getQuantity();
         });
+        lastKeyEquipMs = System.currentTimeMillis() - t;
+        t = System.currentTimeMillis();
         if (useBankItems) {
             Rs2Bank.getAll().forEach(item -> {
                 if (!itemAffectsTransportUsability(item.getId(), ids)) return;
@@ -2111,6 +2127,7 @@ public class PathfinderConfig {
                 h[0] = 31 * h[0] + item.getQuantity();
             });
         }
+        lastKeyBankMs = System.currentTimeMillis() - t;
         return h[0];
     }
 
