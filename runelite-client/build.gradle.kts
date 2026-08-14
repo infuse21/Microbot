@@ -54,6 +54,26 @@ plugins {
 
 }
 
+sourceSets.named("main") {
+    java.srcDir("src/upstreamPlanner/src/main/java")
+}
+
+// The pinned upstream core loads the same reviewed collision archive from its original root path.
+// Keep one source artifact and copy it into both runtime resource namespaces during assembly.
+tasks.named<ProcessResources>("processResources") {
+    from("src/main/resources/net/runelite/client/plugins/microbot/shortestpath/collision-map.zip") {
+        into("")
+    }
+}
+
+tasks.withType<Checkstyle>().configureEach {
+    exclude("shortestpath/**")
+}
+
+tasks.withType<Pmd>().configureEach {
+    exclude("shortestpath/**")
+}
+
 // Module-system flags required to extend com.apple.eawt.FullScreenAdapter on macOS
 // (OSXFullScreenAdapter). Without these, the JVM throws IllegalAccessError at class load.
 val macEawtJvmArgs = listOf(
