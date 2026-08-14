@@ -330,10 +330,26 @@ public class Pathfinder implements Runnable {
     private int[] searchTargetsPacked;
     private boolean sealedTargetMode;
     private long cutoffOverrideMillis = -1L;
+    /** See {@link #getReachedSealedSubstitute()}. Volatile: written by the search thread, read by the walker. */
+    private volatile int reachedSealedSubstitutePacked = -1;
 
     private long effectiveCutoffMillis() {
         long configured = config.getCalculationCutoffMillis();
         return cutoffOverrideMillis > 0 ? Math.min(cutoffOverrideMillis, configured) : configured;
+    }
+
+    /**
+     * The rim substitute the sealed-target search actually REACHED, or {@code null}. Non-null only
+     * when the destination was proven sealed AND the substitute pass ended ON a walkable rim tile —
+     * i.e. this run's path is a complete route to the closest standable spot beside the sealed
+     * pocket. The walker uses it to retarget the walk to the rim ONCE: without that, the
+     * SEARCH_EXHAUSTED termination made every pass treat the plan as partial and replan it, and
+     * each replan re-ran this substitute search — the 17:54 walk burned 50k nodes per replan
+     * crawling ~300 tiles toward a destination one tile inside a fence.
+     */
+    public WorldPoint getReachedSealedSubstitute() {
+        int packed = reachedSealedSubstitutePacked;
+        return packed == -1 ? null : WorldPointUtil.unpackWorldPoint(packed);
     }
 
     /**
@@ -793,6 +809,7 @@ public class Pathfinder implements Runnable {
             searchTargetsPacked = targetsPacked;
             sealedTargetMode = false;
             cutoffOverrideMillis = -1L;
+            reachedSealedSubstitutePacked = -1;
             if (targetsPacked.length == 1 && targetsPacked[0] != start) {
                 int[] rim = null;
                 try {
@@ -841,8 +858,13 @@ public class Pathfinder implements Runnable {
             // hitting its short leash (the rim itself can be unreachable — a sealed tile inside a
             // locked interior) changes nothing either: the original destination's unreachability is
             // already PROVEN, and callers keying decisions off the termination must hear exactly that.
+            // A genuinely REACHED rim is remembered before the remap, though — it is the walker's
+            // signal to retarget the walk to the rim once instead of replaying this search forever.
             if (sealedTargetMode && (terminationReason == PathTerminationReason.TARGET_REACHED
                     || terminationReason == PathTerminationReason.CUTOFF_REACHED)) {
+                if (terminationReason == PathTerminationReason.TARGET_REACHED && bestLastNode != null) {
+                    reachedSealedSubstitutePacked = bestLastNode.packedPosition;
+                }
                 terminationReason = PathTerminationReason.SEARCH_EXHAUSTED;
             }
         } catch (Exception e) {

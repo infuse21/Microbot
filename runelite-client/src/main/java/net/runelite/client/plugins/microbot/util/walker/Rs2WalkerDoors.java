@@ -315,13 +315,20 @@ final class Rs2WalkerDoors {
     static boolean handlePendingDoorDuringInterim(List<WorldPoint> rawPath,
                                                           long timeoutMs,
                                                           WorldPoint playerLoc) {
-        if (rawPath == null || rawPath.size() < 2 || playerLoc == null
-                || isDoorInteractionSettling() || isDoorEdgePassSkipCoolingDown()
-                || isRecoveryMovementInFlight() || Rs2Player.isMoving()) {
-            return false;
-        }
+        // Timed even though the guards "do nothing": this runs once per tile per pass while an
+        // interim is in flight, and the guard chain itself pays client-thread hops (isMoving).
+        long passT0 = System.currentTimeMillis();
+        try {
+            if (rawPath == null || rawPath.size() < 2 || playerLoc == null
+                    || isDoorInteractionSettling() || isDoorEdgePassSkipCoolingDown()
+                    || isRecoveryMovementInFlight() || Rs2Player.isMoving()) {
+                return false;
+            }
 
-        return handlePendingDoorNearRawPath(rawPath, timeoutMs, playerLoc, 2, 14);
+            return handlePendingDoorNearRawPath(rawPath, timeoutMs, playerLoc, 2, 14);
+        } finally {
+            WalkPassStats.doorProbeMs.addAndGet(System.currentTimeMillis() - passT0);
+        }
     }
 
     static boolean handlePendingDoorNearRawPath(List<WorldPoint> rawPath,
@@ -2674,6 +2681,17 @@ final class Rs2WalkerDoors {
     }
 
     static boolean handleDoorsInRawSegment(List<WorldPoint> rawPath, int rawFrom, int rawTo,
+                                                    long timeoutMs,
+                                                    Map<WorldPoint, Integer> reachableCache) {
+        long passT0 = System.currentTimeMillis();
+        try {
+            return handleDoorsInRawSegmentInner(rawPath, rawFrom, rawTo, timeoutMs, reachableCache);
+        } finally {
+            WalkPassStats.segDoorMs.addAndGet(System.currentTimeMillis() - passT0);
+        }
+    }
+
+    private static boolean handleDoorsInRawSegmentInner(List<WorldPoint> rawPath, int rawFrom, int rawTo,
                                                     long timeoutMs,
                                                     Map<WorldPoint, Integer> reachableCache) {
         WorldPoint playerLoc = reachableCache != null ? Rs2Player.getWorldLocation() : null;

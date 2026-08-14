@@ -295,6 +295,21 @@ final class Rs2WalkerMovement {
                                                      int maxEuclidean,
                                                      boolean allowDirectionalFallback,
                                                      int rawAnchorIndex) {
+        long passT0 = System.currentTimeMillis();
+        try {
+            return clickMiniMapOrFallbackInner(rawPath, target, playerLoc, maxEuclidean,
+                    allowDirectionalFallback, rawAnchorIndex);
+        } finally {
+            WalkPassStats.clickIssueMs.addAndGet(System.currentTimeMillis() - passT0);
+        }
+    }
+
+    private static WorldPoint clickMiniMapOrFallbackInner(List<WorldPoint> rawPath,
+                                                     WorldPoint target,
+                                                     WorldPoint playerLoc,
+                                                     int maxEuclidean,
+                                                     boolean allowDirectionalFallback,
+                                                     int rawAnchorIndex) {
         if (target == null || playerLoc == null || target.equals(playerLoc)) {
             return null;
         }
@@ -534,6 +549,16 @@ final class Rs2WalkerMovement {
      * plus {@link #findReachableRejoinRawPathPoint} rejoin handling.
      */
     static WorldPoint selectRouteClickTarget(List<WorldPoint> rawPath, WorldPoint playerLoc,
+                                                     int maxEuclidean, int rawAnchorIndex) {
+        long passT0 = System.currentTimeMillis();
+        try {
+            return selectRouteClickTargetInner(rawPath, playerLoc, maxEuclidean, rawAnchorIndex);
+        } finally {
+            WalkPassStats.clickSelectMs.addAndGet(System.currentTimeMillis() - passT0);
+        }
+    }
+
+    private static WorldPoint selectRouteClickTargetInner(List<WorldPoint> rawPath, WorldPoint playerLoc,
                                                      int maxEuclidean, int rawAnchorIndex) {
         if (rawPath == null || rawPath.isEmpty() || playerLoc == null) {
             routeState.lastRouteClickTier = "norawpath";

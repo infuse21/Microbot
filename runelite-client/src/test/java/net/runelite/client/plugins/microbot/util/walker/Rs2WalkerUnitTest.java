@@ -85,6 +85,33 @@ public class Rs2WalkerUnitTest {
         assertFalse(Rs2WalkerTransports.isTerminalTravelTransport(null));
     }
 
+    /**
+     * The direct-travel early release (Mountain Guide burned the whole 5s dialogue wait standing
+     * at Auburn Valley): landed means moved-from-start AND at the destination, same plane.
+     */
+    @Test
+    public void terminalLanding_requiresMovementPlusDestinationProximityOnTheSamePlane() {
+        WorldPoint dest = new WorldPoint(1700, 3141, 0);
+        WorldPoint origin = new WorldPoint(3280, 3412, 0);
+
+        assertTrue("landed at the exact destination after travelling",
+                Rs2WalkerTransports.hasLandedAtTerminalDestination(dest, origin, dest));
+        assertTrue("the landing AREA counts: the guide dropped the player 4 tiles from the tile",
+                Rs2WalkerTransports.hasLandedAtTerminalDestination(new WorldPoint(1704, 3141, 0), origin, dest));
+        assertFalse("6 tiles out is not landed",
+                Rs2WalkerTransports.hasLandedAtTerminalDestination(new WorldPoint(1706, 3141, 0), origin, dest));
+        assertFalse("still standing where the wait began proves nothing (short-crossing guard)",
+                Rs2WalkerTransports.hasLandedAtTerminalDestination(dest, dest, dest));
+        assertFalse("a short crossing: stepping about near an origin beside the destination must "
+                        + "not release — the player has not closed distance on the destination",
+                Rs2WalkerTransports.hasLandedAtTerminalDestination(
+                        new WorldPoint(1704, 3143, 0), new WorldPoint(1704, 3142, 0), dest));
+        assertFalse("wrong plane is not the destination",
+                Rs2WalkerTransports.hasLandedAtTerminalDestination(new WorldPoint(1700, 3141, 1), origin, dest));
+        assertFalse(Rs2WalkerTransports.hasLandedAtTerminalDestination(null, origin, dest));
+        assertFalse(Rs2WalkerTransports.hasLandedAtTerminalDestination(dest, origin, null));
+    }
+
     @Test
     public void terminalNpcInteractionCandidates_onlyFallbackForLegacyShipLabels() {
         assertEquals(Arrays.asList("Musa Point", "Travel"),
