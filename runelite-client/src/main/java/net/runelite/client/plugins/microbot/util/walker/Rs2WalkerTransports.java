@@ -238,6 +238,27 @@ final class Rs2WalkerTransports {
                         continue;
                     }
                 }
+                // A crossed edge must never be crossed BACK. After landing on the destination the
+                // origin can still sit inside the raw dispatch radius, and the origin-distance
+                // check knows nothing about sides: the Kebos shortcut (1389->1391, 2026-08-14
+                // 17:00) landed the player on 1391 and the next two passes matched the origin from
+                // the far side and re-crossed — in front of other players. Being on the
+                // destination SIDE (strictly closer to the destination than the origin, same
+                // plane) is proof the edge is behind us — exact tile equality was not enough:
+                // 17:31 the player stood ONE TILE off the destination (1391,3310) and the recovery
+                // path re-crossed anyway. Strictness keeps staircase chains alive (origin and
+                // destination share x,y, both distances 0). A genuine reverse crossing is a
+                // DIFFERENT planned edge (origin and destination swapped), which this never skips.
+                if (plOriginLoop != null && transport.getOrigin() != null
+                        && plOriginLoop.getPlane() == transport.getDestination().getPlane()
+                        && plOriginLoop.distanceTo2D(transport.getDestination())
+                        < plOriginLoop.distanceTo2D(transport.getOrigin())) {
+                    WebWalkLog.spInfo("transport_skip_already_at_destination | name={} origin={} dest={}",
+                            transport.getDisplayInfo(),
+                            compactWorldPoint(transport.getOrigin()),
+                            compactWorldPoint(transport.getDestination()));
+                    continue;
+                }
 
                 // Pre-compute origin/destination indices once per transport (not per inner iteration)
                 int precomputedIndexOfOrigin = -1;
@@ -1244,11 +1265,30 @@ final class Rs2WalkerTransports {
                 || transport.getDisplayInfo().isBlank()) {
             return false;
         }
-        if (!sleepUntil(Rs2Dialogue::hasSelectAnOption, 5000)) {
+        // Several single-destination NPCs (Mountain Guide) travel the player DIRECTLY off the
+        // initial click — no destination dialogue ever appears. This wait then burned its whole
+        // budget standing at the destination (Auburn Valley 2026-08-14: 7.7s, resolved=false,
+        // rescued only because the next pass found the player already across). Release on the
+        // evidence that settles the question either way: the dialogue, or the landing itself.
+        // The budget must OUTLAST the longest direct flight: the quetzal legs run 7-8s from click
+        // to landing, so a 5s wait always lost the race and warned right at touchdown (18:00 and
+        // 18:28 runs). Both releases fire early, so a long budget costs nothing when things work —
+        // the timeout is reached only when neither dialogue nor landing ever happened.
+        final WorldPoint dialogueWaitStart = Rs2Player.getWorldLocation();
+        final WorldPoint terminalDest = transport.getDestination();
+        if (!sleepUntil(() -> Rs2Dialogue.hasSelectAnOption()
+                || hasLandedAtTerminalDestination(Rs2Player.getWorldLocation(), dialogueWaitStart, terminalDest),
+                12_000)) {
             WebWalkLog.spWarn(
                     "terminal travel destination dialogue did not appear name={} dest={}",
                     transport.getName(), transport.getDisplayInfo());
             return false;
+        }
+        if (!Rs2Dialogue.hasSelectAnOption()
+                && hasLandedAtTerminalDestination(Rs2Player.getWorldLocation(), dialogueWaitStart, terminalDest)) {
+            WebWalkLog.spInfo("terminal travel landed without destination dialogue name={} dest={}",
+                    transport.getName(), transport.getDisplayInfo());
+            return true;
         }
         if (Rs2Dialogue.clickOption(transport.getDisplayInfo())) {
             return true;
@@ -1271,6 +1311,25 @@ final class Rs2WalkerTransports {
                 "terminal travel destination option missing name={} dest={}",
                 transport.getName(), transport.getDisplayInfo());
         return false;
+    }
+
+    /**
+     * Whether the player is standing at a terminal-travel destination they were not standing at
+     * when the dialogue wait began. The moved-CLOSER requirement is what keeps a short crossing
+     * honest: standing beside the ferryman at an origin that happens to sit near the destination
+     * proves nothing — only having closed distance on the destination does. Plane must match; the
+     * 5-tile allowance covers the landing AREA around the configured tile (the Mountain Guide
+     * dropped the player at 1365,3309 for a 1361,3309 destination, 2026-08-14 17:30, and the old
+     * 2-tile radius burned the whole dialogue wait standing there).
+     */
+    static boolean hasLandedAtTerminalDestination(WorldPoint player, WorldPoint waitStart,
+                                                  WorldPoint dest) {
+        return player != null && dest != null
+                && player.getPlane() == dest.getPlane()
+                && player.distanceTo2D(dest) <= 5
+                && !player.equals(waitStart)
+                && (waitStart == null
+                || player.distanceTo2D(dest) < waitStart.distanceTo2D(dest));
     }
 
     private static TileObject findTerminalTravelObject(Transport transport) {

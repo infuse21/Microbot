@@ -195,6 +195,9 @@ public class Rs2Walker {
     static final int POST_DOOR_EDGE_NUDGE_MAX_FROM_PLAYER = 3;
     static final int POST_DOOR_EDGE_NUDGE_WAIT_MS = 1200;
     static final int HANDLER_RANGE = 13;
+    // Position-staleness allowance for the far-unreachable pre-gate: the gate compares against the
+    // pass-stale snapshot position, and this covers ground run since it was read.
+    static final int FAR_UNREACHABLE_STALENESS_MARGIN = 10;
     // Raw/smoothed segments can span several walkable tiles before their transport edge.
     // Do not let the transport handler turn that future edge into a long movement command:
     // normal route clicks own the approach, then the handler takes over beside the origin.
@@ -1461,22 +1464,33 @@ public class Rs2Walker {
      * if they stop the thread is blocked inside a wait and the last line says which pass entered it.
      */
     /**
-     * How long a single walk may run before it is reported as a probable livelock.
+     * How long a walk may go WITHOUT CLOSING DISTANCE on its goal before it is reported as a
+     * probable livelock.
      *
-     * <p>Sized to catch a loop that will never finish, NOT a slow journey: a long banked walk across
-     * several transports is legitimately minutes. Currently OBSERVE-ONLY — it logs and does not
-     * abort — because a budget that kills a working walk would be a worse bug than the livelock it
-     * guards against. Promote to enforcement only after live logs show it firing on real livelocks
-     * and never on healthy walks.
+     * <p>Originally measured from walk start, which made it a slow-journey detector: the 18:23 run
+     * (two quetzal flights, two shortcuts, 314s, arrived cleanly) warned at the 300s mark while
+     * cruising. The clock now restarts every time the player gets {@link #WALK_BUDGET_PROGRESS_TILES}
+     * closer to the goal than ever before this walk, so only a walk that has genuinely stopped
+     * converging trips it. Legs that move AWAY first (a flight via a distant hub) do not restart the
+     * clock, so they must complete within the budget — at 300s that holds comfortably. Currently
+     * OBSERVE-ONLY — it logs and does not abort — because a budget that kills a working walk would
+     * be a worse bug than the livelock it guards against.
      */
     private static final long WALK_WALL_CLOCK_BUDGET_MS = 300_000L;
+    /** Distance improvement (tiles, 2D, vs the walk's best so far) that counts as real progress. */
+    private static final int WALK_BUDGET_PROGRESS_TILES = 10;
     /** Uninterrupted tail-exempt iterations before the loop is reported as yielding without advancing. */
     private static final int MAX_CONSECUTIVE_EXEMPT_ITERATIONS = 24;
     /** One budget report per walk session; 0 when this session has not reported yet. */
     private static volatile long walkBudgetReportedForSessionAtMs = 0L;
+    /** Walk session the progress tracker below belongs to. */
+    private static long walkBudgetTrackedSessionMs = 0L;
+    /** Closest (2D) the player has been to this walk's goal, and when that record was last beaten. */
+    private static int walkBudgetBestDistToGoal = Integer.MAX_VALUE;
+    private static long walkBudgetLastProgressAtMs = 0L;
 
     /**
-     * Reports a walk that has outlived its wall-clock budget.
+     * Reports a walk that has outlived its no-progress budget.
      *
      * <p>{@code MAX_PROCESS_WALK_TAIL_ITERATIONS} is not a bound on its own: several exit reasons
      * decrement the tail counter, so a walk that keeps producing one of them loops forever, and
@@ -1485,15 +1499,30 @@ public class Rs2Walker {
      */
     private static void reportWalkBudgetIfExhausted(WorldPoint target, long nowMs, int processWalkTail) {
         long startedAt = routeState.walkSessionStartedAtMs;
-        if (!TailDecision.isWallClockExhausted(startedAt, nowMs, WALK_WALL_CLOCK_BUDGET_MS)
+        if (walkBudgetTrackedSessionMs != startedAt) {
+            walkBudgetTrackedSessionMs = startedAt;
+            walkBudgetBestDistToGoal = Integer.MAX_VALUE;
+            walkBudgetLastProgressAtMs = startedAt;
+        }
+        WorldPoint at = Rs2Player.getWorldLocation();
+        if (at != null && target != null) {
+            int dist = at.distanceTo2D(target);
+            if (dist <= walkBudgetBestDistToGoal - WALK_BUDGET_PROGRESS_TILES
+                    || walkBudgetBestDistToGoal == Integer.MAX_VALUE) {
+                walkBudgetBestDistToGoal = Math.min(dist, walkBudgetBestDistToGoal);
+                walkBudgetLastProgressAtMs = nowMs;
+            }
+        }
+        if (!TailDecision.isWallClockExhausted(walkBudgetLastProgressAtMs, nowMs, WALK_WALL_CLOCK_BUDGET_MS)
                 || walkBudgetReportedForSessionAtMs == startedAt) {
             return;
         }
         walkBudgetReportedForSessionAtMs = startedAt;
-        log.warn("[Walker] walk exceeded its {}ms budget (running {}ms) target={} at={} tail={} —"
-                        + " probable livelock; the tail cap cannot catch this because exempt exits refund it",
-                WALK_WALL_CLOCK_BUDGET_MS, nowMs - startedAt, target,
-                Rs2Player.getWorldLocation(), processWalkTail);
+        log.warn("[Walker] walk exceeded its {}ms no-progress budget (no distance gain for {}ms,"
+                        + " running {}ms total) target={} at={} tail={} — probable livelock; the tail"
+                        + " cap cannot catch this because exempt exits refund it",
+                WALK_WALL_CLOCK_BUDGET_MS, nowMs - walkBudgetLastProgressAtMs, nowMs - startedAt,
+                target, Rs2Player.getWorldLocation(), processWalkTail);
     }
 
     /** How long the route progress index may hold still before the route is declared stagnant. */
@@ -1576,8 +1605,25 @@ public class Rs2Walker {
                 run, exitWireName, target, Rs2Player.getWorldLocation());
     }
 
+    // Pass-anatomy tracking (task #25 slice 2): walkerHeartbeat is called at every pass start, so
+    // the gap since the previous call IS the previous pass's duration. Stage timers accumulate
+    // inside the handler bodies (WalkPassStats); the residual names what they do not explain.
+    private static long lastPassStartAtMs;
+    private static int lastPassTail = -1;
+    private static final long SLOW_PASS_EMIT_MS = 2_000;
+
     private static void walkerHeartbeat(WorldPoint target, int processWalkTail) {
         long now = System.currentTimeMillis();
+        if (processWalkTail > 0 && lastPassStartAtMs > 0) {
+            long prevPassMs = now - lastPassStartAtMs;
+            if (prevPassMs >= SLOW_PASS_EMIT_MS) {
+                WebWalkLog.spInfo("pass_slow | tail={} prevPassMs={} {}",
+                        lastPassTail, prevPassMs, WalkPassStats.snapshot(prevPassMs));
+            }
+        }
+        lastPassStartAtMs = now;
+        lastPassTail = processWalkTail;
+        WalkPassStats.reset();
         reportWalkBudgetIfExhausted(target, now, processWalkTail);
         if (now - lastHeartbeatAtMs < WALKER_HEARTBEAT_INTERVAL_MS) {
             return;
@@ -1798,6 +1844,8 @@ public class Rs2Walker {
 
             boolean partialPath = false;
             if (dst == null || dst.distanceTo(target) > distance) {
+                final WorldPoint sealedRim = consumeSealedRimRetarget(target, dst);
+                if (sealedRim != null) { return processWalk(sealedRim, distance, partialRetries); }
                 if (path != null && path.size() > 1) {
                     WebWalkLog.partialSegment(dst, dst.distanceTo(target), target, path.size());
                     partialPath = true;
@@ -1814,8 +1862,7 @@ public class Rs2Walker {
                 return WalkerState.ARRIVED;
             }
 
-            // Partial segment: before standing on the segment endpoint, refresh routing from current
-            // position so the continuation is ready (smooth handoff vs dead stop at segment end).
+            // Partial segment: refresh routing before the endpoint so the continuation is ready.
             if (partialPath) {
                 WorldPoint playerPt = walkLoop.playerLoc;
                 if (playerPt != null && dst != null) {
@@ -2315,13 +2362,13 @@ public class Rs2Walker {
                 }
 
                 boolean tileReachable = reachableTilesCache.containsKey(currentWorldPoint);
-                // The handlers above block for seconds, so reachability computed from where we USED
-                // to be is not evidence about where we are. Re-capture the snapshot and, when the
-                // origin no longer matches, the cache with it — same radius as the original capture:
-                // the old recapture used a smaller one and could answer "unreachable" for a tile the
-                // wider map had already reached. One capture serves both this block and the miss
-                // branch below, which previously took its own fresh read microseconds later.
+                // The handlers above block for seconds, so re-capture the snapshot — but ONLY for
+                // tiles the recovery gate below can consume (far hops were the pre-obstacle stall).
                 if (!tileReachable && !inInstance) {
+                    if (FrontierDecision.shouldSkipFarUnreachableTile(currentWorldPoint,
+                            walkLoop.playerLoc, HANDLER_RANGE + 2, FAR_UNREACHABLE_STALENESS_MARGIN)) {
+                        continue;
+                    }
                     walkLoop = WalkLoopSnapshot.capture();
                     WorldPoint playerLoc = walkLoop.playerLoc;
                     if (playerLoc != null && !playerLoc.equals(reachableTilesCacheOrigin)) {
@@ -2405,9 +2452,9 @@ public class Rs2Walker {
                             if (hasRecentDoorAttemptOnEdge(edgeFrom, edgeTo)) {
                                 boolean edgeResolved = waitForDoorEdgeResolution(edgeFrom, edgeTo,
                                         obstaclePolicy.edgeResolutionWaitTimeoutMs());
-                                boolean clickedEdge = FrontierDecision.shouldFastClickAfterEdgeWait(edgeResolved)
+                                boolean clicked = FrontierDecision.shouldFastClickAfterEdgeWait(edgeResolved)
                                         && tryPostDoorFastMinimapClick(path, edgeIdx, playerLoc, target);
-                                exit = FrontierDecision.afterEdgeWait(edgeResolved, clickedEdge).exit();
+                                exit = FrontierDecision.afterEdgeWait(edgeResolved, clicked).exit();
                                 break;
                             }
                             if (hasRecentDoorAttemptNearIndex(rawPath, rawEdgeStart)) {
@@ -2416,10 +2463,10 @@ public class Rs2Walker {
                                 WorldPoint afterNearbyWait = Rs2Player.getWorldLocation();
                                 boolean playerMoved = afterNearbyWait != null
                                         && !afterNearbyWait.equals(playerLoc);
-                                boolean clickedNearby = FrontierDecision.shouldFastClickAfterNearbyWait(nearbyResolved, playerMoved)
+                                boolean clicked = FrontierDecision.shouldFastClickAfterNearbyWait(nearbyResolved, playerMoved)
                                         && tryPostDoorFastMinimapClick(path, edgeIdx, afterNearbyWait, target);
                                 FrontierDecision.DoorWaitOutcome nearbyOutcome =
-                                        FrontierDecision.afterNearbyWait(nearbyResolved, playerMoved, clickedNearby);
+                                        FrontierDecision.afterNearbyWait(nearbyResolved, playerMoved, clicked);
                                 if (nearbyOutcome.endsPass()) {
                                     exit = nearbyOutcome.exit();
                                     break;
@@ -2605,6 +2652,8 @@ public class Rs2Walker {
                                     recoveryMinimapReach - 1,
                                     rawAnchorIndex,
                                     Rs2Walker::isKnownWalkableOrUnloaded);
+                            // Precedence (base < raw-gated < shortcut origin) and the hazard asymmetry
+                            // between them live with the decision, pinned by its table.
                             WorldPoint shortcutOrigin =
                                     frontierObstacle.kind() == ObstacleResolution.Kind.WALK_TO_ORIGIN
                                             ? frontierObstacle.walkTarget()
@@ -2612,8 +2661,6 @@ public class Rs2Walker {
                             recoverTarget = FrontierDecision.chooseRecoveryTarget(recoverTarget,
                                     rawRecoveryTarget, shortcutOrigin, playerLoc,
                                     Rs2PathApi::shouldAvoidDangerousTile);
-                            // Precedence (base < raw-gated < shortcut origin) and the hazard asymmetry
-                            // between them live with the decision, pinned by its table.
                             // The click decision (preemption vs walled vs cooldown vs click) is PURE and
                             // decision-table-tested in RouteRecovery — this shell only carries out the
                             // chosen action. Guard rationale (long recovery pass, walled end-snap, cooldown
@@ -2658,8 +2705,7 @@ public class Rs2Walker {
                             // Scene-click fallback only on final-adjacent approach (minimap click may
                             // miss the clip when very close); kept gated on reachability since it is a
                             // last resort, not the primary recovery path.
-                            if (!clicked && recoverTarget != null
-                                    && target != null
+                            if (!clicked
                                     && FrontierDecision.shouldTrySceneClickFallback(playerLoc, target, recoverTarget,
                                             distance, FINAL_ADJACENT_CANVAS_NUDGE_CHEBYSHEV,
                                             DOOR_OPEN_CANVAS_NUDGE_MAX_FROM_PLAYER)
@@ -3025,10 +3071,11 @@ public class Rs2Walker {
                         }
                         break;
                     }
-                    // Advance past intermediate tiles we've effectively walked over so the
-                    // outer loop doesn't re-run door/rockfall/transport handlers for indices
-                    // now behind the player.
-                    i = targetIdx;
+                    // ONE CLICK PER PASS (task #25): advancing i meant 2-3 clicks per pass, each
+                    // with its own post-click waits — 8-15s passes while the player stood at the
+                    // first click's interim. End the pass; the next re-clicks ~1s after arrival.
+                    exit = WalkExit.ROUTE_MOVE_IN_FLIGHT;
+                    break;
                 }
             }
 
@@ -4509,6 +4556,18 @@ public class Rs2Walker {
                                                           int handlerRange,
                                                           WorldPoint target,
                                                           boolean allowTransportHandlers) {
+        long passT0 = System.currentTimeMillis();
+        try {
+            return handleNearbyRawPathSceneObjectsInner(rawPath, handlerRange, target, allowTransportHandlers);
+        } finally {
+            WalkPassStats.rawSceneScanMs.addAndGet(System.currentTimeMillis() - passT0);
+        }
+    }
+
+    private static boolean handleNearbyRawPathSceneObjectsInner(List<WorldPoint> rawPath,
+                                                          int handlerRange,
+                                                          WorldPoint target,
+                                                          boolean allowTransportHandlers) {
         if (rawPath == null || rawPath.size() < 2) {
             return false;
         }
@@ -4800,6 +4859,15 @@ public class Rs2Walker {
 
 
     private static boolean handleCurrentTileTransportTowardPath(List<WorldPoint> rawPath, List<WorldPoint> path, WorldPoint target) {
+        long passT0 = System.currentTimeMillis();
+        try {
+            return handleCurrentTileTransportTowardPathInner(rawPath, path, target);
+        } finally {
+            WalkPassStats.currentTileMs.addAndGet(System.currentTimeMillis() - passT0);
+        }
+    }
+
+    private static boolean handleCurrentTileTransportTowardPathInner(List<WorldPoint> rawPath, List<WorldPoint> path, WorldPoint target) {
         if (Rs2Player.isMoving()) {
             return false;
         }
@@ -6007,6 +6075,32 @@ public class Rs2Walker {
     /**
      * @param target destination, or {@code null} to clear (prefer {@link #clearWalkingRoute(String)} for observability)
      */
+    /**
+     * Retargets a walk whose destination the planner has PROVEN sealed (an unreachable pocket) to
+     * the walkable rim tile the substitute search actually reached — once, so every later replan is
+     * a normal TARGET_REACHED plan to a reachable tile. Without this the sealed plan's
+     * SEARCH_EXHAUSTED termination read as a partial path, and the walker replanned it every pass:
+     * each replan re-ran the sealed substitute search (50k nodes) and returned another short
+     * segment — the 17:54 walk crawled ~300 tiles that way toward a destination one tile inside a
+     * fence. Ending beside the sealed tile is the same best-effort the crawl delivered, at a
+     * fraction of the cost, and the caller's arrival tolerance then applies to the rim tile.
+     * Returns the rim to continue the walk with, or {@code null} when this plan is not a
+     * reached-rim sealed plan (normal partial handling applies). The {@code rim.equals(dst)} guard
+     * demands the plan genuinely ENDS on the rim; {@code rim.equals(target)} guards re-entry.
+     */
+    private static WorldPoint consumeSealedRimRetarget(WorldPoint target, WorldPoint dst) {
+        var pf = Rs2PathApi.getPathfinder();
+        WorldPoint rim = pf == null ? null : pf.getReachedSealedSubstitute();
+        if (rim == null || !rim.equals(dst) || rim.equals(target)) {
+            return null;
+        }
+        WebWalkLog.spInfo("sealed_target_retarget | goal={} rim={} — goal proven sealed, walking to its rim",
+                target, rim);
+        setTarget(rim);
+        recalculatePath();
+        return rim;
+    }
+
     public static void setTarget(WorldPoint target) {
         setTarget(target, null);
     }
@@ -6197,6 +6291,16 @@ public class Rs2Walker {
      * everything behind it.
      */
     private static boolean handleTransportsInRawSegment(List<WorldPoint> rawPath, int rawFrom, int rawTo,
+                                                        boolean allowRangedDispatch) {
+        long passT0 = System.currentTimeMillis();
+        try {
+            return handleTransportsInRawSegmentInner(rawPath, rawFrom, rawTo, allowRangedDispatch);
+        } finally {
+            WalkPassStats.segTransportMs.addAndGet(System.currentTimeMillis() - passT0);
+        }
+    }
+
+    private static boolean handleTransportsInRawSegmentInner(List<WorldPoint> rawPath, int rawFrom, int rawTo,
                                                         boolean allowRangedDispatch) {
         Boolean inInstance = null;
         boolean sawUndispatchedTransportStep = false;

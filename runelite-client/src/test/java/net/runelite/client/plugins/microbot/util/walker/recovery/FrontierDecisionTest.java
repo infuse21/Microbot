@@ -164,6 +164,49 @@ public class FrontierDecisionTest
 			FrontierDecision.earliestBlockedIndex(path, 0, 0, 0, reachable()));
 	}
 
+	// ---- far-unreachable pre-gate ---------------------------------------------------------------
+
+	/**
+	 * The pre-gate skips fresh reads only for tiles the recovery gate could never consume: with
+	 * nearGate 15 and margin 10, the boundary tile at 25 still takes the fresh-capture path and
+	 * 26 is the first skip. On a gated route this is what keeps the pass from paying client-thread
+	 * hops for the entire forward tail.
+	 */
+	@Test
+	public void tilesBeyondTheRecoveryGatePlusMarginSkipFreshReads()
+	{
+		WorldPoint player = new WorldPoint(3200, 3200, 0);
+		assertFalse("boundary tile must still take the fresh path",
+			FrontierDecision.shouldSkipFarUnreachableTile(
+				new WorldPoint(3225, 3200, 0), player, 15, 10));
+		assertTrue(FrontierDecision.shouldSkipFarUnreachableTile(
+			new WorldPoint(3226, 3200, 0), player, 15, 10));
+		assertTrue("a post-transport tile on another continent is the motivating case",
+			FrontierDecision.shouldSkipFarUnreachableTile(
+				new WorldPoint(1681, 3125, 0), player, 15, 10));
+	}
+
+	/** No position (or no tile) means no evidence of farness: never skip, take the fresh path. */
+	@Test
+	public void missingPositionNeverSkips()
+	{
+		assertFalse(FrontierDecision.shouldSkipFarUnreachableTile(
+			new WorldPoint(1681, 3125, 0), null, 15, 10));
+		assertFalse(FrontierDecision.shouldSkipFarUnreachableTile(
+			null, new WorldPoint(3200, 3200, 0), 15, 10));
+	}
+
+	/**
+	 * distanceTo2D ignores plane, and that is the safe direction: the tile directly above the
+	 * player (other side of a staircase) reads as near and keeps its fresh capture.
+	 */
+	@Test
+	public void anOverheadTileReadsAsNearAndIsNotSkipped()
+	{
+		assertFalse(FrontierDecision.shouldSkipFarUnreachableTile(
+			new WorldPoint(3201, 3200, 1), new WorldPoint(3200, 3200, 0), 15, 10));
+	}
+
 	// ---- door-attempt waits ---------------------------------------------------------------------
 
 	@Test

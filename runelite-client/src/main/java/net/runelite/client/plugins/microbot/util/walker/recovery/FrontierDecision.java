@@ -98,6 +98,30 @@ public final class FrontierDecision
 	}
 
 	/**
+	 * Whether an unreachable route tile is too far ahead for fresh evidence to matter this pass.
+	 *
+	 * <p>Every tile past a closed frontier is unreachable, so on a gated route the unreachable
+	 * branch runs for the WHOLE forward tail — dozens of tiles per pass, each paying the loop
+	 * snapshot's client-thread hops and, whenever the player has moved since the last capture, a
+	 * full-radius reachability BFS. Fresh evidence has exactly one consumer, the local-recovery
+	 * branch, and that is gated to {@code nearGate}; a tile that no plausible position drift could
+	 * bring inside that gate needs no fresh reads at all. Measured 2026-08-14 (Lumbridge→Varlamore):
+	 * ~45s of a 288s walk stood still at obstacles, most of it in these hops — recaptures fired for
+	 * tiles on the far side of an NPC travel.
+	 *
+	 * <p>{@code lastKnownPlayerLoc} is the pass-stale snapshot position, so {@code stalenessMargin}
+	 * covers ground run since it was read: borderline tiles still take the fresh-capture path, and a
+	 * null position (no snapshot yet) never skips. {@code distanceTo2D} ignores plane, which errs
+	 * safe — an overhead tile reads as near and takes the fresh path.
+	 */
+	public static boolean shouldSkipFarUnreachableTile(WorldPoint tile,
+		WorldPoint lastKnownPlayerLoc, int nearGate, int stalenessMargin)
+	{
+		return tile != null && lastKnownPlayerLoc != null
+			&& tile.distanceTo2D(lastKnownPlayerLoc) > nearGate + stalenessMargin;
+	}
+
+	/**
 	 * What a wait on a recently-attempted door concluded.
 	 *
 	 * <p>Every outcome but {@link #FALL_THROUGH} ends the pass — the walk goes round again and
