@@ -1,6 +1,7 @@
 package net.runelite.client.plugins.microbot.shortestpath;
 
 import net.runelite.api.Quest;
+import net.runelite.api.QuestState;
 import net.runelite.api.VarPlayer;
 import net.runelite.api.coords.WorldArea;
 import net.runelite.api.coords.WorldPoint;
@@ -335,17 +336,472 @@ public class ShortestPathCoreTest {
 	}
 
 	@Test
-	public void testLumbridgeHomeTeleportTransportLoaded() {
-		Transport transport = getLumbridgeHomeTeleportTransport();
+	public void testMinigameTeleportsUseCurrentLandingsAndSpecialRequirements() {
+		Set<Transport> teleports = Transport.loadAllFromResources()
+			.getOrDefault(null, Collections.emptySet());
 
-		assertTrue("Lumbridge Home Teleport should stay gated to the standard spellbook",
-			transport.getVarbits().stream().anyMatch(v -> v.getVarbitId() == 4070 && v.getValue() == 0));
-		assertFalse("Lumbridge Home Teleport should not depend on the buff-display disabled varbit",
-			transport.getVarbits().stream().anyMatch(v -> v.getVarbitId() == 12353));
-		assertTrue("Lumbridge Home Teleport should be gated by LAST_HOME_TELEPORT cooldown",
-			transport.getVarplayers().stream().anyMatch(v -> v.getVarplayerId() == VarPlayer.LAST_HOME_TELEPORT
-				&& v.getOperator() == TransportVarPlayer.Operator.COOLDOWN_MINUTES
-				&& v.getValue() == 30));
+		Transport guardians = findTeleport(teleports, "Guardians of the Rift");
+		assertEquals("Guardians teleport should land inside the Temple of the Eye",
+			new WorldPoint(3614, 9477, 0), guardians.getDestination());
+
+		Transport keldagrimRatPits = findTeleport(teleports, "Rat Pits: Keldagrim");
+		assertEquals(new WorldPoint(2914, 10193, 0), keldagrimRatPits.getDestination());
+		Transport varrockRatPits = findTeleport(teleports, "Rat Pits: Varrock");
+		assertEquals(new WorldPoint(3262, 3405, 0), varrockRatPits.getDestination());
+
+		Transport pestControl = findTeleport(teleports, "Pest Control");
+		assertEquals("Pest Control teleport should retain its 40 combat gate",
+			40, pestControl.getRequiredCombatLevel());
+	}
+
+	@Test
+	public void testTransportParserSupportsUpstreamSpecialLevelRequirements() {
+		Map<String, String> fields = new HashMap<>();
+		fields.put("Destination", "1 2 0");
+		fields.put("Skills", "2376 Total;40 Combat;327 Quest points");
+		Transport transport = new Transport(fields, TransportType.TELEPORTATION_ITEM);
+
+		assertEquals(2376, transport.getRequiredTotalLevel());
+		assertEquals(40, transport.getRequiredCombatLevel());
+		assertEquals(327, transport.getRequiredQuestPoints());
+	}
+
+	@Test
+	public void testDirectMaxCapeAndQuestCapeImportPreservesRequirementsAndDestinations() {
+		Set<Transport> teleports = Transport.loadAllFromResources()
+			.getOrDefault(null, Collections.emptySet());
+
+		List<Transport> directMaxCape = new ArrayList<>();
+		for (Transport transport : teleports) {
+			if (transport.getType() == TransportType.TELEPORTATION_ITEM
+				&& transport.getDisplayInfo() != null
+				&& transport.getDisplayInfo().startsWith("Max cape:")
+				&& !transport.getDisplayInfo().equals("Max cape: Home")) {
+				directMaxCape.add(transport);
+			}
+		}
+
+		assertEquals("The reviewed direct Max-cape family should contain every upstream destination",
+			17, directMaxCape.size());
+		Set<String> routeIdentities = new HashSet<>();
+		for (Transport transport : directMaxCape) {
+			assertEquals(2376, transport.getRequiredTotalLevel());
+			assertEquals(20, transport.getMaxWildernessLevel());
+			assertEquals(1, transport.getItemRequirements().size());
+			assertEquals(Set.of(13280, 13342), transport.getItemRequirements().get(0).getItemIds());
+			assertTrue("Duplicate Max-cape route: " + transport.getDisplayInfo(),
+				routeIdentities.add(transport.getDestination() + "|" + transport.getDisplayInfo()));
+		}
+
+		Transport hunterGuild = findItemTeleport(teleports,
+			"Max cape: Other Teleports: Hunter Guild");
+		assertEquals(new WorldPoint(1558, 3046, 0), hunterGuild.getDestination());
+		Transport pandemonium = findItemTeleport(teleports,
+			"Max cape: Other Teleports: The Pandemonium");
+		assertEquals(new WorldPoint(3048, 2972, 0), pandemonium.getDestination());
+
+		Transport questCape = findItemTeleport(teleports, "Quest point cape: Teleport");
+		assertEquals(new WorldPoint(2729, 3348, 0), questCape.getDestination());
+		assertEquals(327, questCape.getRequiredQuestPoints());
+		assertEquals(20, questCape.getMaxWildernessLevel());
+		assertEquals(Set.of(9813, 13068), questCape.getItemRequirements().get(0).getItemIds());
+	}
+
+	@Test
+	public void testQuetzalNetworkAndWhistleFamilyMatchReviewedUpstream() {
+		HashMap<WorldPoint, Set<Transport>> transports = Transport.loadAllFromResources();
+		WorldPoint aldarin = new WorldPoint(1389, 2901, 0);
+		WorldPoint quetzacalli = new WorldPoint(1510, 3222, 0);
+		WorldPoint oldQuetzacalli = new WorldPoint(1510, 3221, 0);
+		WorldPoint camTorum = new WorldPoint(1446, 3108, 0);
+
+		assertFalse("the obsolete one-tile-off Quetzacalli origin must be gone",
+			transports.getOrDefault(oldQuetzacalli, Collections.emptySet()).stream()
+				.anyMatch(transport -> transport.getType() == TransportType.QUETZAL));
+		Transport aldarinToCamTorum = transports.getOrDefault(aldarin, Collections.emptySet()).stream()
+			.filter(transport -> transport.getType() == TransportType.QUETZAL)
+			.filter(transport -> camTorum.equals(transport.getDestination()))
+			.findFirst()
+			.orElseThrow(() -> new AssertionError("Missing Aldarin -> Cam Torum quetzal route"));
+		assertEquals("Travel", aldarinToCamTorum.getAction());
+		assertEquals("Renu", aldarinToCamTorum.getName());
+		assertEquals(13350, aldarinToCamTorum.getObjectId());
+		assertEquals("Cam Torum", aldarinToCamTorum.getDisplayInfo());
+		assertTrue(aldarinToCamTorum.getVarplayers().stream().anyMatch(requirement ->
+			requirement.getVarplayerId() == 4182
+				&& requirement.getOperator() == TransportVarPlayer.Operator.BIT_SET
+				&& requirement.getValue() == 32));
+		assertTrue("the corrected Quetzacalli origin must participate in the network",
+			transports.getOrDefault(quetzacalli, Collections.emptySet()).stream()
+				.anyMatch(transport -> transport.getType() == TransportType.QUETZAL));
+
+		List<Transport> whistles = transports.getOrDefault(null, Collections.emptySet()).stream()
+			.filter(transport -> transport.getType() == TransportType.TELEPORTATION_ITEM)
+			.filter(transport -> transport.getDisplayInfo() != null
+				&& transport.getDisplayInfo().startsWith("Quetzal whistle:"))
+			.collect(java.util.stream.Collectors.toList());
+		assertEquals("every whistle destination needs charged and permanent variants", 28, whistles.size());
+		Set<String> whistleVariants = new HashSet<>();
+		for (Transport whistle : whistles) {
+			Set<Integer> itemIds = whistle.getItemRequirements().get(0).getItemIds();
+			if (whistle.isConsumable()) {
+				assertEquals(Set.of(29271, 29273, 29275), itemIds);
+			} else {
+				assertEquals(Set.of(33120), itemIds);
+			}
+			assertEquals(QuestState.FINISHED, whistle.getQuests().get(Quest.TWILIGHTS_PROMISE));
+			assertEquals(20, whistle.getMaxWildernessLevel());
+			assertTrue("duplicate whistle policy variant: " + whistle.getDisplayInfo(),
+				whistleVariants.add(whistle.getDisplayInfo() + "|" + whistle.isConsumable()));
+			assertFalse("obsolete executor label must not survive",
+				whistle.getDisplayInfo().contains("Cam Torum Entrance"));
+		}
+		assertEquals("each destination must have one charged and one permanent variant",
+			28, whistleVariants.size());
+		Transport quetzacalliWhistle = whistles.stream()
+			.filter(transport -> "Quetzal whistle: Quetzacalli Gorge".equals(transport.getDisplayInfo()))
+			.findFirst()
+			.orElseThrow(() -> new AssertionError("Missing Quetzacalli whistle destination"));
+		assertEquals(quetzacalli, quetzacalliWhistle.getDestination());
+	}
+
+	@Test
+	public void testBothCanoeChainsUsePinnedAxeCollectionAndUpstreamCosts() {
+		HashMap<WorldPoint, Set<Transport>> transports = Transport.loadAllFromResources();
+		Set<WorldPoint> riverLumOrigins = Set.of(
+			new WorldPoint(3132, 3510, 0),
+			new WorldPoint(3112, 3411, 0),
+			new WorldPoint(3202, 3343, 0),
+			new WorldPoint(3243, 3237, 0),
+			new WorldPoint(3154, 3630, 0));
+		Set<WorldPoint> riverDougneOrigins = Set.of(
+			new WorldPoint(2439, 3135, 0),
+			new WorldPoint(2485, 3192, 0),
+			new WorldPoint(2579, 3260, 0),
+			new WorldPoint(2573, 3358, 0),
+			new WorldPoint(2525, 3408, 0));
+		Set<WorldPoint> supportedOrigins = new HashSet<>(riverLumOrigins);
+		supportedOrigins.addAll(riverDougneOrigins);
+		List<Transport> canoes = supportedOrigins.stream()
+			.flatMap(origin -> transports.getOrDefault(origin, Collections.emptySet()).stream())
+			.filter(transport -> transport.getType() == TransportType.CANOE)
+			.collect(java.util.stream.Collectors.toList());
+
+		assertEquals("both supported canoe chains must retain all reviewed upstream routes", 45, canoes.size());
+		for (Transport canoe : canoes) {
+			assertEquals("Paddle Canoe", canoe.getAction());
+			assertEquals("Canoe Station", canoe.getName());
+			assertTrue(canoe.getDuration() == 20 || canoe.getDuration() == 30);
+			assertEquals(1, canoe.getItemRequirements().size());
+			Set<Integer> axes = canoe.getItemRequirements().get(0).getItemIds();
+			assertEquals(12, axes.size());
+			assertTrue(axes.contains(net.runelite.api.gameval.ItemID.BRONZE_AXE));
+			assertTrue(axes.contains(net.runelite.api.gameval.ItemID.CRYSTAL_AXE));
+		}
+		List<Transport> dougneCanoes = canoes.stream()
+			.filter(transport -> transport.getObjectId() >= 60845 && transport.getObjectId() <= 60849)
+			.collect(java.util.stream.Collectors.toList());
+		assertEquals("River Dougne has four destinations from each of five stations", 20, dougneCanoes.size());
+		assertEquals(Set.of(60845, 60846, 60847, 60848, 60849), dougneCanoes.stream()
+			.map(Transport::getObjectId)
+			.collect(java.util.stream.Collectors.toSet()));
+	}
+
+	@Test
+	public void testGrappleShortcutsRequireCrossbowAndMithGrapple() {
+		Set<Integer> reviewedGrappleObjects = Set.of(17042, 17047, 17049, 17050, 17062, 17068, 17074);
+		List<Transport> grappleShortcuts = Transport.loadAllFromResources().values().stream()
+			.flatMap(Collection::stream)
+			.filter(transport -> transport.getType() == TransportType.GRAPPLE_SHORTCUT)
+			.filter(transport -> reviewedGrappleObjects.contains(transport.getObjectId()))
+			.collect(java.util.stream.Collectors.toList());
+
+		assertEquals("every reviewed grapple edge must retain the upstream equipment pair",
+			12, grappleShortcuts.size());
+		for (Transport grapple : grappleShortcuts) {
+			assertEquals("crossbow and grapple are independent AND requirements: " + grapple,
+				2, grapple.getItemRequirements().size());
+			assertTrue("a usable crossbow family is required: " + grapple,
+				grapple.getItemRequirements().stream().anyMatch(requirement ->
+					requirement.getItemIds().contains(net.runelite.api.gameval.ItemID.CROSSBOW)
+						&& requirement.getItemIds().contains(net.runelite.api.gameval.ItemID.ZARYTE_XBOW)));
+			assertTrue("the mith grapple is required separately: " + grapple,
+				grapple.getItemRequirements().stream().anyMatch(requirement ->
+					requirement.getItemIds().equals(Set.of(
+						net.runelite.api.gameval.ItemID.XBOWS_GRAPPLE_TIP_BOLT_MITHRIL_ROPE))));
+		}
+	}
+
+	@Test
+	public void testTrollheimRopeShortcutRetainsItemAndUnlockVarbit() {
+		WorldPoint origin = new WorldPoint(2766, 3665, 0);
+		Transport rope = Transport.loadAllFromResources().getOrDefault(origin, Collections.emptySet()).stream()
+			.filter(transport -> new WorldPoint(2766, 3663, 0).equals(transport.getDestination()))
+			.filter(transport -> transport.getObjectId() == 5842)
+			.findFirst()
+			.orElseThrow(() -> new AssertionError("Missing Trollheim rope shortcut"));
+
+		assertEquals(1, rope.getItemRequirements().size());
+		assertEquals(Set.of(net.runelite.api.gameval.ItemID.ROPE),
+			rope.getItemRequirements().get(0).getItemIds());
+		assertTrue("shortcut is available only after the rope has been attached",
+			rope.getVarbits().stream().anyMatch(requirement -> requirement.getVarbitId() == 260
+				&& requirement.getOperator() == TransportVarbit.Operator.GREATER_THAN
+				&& requirement.getValue() == 0));
+		assertEquals(10, rope.getDuration());
+	}
+
+	@Test
+	public void testTrollheimClimbingRockAscentsRequireBootsButDescentsDoNot() {
+		HashMap<WorldPoint, Set<Transport>> transports = Transport.loadAllFromResources();
+		Map<WorldPoint, WorldPoint> ascents = Map.of(
+			new WorldPoint(2820, 3635, 0), new WorldPoint(2822, 3635, 0),
+			new WorldPoint(2856, 3611, 0), new WorldPoint(2856, 3613, 0),
+			new WorldPoint(2857, 3611, 0), new WorldPoint(2857, 3613, 0));
+
+		for (Map.Entry<WorldPoint, WorldPoint> edge : ascents.entrySet()) {
+			Transport ascent = transports.getOrDefault(edge.getKey(), Collections.emptySet()).stream()
+				.filter(transport -> edge.getValue().equals(transport.getDestination()))
+				.filter(transport -> transport.getObjectId() == 3748)
+				.findFirst()
+				.orElseThrow(() -> new AssertionError("Missing Trollheim ascent: " + edge));
+			assertEquals(TransportType.AGILITY_SHORTCUT, ascent.getType());
+			assertEquals(1, ascent.getItemRequirements().size());
+			assertEquals(Set.of(
+					net.runelite.api.gameval.ItemID.DEATH_CLIMBINGBOOTS,
+					net.runelite.api.gameval.ItemID.CLIMBING_BOOTS_G),
+				ascent.getItemRequirements().get(0).getItemIds());
+
+			Transport descent = transports.getOrDefault(edge.getValue(), Collections.emptySet()).stream()
+				.filter(transport -> edge.getKey().equals(transport.getDestination()))
+				.filter(transport -> transport.getObjectId() == 3748)
+				.findFirst()
+				.orElseThrow(() -> new AssertionError("Missing unrestricted Trollheim descent: " + edge));
+			assertEquals(TransportType.TRANSPORT, descent.getType());
+			assertTrue(descent.getItemRequirements().isEmpty());
+		}
+	}
+
+	@Test
+	public void testIsafdarForestObstaclesRetainAgilityAndDurationRequirements() {
+		Set<Integer> forestObjectIds = Set.of(
+			3921, 3922, 3925, 3931, 3932, 3933, 3937, 3938, 3939, 3998, 3999);
+		Map<Integer, Integer> requiredAgility = Map.ofEntries(
+			Map.entry(3921, 1),
+			Map.entry(3922, 1),
+			Map.entry(3925, 1),
+			Map.entry(3931, 45),
+			Map.entry(3932, 45),
+			Map.entry(3933, 45),
+			Map.entry(3937, 56),
+			Map.entry(3938, 56),
+			Map.entry(3939, 56),
+			Map.entry(3998, 56),
+			Map.entry(3999, 56));
+		Map<Integer, Integer> expectedDuration = Map.ofEntries(
+			Map.entry(3921, 8),
+			Map.entry(3922, 6),
+			Map.entry(3925, 4),
+			Map.entry(3931, 8),
+			Map.entry(3932, 8),
+			Map.entry(3933, 9),
+			Map.entry(3937, 4),
+			Map.entry(3938, 4),
+			Map.entry(3939, 4),
+			Map.entry(3998, 4),
+			Map.entry(3999, 4));
+
+		HashMap<WorldPoint, Set<Transport>> transports = Transport.loadAllFromResources();
+		List<Transport> forestShortcuts = transports.values().stream()
+			.flatMap(Collection::stream)
+			.filter(transport -> forestObjectIds.contains(transport.getObjectId()))
+			.filter(transport -> transport.getOrigin() != null
+				&& transport.getOrigin().getX() >= 2100 && transport.getOrigin().getX() <= 2310
+				&& transport.getOrigin().getY() >= 3100 && transport.getOrigin().getY() <= 3300)
+			.collect(java.util.stream.Collectors.toList());
+
+		assertEquals("the complete reviewed Isafdar obstacle family must be loaded", 88,
+			forestShortcuts.size());
+		for (Transport shortcut : forestShortcuts) {
+			assertEquals("forest obstacles must not bypass the agility toggle or level gate: " + shortcut,
+				TransportType.AGILITY_SHORTCUT, shortcut.getType());
+			assertEquals("wrong Agility requirement for object " + shortcut.getObjectId(),
+				requiredAgility.get(shortcut.getObjectId()).intValue(),
+				shortcut.getSkillLevels()[net.runelite.api.Skill.AGILITY.ordinal()]);
+			assertEquals("wrong traversal duration for object " + shortcut.getObjectId(),
+				expectedDuration.get(shortcut.getObjectId()).intValue(), shortcut.getDuration());
+		}
+
+		assertTrue("current stick landing must replace the stale 2295,3215 origin",
+			transports.getOrDefault(new WorldPoint(2295, 3213, 0), Collections.emptySet()).stream()
+				.anyMatch(transport -> transport.getObjectId() == 3922
+					&& new WorldPoint(2295, 3217, 0).equals(transport.getDestination())));
+		assertFalse("stale stick landing must not remain as a generic transport",
+			transports.getOrDefault(new WorldPoint(2295, 3215, 0), Collections.emptySet()).stream()
+				.anyMatch(transport -> transport.getObjectId() == 3922));
+		assertTrue("current dense-forest landing must replace the stale 2279,3221 origin",
+			transports.getOrDefault(new WorldPoint(2279, 3222, 0), Collections.emptySet()).stream()
+				.anyMatch(transport -> transport.getObjectId() == 3938
+					&& new WorldPoint(2279, 3225, 0).equals(transport.getDestination())));
+		assertFalse("stale dense-forest landing must not remain as a generic transport",
+			transports.getOrDefault(new WorldPoint(2279, 3221, 0), Collections.emptySet()).stream()
+				.anyMatch(transport -> transport.getObjectId() == 3938));
+	}
+
+	@Test
+	public void testConvertedGenericShortcutFamiliesRetainUpstreamRequirements() {
+		Set<Integer> reviewedObjects = Set.of(
+			21727, 21738, 21739, 20882, 20884, // Brimhaven Dungeon
+			6905,                               // Lumbridge cellar
+			2231,                               // Karamja rocks
+			16537, 16538,                       // Slayer Tower ground floor
+			39541, 39542);                      // Darkmeyer walls
+		Map<Integer, Integer> expectedAgility = Map.ofEntries(
+			Map.entry(21727, 1),
+			Map.entry(21738, 1),
+			Map.entry(21739, 1),
+			Map.entry(20882, 1),
+			Map.entry(20884, 1),
+			Map.entry(6905, 13),
+			Map.entry(2231, 15),
+			Map.entry(16537, 61),
+			Map.entry(16538, 61),
+			Map.entry(39541, 63),
+			Map.entry(39542, 63));
+		Map<Integer, Integer> expectedDuration = Map.ofEntries(
+			Map.entry(21727, 13),
+			Map.entry(21738, 7),
+			Map.entry(21739, 7),
+			Map.entry(20882, 7),
+			Map.entry(20884, 7),
+			Map.entry(6905, 3),
+			Map.entry(2231, 5),
+			Map.entry(16537, 0),
+			Map.entry(16538, 0),
+			Map.entry(39541, 0),
+			Map.entry(39542, 0));
+
+		HashMap<WorldPoint, Set<Transport>> transports = Transport.loadAllFromResources();
+		java.util.function.Predicate<Transport> reviewedFamily = transport -> {
+			WorldPoint origin = transport.getOrigin();
+			if (origin == null || !reviewedObjects.contains(transport.getObjectId())) {
+				return false;
+			}
+			int objectId = transport.getObjectId();
+			if (objectId == 16537 || objectId == 16538) {
+				return origin.getX() >= 3421 && origin.getX() <= 3423
+					&& origin.getY() >= 3549 && origin.getY() <= 3551;
+			}
+			return true;
+		};
+		List<Transport> shortcuts = transports.values().stream()
+			.flatMap(Collection::stream)
+			.filter(reviewedFamily)
+			.filter(transport -> transport.getType() == TransportType.AGILITY_SHORTCUT)
+			.collect(java.util.stream.Collectors.toList());
+
+		assertEquals("all 28 reviewed generic edges must become agility shortcuts", 28, shortcuts.size());
+		for (Transport shortcut : shortcuts) {
+			assertEquals("wrong Agility level for " + shortcut,
+				expectedAgility.get(shortcut.getObjectId()).intValue(),
+				shortcut.getSkillLevels()[net.runelite.api.Skill.AGILITY.ordinal()]);
+			assertEquals("wrong traversal duration for " + shortcut,
+				expectedDuration.get(shortcut.getObjectId()).intValue(), shortcut.getDuration());
+		}
+
+		List<Transport> cellar = shortcuts.stream()
+			.filter(transport -> transport.getObjectId() == 6905)
+			.collect(java.util.stream.Collectors.toList());
+		assertEquals(2, cellar.size());
+		assertTrue("Lumbridge cellar hole must use the quest-progress varbit, not a completion-only wall",
+			cellar.stream().allMatch(transport -> transport.getVarbits().stream().anyMatch(requirement ->
+				requirement.getVarbitId() == 532
+					&& requirement.getOperator() == TransportVarbit.Operator.GREATER_THAN
+					&& requirement.getValue() == 3)));
+		assertFalse("obsolete Lost Tribe wall objects must not survive the representation change",
+			transports.values().stream().flatMap(Collection::stream)
+				.anyMatch(transport -> transport.getObjectId() == 6898 || transport.getObjectId() == 6899));
+
+		assertTrue("west Darkmeyer wall must retain its unlock varbit",
+			shortcuts.stream().filter(transport -> transport.getObjectId() == 39542)
+				.allMatch(transport -> transport.getVarbits().stream().anyMatch(requirement ->
+					requirement.getVarbitId() == 10449
+						&& requirement.getOperator() == TransportVarbit.Operator.EQUAL
+						&& requirement.getValue() == 1)));
+		assertTrue("east Darkmeyer wall must retain its unlock varbit",
+			shortcuts.stream().filter(transport -> transport.getObjectId() == 39541)
+				.allMatch(transport -> transport.getVarbits().stream().anyMatch(requirement ->
+					requirement.getVarbitId() == 10450
+						&& requirement.getOperator() == TransportVarbit.Operator.EQUAL
+						&& requirement.getValue() == 1)));
+
+		Set<String> genericReviewedEdges = transports.values().stream()
+			.flatMap(Collection::stream)
+			.filter(reviewedFamily)
+			.filter(transport -> transport.getType() == TransportType.TRANSPORT)
+			.map(transport -> transport.getOrigin() + " -> " + transport.getDestination())
+			.collect(java.util.stream.Collectors.toSet());
+		assertEquals("only upstream's two intentional Darkmeyer diagonal generic approaches may remain",
+			Set.of(
+				new WorldPoint(3672, 3376, 0) + " -> " + new WorldPoint(3670, 3375, 0),
+				new WorldPoint(3672, 3374, 0) + " -> " + new WorldPoint(3670, 3375, 0)),
+			genericReviewedEdges);
+	}
+
+	private static Transport findTeleport(Set<Transport> teleports, String displayInfo) {
+		return teleports.stream()
+			.filter(transport -> transport.getType() == TransportType.TELEPORTATION_MINIGAME)
+			.filter(transport -> displayInfo.equals(transport.getDisplayInfo()))
+			.findFirst()
+			.orElseThrow(() -> new AssertionError("Missing minigame teleport: " + displayInfo));
+	}
+
+	private static Transport findItemTeleport(Set<Transport> teleports, String displayInfo) {
+		return teleports.stream()
+			.filter(transport -> transport.getType() == TransportType.TELEPORTATION_ITEM)
+			.filter(transport -> displayInfo.equals(transport.getDisplayInfo()))
+			.findFirst()
+			.orElseThrow(() -> new AssertionError("Missing item teleport: " + displayInfo));
+	}
+
+	@Test
+	public void testLovakengjMinecartsRespectForsakenTowerUnlock() {
+		HashMap<WorldPoint, Set<Transport>> transports = Transport.loadAllFromResources();
+		WorldPoint arceuusOrigin = new WorldPoint(1670, 3832, 0);
+		WorldPoint farmingGuildDestination = new WorldPoint(1218, 3737, 0);
+		Set<Transport> atArceuus = transports.getOrDefault(arceuusOrigin, Collections.emptySet());
+
+		boolean paidBeforeUnlock = false;
+		boolean freeAfterUnlock = false;
+		boolean ungatedVariant = false;
+		for (Transport transport : atArceuus) {
+			if (transport.getType() != TransportType.MINECART
+				|| !farmingGuildDestination.equals(transport.getDestination())) {
+				continue;
+			}
+			boolean beforeUnlock = transport.getVarbits().stream().anyMatch(v -> v.getVarbitId() == 7796
+				&& v.getOperator() == TransportVarbit.Operator.LESS_THAN && v.getValue() == 11);
+			boolean afterUnlock = transport.getVarbits().stream().anyMatch(v -> v.getVarbitId() == 7796
+				&& v.getOperator() == TransportVarbit.Operator.EQUAL && v.getValue() == 11);
+			paidBeforeUnlock |= beforeUnlock && !afterUnlock
+				&& transport.getCurrencyAmount() == 20 && "Coins".equals(transport.getCurrencyName());
+			freeAfterUnlock |= afterUnlock && !beforeUnlock && transport.getCurrencyAmount() == 0;
+			ungatedVariant |= !beforeUnlock && !afterUnlock;
+		}
+
+		assertTrue("Arceuus minecart should cost 20 coins before The Forsaken Tower unlock", paidBeforeUnlock);
+		assertTrue("Arceuus minecart should be free after The Forsaken Tower unlock", freeAfterUnlock);
+		assertFalse("Lovakengj minecart routes must not have an ungated fare variant", ungatedVariant);
+	}
+
+	@Test
+	public void testAllSpellbookHomeTeleportTransportsLoaded() {
+		assertHomeTeleport("Lumbridge Home Teleport", new WorldPoint(3221, 3218, 0), 0, null, false);
+		assertHomeTeleport("Edgeville Home Teleport", new WorldPoint(3087, 3504, 0), 1,
+			Quest.DESERT_TREASURE_I, true);
+		assertHomeTeleport("Lunar Home Teleport", new WorldPoint(2113, 3915, 0), 2,
+			Quest.LUNAR_DIPLOMACY, true);
+		assertHomeTeleport("Arceuus Home Teleport", new WorldPoint(1700, 3882, 0), 3, null, true);
 	}
 
 	@Test
@@ -366,17 +822,42 @@ public class ShortestPathCoreTest {
 	}
 
 	private static Transport getLumbridgeHomeTeleportTransport() {
+		return getHomeTeleportTransport("Lumbridge Home Teleport", new WorldPoint(3221, 3218, 0));
+	}
+
+	private static void assertHomeTeleport(String displayInfo, WorldPoint destination, int spellbook,
+			Quest requiredQuest, boolean members) {
+		Transport transport = getHomeTeleportTransport(displayInfo, destination);
+
+		assertEquals(displayInfo + " should have exactly one spellbook requirement",
+			1, transport.getVarbits().size());
+		assertTrue(displayInfo + " should require spellbook " + spellbook,
+			transport.getVarbits().stream().anyMatch(v -> v.getVarbitId() == 4070 && v.getValue() == spellbook));
+		assertTrue(displayInfo + " should be gated by LAST_HOME_TELEPORT cooldown",
+			transport.getVarplayers().stream().anyMatch(v -> v.getVarplayerId() == VarPlayer.LAST_HOME_TELEPORT
+				&& v.getOperator() == TransportVarPlayer.Operator.COOLDOWN_MINUTES
+				&& v.getValue() == 30));
+		assertEquals(displayInfo + " membership requirement", members, transport.isMembers());
+		if (requiredQuest == null) {
+			assertTrue(displayInfo + " should not have a quest requirement", transport.getQuests().isEmpty());
+		} else {
+			assertEquals(displayInfo + " quest requirement", QuestState.FINISHED,
+				transport.getQuests().get(requiredQuest));
+		}
+	}
+
+	private static Transport getHomeTeleportTransport(String displayInfo, WorldPoint destination) {
 		HashMap<WorldPoint, Set<Transport>> transports = Transport.loadAllFromResources();
 
-		Optional<Transport> lumbridgeHomeTeleport = transports.values().stream()
+		Optional<Transport> homeTeleport = transports.values().stream()
 			.flatMap(Set::stream)
 			.filter(t -> t.getType() == TransportType.TELEPORTATION_SPELL
-				&& "Lumbridge Home Teleport".equals(t.getDisplayInfo())
-				&& new WorldPoint(3221, 3218, 0).equals(t.getDestination()))
+				&& displayInfo.equals(t.getDisplayInfo())
+				&& destination.equals(t.getDestination()))
 			.findFirst();
 
-		assertTrue("Lumbridge Home Teleport should be loaded", lumbridgeHomeTeleport.isPresent());
-		return lumbridgeHomeTeleport.get();
+		assertTrue(displayInfo + " should be loaded", homeTeleport.isPresent());
+		return homeTeleport.get();
 	}
 
 	private static void assertTollGateTransport(HashMap<WorldPoint, Set<Transport>> transports,
@@ -760,6 +1241,23 @@ public class ShortestPathCoreTest {
 		WorldPoint endpoint = rawPath.get(rawPath.size() - 1);
 		assertTrue("Path should still reach Varrock Sewers, ended at " + endpoint,
 				endpoint.distanceTo(dst) <= 1);
+	}
+
+	@Test
+	public void testVarrockSewerManholeCatalogContainsOnlyTheTraversingEdge() {
+		WorldPoint origin = new WorldPoint(3236, 3458, 0);
+		WorldPoint destination = new WorldPoint(3237, 9858, 0);
+		List<Transport> manholeEdges = Transport.loadAllFromResources()
+				.getOrDefault(origin, Collections.emptySet()).stream()
+				.filter(transport -> destination.equals(transport.getDestination()))
+				.collect(java.util.stream.Collectors.toList());
+
+		assertEquals("Opening the cover is object state preparation, not a traversing graph edge",
+				1, manholeEdges.size());
+		Transport manhole = manholeEdges.get(0);
+		assertEquals("Climb-down", manhole.getAction());
+		assertEquals("Manhole", manhole.getName());
+		assertEquals(882, manhole.getObjectId());
 	}
 
 	@Test

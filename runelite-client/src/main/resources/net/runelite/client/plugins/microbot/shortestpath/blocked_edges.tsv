@@ -30,6 +30,9 @@
 2935 3450 0	2935 3449 0	true	Taverley wall
 2937 3450 0	2937 3449 0	true	Taverley wall
 2938 3450 0	2938 3449 0	true	Taverley wall
+# Elemental Workshop odd-looking wall. The collision artifact exposes this cardinal edge; the
+# item-gated object transport in transports.tsv is the only valid crossing.
+2709 3495 0	2709 3496 0	true	Elemental Workshop odd-looking wall
 2649 3469 0	2649 3470 0	true	Hemenster enclosure north gate - never opens
 2650 3469 0	2650 3470 0	true	Hemenster enclosure north gate - never opens
 # Al Kharid mine - block routing through open pit (collision data gap)

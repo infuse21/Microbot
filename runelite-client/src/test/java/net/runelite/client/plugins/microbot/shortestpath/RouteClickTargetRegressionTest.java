@@ -48,7 +48,41 @@ public class RouteClickTargetRegressionTest {
         // Computed once: each Pathfinder.run() reloads all transports and, via
         // CollisionMap.getCachedRegionId, calls Rs2Player.getWorldLocation(), which has no client
         // thread under test and blocks for its full timeout.
-        sharedRawPath = computeRawPath(START, GOAL);
+        sharedRawPath = computeRawPathReachingGoal(START, GOAL);
+    }
+
+    /**
+     * Computes the route, and refuses to report a starved run as a route regression.
+     *
+     * <p>{@code calculationCutoffMillis} is a NO-PROGRESS wall-clock guard. Under CPU contention —
+     * a full-suite run, or a client running alongside the build — the search can be starved into
+     * returning a best-effort PARTIAL path, and a partial path wanders through tiles the assertions
+     * below require to be absent. That failure looks exactly like the regression this class exists
+     * to catch, and it has already been misread as one: a red run here sent an investigation off
+     * hunting a route-data change that did not exist.
+     *
+     * <p>So: a generous cutoff, one retry, and if the path still does not reach the goal, fail as
+     * explicitly inconclusive rather than as a route change.
+     */
+    private static List<WorldPoint> computeRawPathReachingGoal(WorldPoint start, WorldPoint goal) {
+        List<WorldPoint> path = computeRawPath(start, goal);
+        if (reachesGoal(path, goal)) {
+            return path;
+        }
+        path = computeRawPath(start, goal);
+        if (reachesGoal(path, goal)) {
+            return path;
+        }
+        throw new AssertionError("pathfinder starved — INCONCLUSIVE, not a route regression: the "
+            + "search did not reach " + goal + " within its no-progress cutoff on two attempts "
+            + "(got " + path.size() + " tiles, ending at "
+            + (path.isEmpty() ? "nothing" : path.get(path.size() - 1)) + "). Re-run this test on an "
+            + "idle machine before treating it as a routing change.");
+    }
+
+    /** The pathfinder returns a best-effort partial path when starved, so check the endpoint. */
+    private static boolean reachesGoal(List<WorldPoint> path, WorldPoint goal) {
+        return !path.isEmpty() && path.get(path.size() - 1).equals(goal);
     }
 
     private static List<WorldPoint> computeRawPath(WorldPoint start, WorldPoint goal) {
@@ -58,7 +92,10 @@ public class RouteClickTargetRegressionTest {
         try {
             java.lang.reflect.Field f = PathfinderConfig.class.getDeclaredField("calculationCutoffMillis");
             f.setAccessible(true);
-            f.setLong(config, 10000);
+            // 30s of NO PROGRESS, not 30s of runtime: the guard resets on every heuristic
+            // improvement, so this costs nothing on a healthy run and only buys headroom on a
+            // contended one.
+            f.setLong(config, 30_000);
             for (Map.Entry<WorldPoint, Set<Transport>> e : transports.entrySet()) {
                 if (e.getKey() == null) continue;
                 config.getTransports().put(e.getKey(), e.getValue());
