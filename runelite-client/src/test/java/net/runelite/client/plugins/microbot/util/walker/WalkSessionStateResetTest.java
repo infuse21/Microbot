@@ -83,7 +83,7 @@ public class WalkSessionStateResetTest
 	@Test
 	public void startingAWalkDropsThePreviousWalksDoorClaimButKeepsTheEdgeCooldown()
 	{
-		DoorAttemptLedger ledger = Rs2Walker.doorAttemptLedgerForTesting();
+		DoorAttemptLedger ledger = Rs2WalkerDoors.doorAttemptLedgerForTesting();
 		WorldPoint from = new WorldPoint(3010, 3204, 0);
 		WorldPoint to = new WorldPoint(3011, 3204, 0);
 		long now = System.currentTimeMillis();

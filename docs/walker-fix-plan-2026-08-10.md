@@ -582,6 +582,52 @@ SMALLER, because each folded store deletes its scattered call sites.
 > correctly refuses the strike — cosmetic cost, minor open item). E2/E3 subsumed — the whole
 > component moved in one verified step.
 
+> **E2 DONE** — `PluginTesting` c8318fd09a. Rs2Walker 11,246 -> 8,687; the door cascade (108
+> methods, 2,700 lines) moved verbatim to `Rs2WalkerDoors`. Multi-entry mechanism: all moved members
+> package-private, the three walker classes static-import each other, zero call sites rewritten.
+> Compiler corrections: three nested-class rips restored (ObstaclePolicy timeouts verified against
+> HEAD, Telemetry.recordDoorReject, PathAdjDoor* constructors), two members moved back
+> (isActiveDoorEdge — public API, captureRawScanDoorLocationsOnClientThread). Baseline: exact 37<->37
+> multiset re-home. BOTH GATES CLOSED 2026-08-14 12:57-13:01: the corridor ran entirely from
+> Rs2WalkerDoors (12 gates, 97s — fastest on record), and a Falador castle walk ran three staircase
+> hops from Rs2WalkerTransports (clean plane changes + handoffs) plus four castle doors including a
+> live-collision replan recovery mid-await. The extractions are fully live-proven.
+> USER OBSERVATION (2026-08-14): ground-level door cadence reads slow — ranged legs 4-6s with
+> doorWait 3.1-3.5s and doorOther 0.9-1.8s inside raw scans. Agreed sequencing: tackle after full
+> decompression (post-E3), when the movement/click component has its own home and timers.
+> **E3 DONE** — `PluginTesting` f10c35282f. Rs2Walker 8,687 -> 7,656; the movement-issuance family
+> (43 non-public methods, 1,083 lines) moved to `Rs2WalkerMovement`. Smaller than the ~3.3k estimate
+> by design: the public click primitives are plugin API and stayed home (excluded from the seed
+> upfront — the E1/E2 bounce-back lesson applied proactively). New recipe lesson: split overload
+> pairs break BOTH classes (same-class methods shadow every static-imported namesake; overload sets
+> do not merge) — reunite them in one home. Baseline: exact 12<->12 multiset re-home. Live gate: any
+> walk (interim targets and route clicks fire on every walk). PHASE E COMPLETE — final architecture:
+> Rs2Walker 7,656 (route loop + public API) / Rs2WalkerTransports 3,092 / Rs2WalkerDoors 2,801 /
+> Rs2WalkerMovement 1,204. From 14,119 to 7,656 in two days, every move verified behavior-identical.
+> Further shrink = decomposing processWalk (1,611, B2 WalkTick seam exists) or the rewrite.
+> **PHASE E LIVE GATE CLOSED 2026-08-14 13:25-13:29**: one Falador->Stronghold walk exercised all
+> four classes from their own homes — Rs2WalkerMovement (short-walk defer, interim lifecycle),
+> Rs2WalkerTransports (the Stronghold portal handoff itself), Rs2WalkerDoors (Falador + corridor
+> gates), Rs2Walker (loop, two live-collision replans recovered, wing guard on a new edge). The
+> decomposition is complete and fully live-proven.
+
+### Phase E2/E3 — the remaining composition (measured 2026-08-13 23:10, post-E1)
+
+Rs2Walker = 11,246 lines: ~8,400 in 341 methods + ~2,850 of fields/constants/imports/comments.
+
+- **E2 — the door component (~87 methods, ~2,000 lines).** Same recipe as E1, rooted at the door
+  entry points (`handleDoors`, `handleDoorsWithTimeout`, the raw scene scan, probes, nudges,
+  settle/verify helpers) into `Rs2WalkerDoors`. This is EXTRACTION, not the door-cascade
+  unification the plan rejected — the cascade's branching stays exactly as-is, it just moves.
+  Compute the closure fresh in the executing session; trust the compiler over the static analysis
+  (E1's lesson: seven misclassifications, all caught as named compile errors).
+- **E3 — the movement/click component (~74 methods, ~3,300 lines):** minimap/canvas clicks, interim
+  targets, short walks, stamina. More entangled with processWalk than E2; do it after E2, expect
+  more shared members to de-private.
+- **After E2+E3:** Rs2Walker lands at ~5-6k — processWalk (1,611, under its guard), the public
+  walk API, planning/orchestration. That is legitimately "the walker"; further shrink means
+  decomposing processWalk itself (the B2 WalkTick seam exists) or the rewrite superseding it.
+
 ## Phase E — original scope (superseded by E1-complete above)
 
 The line-count phase. ~2,400 lines of self-contained transport executors live inside Rs2Walker:

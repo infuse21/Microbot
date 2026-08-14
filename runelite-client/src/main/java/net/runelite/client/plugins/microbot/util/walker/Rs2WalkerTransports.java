@@ -103,6 +103,8 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import static net.runelite.client.plugins.microbot.util.Global.*;
 import static net.runelite.client.plugins.microbot.util.walker.Rs2Walker.*;
+import static net.runelite.client.plugins.microbot.util.walker.Rs2WalkerMovement.*;
+import static net.runelite.client.plugins.microbot.util.walker.Rs2WalkerDoors.*;
 
 /**
  * The transport-execution component extracted from {@code Rs2Walker} (Phase E1, 2026-08-13): the

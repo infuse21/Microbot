@@ -740,7 +740,6 @@ net.runelite.client.plugins.microbot.util.walker.Rs2MiniMap#worldToMinimap(World
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#closeWorldMap(): boolean  ->  net.runelite.api.widgets.Widget#getBounds(): Rectangle
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#distanceToRegion(int, int): int  ->  net.runelite.api.Client#getTopLevelWorldView(): WorldView
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#distanceToRegion(int, int): int  ->  net.runelite.api.WorldView#getPlane(): int
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#doorObjectStillHasAction(TileObject, WorldPoint, WorldPoint, WorldPoint, List, String, boolean): boolean  ->  net.runelite.api.TileObject#getWorldLocation(): WorldPoint
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#getPointWithWallDistance(WorldPoint, WorldPoint): WorldPoint  ->  net.runelite.api.Client#getTopLevelWorldView(): WorldView
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#getPointWithWallDistance(WorldPoint, WorldPoint): WorldPoint  ->  net.runelite.api.CollisionData#getFlags(): int[][]
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#getPointWithWallDistance(WorldPoint, WorldPoint): WorldPoint  ->  net.runelite.api.WorldView#getCollisionMaps(): CollisionData[]
@@ -752,16 +751,6 @@ net.runelite.client.plugins.microbot.util.walker.Rs2Walker#getTile(WorldPoint): 
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#getTile(WorldPoint): Tile  ->  net.runelite.api.WorldView#isInstance(): boolean
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#getTile(WorldPoint): Tile  ->  net.runelite.api.coords.LocalPoint#fromWorld(WorldView, WorldPoint): LocalPoint
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#getTransportsForPath(List, int, TransportType, boolean): List  ->  net.runelite.api.Client#getTopLevelWorldView(): WorldView
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#handleDoors(List, int, boolean): boolean  ->  net.runelite.api.Client#getTopLevelWorldView(): WorldView
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#handleDoors(List, int, boolean): boolean  ->  net.runelite.api.ObjectComposition#getImpostorIds(): int[]
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#handleDoors(List, int, boolean): boolean  ->  net.runelite.api.ObjectComposition#getName(): String
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#handleDoors(List, int, boolean): boolean  ->  net.runelite.api.Scene#isInstance(): boolean
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#handleDoors(List, int, boolean): boolean  ->  net.runelite.api.TileObject#getWorldLocation(): WorldPoint
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#handleDoors(List, int, boolean): boolean  ->  net.runelite.api.WorldView#getScene(): Scene
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#handleStrongholdOfSecurityAnswer(TileObject, String): boolean  ->  net.runelite.api.TileObject#getWorldLocation(): WorldPoint
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#hasDoorCandidateOnRawSegment(List, int): boolean  ->  net.runelite.api.Client#getTopLevelWorldView(): WorldView
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#hasDoorCandidateOnRawSegment(List, int): boolean  ->  net.runelite.api.Scene#isInstance(): boolean
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#hasDoorCandidateOnRawSegment(List, int): boolean  ->  net.runelite.api.WorldView#getScene(): Scene
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#hasLineOfSightBetween(WorldPoint, WorldPoint): boolean  ->  net.runelite.api.Client#getTopLevelWorldView(): WorldView
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#hasLineOfSightBetween(WorldPoint, WorldPoint): boolean  ->  net.runelite.api.coords.WorldArea#hasLineOfSightTo(WorldView, WorldArea): boolean
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#interactingActorNearWalkablePath(): boolean  ->  net.runelite.api.Actor#getWorldLocation(): WorldPoint
@@ -770,49 +759,19 @@ net.runelite.client.plugins.microbot.util.walker.Rs2Walker#isCloseToRegion(int, 
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#isCloseToRegion(int, int, int): boolean  ->  net.runelite.api.WorldView#getPlane(): int
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#isKnownWalkableOrUnloaded(WorldPoint): boolean  ->  net.runelite.api.Client#getTopLevelWorldView(): WorldView
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#isKnownWalkableOrUnloaded(WorldPoint): boolean  ->  net.runelite.api.coords.LocalPoint#fromWorld(WorldView, WorldPoint): LocalPoint
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#isPendingRouteDoorObject(TileObject, WorldPoint, WorldPoint, WorldPoint, int): boolean  ->  net.runelite.api.ObjectComposition#getName(): String
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#isPendingRouteDoorObject(TileObject, WorldPoint, WorldPoint, WorldPoint, int): boolean  ->  net.runelite.api.TileObject#getWorldLocation(): WorldPoint
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#isUnresolvedRouteDoorObject(TileObject, WorldPoint, WorldPoint, WorldPoint, int): boolean  ->  net.runelite.api.ObjectComposition#getName(): String
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#isUnresolvedRouteDoorObject(TileObject, WorldPoint, WorldPoint, WorldPoint, int): boolean  ->  net.runelite.api.TileObject#getWorldLocation(): WorldPoint
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$getPointWithWallDistance$15(WorldView, int[][], WorldPoint): boolean  ->  net.runelite.api.coords.LocalPoint#fromWorld(WorldView, WorldPoint): LocalPoint
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$getPointWithWallDistance$16(WorldView, int[][], WorldPoint): boolean  ->  net.runelite.api.coords.LocalPoint#fromWorld(WorldView, WorldPoint): LocalPoint
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$processWalk$6(): boolean  ->  net.runelite.api.widgets.Widget#getSpriteId(): int
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$processWalk$7(): boolean  ->  net.runelite.api.widgets.Widget#getSpriteId(): int
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$resolveProbeGameObject$35(WorldPoint, GameObject): boolean  ->  net.runelite.api.GameObject#getWorldLocation(): WorldPoint
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$resolveProbeGameObject$36(WorldPoint, GameObject): boolean  ->  net.runelite.api.GameObject#getWorldLocation(): WorldPoint
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$sceneDoorAdjacentToEdge$19(WorldPoint, WorldPoint, List, TileObject): boolean  ->  net.runelite.api.TileObject#getWorldLocation(): WorldPoint
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$tryHandleBlockingPathObjectsWithTimeout$69(WorldPoint, GameObject): boolean  ->  net.runelite.api.GameObject#getWorldLocation(): WorldPoint
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#localPointForWorld(WorldPoint): LocalPoint  ->  net.runelite.api.Client#getTopLevelWorldView(): WorldView
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#localPointForWorld(WorldPoint): LocalPoint  ->  net.runelite.api.WorldView#isInstance(): boolean
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#localPointForWorld(WorldPoint): LocalPoint  ->  net.runelite.api.coords.LocalPoint#fromWorld(WorldView, WorldPoint): LocalPoint
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#markNearbyDoorFamilyOpened(TileObject, WorldPoint, String, int): void  ->  net.runelite.api.GameObject#getWorldLocation(): WorldPoint
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#maybeCanvasNudgeAfterDoor(WorldPoint, int, List): boolean  ->  net.runelite.api.Client#getTopLevelWorldView(): WorldView
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#maybeCanvasNudgeAfterDoor(WorldPoint, int, List): boolean  ->  net.runelite.api.coords.LocalPoint#fromWorld(WorldView, WorldPoint): LocalPoint
+net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$getPointWithWallDistance$13(WorldView, int[][], WorldPoint): boolean  ->  net.runelite.api.coords.LocalPoint#fromWorld(WorldView, WorldPoint): LocalPoint
+net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$getPointWithWallDistance$14(WorldView, int[][], WorldPoint): boolean  ->  net.runelite.api.coords.LocalPoint#fromWorld(WorldView, WorldPoint): LocalPoint
+net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$processWalk$4(): boolean  ->  net.runelite.api.widgets.Widget#getSpriteId(): int
+net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$processWalk$5(): boolean  ->  net.runelite.api.widgets.Widget#getSpriteId(): int
+net.runelite.client.plugins.microbot.util.walker.Rs2Walker#lambda$tryHandleBlockingPathObjectsWithTimeout$37(WorldPoint, GameObject): boolean  ->  net.runelite.api.GameObject#getWorldLocation(): WorldPoint
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#mergePathAdjCandidate(Map, TileObject, WorldPoint, String, int, int, WorldPoint, WorldPoint, int): void  ->  net.runelite.api.TileObject#getId(): int
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#normalizePathAdjFamilyKey(TileObject, String): String  ->  net.runelite.api.ObjectComposition#getName(): String
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#normalizePathAdjFamilyKey(TileObject, String): String  ->  net.runelite.api.TileObject#getId(): int
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#normalizePathAdjFamilyKey(TileObject, String): String  ->  net.runelite.api.TileObject#getWorldLocation(): WorldPoint
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#processWalk(WorldPoint, int, int): WalkerState  ->  net.runelite.api.Client#getTopLevelWorldView(): WorldView
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#processWalk(WorldPoint, int, int): WalkerState  ->  net.runelite.api.WorldView#isInstance(): boolean
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#resolveDoorSegment(List, int): WorldPoint[]  ->  net.runelite.api.Client#getTopLevelWorldView(): WorldView
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#resolveDoorSegment(List, int): WorldPoint[]  ->  net.runelite.api.Scene#isInstance(): boolean
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#resolveDoorSegment(List, int): WorldPoint[]  ->  net.runelite.api.WorldView#getScene(): Scene
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#resolveProbeGameObject(WorldPoint): TileObject  ->  net.runelite.api.GameObject#getWorldLocation(): WorldPoint
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#setTarget(WorldPoint, String): void  ->  net.runelite.api.Client#getLocalPlayer(): Player
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#staminaThreshold(): int  ->  net.runelite.api.Client#getLocalPlayer(): Player
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#staminaThreshold(): int  ->  net.runelite.api.Player#getName(): String
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#tryHandleBlockingPathObjectsWithTimeout(List, int, int, int, long): boolean  ->  net.runelite.api.ObjectComposition#getActions(): String[]
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#tryHandleBlockingPathObjectsWithTimeout(List, int, int, int, long): boolean  ->  net.runelite.api.ObjectComposition#getName(): String
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#tryHandleDoorObject(TileObject, WorldPoint, WorldPoint, WorldPoint, List, boolean, List): boolean  ->  net.runelite.api.ObjectComposition#getName(): String
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#tryResolveDoorBlockerLineOfSight(WorldPoint, List, int, int): boolean  ->  net.runelite.api.GameObject#getWorldLocation(): WorldPoint
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#tryResolveDoorBlockerLineOfSight(WorldPoint, List, int, int): boolean  ->  net.runelite.api.ObjectComposition#getName(): String
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#tryResolveDoorBlockerLineOfSight(WorldPoint, List, int, int): boolean  ->  net.runelite.api.TileObject#getWorldLocation(): WorldPoint
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#tryResolveNearbyDoorBlocker(WorldPoint, int): boolean  ->  net.runelite.api.GameObject#getWorldLocation(): WorldPoint
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#tryResolveNearbyDoorBlocker(WorldPoint, int): boolean  ->  net.runelite.api.ObjectComposition#getName(): String
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#tryResolveNearbyDoorBlocker(WorldPoint, int): boolean  ->  net.runelite.api.TileObject#getWorldLocation(): WorldPoint
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#tryResolvePathAdjacentBlocker(WorldPoint, List, int, int, int): boolean  ->  net.runelite.api.GameObject#getWorldLocation(): WorldPoint
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#tryResolvePathAdjacentBlocker(WorldPoint, List, int, int, int): boolean  ->  net.runelite.api.ObjectComposition#getName(): String
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#waitForDoorInteractionProgress(WorldPoint, WorldPoint, WorldPoint, List, String, TileObject): void  ->  net.runelite.api.TileObject#getWorldLocation(): WorldPoint
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#walkCanvas(WorldPoint): WorldPoint  ->  net.runelite.api.Client#getTopLevelWorldView(): WorldView
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#walkCanvas(WorldPoint): WorldPoint  ->  net.runelite.api.WorldView#getPlane(): int
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#walkCanvas(WorldPoint): WorldPoint  ->  net.runelite.api.coords.LocalPoint#fromWorld(WorldView, WorldPoint): LocalPoint
@@ -820,8 +779,6 @@ net.runelite.client.plugins.microbot.util.walker.Rs2Walker#walkFastCanvas(WorldP
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#walkFastCanvas(WorldPoint, boolean): boolean  ->  net.runelite.api.WorldView#getPlane(): int
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#walkFastCanvas(WorldPoint, boolean): boolean  ->  net.runelite.api.WorldView#isInstance(): boolean
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#walkFastCanvas(WorldPoint, boolean): boolean  ->  net.runelite.api.coords.LocalPoint#fromWorld(WorldView, WorldPoint): LocalPoint
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#walkFastCanvasOnScreenOnly(WorldPoint, boolean): boolean  ->  net.runelite.api.Client#getTopLevelWorldView(): WorldView
-net.runelite.client.plugins.microbot.util.walker.Rs2Walker#walkFastCanvasOnScreenOnly(WorldPoint, boolean): boolean  ->  net.runelite.api.WorldView#getPlane(): int
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#walkFastLocal(LocalPoint): void  ->  net.runelite.api.Client#getTopLevelWorldView(): WorldView
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#walkFastLocal(LocalPoint): void  ->  net.runelite.api.WorldView#getPlane(): int
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#walkNextToInstance(GameObject): void  ->  net.runelite.api.Client#getTopLevelWorldView(): WorldView
@@ -832,6 +789,49 @@ net.runelite.client.plugins.microbot.util.walker.Rs2Walker#walkWithBankedTranspo
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#walkWithBankedTransportsAndStateLocked(WorldPoint, int, boolean): WalkerState  ->  net.runelite.api.coords.LocalPoint#fromWorld(WorldView, WorldPoint): LocalPoint
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#walkWithStateInternal(WorldPoint, int): WalkerState  ->  net.runelite.api.Client#getTopLevelWorldView(): WorldView
 net.runelite.client.plugins.microbot.util.walker.Rs2Walker#walkWithStateInternal(WorldPoint, int): WalkerState  ->  net.runelite.api.coords.LocalPoint#fromWorld(WorldView, WorldPoint): LocalPoint
+net.runelite.client.plugins.microbot.util.walker.Rs2WalkerDoors#doorObjectStillHasAction(TileObject, WorldPoint, WorldPoint, WorldPoint, List, String, boolean): boolean  ->  net.runelite.api.TileObject#getWorldLocation(): WorldPoint
+net.runelite.client.plugins.microbot.util.walker.Rs2WalkerDoors#handleDoors(List, int, boolean): boolean  ->  net.runelite.api.Client#getTopLevelWorldView(): WorldView
+net.runelite.client.plugins.microbot.util.walker.Rs2WalkerDoors#handleDoors(List, int, boolean): boolean  ->  net.runelite.api.ObjectComposition#getImpostorIds(): int[]
+net.runelite.client.plugins.microbot.util.walker.Rs2WalkerDoors#handleDoors(List, int, boolean): boolean  ->  net.runelite.api.ObjectComposition#getName(): String
+net.runelite.client.plugins.microbot.util.walker.Rs2WalkerDoors#handleDoors(List, int, boolean): boolean  ->  net.runelite.api.Scene#isInstance(): boolean
+net.runelite.client.plugins.microbot.util.walker.Rs2WalkerDoors#handleDoors(List, int, boolean): boolean  ->  net.runelite.api.TileObject#getWorldLocation(): WorldPoint
+net.runelite.client.plugins.microbot.util.walker.Rs2WalkerDoors#handleDoors(List, int, boolean): boolean  ->  net.runelite.api.WorldView#getScene(): Scene
+net.runelite.client.plugins.microbot.util.walker.Rs2WalkerDoors#handleStrongholdOfSecurityAnswer(TileObject, String): boolean  ->  net.runelite.api.TileObject#getWorldLocation(): WorldPoint
+net.runelite.client.plugins.microbot.util.walker.Rs2WalkerDoors#hasDoorCandidateOnRawSegment(List, int): boolean  ->  net.runelite.api.Client#getTopLevelWorldView(): WorldView
+net.runelite.client.plugins.microbot.util.walker.Rs2WalkerDoors#hasDoorCandidateOnRawSegment(List, int): boolean  ->  net.runelite.api.Scene#isInstance(): boolean
+net.runelite.client.plugins.microbot.util.walker.Rs2WalkerDoors#hasDoorCandidateOnRawSegment(List, int): boolean  ->  net.runelite.api.WorldView#getScene(): Scene
+net.runelite.client.plugins.microbot.util.walker.Rs2WalkerDoors#isPendingRouteDoorObject(TileObject, WorldPoint, WorldPoint, WorldPoint, int): boolean  ->  net.runelite.api.ObjectComposition#getName(): String
+net.runelite.client.plugins.microbot.util.walker.Rs2WalkerDoors#isPendingRouteDoorObject(TileObject, WorldPoint, WorldPoint, WorldPoint, int): boolean  ->  net.runelite.api.TileObject#getWorldLocation(): WorldPoint
+net.runelite.client.plugins.microbot.util.walker.Rs2WalkerDoors#isUnresolvedRouteDoorObject(TileObject, WorldPoint, WorldPoint, WorldPoint, int): boolean  ->  net.runelite.api.ObjectComposition#getName(): String
+net.runelite.client.plugins.microbot.util.walker.Rs2WalkerDoors#isUnresolvedRouteDoorObject(TileObject, WorldPoint, WorldPoint, WorldPoint, int): boolean  ->  net.runelite.api.TileObject#getWorldLocation(): WorldPoint
+net.runelite.client.plugins.microbot.util.walker.Rs2WalkerDoors#lambda$resolveProbeGameObject$3(WorldPoint, GameObject): boolean  ->  net.runelite.api.GameObject#getWorldLocation(): WorldPoint
+net.runelite.client.plugins.microbot.util.walker.Rs2WalkerDoors#lambda$resolveProbeGameObject$4(WorldPoint, GameObject): boolean  ->  net.runelite.api.GameObject#getWorldLocation(): WorldPoint
+net.runelite.client.plugins.microbot.util.walker.Rs2WalkerDoors#lambda$sceneDoorAdjacentToEdge$0(WorldPoint, WorldPoint, List, TileObject): boolean  ->  net.runelite.api.TileObject#getWorldLocation(): WorldPoint
+net.runelite.client.plugins.microbot.util.walker.Rs2WalkerDoors#markNearbyDoorFamilyOpened(TileObject, WorldPoint, String, int): void  ->  net.runelite.api.GameObject#getWorldLocation(): WorldPoint
+net.runelite.client.plugins.microbot.util.walker.Rs2WalkerDoors#maybeCanvasNudgeAfterDoor(WorldPoint, int, List): boolean  ->  net.runelite.api.Client#getTopLevelWorldView(): WorldView
+net.runelite.client.plugins.microbot.util.walker.Rs2WalkerDoors#maybeCanvasNudgeAfterDoor(WorldPoint, int, List): boolean  ->  net.runelite.api.coords.LocalPoint#fromWorld(WorldView, WorldPoint): LocalPoint
+net.runelite.client.plugins.microbot.util.walker.Rs2WalkerDoors#normalizePathAdjFamilyKey(TileObject, String): String  ->  net.runelite.api.ObjectComposition#getName(): String
+net.runelite.client.plugins.microbot.util.walker.Rs2WalkerDoors#normalizePathAdjFamilyKey(TileObject, String): String  ->  net.runelite.api.TileObject#getId(): int
+net.runelite.client.plugins.microbot.util.walker.Rs2WalkerDoors#normalizePathAdjFamilyKey(TileObject, String): String  ->  net.runelite.api.TileObject#getWorldLocation(): WorldPoint
+net.runelite.client.plugins.microbot.util.walker.Rs2WalkerDoors#resolveDoorSegment(List, int): WorldPoint[]  ->  net.runelite.api.Client#getTopLevelWorldView(): WorldView
+net.runelite.client.plugins.microbot.util.walker.Rs2WalkerDoors#resolveDoorSegment(List, int): WorldPoint[]  ->  net.runelite.api.Scene#isInstance(): boolean
+net.runelite.client.plugins.microbot.util.walker.Rs2WalkerDoors#resolveDoorSegment(List, int): WorldPoint[]  ->  net.runelite.api.WorldView#getScene(): Scene
+net.runelite.client.plugins.microbot.util.walker.Rs2WalkerDoors#resolveProbeGameObject(WorldPoint): TileObject  ->  net.runelite.api.GameObject#getWorldLocation(): WorldPoint
+net.runelite.client.plugins.microbot.util.walker.Rs2WalkerDoors#tryHandleDoorObject(TileObject, WorldPoint, WorldPoint, WorldPoint, List, boolean, List): boolean  ->  net.runelite.api.ObjectComposition#getName(): String
+net.runelite.client.plugins.microbot.util.walker.Rs2WalkerDoors#tryResolveDoorBlockerLineOfSight(WorldPoint, List, int, int): boolean  ->  net.runelite.api.GameObject#getWorldLocation(): WorldPoint
+net.runelite.client.plugins.microbot.util.walker.Rs2WalkerDoors#tryResolveDoorBlockerLineOfSight(WorldPoint, List, int, int): boolean  ->  net.runelite.api.ObjectComposition#getName(): String
+net.runelite.client.plugins.microbot.util.walker.Rs2WalkerDoors#tryResolveDoorBlockerLineOfSight(WorldPoint, List, int, int): boolean  ->  net.runelite.api.TileObject#getWorldLocation(): WorldPoint
+net.runelite.client.plugins.microbot.util.walker.Rs2WalkerDoors#tryResolveNearbyDoorBlocker(WorldPoint, int): boolean  ->  net.runelite.api.GameObject#getWorldLocation(): WorldPoint
+net.runelite.client.plugins.microbot.util.walker.Rs2WalkerDoors#tryResolveNearbyDoorBlocker(WorldPoint, int): boolean  ->  net.runelite.api.ObjectComposition#getName(): String
+net.runelite.client.plugins.microbot.util.walker.Rs2WalkerDoors#tryResolveNearbyDoorBlocker(WorldPoint, int): boolean  ->  net.runelite.api.TileObject#getWorldLocation(): WorldPoint
+net.runelite.client.plugins.microbot.util.walker.Rs2WalkerDoors#waitForDoorInteractionProgress(WorldPoint, WorldPoint, WorldPoint, List, String, TileObject): void  ->  net.runelite.api.TileObject#getWorldLocation(): WorldPoint
+net.runelite.client.plugins.microbot.util.walker.Rs2WalkerMovement#localPointForWorld(WorldPoint): LocalPoint  ->  net.runelite.api.Client#getTopLevelWorldView(): WorldView
+net.runelite.client.plugins.microbot.util.walker.Rs2WalkerMovement#localPointForWorld(WorldPoint): LocalPoint  ->  net.runelite.api.WorldView#isInstance(): boolean
+net.runelite.client.plugins.microbot.util.walker.Rs2WalkerMovement#localPointForWorld(WorldPoint): LocalPoint  ->  net.runelite.api.coords.LocalPoint#fromWorld(WorldView, WorldPoint): LocalPoint
+net.runelite.client.plugins.microbot.util.walker.Rs2WalkerMovement#staminaThreshold(): int  ->  net.runelite.api.Client#getLocalPlayer(): Player
+net.runelite.client.plugins.microbot.util.walker.Rs2WalkerMovement#staminaThreshold(): int  ->  net.runelite.api.Player#getName(): String
+net.runelite.client.plugins.microbot.util.walker.Rs2WalkerMovement#walkFastCanvasOnScreenOnly(WorldPoint, boolean): boolean  ->  net.runelite.api.Client#getTopLevelWorldView(): WorldView
+net.runelite.client.plugins.microbot.util.walker.Rs2WalkerMovement#walkFastCanvasOnScreenOnly(WorldPoint, boolean): boolean  ->  net.runelite.api.WorldView#getPlane(): int
 net.runelite.client.plugins.microbot.util.walker.Rs2WalkerTransports#adjacentSamePlaneTransportSuppressionPoints(Transport, TileObject): Set  ->  net.runelite.api.TileObject#getWorldLocation(): WorldPoint
 net.runelite.client.plugins.microbot.util.walker.Rs2WalkerTransports#charterWidgetMatchesDestination(Widget, String): boolean  ->  net.runelite.api.widgets.Widget#getActions(): String[]
 net.runelite.client.plugins.microbot.util.walker.Rs2WalkerTransports#charterWidgetMatchesDestination(Widget, String): boolean  ->  net.runelite.api.widgets.Widget#getName(): String
