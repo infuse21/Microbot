@@ -62,7 +62,6 @@ import net.runelite.client.plugins.microbot.shortestpath.pathfinder.SplitFlagMap
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.tile.Rs2Tile;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
-import net.runelite.client.plugins.microbot.util.walker.Rs2TransportPlanningPolicy;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.JagexColors;
 import net.runelite.client.ui.NavigationButton;
@@ -228,9 +227,7 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
         Map<WorldPoint, Set<Transport>> transports = Transport.loadAllFromResources();
 
         List<Restriction> restrictions = Restriction.loadAllFromResources();
-        pathfinderConfig = new PathfinderConfig(
-                map, transports, restrictions, client, config,
-                Rs2TransportPlanningPolicy.INSTANCE);
+        pathfinderConfig = new PathfinderConfig(map, transports, restrictions, client, config);
 
         panel = injector.getInstance(ShortestPathPanel.class);
         pohPanel = new PohPanel(config);
@@ -991,15 +988,6 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
 					return teleportationItem;
 				}
 			}
-		}
-		return defaultValue;
-	}
-
-	public static PlannerSelectionMode override(
-			String configOverrideKey, PlannerSelectionMode defaultValue) {
-		if (!configOverride.isEmpty()) {
-			return PlannerSelectionMode.fromConfigValue(
-					configOverride.get(configOverrideKey), defaultValue);
 		}
 		return defaultValue;
 	}

@@ -11,11 +11,11 @@ import net.runelite.api.ObjectComposition;
 import net.runelite.api.TileObject;
 import net.runelite.api.WallObject;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.client.plugins.microbot.shortestpath.Transport;
+import net.runelite.client.plugins.microbot.shortestpath.TransportType;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2PathApi;
-import net.runelite.client.plugins.microbot.util.walker.Rs2TransportEdge;
-import net.runelite.client.plugins.microbot.util.walker.Rs2TransportType;
 
 /**
  * Door-probe logic that operates against a {@link DoorProbeContext} (the scan-scoped caches) and
@@ -47,7 +47,7 @@ public final class Rs2DoorProbe {
 
     /**
      * True when this scene object is the interactable listed on a transport catalog row (same
-	 * coordinates and object ids as TSV loaded into the shortest-path catalog), and is not
+     * coordinates and object ids as TSV loaded into {@link Rs2PathApi#getTransports()}), and is not
      * itself door-like. Used to avoid treating a catalog transport as a plain door.
      */
     public static boolean isCatalogTransportObject(TileObject object) {
@@ -62,10 +62,18 @@ public final class Rs2DoorProbe {
         if (id <= 0) {
             return false;
         }
-		for (int dx = -1; dx <= 1; dx++) {
+        Map<WorldPoint, Set<Transport>> map = Rs2PathApi.getTransports();
+        if (map == null || map.isEmpty()) {
+            return false;
+        }
+        for (int dx = -1; dx <= 1; dx++) {
             for (int dy = -1; dy <= 1; dy++) {
                 WorldPoint catalogOrigin = new WorldPoint(loc.getX() + dx, loc.getY() + dy, loc.getPlane());
-				for (Rs2TransportEdge t : Rs2PathApi.getCatalogTransportEdges(catalogOrigin)) {
+                Set<Transport> transports = map.get(catalogOrigin);
+                if (transports == null || transports.isEmpty()) {
+                    continue;
+                }
+                for (Transport t : transports) {
                     if (t != null && t.getObjectId() == id && !isDoorLikeCatalogTransport(t)) {
                         return true;
                     }
@@ -75,11 +83,11 @@ public final class Rs2DoorProbe {
         return false;
     }
 
-	public static boolean isDoorLikeCatalogTransport(Rs2TransportEdge transport) {
-		if (transport == null || transport.getType() != Rs2TransportType.TRANSPORT) {
+    public static boolean isDoorLikeCatalogTransport(Transport transport) {
+        if (transport == null || transport.getType() != TransportType.TRANSPORT) {
             return false;
         }
-		return Rs2DoorClassifier.isDoorLikeGameObjectName(transport.getTarget())
+        return Rs2DoorClassifier.isDoorLikeGameObjectName(transport.getName())
                 || Rs2DoorClassifier.isDoorLikeGameObjectName(transport.getDisplayInfo())
                 || isDoorLikeTransportAction(transport.getAction());
     }

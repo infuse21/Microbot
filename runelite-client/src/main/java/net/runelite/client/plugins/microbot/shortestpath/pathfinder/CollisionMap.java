@@ -13,7 +13,6 @@ import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 
 import java.util.*;
-import java.util.function.IntSupplier;
 
 @Slf4j
 public class CollisionMap {
@@ -31,37 +30,22 @@ public class CollisionMap {
     private final LiveCollisionOverlay overlay;
 
     /**
-     * Supplies the live player region for instance-only obstacle policy. Static/offline maps use a
-     * sentinel supplier so pathfinding tests never reach into the RuneLite client thread.
-     */
-    private final IntSupplier currentRegionIdSupplier;
-
-    /**
      * Live view pinned for the duration of one search, so a mid-search merge on the client thread cannot
      * mix two states into a single path. Refreshed via {@link #beginSearch()}.
      */
     private LiveEdgeSource pinnedLive;
-
-    /** Number of edge reads answered by the pinned live overlay during the current search. */
-    private long liveEdgeQueries;
 
     public byte[] getPlanes() {
         return collisionData.getRegionMapPlaneCounts();
     }
 
     public CollisionMap(SplitFlagMap collisionData) {
-        this(collisionData, new LiveCollisionOverlay(), () -> -1);
+        this(collisionData, new LiveCollisionOverlay());
     }
 
     public CollisionMap(SplitFlagMap collisionData, LiveCollisionOverlay overlay) {
-        this(collisionData, overlay, CollisionMap::readLivePlayerRegionId);
-    }
-
-    CollisionMap(SplitFlagMap collisionData, LiveCollisionOverlay overlay,
-                 IntSupplier currentRegionIdSupplier) {
         this.collisionData = collisionData;
         this.overlay = overlay;
-        this.currentRegionIdSupplier = currentRegionIdSupplier;
     }
 
     /**
@@ -71,7 +55,6 @@ public class CollisionMap {
      */
     public void beginSearch() {
         pinnedLive = overlay.current();
-        liveEdgeQueries = 0L;
     }
 
     private boolean get(int x, int y, int z, int flag) {
@@ -79,15 +62,10 @@ public class CollisionMap {
         if (live != null) {
             final Boolean liveEdge = live.edge(x, y, z, flag);
             if (liveEdge != null) {
-                liveEdgeQueries++;
                 return liveEdge;
             }
         }
         return collisionData.get(x, y, z, flag);
-    }
-
-    public long getLiveEdgeQueries() {
-        return liveEdgeQueries;
     }
 
     public boolean n(int x, int y, int z) {
@@ -241,18 +219,14 @@ public class CollisionMap {
         long now = System.currentTimeMillis();
         if (now - cachedRegionIdTime > REGION_CACHE_MS) {
             try {
-                cachedRegionId = currentRegionIdSupplier.getAsInt();
+                WorldPoint loc = Rs2Player.getWorldLocation();
+                cachedRegionId = loc != null ? loc.getRegionID() : -1;
             } catch (Exception e) {
                 cachedRegionId = -1;
             }
             cachedRegionIdTime = now;
         }
         return cachedRegionId;
-    }
-
-    private static int readLivePlayerRegionId() {
-        WorldPoint loc = Rs2Player.getWorldLocation();
-        return loc != null ? loc.getRegionID() : -1;
     }
 
     public List<Node> getNeighbors(Node node, VisitedTiles visited, PathfinderConfig config, Set<Integer> targets) {
@@ -290,15 +264,14 @@ public class CollisionMap {
                     continue;
                 }
                 int cost = config.getDistanceBeforeUsingTeleport() + transport.getDuration();
-                neighbors.add(new TransportNode(transport.getDestination(), node, cost, transport));
+                neighbors.add(new TransportNode(transport.getDestination(), node, cost));
                 if (isMoa) {
                     moaAddedHere++;
                     if (moaCosts == null) moaCosts = new ArrayList<>();
                     moaCosts.add(cost);
                 }
             } else {
-                neighbors.add(new TransportNode(
-                        transport.getDestination(), node, transport.getDuration(), transport));
+                neighbors.add(new TransportNode(transport.getDestination(), node, transport.getDuration()));
             }
             //END microbot variables
         }
@@ -398,10 +371,9 @@ public class CollisionMap {
                     if (config.isIgnoreTeleportAndItems()) {
                         continue;
                     }
-                    neighbors.add(new TransportNode(origin, node,
-                            config.getDistanceBeforeUsingTeleport() + transport.getDuration(), transport));
+                    neighbors.add(new TransportNode(origin, node, config.getDistanceBeforeUsingTeleport() + transport.getDuration()));
                 } else {
-                    neighbors.add(new TransportNode(origin, node, transport.getDuration(), transport));
+                    neighbors.add(new TransportNode(origin, node, transport.getDuration()));
                 }
             }
         }

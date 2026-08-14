@@ -1,6 +1,9 @@
 package net.runelite.client.plugins.microbot.util.walker.obstacle;
 
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.client.plugins.microbot.shortestpath.Transport;
+
+import java.util.Set;
 
 /**
  * Resolves a planned edge blocked because its far side is across a transport / agility shortcut (a stepping
@@ -20,9 +23,10 @@ public final class TransportResolver implements ObstacleResolver {
             return false;
         }
         final WorldPoint origin = edge.from();
-		if (!scene.hasTransportAt(origin)) {
-			return false;
-		}
+        final Set<Transport> transports = scene.transportsAt(origin);
+        if (transports == null || transports.isEmpty()) {
+            return false;
+        }
         final WorldPoint player = scene.playerLocation();
         // Applies only when the player is off the origin but can still reach it: then stepping onto it lets
         // the normal loop take the transport. When already on the origin, that loop owns it (not recovery);

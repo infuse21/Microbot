@@ -1,12 +1,9 @@
 package net.runelite.client.plugins.microbot.shortestpath.pathfinder;
 
 import net.runelite.api.coords.WorldPoint;
-import net.runelite.client.plugins.microbot.shortestpath.Transport;
 
 public class TransportNode extends Node implements Comparable<TransportNode> {
-    private final Transport transport;
-
-    public TransportNode(WorldPoint point, Node previous, int travelTime, Transport transport) {
+    public TransportNode(WorldPoint point, Node previous, int travelTime) {
         // Use Node(int, Node, int cost) which assigns cost directly. The WorldPoint
         // Node constructor re-adds previous.cost via its cost(previous, wait) method,
         // which caused (a) double-counting when we passed prev.cost + travelTime as
@@ -15,11 +12,6 @@ public class TransportNode extends Node implements Comparable<TransportNode> {
         super(net.runelite.client.plugins.microbot.shortestpath.WorldPointUtil.packWorldPoint(point),
                 previous,
                 (previous != null ? previous.cost : 0) + travelTime);
-        this.transport = transport;
-    }
-
-    public Transport getTransport() {
-        return transport;
     }
 
     @Override

@@ -18,7 +18,6 @@ import net.runelite.client.plugins.microbot.shortestpath.pathfinder.policy.Trans
 import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
-import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
 import net.runelite.client.plugins.microbot.util.magic.Rs2Spells;
 import net.runelite.client.plugins.microbot.util.magic.RuneFilter;
@@ -94,12 +93,6 @@ public class PathfinderConfig {
     private final Map<WorldPoint, Set<Transport>> allTransports;
     @Setter
     private volatile Set<Transport> usableTeleports;
-
-	/** Immutable exact-object snapshot for planner adapters after transport admission has run. */
-	public Set<Transport> getUsableTeleportsSnapshot() {
-		Set<Transport> current = usableTeleports;
-		return current == null ? Collections.emptySet() : Set.copyOf(current);
-	}
     private final List<WorldPoint> filteredTargets = new CopyOnWriteArrayList<>();
 
     @Getter
@@ -135,7 +128,6 @@ public class PathfinderConfig {
 
     private final Client client;
     private final ShortestPathConfig config;
-    private final TransportPlanningPolicy transportPlanningPolicy;
 
     private final List<QuestState> questStateOrder = Arrays.asList(
             QuestState.NOT_STARTED,
@@ -167,8 +159,6 @@ public class PathfinderConfig {
     private volatile boolean avoidWilderness;
     @Getter
     private volatile boolean avoidDangerousNpcs;
-	@Getter
-	private volatile PlannerSelectionMode plannerSelectionMode = PlannerSelectionMode.LOCAL;
     @Getter
     private volatile boolean useSpiritTrees;
     private volatile boolean useAgilityShortcuts,
@@ -220,8 +210,7 @@ public class PathfinderConfig {
     // Used to include bank items when searching for item requirements
     private volatile boolean useBankItems = false;
 
-    private Map<Integer, Integer> refreshAvailableItemQuantities;
-    private Map<Integer, Integer> refreshAvailableRuneQuantities;
+    private Set<Integer> refreshAvailableItemIds;
     private int[] refreshBoostedLevels;
     private Map<String, int[]> refreshCurrencyCache;
     // Varplayer values snapshot for the current refreshTransports pass. Without it, every varp
@@ -270,17 +259,8 @@ public class PathfinderConfig {
     public PathfinderConfig(SplitFlagMap mapData, Map<WorldPoint, Set<Transport>> transports,
                             List<Restriction> restrictions,
                             Client client, ShortestPathConfig config) {
-        this(mapData, transports, restrictions, client, config, TransportPlanningPolicy.ALLOW_ALL);
-    }
-
-    public PathfinderConfig(SplitFlagMap mapData, Map<WorldPoint, Set<Transport>> transports,
-                            List<Restriction> restrictions,
-                            Client client, ShortestPathConfig config,
-                            TransportPlanningPolicy transportPlanningPolicy) {
         this.mapData = mapData;
-        this.map = ThreadLocal.withInitial(() -> client == null
-                ? new CollisionMap(this.mapData, this.liveCollisionOverlay, () -> -1)
-                : new CollisionMap(this.mapData, this.liveCollisionOverlay));
+        this.map = ThreadLocal.withInitial(() -> new CollisionMap(this.mapData, this.liveCollisionOverlay));
         this.allTransports = Collections.synchronizedMap(new HashMap<>());
         replaceAllTransports(transports);
         this.usableTeleports = ConcurrentHashMap.newKeySet(allTransports.size() / 20);
@@ -292,8 +272,6 @@ public class PathfinderConfig {
         loadLearnedBlockedEdges();
         this.client = client;
         this.config = config;
-        this.transportPlanningPolicy = Objects.requireNonNull(
-                transportPlanningPolicy, "transportPlanningPolicy");
         //START microbot variables
         this.resourceRestrictions = restrictions;
         this.customRestrictions = Collections.emptyList();
@@ -359,8 +337,6 @@ public class PathfinderConfig {
         calculationCutoffMillis = (long) config.calculationCutoff() * Constants.GAME_TICK_LENGTH;
         avoidWilderness = ShortestPathPlugin.override("avoidWilderness", config.avoidWilderness());
         avoidDangerousNpcs = ShortestPathPlugin.override("avoidDangerousNpcs", config.avoidDangerousNpcs());
-		plannerSelectionMode = ShortestPathPlugin.override(
-			"plannerSelectionMode", config.plannerSelectionMode());
         useAgilityShortcuts = ShortestPathPlugin.override("useAgilityShortcuts", config.useAgilityShortcuts());
         useGrappleShortcuts = ShortestPathPlugin.override("useGrappleShortcuts", config.useGrappleShortcuts());
         useBoats = ShortestPathPlugin.override("useBoats", config.useBoats());
@@ -491,15 +467,15 @@ public class PathfinderConfig {
 
         TransportRefreshSnapshot snap = transportRefreshSnapshots.get(refreshCacheKeyHash);
         if (snap != null && client != null) {
-            int[] boostedProbe = new int[Transport.REQUIREMENT_LEVEL_COUNT];
+            int[] boostedProbe = new int[SKILLS.length];
             final int[] probeOrdinals = snap.sortedSkillOrdinals;
             Microbot.getClientThread().runOnClientThreadOptional(() -> {
                 // Only the skills some transport gates on; probing all 23 both cost client-thread
                 // time and let hitpoints/prayer drift invalidate an otherwise valid cache.
                 if (probeOrdinals != null) {
                     for (int ordinal : probeOrdinals) {
-                        if (ordinal >= 0 && ordinal < Transport.REQUIREMENT_LEVEL_COUNT) {
-                            boostedProbe[ordinal] = currentRequirementLevel(ordinal);
+                        if (ordinal >= 0 && ordinal < SKILLS.length) {
+                            boostedProbe[ordinal] = client.getBoostedSkillLevel(SKILLS[ordinal]);
                         }
                     }
                 }
@@ -564,20 +540,13 @@ public class PathfinderConfig {
         long mergeTime = System.currentTimeMillis() - mergeStart;
 
         long cacheStart = System.currentTimeMillis();
-        refreshAvailableItemQuantities = new HashMap<>();
+        refreshAvailableItemIds = new HashSet<>();
         refreshCurrencyCache = new HashMap<>();
-        Rs2Inventory.items().forEach(item -> refreshAvailableItemQuantities.merge(
-                item.getId(), Math.max(0, item.getQuantity()), Integer::sum));
-        Rs2Equipment.all().forEach(item -> refreshAvailableItemQuantities.merge(
-                item.getId(), Math.max(0, item.getQuantity()), Integer::sum));
+        Rs2Inventory.items().forEach(item -> refreshAvailableItemIds.add(item.getId()));
+        Rs2Equipment.all().forEach(item -> refreshAvailableItemIds.add(item.getId()));
         if (useBankItems) {
-            Rs2Bank.getAll().forEach(item -> refreshAvailableItemQuantities.merge(
-                    item.getId(), Math.max(0, item.getQuantity()), Integer::sum));
+            Rs2Bank.getAll().forEach(item -> refreshAvailableItemIds.add(item.getId()));
         }
-        refreshAvailableRuneQuantities = new HashMap<>();
-        Rs2Magic.getRunes(RuneFilter.builder().includeBank(useBankItems).build())
-                .forEach((rune, quantity) -> refreshAvailableRuneQuantities.put(
-                        rune.getItemId(), quantity));
 
         Set<Integer> varbitIds = new HashSet<>();
         List<int[]> varbitConditions = new ArrayList<>();
@@ -653,17 +622,12 @@ public class PathfinderConfig {
                 ? Collections.unmodifiableSet(relevantItemIds)
                 : null;
 
-        refreshBoostedLevels = new int[Transport.REQUIREMENT_LEVEL_COUNT];
+        refreshBoostedLevels = new int[SKILLS.length];
         Map<Integer, Integer> varplayerValues = new HashMap<>();
         Microbot.getClientThread().runOnClientThreadOptional(() -> {
             for (int i = 0; i < SKILLS.length; i++) {
                 refreshBoostedLevels[i] = client.getBoostedSkillLevel(SKILLS[i]);
             }
-            refreshBoostedLevels[Transport.TOTAL_LEVEL_INDEX] = client.getTotalLevel();
-            Player localPlayer = client.getLocalPlayer();
-            refreshBoostedLevels[Transport.COMBAT_LEVEL_INDEX] =
-                    localPlayer == null ? 0 : localPlayer.getCombatLevel();
-            refreshBoostedLevels[Transport.QUEST_POINTS_INDEX] = client.getVarpValue(VarPlayer.QUEST_POINTS);
             for (int id : varbitIds) {
                 Microbot.getVarbitValue(id);
             }
@@ -729,13 +693,7 @@ public class PathfinderConfig {
             }
         }
 
-        Rs2LeaguesTransport.injectLeaguesTransports(
-                transport -> isTransportUsableWithLeaguesContext(transport, leaguesCtx),
-                leaguesCtx,
-                usableTeleports,
-                transports,
-                transportsPacked,
-                typeStats);
+        Rs2LeaguesTransport.injectLeaguesTransports(this, leaguesCtx, usableTeleports, transports, transportsPacked, typeStats);
         long filterTime = System.currentTimeMillis() - filterStart;
 
         int[] sortedVarbitConditions = encodeSortedConditionTriples(varbitConditions);
@@ -767,8 +725,7 @@ public class PathfinderConfig {
         }
         long similarTime = System.currentTimeMillis() - similarStart;
 
-        refreshAvailableItemQuantities = null;
-        refreshAvailableRuneQuantities = null;
+        refreshAvailableItemIds = null;
         refreshBoostedLevels = null;
         refreshCurrencyCache = null;
         refreshVarplayerValues = null;
@@ -1288,49 +1245,40 @@ public class PathfinderConfig {
     }
 
     private boolean useTransport(Transport transport) {
-        // This runs once per expanded catalog edge during every refresh. Keep individual rejection
-        // reasons at TRACE; DEBUG already receives the per-type aggregate emitted by refreshTransports.
-        if (!transportPlanningPolicy.isAdmitted(transport)) {
-            log.trace("Transport ( O: {} D: {} type={} ) has no registered Microbot executor",
-                    transport == null ? null : transport.getOrigin(),
-                    transport == null ? null : transport.getDestination(),
-                    transport == null ? null : transport.getType());
-            return false;
-        }
         // Check if the feature flag is disabled
         if (!isFeatureEnabled(transport)) {
-            log.trace("Transport Type {} is disabled by feature flag", transport.getType());
+            log.debug("Transport Type {} is disabled by feature flag", transport.getType());
             return false;
         }
         // If the transport requires you to be in a members world (used for more granular member requirements)
         if (transport.isMembers() && !client.getWorldType().contains(WorldType.MEMBERS)) {
-            log.trace("Transport ( O: {} D: {} ) requires members world", transport.getOrigin(), transport.getDestination());
+            log.debug("Transport ( O: {} D: {} ) requires members world", transport.getOrigin(), transport.getDestination());
             return false;
         }
         if (transport.getType() == TransportType.SPIRIT_TREE && !isSpiritTreeRouteEnabled(transport)) {
-            log.trace("Transport ( O: {} D: {} ) is a spirit tree route but the tree is disabled", transport.getOrigin(), transport.getDestination());
+            log.debug("Transport ( O: {} D: {} ) is a spirit tree route but the tree is disabled", transport.getOrigin(), transport.getDestination());
             return false;
         }
         // If you don't meet level requirements
         if (!hasRequiredLevels(transport)) {
-            log.trace("Transport ( O: {} D: {} ) requires skill levels {}", transport.getOrigin(), transport.getDestination(), Arrays.toString(transport.getSkillLevels()));
+            log.debug("Transport ( O: {} D: {} ) requires skill levels {}", transport.getOrigin(), transport.getDestination(), Arrays.toString(transport.getSkillLevels()));
             return false;
         }
         // If the transport has quest requirements & the quest haven't been completed
         if (transport.isQuestLocked() && !completedQuests(transport)) {
-            log.trace("Transport ( O: {} D: {} ) requires quests {}", transport.getOrigin(), transport.getDestination(), transport.getQuests());
+            log.debug("Transport ( O: {} D: {} ) requires quests {}", transport.getOrigin(), transport.getDestination(), transport.getQuests());
             return false;
         }
 
         // If the transport has varbit requirements & the varbits do not match
         if (!varbitChecks(transport)) {
-            log.trace("Transport ( O: {} D: {} ) requires varbits {}", transport.getOrigin(), transport.getDestination(), transport.getVarbits());
+            log.debug("Transport ( O: {} D: {} ) requires varbits {}", transport.getOrigin(), transport.getDestination(), transport.getVarbits());
             return false;
         }
 
         // If the transport has varplayer requirements & the varplayers do not match
         if (!varplayerChecks(transport)) {
-            log.trace("Transport ( O: {} D: {} ) requires varplayers {}", transport.getOrigin(), transport.getDestination(), transport.getVarplayers());
+            log.debug("Transport ( O: {} D: {} ) requires varplayers {}", transport.getOrigin(), transport.getDestination(), transport.getVarplayers());
             return false;
         }
 
@@ -1343,19 +1291,19 @@ public class PathfinderConfig {
                     return new int[]{invCount, bankCount};
                 });
                 if (cached[0] < transport.getCurrencyAmount() && cached[1] < transport.getCurrencyAmount()) {
-                    log.trace("Transport ( O: {} D: {} ) requires {} x {}", transport.getOrigin(), transport.getDestination(), transport.getCurrencyAmount(), transport.getCurrencyName());
+                    log.debug("Transport ( O: {} D: {} ) requires {} x {}", transport.getOrigin(), transport.getDestination(), transport.getCurrencyAmount(), transport.getCurrencyName());
                     return false;
                 }
             } else if (!Rs2Inventory.hasItemAmount(transport.getCurrencyName(), transport.getCurrencyAmount())
                     && !(useBankItems && Rs2Bank.count(transport.getCurrencyName()) >= transport.getCurrencyAmount())) {
-                log.trace("Transport ( O: {} D: {} ) requires {} x {}", transport.getOrigin(), transport.getDestination(), transport.getCurrencyAmount(), transport.getCurrencyName());
+                log.debug("Transport ( O: {} D: {} ) requires {} x {}", transport.getOrigin(), transport.getDestination(), transport.getCurrencyAmount(), transport.getCurrencyName());
                 return false;
             }
         }
 
         // Check if Teleports are globally disabled
         if (TransportType.isTeleport(transport.getType(), transport.getOrigin()) && Rs2Walker.disableTeleports) {
-            log.trace("Transport ( O: {} D: {} ) is a teleport but teleports are globally disabled", transport.getOrigin(), transport.getDestination());
+            log.debug("Transport ( O: {} D: {} ) is a teleport but teleports are globally disabled", transport.getOrigin(), transport.getDestination());
             return false;
         }
 
@@ -1363,7 +1311,7 @@ public class PathfinderConfig {
         if (transport.getType() == TELEPORTATION_ITEM) {
             boolean isUsable = isTeleportationItemUsable(transport);
             if (!isUsable) {
-                log.trace("Transport ( O: {} D: {} ) is a teleport item but is not usable", transport.getOrigin(), transport.getDestination());
+                log.debug("Transport ( O: {} D: {} ) is a teleport item but is not usable", transport.getOrigin(), transport.getDestination());
             }
             return isUsable;
         }
@@ -1371,7 +1319,7 @@ public class PathfinderConfig {
         if (transport.getType() == TELEPORTATION_SPELL) {
             boolean isUsable = isTeleportationSpellUsable(transport);
             if (!isUsable) {
-                log.trace("Transport ( O: {} D: {} ) is a teleport spell but is not usable", transport.getOrigin(), transport.getDestination());
+                log.debug("Transport ( O: {} D: {} ) is a teleport spell but is not usable", transport.getOrigin(), transport.getDestination());
             }
             return isUsable;
         }
@@ -1380,7 +1328,7 @@ public class PathfinderConfig {
         if (!transport.getItemIdRequirements().isEmpty()) {
             boolean hasRequiredItems = hasRequiredItems(transport);
             if (!hasRequiredItems) {
-                log.trace("Transport ( O: {} D: {} ) requires items {}", transport.getOrigin(), transport.getDestination(), transport.getItemIdRequirements().stream().flatMap(Set::stream).collect(Collectors.toSet()));
+                log.debug("Transport ( O: {} D: {} ) requires items {}", transport.getOrigin(), transport.getDestination(), transport.getItemIdRequirements().stream().flatMap(Set::stream).collect(Collectors.toSet()));
             }
             return hasRequiredItems;
         }
@@ -1409,40 +1357,14 @@ public class PathfinderConfig {
     private boolean hasRequiredLevels(Transport transport) {
         int[] requiredLevels = transport.getSkillLevels();
         if (refreshBoostedLevels != null) {
-            return meetsRequiredLevels(requiredLevels, refreshBoostedLevels);
+            for (int i = 0; i < requiredLevels.length; i++) {
+                if (requiredLevels[i] > 0 && refreshBoostedLevels[i] < requiredLevels[i]) return false;
+            }
+            return true;
         }
         return IntStream.range(0, requiredLevels.length)
             .filter(i -> requiredLevels[i] > 0)
-            .allMatch(i -> currentRequirementLevel(i) >= requiredLevels[i]);
-    }
-
-    static boolean meetsRequiredLevels(int[] requiredLevels, int[] currentLevels) {
-        if (requiredLevels == null || currentLevels == null || currentLevels.length < requiredLevels.length) {
-            return false;
-        }
-        for (int i = 0; i < requiredLevels.length; i++) {
-            if (requiredLevels[i] > 0 && currentLevels[i] < requiredLevels[i]) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private int currentRequirementLevel(int index) {
-        if (index >= 0 && index < SKILLS.length) {
-            return client.getBoostedSkillLevel(SKILLS[index]);
-        }
-        if (index == Transport.TOTAL_LEVEL_INDEX) {
-            return client.getTotalLevel();
-        }
-        if (index == Transport.COMBAT_LEVEL_INDEX) {
-            Player localPlayer = client.getLocalPlayer();
-            return localPlayer == null ? 0 : localPlayer.getCombatLevel();
-        }
-        if (index == Transport.QUEST_POINTS_INDEX) {
-            return client.getVarpValue(VarPlayer.QUEST_POINTS);
-        }
-        return 0;
+            .allMatch(i -> Microbot.getClient().getBoostedSkillLevel(SKILLS[i]) >= requiredLevels[i]);
     }
 
     /**
@@ -1525,29 +1447,6 @@ public class PathfinderConfig {
             }
         }
 
-        return isTransportTypeEnabled(type);
-    }
-
-    /** Immutable feature-toggle snapshot for planner-independent request policy. */
-    public Set<TransportType> getEnabledTransportTypes() {
-        EnumSet<TransportType> enabled = EnumSet.noneOf(TransportType.class);
-        for (TransportType type : TransportType.values()) {
-            if (isTransportTypeEnabled(type)) {
-                enabled.add(type);
-            }
-        }
-        return Collections.unmodifiableSet(enabled);
-    }
-
-    public TeleportationItem getTeleportationItemPolicy() {
-        return useTeleportationItems == null ? TeleportationItem.NONE : useTeleportationItems;
-    }
-
-    public boolean isMembersWorld() {
-        return client == null || client.getWorldType().contains(WorldType.MEMBERS);
-    }
-
-    private boolean isTransportTypeEnabled(TransportType type) {
         switch (type) {
             case AGILITY_SHORTCUT:
                 return useAgilityShortcuts;
@@ -1604,70 +1503,30 @@ public class PathfinderConfig {
      * Checks if a teleportation item is usable
      */
     private boolean isTeleportationItemUsable(Transport transport) {
-        if (!isTeleportationItemAllowedByPolicy(useTeleportationItems, transport.isConsumable())) {
+        if (useTeleportationItems == TeleportationItem.NONE) return false;
+        // Check consumable items configuration
+        if (useTeleportationItems == TeleportationItem.INVENTORY_NON_CONSUMABLE && transport.isConsumable())
             return false;
-        }
 
         return hasRequiredItems(transport);
-    }
-
-    static boolean isTeleportationItemAllowedByPolicy(
-            TeleportationItem policy,
-            boolean consumable) {
-        return policy != TeleportationItem.NONE
-                && (policy != TeleportationItem.INVENTORY_NON_CONSUMABLE || !consumable);
     }
 
     /**
      * Checks if the player has any of the required equipment and inventory items for the transport
      */
     private boolean hasRequiredItems(Transport transport) {
-        return TransportItemRequirement.selectProviders(
-                transport.getItemRequirements(),
-                this::availableRequirementItemQuantity,
-                itemId -> availableItemQuantity(itemId) > 0,
-                itemId -> availableItemQuantity(itemId) > 0).isPresent();
-    }
+        if (requiresChronicle(transport)) return hasChronicleCharges();
 
-    static boolean meetsItemRequirements(
-            List<TransportItemRequirement> requirements,
-            java.util.function.IntUnaryOperator availableQuantity) {
-        if (requirements == null || requirements.isEmpty()) {
-            return true;
+        if (refreshAvailableItemIds != null) {
+            return transport.getItemIdRequirements()
+                    .stream()
+                    .flatMap(Collection::stream)
+                    .anyMatch(refreshAvailableItemIds::contains);
         }
-        return requirements.stream().allMatch(requirement -> requirement.isSatisfiedBy(availableQuantity));
-    }
-
-    private int availableItemQuantity(int itemId) {
-        if (itemId == ItemID.CHRONICLE && !hasChronicleCharges()) {
-            return 0;
-        }
-        if (refreshAvailableItemQuantities != null) {
-            return refreshAvailableItemQuantities.getOrDefault(itemId, 0);
-        }
-        int quantity = Rs2Inventory.itemQuantity(itemId);
-        Rs2ItemModel equipped = Rs2Equipment.get(itemId);
-        if (equipped != null) {
-            quantity += Math.max(1, equipped.getQuantity());
-        }
-        if (useBankItems) {
-            quantity += Rs2Bank.count(itemId);
-        }
-        return quantity;
-    }
-
-    private int availableRequirementItemQuantity(int itemId) {
-        Map<Integer, Integer> runeSnapshot = refreshAvailableRuneQuantities;
-        if (runeSnapshot != null) {
-            return Math.max(availableItemQuantity(itemId), runeSnapshot.getOrDefault(itemId, 0));
-        }
-        Runes rune = Runes.byItemId(itemId);
-        if (rune == null) {
-            return availableItemQuantity(itemId);
-        }
-        int runeQuantity = Rs2Magic.getRunes(
-                RuneFilter.builder().includeBank(useBankItems).build()).getOrDefault(rune, 0);
-        return Math.max(availableItemQuantity(itemId), runeQuantity);
+        return transport.getItemIdRequirements()
+                .stream()
+                .flatMap(Collection::stream)
+                .anyMatch(itemId -> Rs2Equipment.isWearing(itemId) || Rs2Inventory.hasItem(itemId) || (ShortestPathPlugin.getPathfinderConfig().useBankItems && Rs2Bank.hasItem(itemId)));
     }
 
     /**
@@ -1681,16 +1540,7 @@ public class PathfinderConfig {
     }
 
 
-    boolean isTeleportationSpellUsable(Transport transport) {
-        if (transportPlanningPolicy.isZeroRuneSpell(transport)) {
-            // Every spellbook home teleport is a zero-rune widget action. Spellbook, membership,
-            // quest, Wilderness and cooldown requirements were checked earlier in useTransport().
-            return true;
-        }
-
-        if (!transport.getItemRequirements().isEmpty()) {
-            return hasRequiredItems(transport);
-        }
+    private boolean isTeleportationSpellUsable(Transport transport) {
 
         boolean hasMultipleDestination = transport.getDisplayInfo().contains(":");
         String displayInfo = hasMultipleDestination
@@ -1700,6 +1550,16 @@ public class PathfinderConfig {
         if (rs2Spell == null) return false;
         return Rs2Magic.hasRequiredRunes(rs2Spell, RuneFilter.builder().includeBank(useBankItems).build());
 //        return Rs2Magic.quickCanCast(displayInfo);
+    }
+
+    /**
+     * Checks if the transport requires the Chronicle
+     */
+    private boolean requiresChronicle(Transport transport) {
+        return transport.getItemIdRequirements()
+                .stream()
+                .flatMap(Collection::stream)
+                .anyMatch(itemId -> itemId == ItemID.CHRONICLE);
     }
 
     /**

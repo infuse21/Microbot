@@ -42,7 +42,6 @@ import java.awt.geom.AffineTransform;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import javax.swing.SwingUtilities;
@@ -344,7 +343,7 @@ public class OverlayRenderer extends MouseAdapter
 			graphics.setPaint(paint);
 			graphics.setRenderingHints(renderingHints);
 			graphics.setBackground(background);
-			if (!Objects.equals(graphics.getClip(), clip))
+			if (!graphics.getClip().equals(clip))
 			{
 				graphics.setClip(clip);
 			}

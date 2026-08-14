@@ -6,9 +6,9 @@ import net.runelite.client.plugins.microbot.util.walker.door.Rs2DoorGeometry;
 
 import net.runelite.api.WallObject;
 import net.runelite.api.coords.WorldPoint;
-import net.runelite.api.gameval.InterfaceID;
 import net.runelite.client.plugins.microbot.shortestpath.Transport;
 import net.runelite.client.plugins.microbot.shortestpath.TransportType;
+import net.runelite.client.plugins.microbot.shortestpath.pathfinder.Pathfinder;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -20,7 +20,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.TimeoutException;
 import java.util.function.Predicate;
 
 import static org.junit.Assert.assertEquals;
@@ -33,6 +32,7 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -46,312 +46,6 @@ import static org.mockito.Mockito.when;
  * refactored code paths get caught by {@code runUnitTests}.
  */
 public class Rs2WalkerUnitTest {
-
-    @Test
-    public void teleportItemLeafActionSupportsNestedUpstreamLabels() {
-        assertEquals("rimmington",
-                Rs2Walker.teleportItemLeafAction("Max cape: POH Portals: Rimmington"));
-        assertEquals("fishing guild",
-                Rs2Walker.teleportItemLeafAction("Max cape: Fishing Teleports: Fishing Guild"));
-        assertEquals("teleport",
-                Rs2Walker.teleportItemLeafAction("Quest point cape: Teleport"));
-        assertEquals("chronicle", Rs2Walker.teleportItemLeafAction("Chronicle"));
-        assertEquals("", Rs2Walker.teleportItemLeafAction(null));
-    }
-
-    @Test
-    public void teleportWildernessLimitIsInclusiveWithoutOffByOne() {
-        assertTrue(Rs2Walker.isTeleportAllowedAtWildernessLevel(20, 20));
-        assertFalse(Rs2Walker.isTeleportAllowedAtWildernessLevel(21, 20));
-    }
-
-    @Test
-    public void quetzalDestinationLabelsUseCurrentLandingAndMapText() {
-        assertEquals("Quetzacalli Gorge",
-                Rs2Walker.quetzalMapLabelForDestination(new WorldPoint(1510, 3222, 0)));
-        assertEquals("Cam Torum",
-                Rs2Walker.quetzalMapLabelForDestination(new WorldPoint(1446, 3108, 0)));
-    }
-
-    @Test
-    public void terminalTravelTransport_onlyMatchesShipNpcAndBoat() {
-        assertTrue(Rs2Walker.isTerminalTravelTransport(TransportType.SHIP));
-        assertTrue(Rs2Walker.isTerminalTravelTransport(TransportType.NPC));
-        assertTrue(Rs2Walker.isTerminalTravelTransport(TransportType.BOAT));
-
-        assertFalse(Rs2Walker.isTerminalTravelTransport(TransportType.CHARTER_SHIP));
-        assertFalse(Rs2Walker.isTerminalTravelTransport(TransportType.TRANSPORT));
-        assertFalse(Rs2Walker.isTerminalTravelTransport(null));
-    }
-
-    @Test
-    public void terminalNpcInteractionCandidates_onlyFallbackForLegacyShipLabels() {
-        assertEquals(Arrays.asList("Musa Point", "Travel"),
-                Rs2Walker.terminalNpcInteractionCandidates(TransportType.SHIP, "Musa Point"));
-        assertEquals(Collections.singletonList("Travel"),
-                Rs2Walker.terminalNpcInteractionCandidates(TransportType.SHIP, "Travel"));
-        assertEquals(Collections.singletonList("Talk-to"),
-                Rs2Walker.terminalNpcInteractionCandidates(TransportType.SHIP, "Talk-to"));
-        assertEquals(Collections.singletonList("Follow"),
-                Rs2Walker.terminalNpcInteractionCandidates(TransportType.NPC, "Follow"));
-        assertTrue(Rs2Walker.terminalNpcInteractionCandidates(TransportType.NPC, null).isEmpty());
-    }
-
-    @Test
-    public void terminalTravelAttempt_isOncePerExactEdgeUntilWalkStateReset() {
-        Transport ship = portSarimToMusaShip();
-
-        assertTrue(Rs2Walker.markTerminalTravelAttempt(ship));
-        assertFalse(Rs2Walker.markTerminalTravelAttempt(ship));
-
-        Rs2Walker.clearWalkerDedupeForTesting();
-        assertTrue(Rs2Walker.markTerminalTravelAttempt(ship));
-    }
-
-    @Test
-    public void terminalTravelLanding_acceptsExactOrImmediateContinuationOnly() {
-        Transport ship = portSarimToMusaShip();
-        WorldPoint modernGroundLanding = new WorldPoint(2956, 3146, 0);
-        List<WorldPoint> modernPath = Arrays.asList(
-                ship.getOrigin(),
-                ship.getDestination(),
-                modernGroundLanding);
-
-        assertTrue(Rs2Walker.hasReachedTerminalTravelLanding(
-                ship, modernPath, 1, ship.getDestination()));
-        assertTrue(Rs2Walker.hasReachedTerminalTravelLanding(
-                ship, modernPath, 1, modernGroundLanding));
-        assertFalse("standing at the origin is not a completed trip",
-                Rs2Walker.hasReachedTerminalTravelLanding(ship, modernPath, 1, ship.getOrigin()));
-
-        List<WorldPoint> loopingPath = Arrays.asList(
-                ship.getOrigin(),
-                ship.getDestination(),
-                new WorldPoint(2957, 3143, 1),
-                modernGroundLanding);
-        assertFalse("an arbitrary later path point must not prove terminal arrival",
-                Rs2Walker.hasReachedTerminalTravelLanding(ship, loopingPath, 1, modernGroundLanding));
-        assertFalse(Rs2Walker.hasReachedTerminalTravelLanding(
-                ship, modernPath, 1, new WorldPoint(3200, 3200, 0)));
-    }
-
-    private static Transport portSarimToMusaShip() {
-        return new Transport(
-                new WorldPoint(3029, 3217, 0),
-                new WorldPoint(2956, 3143, 1),
-                "Musa Point",
-                TransportType.SHIP,
-                false,
-                "Musa Point",
-                "Captain Tobias",
-                3644,
-                10);
-    }
-
-    @Test
-    public void terminalTravelObjectCandidate_matchesConfiguredSemanticTargetNearOrigin() {
-        Transport ferry = new Transport(
-                new WorldPoint(3271, 3144, 0),
-                new WorldPoint(3148, 2843, 0),
-                "",
-                TransportType.BOAT,
-                true,
-                "Board",
-                "Ferry",
-                41311,
-                8);
-
-        assertTrue(Rs2Walker.isTerminalTravelObjectCompositionCandidate(
-                ferry,
-                ferry.getOrigin(),
-                "<col=ffff00>Ferry</col>",
-                new String[]{"<col=ff9040>Board</col>"}));
-        assertTrue("nearby multi-tile object anchors remain eligible",
-                Rs2Walker.isTerminalTravelObjectCompositionCandidate(
-                        ferry,
-                        new WorldPoint(3273, 3144, 0),
-                        "Ferry",
-                        new String[]{"Board"}));
-        assertFalse(Rs2Walker.isTerminalTravelObjectCompositionCandidate(
-                ferry, ferry.getOrigin(), "Boat", new String[]{"Board"}));
-        assertFalse(Rs2Walker.isTerminalTravelObjectCompositionCandidate(
-                ferry, ferry.getOrigin(), "Ferry", new String[]{"Travel"}));
-        assertFalse(Rs2Walker.isTerminalTravelObjectCompositionCandidate(
-                ferry, new WorldPoint(3275, 3144, 0), "Ferry", new String[]{"Board"}));
-
-        Transport ordinaryObject = new Transport(
-                ferry.getOrigin(), ferry.getDestination(), "", TransportType.TRANSPORT,
-                true, "Board", "Ferry", 41311, 8);
-        assertFalse(Rs2Walker.isTerminalTravelObjectCompositionCandidate(
-                ordinaryObject, ferry.getOrigin(), "Ferry", new String[]{"Board"}));
-    }
-
-    @Test
-    public void alKharidTollLanding_requiresExactSelectedDestination() {
-        Transport eastbound = new Transport(
-                new WorldPoint(3267, 3227, 0),
-                new WorldPoint(3268, 3227, 0),
-                "Gate",
-                TransportType.TRANSPORT,
-                false,
-                "Pay-toll(10gp)",
-                "Gate",
-                net.runelite.api.ObjectID.CITY_GATE_2786,
-                2);
-
-        assertTrue(Rs2Walker.hasReachedAlKharidTollDestination(
-                eastbound, eastbound.getDestination()));
-        assertFalse("the adjacent origin must never count as a crossing",
-                Rs2Walker.hasReachedAlKharidTollDestination(eastbound, eastbound.getOrigin()));
-        assertFalse(Rs2Walker.hasReachedAlKharidTollDestination(
-                eastbound, new WorldPoint(3268, 3228, 0)));
-        assertFalse(Rs2Walker.hasReachedAlKharidTollDestination(eastbound, null));
-    }
-
-    @Test
-    public void alKharidTollLanding_rejectsUnrelatedTransport() {
-        Transport door = new Transport(
-                new WorldPoint(3152, 3363, 0),
-                new WorldPoint(3153, 3363, 0),
-                "Door",
-                TransportType.TRANSPORT,
-                false,
-                "Open",
-                "Door",
-                136);
-
-        assertFalse(Rs2Walker.hasReachedAlKharidTollDestination(
-                door, door.getDestination()));
-    }
-
-    @Test
-    public void alKharidTollSegment_matchesOnlyCrossGateEdges() {
-        assertTrue(Rs2Walker.isAlKharidTollGateSegment(
-                new WorldPoint(3267, 3227, 0), new WorldPoint(3268, 3227, 0)));
-        assertTrue(Rs2Walker.isAlKharidTollGateSegment(
-                new WorldPoint(3268, 3228, 0), new WorldPoint(3267, 3228, 0)));
-
-        assertFalse("an along-gate step is not a crossing",
-                Rs2Walker.isAlKharidTollGateSegment(
-                        new WorldPoint(3267, 3227, 0), new WorldPoint(3267, 3228, 0)));
-        assertFalse(Rs2Walker.isAlKharidTollGateSegment(
-                new WorldPoint(3267, 3227, 0), new WorldPoint(3268, 3227, 1)));
-        assertFalse(Rs2Walker.isAlKharidTollGateSegment(
-                new WorldPoint(3152, 3363, 0), new WorldPoint(3153, 3363, 0)));
-    }
-
-    @Test
-    public void alKharidTollObjectCandidate_requiresGateActionAndSelectedEdgeLocation() {
-        Transport payToll = alKharidGateTransport("Pay-toll(10gp)");
-
-        assertTrue(Rs2Walker.isAlKharidTollGateCompositionCandidate(
-                payToll,
-                new WorldPoint(3268, 3227, 0),
-                "Gate",
-                new String[]{"Open", "<col=ff9040>Pay-toll(10gp)</col>"}));
-        assertFalse("a stale id collision must not make an unrelated object eligible",
-                Rs2Walker.isAlKharidTollGateCompositionCandidate(
-                        payToll,
-                        new WorldPoint(3268, 3227, 0),
-                        "Lever",
-                        new String[]{"Pay-toll(10gp)"}));
-        assertFalse(Rs2Walker.isAlKharidTollGateCompositionCandidate(
-                payToll,
-                new WorldPoint(3268, 3227, 0),
-                "Gate",
-                new String[]{"Open"}));
-        assertFalse(Rs2Walker.isAlKharidTollGateCompositionCandidate(
-                payToll,
-                new WorldPoint(3269, 3227, 0),
-                "Gate",
-                new String[]{"Pay-toll(10gp)"}));
-
-        Transport open = alKharidGateTransport("Open");
-        assertTrue(Rs2Walker.isAlKharidTollGateCompositionCandidate(
-                open,
-                new WorldPoint(3267, 3228, 0),
-                "City gate",
-                new String[]{"Open"}));
-    }
-
-    private static Transport alKharidGateTransport(String action) {
-        return new Transport(
-                new WorldPoint(3267, 3227, 0),
-                new WorldPoint(3268, 3227, 0),
-                "Gate",
-                TransportType.TRANSPORT,
-                false,
-                action,
-                "Gate",
-                net.runelite.api.ObjectID.CITY_GATE_2786,
-                2);
-    }
-
-    @Test
-    public void canoeStationsSelectTheirOwnMapInterfaceAndUnknownIdsFailClosed() {
-        assertEquals(InterfaceID.CanoeMapLum.MAIN_MAP, Rs2Walker.canoeMapMainComponentId(12163));
-        assertEquals(InterfaceID.CanoeMapLum.DESTINATIONS,
-                Rs2Walker.canoeMapDestinationsComponentId(39638));
-        assertEquals(InterfaceID.CanoeMapDougne.MAIN_MAP,
-                Rs2Walker.canoeMapMainComponentId(60845));
-        assertEquals(InterfaceID.CanoeMapDougne.DESTINATIONS,
-                Rs2Walker.canoeMapDestinationsComponentId(60849));
-        assertEquals(-1, Rs2Walker.canoeMapMainComponentId(99999));
-        assertEquals(-1, Rs2Walker.canoeMapDestinationsComponentId(99999));
-    }
-
-    @Test
-    public void recoveryReplanTestHookIsTestOnlyTargetBoundAndOneShot() {
-        String previousTestMode = System.getProperty("microbot.test.mode");
-        WorldPoint previousTarget = Rs2Walker.currentTarget;
-        try {
-            System.clearProperty("microbot.test.mode");
-            Rs2Walker.currentTarget = new WorldPoint(3029, 3217, 0);
-            assertFalse(Rs2Walker.requestRecoveryReplanForTest());
-            assertFalse(Rs2Walker.consumeRecoveryReplanForTest());
-
-            System.setProperty("microbot.test.mode", "true");
-            Rs2Walker.currentTarget = null;
-            assertFalse(Rs2Walker.requestRecoveryReplanForTest());
-
-            Rs2Walker.currentTarget = new WorldPoint(3029, 3217, 0);
-            assertTrue(Rs2Walker.requestRecoveryReplanForTest());
-            assertTrue(Rs2Walker.consumeRecoveryReplanForTest());
-            assertFalse("one request must be consumed exactly once",
-                    Rs2Walker.consumeRecoveryReplanForTest());
-        } finally {
-            Rs2Walker.clearWalkerDedupeForTesting();
-            Rs2Walker.currentTarget = previousTarget;
-            if (previousTestMode == null) {
-                System.clearProperty("microbot.test.mode");
-            } else {
-                System.setProperty("microbot.test.mode", previousTestMode);
-            }
-        }
-    }
-
-    @Test
-    public void clientThreadTimeoutDetectionWalksTheCauseChain() {
-        assertTrue(Rs2Walker.isClientThreadReadTimeout(
-                new RuntimeException("outer", new RuntimeException(
-                        "Timed out waiting for client thread", new TimeoutException()))));
-        assertFalse(Rs2Walker.isClientThreadReadTimeout(
-                new RuntimeException("ordinary failure")));
-        assertFalse(Rs2Walker.isClientThreadReadTimeout(null));
-    }
-
-    @Test
-    public void collisionFreeRouteIndexFallbackIsBoundedAndDistanceTagged() {
-        WorldPoint origin = new WorldPoint(3200, 3200, 2);
-        Map<WorldPoint, Integer> nearby = Rs2Walker.nearbyTilesIgnoringCollision(origin, 2);
-
-        assertEquals(25, nearby.size());
-        assertEquals(Integer.valueOf(0), nearby.get(origin));
-        assertEquals(Integer.valueOf(2), nearby.get(new WorldPoint(3202, 3202, 2)));
-        assertFalse(nearby.containsKey(new WorldPoint(3203, 3200, 2)));
-        assertTrue(Rs2Walker.nearbyTilesIgnoringCollision(null, 2).isEmpty());
-        assertTrue(Rs2Walker.nearbyTilesIgnoringCollision(origin, -1).isEmpty());
-    }
 
     @Before
     public void resetTelemetry() {
@@ -2224,20 +1918,23 @@ public class Rs2WalkerUnitTest {
     }
 
     @Test
-    public void telemetry_recordUnreachable_nullMetricsDoesNotThrow() {
+    public void telemetry_recordUnreachable_nullPathfinderDoesNotThrow() {
         Rs2Walker.Telemetry.recordUnreachable("partial-retries-exhausted",
                 null, null, null, 0, 2, null);
         assertEquals(1, Rs2Walker.Telemetry.unreachableCount.get());
     }
 
     @Test
-    public void telemetry_recordUnreachable_withRouteMetricsDoesNotLeakPlannerState() {
-        Rs2RouteMetrics metrics = new Rs2RouteMetrics(2_000_000L, 12L, 30L, 4L);
+    public void telemetry_recordUnreachable_withPathfinderReadsStats() {
+        Pathfinder pathfinder = mock(Pathfinder.class);
+        Pathfinder.PathfinderStats stats = new Pathfinder.PathfinderStats();
+        when(pathfinder.getStats()).thenReturn(stats);
 
         Rs2Walker.Telemetry.recordUnreachable("no-walkable-path",
                 new WorldPoint(3200, 3200, 0), new WorldPoint(3201, 3201, 0),
-                null, 0, 0, metrics);
+                null, 0, 0, pathfinder);
 
+        verify(pathfinder).getStats();
         assertEquals(1, Rs2Walker.Telemetry.unreachableCount.get());
     }
 

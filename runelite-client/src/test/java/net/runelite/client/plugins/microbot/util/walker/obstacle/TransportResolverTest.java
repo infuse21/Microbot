@@ -2,6 +2,7 @@ package net.runelite.client.plugins.microbot.util.walker.obstacle;
 
 import net.runelite.api.TileObject;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.client.plugins.microbot.shortestpath.Transport;
 import org.junit.Test;
 
 import java.util.Collections;
@@ -11,6 +12,7 @@ import java.util.Set;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
 
 /**
  * Headless tests for {@link TransportResolver} — the stepping-stone recovery fix expressed in the P2
@@ -27,7 +29,8 @@ public class TransportResolverTest {
 
     /** Scene with a transport origin at {@code origin}, given player tile and reachable set. */
     private static LiveScene scene(WorldPoint player, WorldPoint origin, Set<WorldPoint> reachable) {
-		return new LiveScene() {
+        final Set<Transport> t = new HashSet<>(Collections.singletonList(mock(Transport.class)));
+        return new LiveScene() {
             public WorldPoint playerLocation() {
                 return player;
             }
@@ -36,8 +39,8 @@ public class TransportResolverTest {
                 return reachable.contains(tile);
             }
 
-			public boolean hasTransportAt(WorldPoint tile) {
-				return origin.equals(tile);
+            public Set<Transport> transportsAt(WorldPoint tile) {
+                return origin.equals(tile) ? t : Collections.emptySet();
             }
 
             public TileObject objectAt(WorldPoint tile) {

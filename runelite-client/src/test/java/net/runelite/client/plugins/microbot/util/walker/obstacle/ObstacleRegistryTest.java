@@ -2,10 +2,12 @@ package net.runelite.client.plugins.microbot.util.walker.obstacle;
 
 import net.runelite.api.TileObject;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.client.plugins.microbot.shortestpath.Transport;
 import org.junit.Test;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -31,9 +33,9 @@ public class ObstacleRegistryTest {
             return false;
         }
 
-		public boolean hasTransportAt(WorldPoint tile) {
-			return false;
-		}
+        public Set<Transport> transportsAt(WorldPoint tile) {
+            return Collections.emptySet();
+        }
 
         public TileObject objectAt(WorldPoint tile) {
             return null;

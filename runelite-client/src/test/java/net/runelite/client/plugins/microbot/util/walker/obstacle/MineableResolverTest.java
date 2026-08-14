@@ -3,10 +3,13 @@ package net.runelite.client.plugins.microbot.util.walker.obstacle;
 import net.runelite.api.TileObject;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.ObjectID;
+import net.runelite.client.plugins.microbot.shortestpath.Transport;
 import org.junit.Test;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -36,9 +39,9 @@ public class MineableResolverTest {
                 return true;
             }
 
-			public boolean hasTransportAt(WorldPoint tile) {
-				return false;
-			}
+            public Set<Transport> transportsAt(WorldPoint tile) {
+                return Collections.emptySet();
+            }
 
             public TileObject objectAt(WorldPoint tile) {
                 return objects.get(tile);

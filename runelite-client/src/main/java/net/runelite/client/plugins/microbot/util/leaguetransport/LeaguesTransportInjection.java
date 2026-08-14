@@ -4,6 +4,7 @@ import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.shortestpath.Transport;
 import net.runelite.client.plugins.microbot.shortestpath.TransportType;
 import net.runelite.client.plugins.microbot.shortestpath.WorldPointUtil;
+import net.runelite.client.plugins.microbot.shortestpath.pathfinder.PathfinderConfig;
 import net.runelite.client.plugins.microbot.util.walker.WebWalkLog;
 import net.runelite.client.plugins.microbot.shortestpath.PrimitiveIntHashMap;
 
@@ -12,7 +13,6 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.Predicate;
 
 /**
  * Pathfinder injection for Leagues Area and catalog transports.
@@ -26,14 +26,14 @@ final class LeaguesTransportInjection
 	private static volatile EnumSet<LeaguesRegion> lastInjectedUnlockedForBlacklistPrune = null;
 
 	static void injectLeaguesTransports(
-			Predicate<Transport> transportUsable,
+			PathfinderConfig pathfinderConfig,
 			Rs2LeaguesTransport.LeaguesContext ctx,
 			Set<Transport> usableTeleports,
 			Map<WorldPoint, Set<Transport>> transports,
 			PrimitiveIntHashMap<Set<Transport>> transportsPacked,
 			Map<TransportType, int[]> typeStats)
 	{
-		if (transportUsable == null || ctx == null || !ctx.isActive() || ctx.getUnlockedRegions().isEmpty()
+		if (pathfinderConfig == null || ctx == null || !ctx.isActive() || ctx.getUnlockedRegions().isEmpty()
 				|| usableTeleports == null || transports == null || transportsPacked == null || typeStats == null)
 		{
 			return;
@@ -57,8 +57,8 @@ final class LeaguesTransportInjection
 		// Uses same unlock snapshot as inject below (tickLeaguesCalibration still rate-limits standalone probes).
 		LeaguesTransportTeleport.calibrateMissingLandingsAsync(unlockedNow);
 
-		injectLeaguesAreaTeleports(transportUsable, ctx.getUnlockedRegions(), usableTeleports, typeStats);
-		injectLeaguesCatalogTransports(transportUsable, ctx.getUnlockedRegions(), usableTeleports, transports, transportsPacked, typeStats);
+		injectLeaguesAreaTeleports(pathfinderConfig, ctx, ctx.getUnlockedRegions(), usableTeleports, typeStats);
+		injectLeaguesCatalogTransports(pathfinderConfig, ctx, ctx.getUnlockedRegions(), usableTeleports, transports, transportsPacked, typeStats);
 	}
 
 	private static boolean mergeOriginlessTeleportByBestDuration(Set<Transport> usableTeleports, Transport candidate)
@@ -90,7 +90,8 @@ final class LeaguesTransportInjection
 	}
 
 	private static void injectLeaguesAreaTeleports(
-			Predicate<Transport> transportUsable,
+			PathfinderConfig pathfinderConfig,
+			Rs2LeaguesTransport.LeaguesContext ctx,
 			EnumSet<LeaguesRegion> unlockedLeaguesRegions,
 			Set<Transport> usableTeleports,
 			Map<TransportType, int[]> typeStats)
@@ -114,7 +115,7 @@ final class LeaguesTransportInjection
 					true,
 					31,
 					java.util.Collections.emptySet());
-			if (!transportUsable.test(t))
+			if (!pathfinderConfig.isTransportUsableWithLeaguesContext(t, ctx))
 			{
 				continue;
 			}
@@ -135,7 +136,8 @@ final class LeaguesTransportInjection
 	}
 
 	private static void injectLeaguesCatalogTransports(
-			Predicate<Transport> transportUsable,
+			PathfinderConfig pathfinderConfig,
+			Rs2LeaguesTransport.LeaguesContext ctx,
 			EnumSet<LeaguesRegion> unlockedLeaguesRegions,
 			Set<Transport> usableTeleports,
 			Map<WorldPoint, Set<Transport>> transports,
@@ -154,7 +156,7 @@ final class LeaguesTransportInjection
 				continue;
 			}
 
-			if (!transportUsable.test(t))
+			if (!pathfinderConfig.isTransportUsableWithLeaguesContext(t, ctx))
 			{
 				continue;
 			}
