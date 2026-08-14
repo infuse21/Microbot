@@ -1,10 +1,8 @@
 package net.runelite.client.plugins.microbot.util.walker.recovery;
 
 import net.runelite.api.coords.WorldPoint;
-import net.runelite.client.plugins.microbot.shortestpath.Transport;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
 
@@ -213,21 +211,21 @@ public final class RouteRecovery {
      * {@code maxEuclidean} tiles of the player), so recovery can walk the player ONTO it and let the normal
      * transport handler cross next tick. Returns {@code null} when none qualifies.
      * <p>
-     * Pure and fully injected ({@code reachable} tiles and the {@code transports} map are parameters), so it
+	 * Pure and fully injected ({@code reachable} tiles and the transport-origin predicate are parameters), so it
      * is exercised headlessly by {@code RouteRecoveryTest} rather than requiring a live walk. Rationale: the
      * far-side fallback otherwise clicks the opposite bank, which the client cannot reach, so the player
      * loops on the near bank and the transport (which only dispatches while standing on its origin) never
      * fires.
      */
-    public static WorldPoint findReachableTransportOriginAhead(List<WorldPoint> rawPath,
-                                                               int startIndex,
-                                                               WorldPoint playerLoc,
-                                                               Set<WorldPoint> reachable,
-                                                               Map<WorldPoint, Set<Transport>> transports,
-                                                               int maxEuclidean,
-                                                               int forwardScanTiles) {
-        if (rawPath == null || rawPath.isEmpty() || playerLoc == null || reachable == null
-                || transports == null || transports.isEmpty() || startIndex < 0 || startIndex >= rawPath.size()) {
+	public static WorldPoint findReachableTransportOriginAhead(List<WorldPoint> rawPath,
+	                                                           int startIndex,
+	                                                           WorldPoint playerLoc,
+	                                                           Set<WorldPoint> reachable,
+	                                                           Predicate<WorldPoint> hasTransportOrigin,
+	                                                           int maxEuclidean,
+	                                                           int forwardScanTiles) {
+		if (rawPath == null || rawPath.isEmpty() || playerLoc == null || reachable == null
+				|| hasTransportOrigin == null || startIndex < 0 || startIndex >= rawPath.size()) {
             return null;
         }
         int maxSq = maxEuclidean * maxEuclidean;
@@ -243,8 +241,7 @@ public final class RouteRecovery {
             if (euclideanSq(wp, playerLoc) > maxSq) {
                 continue; // within minimap-click reach
             }
-            Set<Transport> ts = transports.get(wp);
-            if (ts != null && !ts.isEmpty()) {
+			if (hasTransportOrigin.test(wp)) {
                 return wp; // nearest reachable transport / shortcut origin ahead
             }
         }
