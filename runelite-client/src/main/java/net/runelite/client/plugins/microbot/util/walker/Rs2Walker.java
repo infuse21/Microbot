@@ -382,6 +382,7 @@ public class Rs2Walker {
 			evidence.started = true;
 		}
         resetWalkSessionState();
+        routeState.requestedGoal = target;
         WebWalkLog.tmark("walk_start", 0, target, Rs2Player.getWorldLocation(), "target_set");
     }
 
@@ -423,6 +424,11 @@ public class Rs2Walker {
         // still (or worse, a step the wrong way) before the new route's first click. Per-edge
         // cooldowns survive on purpose: hammering one door across two walks is still hammering.
         doorAttemptLedger.clearLatestAttempt();
+        routeState.walledDoorEdgeFrom = null;
+        routeState.walledDoorEdgeTo = null;
+        routeState.walledDoorEdgeAtMs = 0L;
+        routeState.requestedGoal = null;
+        routeState.sealedRimRetargets = 0;
         resetRouteProgress();
         synchronized (expectedTransportDestinations) {
             expectedTransportDestinations.clear();
@@ -721,6 +727,19 @@ public class Rs2Walker {
         return Rs2PathApi.hasWalkableTileWithin(tile, 0);
     }
 
+
+    /** A single scene-transition sample must not kill a healthy, moving route. */
+    private static boolean isStableLoggedOut() {
+        boolean initiallyLoggedIn = Microbot.isLoggedIn();
+        if (initiallyLoggedIn) {
+            return false;
+        }
+        Rs2WalkerRuntimeAwaits.awaitCondition(
+                () -> Microbot.isLoggedIn() || currentTarget == null || Thread.currentThread().isInterrupted(),
+                100, 750);
+        boolean cancelled = currentTarget == null || Thread.currentThread().isInterrupted();
+        return LoginStabilityPolicy.shouldExit(false, Microbot.isLoggedIn(), cancelled);
+    }
 
     private static void traceProcessWalkExit(String reason, WorldPoint target, int processWalkTail) {
         WorldPoint activeTarget = currentTarget;
@@ -1749,7 +1768,7 @@ public class Rs2Walker {
                     currentTarget,
                     routeState.interimTargetWp,
                     partialRetriesWorking);
-            if (!Microbot.isLoggedIn()) {
+            if (isStableLoggedOut()) {
                 traceProcessWalkExit("not-logged-in", target, processWalkTail);
                 setTarget(null, "rs2walker:processWalk:not-logged-in");
                 return WalkerState.EXIT;
@@ -2652,6 +2671,12 @@ public class Rs2Walker {
                                     recoveryMinimapReach - 1,
                                     rawAnchorIndex,
                                     Rs2Walker::isKnownWalkableOrUnloaded);
+                            WalkExit claimedDoorExit = resolveWalledDoorClaim(playerLoc,
+                                    obstaclePolicy.unreachableDoorTimeoutMs());
+                            if (claimedDoorExit != null) {
+                                doorOrTransportResult = claimedDoorExit.isDoorLike();
+                                exit = claimedDoorExit; break;
+                            }
                             // Precedence (base < raw-gated < shortcut origin) and the hazard asymmetry
                             // between them live with the decision, pinned by its table.
                             WorldPoint shortcutOrigin =
@@ -2905,15 +2930,9 @@ public class Rs2Walker {
 								targetIdx = Math.max(targetIdx, i);
 							}
 						}
-					}
-
+                    }
                     WorldPoint posBefore = playerLoc;
                     int rawAnchorIndex = rawIndexForSmoothedIndex(i, smoothedToRaw, rawPath);
-                    // Prefer a collision-REACHABLE raw-route point. "Walkable" (tile not fully
-                    // blocked) is not the same as "reachable from the player": a tile flush on the
-                    // far side of a castle wall is walkable yet only reachable via a long detour, so
-                    // a Euclidean-close click there sends the player into the wall. Reachability
-                    // gating excludes the wrong side outright. See movement.md #19.
                     WorldPoint rawRouteTarget = inInstance ? null
                             : selectRouteClickTarget(rawPath, playerLoc, MINIMAP_REACH_EUCLIDEAN - 1, rawAnchorIndex);
                     WorldPoint clickTarget;
@@ -2923,12 +2942,6 @@ public class Rs2Walker {
                         clickTarget = rawRouteTarget;
                     } else {
                         clickTarget = inInstance ? targetWp : getPointWithWallDistance(targetWp, playerLoc);
-                        // getPointWithWallDistance computes tiles reachable FROM THE TARGET, so its
-                        // wall nudge can land on the far side of a wall or inside a building; a stale
-                        // smoothed waypoint right after a teleport can also be unreachable. If the
-                        // resulting click is not reachable, rejoin the route via the nearest reachable
-                        // raw point on EITHER side of the anchor rather than clicking a wrong-side /
-                        // random-far tile.
                         fallbackTag = "wallnudge";
                         if (!inInstance && !Rs2Tile.isTileReachable(clickTarget)) {
                             WorldPoint rejoin = findReachableRejoinRawPathPoint(rawPath, playerLoc,
@@ -2946,6 +2959,12 @@ public class Rs2Walker {
                         doorOrTransportResult = true;
                         exit = WalkExit.DOOR_HANDLED_BEFORE_MINIMAP_CLICK;
                         break;
+                    }
+                    WalkExit claimedDoorExit = resolveWalledDoorClaim(playerLoc,
+                            obstaclePolicy.segmentDoorTimeoutMs());
+                    if (claimedDoorExit != null) {
+                        doorOrTransportResult = claimedDoorExit.isDoorLike();
+                        exit = claimedDoorExit; break;
                     }
                     clickTarget = RouteRecovery.clampToEuclideanRadius(playerLoc, clickTarget, MINIMAP_REACH_EUCLIDEAN - 1);
                     long nowBeforeClick = System.currentTimeMillis();
@@ -6071,34 +6090,95 @@ public class Rs2Walker {
 		Rs2WalkerLifecycleRuntime.applyWalkerDestination(goal, invocation);
     }
 
+    /**
+     * The walled-click net just refused a click because a scene door sits on the route edge. A
+     * replan cannot help — the planner's graph crosses that door, so it returns the same route and
+     * the refusal loops (three identical replans over 24s at the Rogues' Den pub door, broken only
+     * when the stall recalc happened to click the door). Close the distance instead: walk to the
+     * edge's near side so the door pipeline engages on arrival. Declines when already beside the
+     * door (the pipeline's turn), an approach is in flight, or the near side is unreachable.
+     */
+    private static WalkExit resolveWalledDoorClaim(WorldPoint playerLoc, long timeoutMs) {
+        WorldPoint from = routeState.walledDoorEdgeFrom;
+        WorldPoint to = routeState.walledDoorEdgeTo;
+        long now = System.currentTimeMillis();
+        WalledDoorClaimPolicy.Decision decision = WalledDoorClaimPolicy.decide(
+                from, to, routeState.walledDoorEdgeAtMs, now, playerLoc, Rs2Player.isMoving(),
+                from != null && Rs2Tile.isTileReachable(from));
+        switch (decision) {
+            case CROSSED:
+                clearWalledDoorClaim();
+                return WalkExit.RECOVERY_POSITION_STALE;
+            case ACTION_IN_FLIGHT:
+                return WalkExit.RECOVERY_CLICK_PREEMPTED_BY_ACTION;
+            case HANDLE_AT_EDGE:
+                if (handleDoorsWithTimeoutBudgeted(Arrays.asList(from, to), 0, timeoutMs, true)) {
+                    clearWalledDoorClaim();
+                    return WalkExit.DOOR_HANDLED_LOCAL_REACHABILITY;
+                }
+                routeState.doorRecoverySuppressedAtMs = now;
+                WebWalkLog.spInfo("walled_door_owned | edge={}->{} player={} state=await-door-handler",
+                        compactWorldPoint(from), compactWorldPoint(to), compactWorldPoint(playerLoc));
+                return WalkExit.DOOR_TRAVERSAL_PENDING_YIELD;
+            case APPROACH:
+                if (!walkMiniMap(from)) {
+                    routeState.doorRecoverySuppressedAtMs = now;
+                    return WalkExit.DOOR_RECOVERY_SUPPRESSED;
+                }
+                routeState.lastUnreachableRecoveryClickAtMs = now;
+                WebWalkLog.spInfo("walled_door_approach | edge={}->{} player={} - approaching claimed door instead of replanning",
+                        compactWorldPoint(from), compactWorldPoint(to), compactWorldPoint(playerLoc));
+                return WalkExit.DOOR_SUPPRESSED_APPROACH_CLICK;
+            case EXPIRED:
+            case INVALID:
+                clearWalledDoorClaim();
+                return null;
+            default:
+                return null;
+        }
+    }
 
-    /**
-     * @param target destination, or {@code null} to clear (prefer {@link #clearWalkingRoute(String)} for observability)
-     */
-    /**
-     * Retargets a walk whose destination the planner has PROVEN sealed (an unreachable pocket) to
-     * the walkable rim tile the substitute search actually reached — once, so every later replan is
-     * a normal TARGET_REACHED plan to a reachable tile. Without this the sealed plan's
-     * SEARCH_EXHAUSTED termination read as a partial path, and the walker replanned it every pass:
-     * each replan re-ran the sealed substitute search (50k nodes) and returned another short
-     * segment — the 17:54 walk crawled ~300 tiles that way toward a destination one tile inside a
-     * fence. Ending beside the sealed tile is the same best-effort the crawl delivered, at a
-     * fraction of the cost, and the caller's arrival tolerance then applies to the rim tile.
-     * Returns the rim to continue the walk with, or {@code null} when this plan is not a
-     * reached-rim sealed plan (normal partial handling applies). The {@code rim.equals(dst)} guard
-     * demands the plan genuinely ENDS on the rim; {@code rim.equals(target)} guards re-entry.
-     */
+    private static void clearWalledDoorClaim() {
+        routeState.walledDoorEdgeFrom = null;
+        routeState.walledDoorEdgeTo = null;
+        routeState.walledDoorEdgeAtMs = 0L;
+    }
+
+    /** Pathfinder normalizes nested sealed shells; the walker may change effective target once. */
+    private static final int MAX_SEALED_RIM_RETARGETS = 1;
+
+    /** Retargets a proven-sealed requested goal to one normalized, reachable approach rim. */
     private static WorldPoint consumeSealedRimRetarget(WorldPoint target, WorldPoint dst) {
         var pf = Rs2PathApi.getPathfinder();
-        WorldPoint rim = pf == null ? null : pf.getReachedSealedSubstitute();
-        if (rim == null || !rim.equals(dst) || rim.equals(target)) {
+        if (pf == null) {
             return null;
         }
-        WebWalkLog.spInfo("sealed_target_retarget | goal={} rim={} — goal proven sealed, walking to its rim",
-                target, rim);
-        setTarget(rim);
+        WorldPoint rim = pf.getReachedSealedSubstitute();
+        if (rim != null && rim.equals(dst) && !rim.equals(target)) {
+            WebWalkLog.spInfo("sealed_target_retarget | goal={} rim={} — goal proven sealed, walking to its rim",
+                    target, rim);
+            setTarget(rim);
+            recalculatePath();
+            return rim;
+        }
+        // Rim UNREACHED: the substitute budget (~125-tile flood radius) exhausts en route whenever
+        // the sealed goal is far away, and without this the whole journey is a partial crawl — one
+        // truncated search per pass (Falador->Burthorpe against a clicked hatch tile), ending
+        // beside the goal but never terminating. The rim tile is an ordinary reachable tile, so
+        // plan to IT with the normal full budget: one complete route, the door pipeline handles
+        // route doors, and arrival lands beside the sealed tile the caller actually clicked.
+        WorldPoint nearest = pf.getNearestSealedRimSubstitute();
+        if (nearest == null || nearest.equals(target)
+                || routeState.sealedRimRetargets >= MAX_SEALED_RIM_RETARGETS) {
+            return null;
+        }
+        routeState.sealedRimRetargets++;
+        WebWalkLog.spInfo("sealed_target_retarget | requested={} effective={} rim={} — goal sealed; planning to normalized rim ({}/{})",
+                routeState.requestedGoal, target, nearest,
+                routeState.sealedRimRetargets, MAX_SEALED_RIM_RETARGETS);
+        setTarget(nearest);
         recalculatePath();
-        return rim;
+        return nearest;
     }
 
     public static void setTarget(WorldPoint target) {
@@ -7723,17 +7803,24 @@ public class Rs2Walker {
     }
 
     /**
-     * Whether {@code a -> b} (either direction) is the door edge this walker most recently attempted,
-     * within the claim window. The live-collision route validator uses this as "the executor owns
-     * that edge, leave it alone": a shut door on the route honestly reads blocked, and recalculating
+     * Whether {@code a -> b} is inside the traversal envelope of the door this walker owns within
+     * the claim window. The live-collision route validator uses this as "the executor owns that
+     * step, leave it alone": a shut door on the route honestly reads blocked, and recalculating
      * the route out from under an in-progress door interaction was observed on a quest door
      * (fightarena_door1, 2585,3141) that is in no transport catalog — the catalog check alone cannot
      * cover doors the walker handles purely as scene objects.
      */
     public static boolean isActiveDoorEdge(WorldPoint a, WorldPoint b) {
+        long now = System.currentTimeMillis();
         DoorAttemptLedger.Attempt claim =
-                doorAttemptLedger.latestAttempt(ACTIVE_DOOR_EDGE_CLAIM_MS, System.currentTimeMillis());
-        return claim != null && claim.matchesEdge(a, b);
+                doorAttemptLedger.latestAttempt(ACTIVE_DOOR_EDGE_CLAIM_MS, now);
+        if (claim != null && WalledDoorClaimPolicy.ownsTraversalEdge(claim.from, claim.to, a, b)) {
+            return true;
+        }
+        return WalledDoorClaimPolicy.isFresh(routeState.walledDoorEdgeFrom, routeState.walledDoorEdgeTo,
+                routeState.walledDoorEdgeAtMs, now)
+                && WalledDoorClaimPolicy.ownsTraversalEdge(
+                        routeState.walledDoorEdgeFrom, routeState.walledDoorEdgeTo, a, b);
     }
 
     static Map<TileObject, WorldPoint> captureRawScanDoorLocationsOnClientThread() {

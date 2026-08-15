@@ -11,6 +11,7 @@ import net.runelite.client.plugins.microbot.util.magic.RuneFilter;
 import net.runelite.client.plugins.microbot.util.walker.Rs2PathApi;
 import net.runelite.client.plugins.microbot.util.walker.Rs2RouteRequest;
 import net.runelite.client.plugins.microbot.util.walker.Rs2RouteResult;
+import net.runelite.client.plugins.microbot.util.walker.Rs2RouteTermination;
 import net.runelite.client.plugins.microbot.util.walker.Rs2RouteStep;
 import net.runelite.client.plugins.microbot.util.walker.Rs2TransportEdge;
 import net.runelite.client.plugins.microbot.util.walker.Rs2TransportItemRequirement;
@@ -847,7 +848,7 @@ public final class Rs2WalkerBankingPlanner {
             long directPathEndTime = System.nanoTime();
             double directPathTimeMs = (directPathEndTime - directPathStartTime) / 1_000_000.0;
 
-            int directDistance = Rs2Walker.getTotalTilesFromPath(directPath, target);
+            int directDistance = comparableRouteDistance(directRoute, target);
             performanceLog.append("\t-Direct path calculation: ").append(String.format("%.2f ms", directPathTimeMs))
                     .append(" (").append(directPath.size()).append(" waypoints, ").append(directDistance).append(" tiles)\n");
 
@@ -879,7 +880,7 @@ public final class Rs2WalkerBankingPlanner {
                         routeToBankSteps = bankRoute.getSteps();
                         long pathToBankEndTime = System.nanoTime();
                         double pathToBankTimeMs = (pathToBankEndTime - pathToBankStartTime) / 1_000_000.0;
-                        int distanceToBank = Rs2Walker.getTotalTilesFromPath(pathToBank, bankLocation);
+                        int distanceToBank = comparableRouteDistance(bankRoute, bankLocation);
 
                         long pathFromBankStartTime = System.nanoTime();
                         Rs2RouteResult bankTargetRoute = planRoute(
@@ -900,7 +901,7 @@ public final class Rs2WalkerBankingPlanner {
                         long itemCount = bankLegTransports.stream()
                                 .filter(t -> t.getType() == Rs2TransportType.TELEPORTATION_ITEM)
                                 .count();
-                        int distanceFromBankRaw = Rs2Walker.getTotalTilesFromPath(pathFromBankToTarget, target);
+                        int distanceFromBankRaw = comparableRouteDistance(bankTargetRoute, target);
 						int distanceFromBank = effectiveDistanceFromBank(
 								pathFromBankToTarget, bankTargetRoute.getSteps(), distanceFromBankRaw);
 
@@ -967,8 +968,8 @@ public final class Rs2WalkerBankingPlanner {
                         directRouteSteps, List.of(), List.of());
             }
 
-            final boolean tie = directDistance == bankingRouteDistance;
-            final boolean directStrictlyFaster = directDistance < bankingRouteDistance;
+            final boolean tie = directDistance >= 0 && directDistance == bankingRouteDistance;
+            final boolean directStrictlyFaster = directDistance >= 0 && directDistance < bankingRouteDistance;
             final boolean preferTransportToTarget = Rs2PathApi.override("preferTransportToTarget", false);
             final String recommendation;
             final String verdictOneLine;
@@ -1006,7 +1007,7 @@ public final class Rs2WalkerBankingPlanner {
         }
     }
 
-	private static Rs2RouteResult planRoute(
+    private static Rs2RouteResult planRoute(
 		WorldPoint start,
 		WorldPoint target,
 		boolean useBankItems,
@@ -1018,6 +1019,24 @@ public final class Rs2WalkerBankingPlanner {
 				.withBankItems(useBankItems)
 				.withPurpose(purpose));
 	}
+
+    /** Only a typed, completed route may participate in bank-vs-direct distance comparison. */
+    static int comparableRouteDistance(Rs2RouteResult route, WorldPoint target) {
+        if (route == null) {
+            return -1;
+        }
+        return comparableRouteDistance(route.getPath(), target, route.getTerminationReason(),
+                route.isTargetReached(0));
+    }
+
+    static int comparableRouteDistance(List<WorldPoint> path, WorldPoint target,
+                                       Rs2RouteTermination termination, boolean targetReached) {
+        if (target == null || termination != Rs2RouteTermination.TARGET_REACHED || !targetReached) {
+            return -1;
+        }
+        int distance = Rs2Walker.getTotalTilesFromPath(path, target);
+        return distance == Integer.MAX_VALUE ? -1 : distance;
+    }
 
     private static Map<Integer, Integer> getSpellRuneRequirements(Transport transport) {
         Map<Integer, Integer> runeRequirements = new HashMap<>();

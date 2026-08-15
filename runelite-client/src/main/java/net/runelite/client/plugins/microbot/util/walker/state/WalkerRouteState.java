@@ -118,6 +118,19 @@ public final class WalkerRouteState {
     public volatile long lastWalledRecoveryReplanAtMs = 0L;
     /** Cooldown so partial-segment in-transit path recalculation does not spam. */
     public volatile long lastPartialTransRecalcMs = 0L;
+    /**
+     * The route edge the walled-click net most recently refused BECAUSE a scene door sits on it
+     * ({@code walled_edge_not_learned}). Replanning cannot help there — the planner's graph crosses
+     * that door, so it returns the same route and the refusal loops (three identical replans over
+     * 24s at the Rogues' Den pub door). Recovery consumes this to approach the door instead.
+     */
+    public volatile WorldPoint walledDoorEdgeFrom = null;
+    public volatile WorldPoint walledDoorEdgeTo = null;
+    public volatile long walledDoorEdgeAtMs = 0L;
+    /** Immutable caller intent for this walk; currentTarget may temporarily become an effective rim. */
+    public volatile WorldPoint requestedGoal = null;
+    /** Sealed-goal rim retargets consumed this walk; bounds the chain (a rim tile can itself probe sealed). */
+    public volatile int sealedRimRetargets = 0;
 
     // ---- door interaction (D3 slice 4: settle window, raw-scan focus, pass budget and the global
     // cooldown migrated to DoorAttemptLedger; the diagnostics timestamps below remain). ----

@@ -454,6 +454,7 @@ final class Rs2WalkerMovement {
                 List.of("pay-toll", "pick-lock", "walk-through", "go-through", "open", "pass")) != null) {
             WebWalkLog.spInfo("walled_edge_not_learned | {} -> {} — scene door on the edge, the door pipeline owns it",
                     compactWorldPoint(edge[0]), compactWorldPoint(edge[1]));
+            rememberWalledDoorEdge(edge);
             return;
         }
         // ADJACENCY, not just the exact edge. Double gates (Stronghold "Gate of War") are two wall
@@ -467,6 +468,7 @@ final class Rs2WalkerMovement {
         if (sceneDoorAdjacentToEdge(edge[0], edge[1])) {
             WebWalkLog.spInfo("walled_edge_not_learned | {} -> {} — scene door adjacent to the edge (double-gate wing), the door pipeline owns it",
                     compactWorldPoint(edge[0]), compactWorldPoint(edge[1]));
+            rememberWalledDoorEdge(edge);
             return;
         }
         // Via the Rs2PathApi wrapper rather than the config directly: it takes the pathfinder mutex,
@@ -477,6 +479,13 @@ final class Rs2WalkerMovement {
                     compactWorldPoint(edge[0]), compactWorldPoint(edge[1]));
             recalculatePath();
         }
+    }
+
+    /** Hands the door-bearing walled edge to recovery so it approaches the door instead of replanning. */
+    private static void rememberWalledDoorEdge(WorldPoint[] edge) {
+        routeState.walledDoorEdgeFrom = edge[0];
+        routeState.walledDoorEdgeTo = edge[1];
+        routeState.walledDoorEdgeAtMs = System.currentTimeMillis();
     }
 
     /**

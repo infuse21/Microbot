@@ -187,4 +187,21 @@ public class SealedTargetFastPathTest {
         assertTrue(!pf.getPath().isEmpty());
         assertEquals(dst, pf.getPath().get(pf.getPath().size() - 1));
     }
+
+    /** Regression from 2026-08-15: 3539 -> 3538 -> 3537 must be normalized in one plan. */
+    @Test
+    public void burthorpeNestedSealedShellPublishesTheOuterApproachOnce() {
+        PathfinderConfig config = newConfig();
+        WorldPoint src = new WorldPoint(2935, 3456, 0);
+        WorldPoint dst = new WorldPoint(2907, 3539, 0);
+
+        Pathfinder pf = new Pathfinder(config, src, dst);
+        pf.run();
+
+        assertEquals(PathTerminationReason.SEARCH_EXHAUSTED, pf.getTerminationReason());
+        WorldPoint substitute = pf.getNearestSealedRimSubstitute();
+        assertNotNull(substitute);
+        assertTrue("nested sealed rim must be resolved beyond the immediate 3538 shell: " + substitute,
+                !substitute.equals(new WorldPoint(2907, 3538, 0)));
+    }
 }

@@ -353,6 +353,19 @@ public class Pathfinder implements Runnable {
     }
 
     /**
+     * The nearest normalized walkable rim tile of a proven-sealed destination, even when the
+     * bounded substitute search did not reach it. The walker can plan this ordinary tile with its
+     * normal full budget instead of chaining partial sealed-target searches.
+     */
+    public WorldPoint getNearestSealedRimSubstitute() {
+        int[] chased = searchTargetsPacked;
+        if (!sealedTargetMode || chased == null || chased.length == 0) {
+            return null;
+        }
+        return WorldPointUtil.unpackWorldPoint(chased[0]);
+    }
+
+    /**
      * Bounded reverse flood from the single target, deciding whether its graph component is provably
      * SEALED — unreachable by walking, by any transport whose origin exists, and not landed in by any
      * anywhere-teleport.
@@ -454,6 +467,39 @@ public class Pathfinder implements Runnable {
         WebWalkLog.pf("target_sealed dst={} component={} rim={} probeNodes={}",
                 WorldPointUtil.toString(goalPacked), component.size(), rim.size(), expanded);
         return substitutes;
+    }
+
+    /**
+     * A sealed component's nearest rim tile can itself be another sealed map-data tile. Resolve
+     * those nested shells here, before publishing a substitute to the walker, so one requested goal
+     * produces one effective approach target instead of a chain of recursive retargets.
+     */
+    private int[] normalizeSealedRim(int[] initial) {
+        List<Integer> current = Arrays.stream(initial).boxed().collect(Collectors.toList());
+        Set<Integer> probed = new HashSet<>();
+        for (int depth = 0; depth < 4 && !current.isEmpty(); depth++) {
+            int candidate = current.get(0);
+            if (!probed.add(candidate)) {
+                break;
+            }
+            int[] nested = sealedTargetSubstitutes(candidate);
+            if (nested == null || nested.length == 0) {
+                break;
+            }
+            LinkedHashSet<Integer> next = new LinkedHashSet<>(current);
+            next.remove(candidate);
+            for (int substitute : nested) {
+                if (!probed.contains(substitute)) {
+                    next.add(substitute);
+                }
+            }
+            current = new ArrayList<>(next);
+            current.sort(Comparator.comparingInt(p -> WorldPointUtil.distanceBetween(p, start)));
+            if (current.size() > SEALED_SUBSTITUTE_TARGET_CAP) {
+                current = new ArrayList<>(current.subList(0, SEALED_SUBSTITUTE_TARGET_CAP));
+            }
+        }
+        return current.stream().mapToInt(Integer::intValue).toArray();
     }
 
     private void buildIncomingByDestination(Map<Integer, Set<Transport>> out) {
@@ -814,6 +860,9 @@ public class Pathfinder implements Runnable {
                 int[] rim = null;
                 try {
                     rim = sealedTargetSubstitutes(targetsPacked[0]);
+                    if (rim != null && rim.length > 0) {
+                        rim = normalizeSealedRim(rim);
+                    }
                 } catch (RuntimeException probeFailure) {
                     // The probe is an optimisation; any anomaly degrades to the full search, never
                     // to a failed run. (First seen with a mocked CollisionMap whose VisitedTiles had

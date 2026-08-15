@@ -6,6 +6,7 @@ import net.runelite.client.plugins.microbot.shortestpath.Transport;
 import net.runelite.client.plugins.microbot.shortestpath.TransportType;
 import net.runelite.client.plugins.microbot.util.walker.Rs2TerminalTravelMode;
 import net.runelite.client.plugins.microbot.util.walker.Rs2RouteStep;
+import net.runelite.client.plugins.microbot.util.walker.Rs2RouteTermination;
 import net.runelite.client.plugins.microbot.util.walker.Rs2TransportEdge;
 import net.runelite.client.plugins.microbot.util.walker.Rs2TransportExecutor;
 import net.runelite.client.plugins.microbot.util.walker.Rs2TransportItemRequirement;
@@ -167,13 +168,30 @@ public class BankedTransportItemPlanningTest {
 	}
 
 	@Test
-	public void bankDistanceWithoutSelectedTransportKeepsRawDistance() {
+    public void bankDistanceWithoutSelectedTransportKeepsRawDistance() {
 		WorldPoint bank = new WorldPoint(3200, 3200, 0);
 		WorldPoint target = new WorldPoint(3201, 3200, 0);
 		List<WorldPoint> path = List.of(bank, target);
 
 		assertEquals(1, Rs2WalkerBankingPlanner.effectiveDistanceFromBank(
 			path, List.of(Rs2RouteStep.walk(bank, target)), 1));
+	}
+
+	@Test
+	public void exhaustedPartialRouteIsUnavailableRatherThanMaxValueDistance() {
+		WorldPoint start = new WorldPoint(2963, 3378, 0);
+		WorldPoint partial = new WorldPoint(2919, 3499, 0);
+		WorldPoint target = new WorldPoint(2907, 3539, 0);
+		assertEquals(-1, Rs2WalkerBankingPlanner.comparableRouteDistance(
+			List.of(start, partial), target, Rs2RouteTermination.SEARCH_EXHAUSTED, false));
+	}
+
+	@Test
+	public void reachedRouteHasFiniteComparableDistance() {
+		WorldPoint start = new WorldPoint(3200, 3200, 0);
+		WorldPoint target = new WorldPoint(3201, 3200, 0);
+		assertEquals(2, Rs2WalkerBankingPlanner.comparableRouteDistance(
+			List.of(start, target), target, Rs2RouteTermination.TARGET_REACHED, true));
 	}
 
 	@Test

@@ -295,3 +295,26 @@ Sticky interim targets should also clear when route-index progress goes stale. I
 When a route-following minimap click is outside the minimap clip, fallback clicks must stay on the raw path. A generic "reachable tile closer to target" fallback can select a tile far away from the route in open areas, especially near the final destination.
 
 For adjacent same-plane shortcuts, do not treat any movement away from the origin as success. Some shortcuts, such as stepping stones, can fail and place the player on a fallback tile; once the player is settled away from the expected destination, stop the landing wait and replan from the actual tile.
+
+## 14. A scene door on a refused route edge owns recovery
+
+When route-click validation refuses an edge because a door or gate is on or immediately adjacent
+to it, remember that edge as a short-lived door claim. Being beside the claim means “dispatch the
+door handler now”; it does not mean the approach helper failed and generic recovery may replan or
+click another waypoint. While the claim is fresh, suppress competing wall nudges, local-recovery
+clicks, and live-collision recalculation for the door edge plus its first landing step.
+
+**Why this matters:** At `(1770,3589)->(1770,3590)` the walker correctly logged that the door
+pipeline owned the edge, then treated an adjacent player as a false return from a boolean approach
+helper. It repeatedly replanned and clicked waypoints on both sides of the door instead of opening
+it. A second incident recalculated the route on the diagonal landing step immediately after opening
+the door at `(2907,3544)->(2907,3543)`.
+
+**Pattern to follow:** Classify remembered claims as expired, crossed, action-in-flight,
+handle-at-edge, approach, or invalid. Only expired/invalid claims release ownership to generic
+recovery. Bound the claim by time and exact route geometry so unrelated nearby obstacles remain
+visible.
+
+**Defensive check:** Test exact/reverse door edges, the first cardinal and diagonal landing steps,
+an unrelated nearby edge, another plane, and an expired claim. An adjacent fresh claim must select
+the door handler—not replan.

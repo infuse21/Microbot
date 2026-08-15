@@ -96,6 +96,26 @@ public class WalkSessionStateResetTest
 			ledger.shouldThrottleAttempt(null, from, to, 2_500, now + 100));
 	}
 
+	@Test
+	public void startingAWalkResetsDoorClaimAndEffectiveGoalState()
+	{
+		routeState.walledDoorEdgeFrom = new WorldPoint(2907, 3544, 0);
+		routeState.walledDoorEdgeTo = new WorldPoint(2907, 3543, 0);
+		routeState.walledDoorEdgeAtMs = 456L;
+		routeState.requestedGoal = new WorldPoint(2907, 3539, 0);
+		routeState.sealedRimRetargets = 2;
+
+		Rs2Walker.resetWalkSessionState();
+
+		assertNull("a previous walk's door edge must not steer this walk's recovery",
+			routeState.walledDoorEdgeFrom);
+		assertNull(routeState.walledDoorEdgeTo);
+		assertEquals(0L, routeState.walledDoorEdgeAtMs);
+		assertNull("requested goal belongs to the previous walk", routeState.requestedGoal);
+		assertEquals("rim-retarget budget belongs to the walk that spent it",
+			0, routeState.sealedRimRetargets);
+	}
+
 	/** Route progress belongs to the route that made it. */
 	@Test
 	public void startingAWalkResetsRouteProgress()
