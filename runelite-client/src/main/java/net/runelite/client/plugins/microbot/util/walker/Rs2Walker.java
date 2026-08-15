@@ -1926,7 +1926,7 @@ public class Rs2Walker {
             if (walkCancelledDiag(target, "processWalk:after-stuck-check", processWalkTail)) {
                 return WalkerState.EXIT;
             }
-            if (isStuckTooLong()) {
+            if (isStuckTooLong() && !hasFreshActiveDoorClaim(System.currentTimeMillis())) {
 				// Leagues area teleports can have long animations. Never trigger stall-recalc
 				// while the transport is in-flight, or we will interrupt and re-click.
 				if (Rs2LeaguesTransport.isTeleportInProgress()
@@ -2671,7 +2671,7 @@ public class Rs2Walker {
                                     recoveryMinimapReach - 1,
                                     rawAnchorIndex,
                                     Rs2Walker::isKnownWalkableOrUnloaded);
-                            WalkExit claimedDoorExit = resolveWalledDoorClaim(playerLoc,
+                            WalkExit claimedDoorExit = resolveActiveDoorClaim(playerLoc,
                                     obstaclePolicy.unreachableDoorTimeoutMs());
                             if (claimedDoorExit != null) {
                                 doorOrTransportResult = claimedDoorExit.isDoorLike();
@@ -2960,7 +2960,7 @@ public class Rs2Walker {
                         exit = WalkExit.DOOR_HANDLED_BEFORE_MINIMAP_CLICK;
                         break;
                     }
-                    WalkExit claimedDoorExit = resolveWalledDoorClaim(playerLoc,
+                    WalkExit claimedDoorExit = resolveActiveDoorClaim(playerLoc,
                             obstaclePolicy.segmentDoorTimeoutMs());
                     if (claimedDoorExit != null) {
                         doorOrTransportResult = claimedDoorExit.isDoorLike();
@@ -6091,25 +6091,31 @@ public class Rs2Walker {
     }
 
     /**
-     * The walled-click net just refused a click because a scene door sits on the route edge. A
-     * replan cannot help — the planner's graph crosses that door, so it returns the same route and
-     * the refusal loops (three identical replans over 24s at the Rogues' Den pub door, broken only
-     * when the stall recalc happened to click the door). Close the distance instead: walk to the
-     * edge's near side so the door pipeline engages on arrival. Declines when already beside the
-     * door (the pipeline's turn), an approach is in flight, or the near side is unreachable.
+     * Gives a detected/attempted scene-door edge exclusive ownership over recovery. The exact edge
+     * in {@link DoorAttemptLedger} wins once known; a refused route edge remains the approach/affected
+     * edge until then. This prevents idle nudges, stall replans and generic recovery clicks from
+     * competing between detection, interaction and crossing.
      */
-    private static WalkExit resolveWalledDoorClaim(WorldPoint playerLoc, long timeoutMs) {
-        WorldPoint from = routeState.walledDoorEdgeFrom;
-        WorldPoint to = routeState.walledDoorEdgeTo;
+    private static WalkExit resolveActiveDoorClaim(WorldPoint playerLoc, long timeoutMs) {
         long now = System.currentTimeMillis();
+        DoorAttemptLedger.Attempt attempted = doorAttemptLedger.latestAttempt(ACTIVE_DOOR_EDGE_CLAIM_MS, now);
+        WorldPoint from = attempted == null ? routeState.walledDoorEdgeFrom : attempted.from;
+        WorldPoint to = attempted == null ? routeState.walledDoorEdgeTo : attempted.to;
+        long claimedAtMs = attempted == null ? routeState.walledDoorEdgeAtMs : attempted.attemptedAtMs;
+        long maxAgeMs = attempted == null ? WalledDoorClaimPolicy.FRESH_MS : ACTIVE_DOOR_EDGE_CLAIM_MS;
         WalledDoorClaimPolicy.Decision decision = WalledDoorClaimPolicy.decide(
-                from, to, routeState.walledDoorEdgeAtMs, now, playerLoc, Rs2Player.isMoving(),
-                from != null && Rs2Tile.isTileReachable(from));
+                from, to, claimedAtMs, now, playerLoc, Rs2Player.isMoving(),
+                from != null && Rs2Tile.isTileReachable(from), maxAgeMs);
         switch (decision) {
             case CROSSED:
-                clearWalledDoorClaim();
+                if (attempted != null) {
+                    doorAttemptLedger.clearLatestAttempt();
+                } else {
+                    clearWalledDoorClaim();
+                }
                 return WalkExit.RECOVERY_POSITION_STALE;
             case ACTION_IN_FLIGHT:
+                routeState.doorRecoverySuppressedAtMs = now;
                 return WalkExit.RECOVERY_CLICK_PREEMPTED_BY_ACTION;
             case HANDLE_AT_EDGE:
                 if (handleDoorsWithTimeoutBudgeted(Arrays.asList(from, to), 0, timeoutMs, true)) {
@@ -6131,7 +6137,11 @@ public class Rs2Walker {
                 return WalkExit.DOOR_SUPPRESSED_APPROACH_CLICK;
             case EXPIRED:
             case INVALID:
-                clearWalledDoorClaim();
+                if (attempted != null) {
+                    doorAttemptLedger.clearLatestAttempt();
+                } else {
+                    clearWalledDoorClaim();
+                }
                 return null;
             default:
                 return null;
@@ -6142,6 +6152,12 @@ public class Rs2Walker {
         routeState.walledDoorEdgeFrom = null;
         routeState.walledDoorEdgeTo = null;
         routeState.walledDoorEdgeAtMs = 0L;
+    }
+
+    static boolean hasFreshActiveDoorClaim(long nowMs) {
+        return doorAttemptLedger.latestAttempt(ACTIVE_DOOR_EDGE_CLAIM_MS, nowMs) != null
+                || WalledDoorClaimPolicy.isFresh(routeState.walledDoorEdgeFrom,
+                routeState.walledDoorEdgeTo, routeState.walledDoorEdgeAtMs, nowMs);
     }
 
     /** Pathfinder normalizes nested sealed shells; the walker may change effective target once. */
@@ -7668,6 +7684,14 @@ public class Rs2Walker {
             if (!missingItemsWithQuantities.isEmpty()) {
                 log.debug("Withdrawing transport items with quantities: " + missingItemsWithQuantities);
 
+                for (Map.Entry<Integer, Integer> entry : missingItemsWithQuantities.entrySet()) {
+                    if (!Rs2Bank.hasBankItem(entry.getKey(), entry.getValue())) {
+                        log.warn("Required transport item {} unavailable at bank (need {}) — falling back direct",
+                                entry.getKey(), entry.getValue());
+                        return fallbackDirectFromBank(finalTarget, distance, "bank-quantity-changed");
+                    }
+                }
+
                 // Withdraw the correct amount of each unique item
                 for (Map.Entry<Integer, Integer> entry : missingItemsWithQuantities.entrySet()) {
                     int itemId = entry.getKey();
@@ -7676,19 +7700,13 @@ public class Rs2Walker {
                     int amountToWithdraw = Math.max(0, amountNeeded );
 
                     if (amountToWithdraw > 0) {
-                        if (Rs2Bank.hasBankItem(itemId, amountToWithdraw)) {
-                            log.debug("Withdrawing {} x {} (item ID: {})", amountToWithdraw, itemId, itemId);
-                            if (!Rs2Bank.withdrawX(itemId, amountToWithdraw)
-                                    || !sleepUntil(() -> Rs2Inventory.count(itemId)
-                                            >= currentCount + amountToWithdraw, 3000)) {
-                                log.warn("Failed to withdraw required transport item {} x{}",
-                                        itemId, amountToWithdraw);
-                                return WalkerState.EXIT;
-                            }
-                        } else {
-                            log.warn("Required transport item {} not found in bank (need {} but bank has less)",
+                        log.debug("Withdrawing {} x {} (item ID: {})", amountToWithdraw, itemId, itemId);
+                        if (!Rs2Bank.withdrawX(itemId, amountToWithdraw)
+                                || !sleepUntil(() -> Rs2Inventory.count(itemId)
+                                        >= currentCount + amountToWithdraw, 3000)) {
+                            log.warn("Failed to withdraw required transport item {} x{} — falling back direct",
                                     itemId, amountToWithdraw);
-                            return WalkerState.EXIT;
+                            return fallbackDirectFromBank(finalTarget, distance, "withdraw-failed");
                         }
                     } else {
                         log.debug("Already have enough of item {}: {} (need {})", itemId, currentCount, amountNeeded);
@@ -7730,6 +7748,19 @@ public class Rs2Walker {
             log.error("Error in banking workflow: " + e.getMessage(), e);
             return WalkerState.EXIT;
         }
+    }
+
+    private static WalkerState fallbackDirectFromBank(WorldPoint finalTarget, int distance, String reason) {
+        Rs2Bank.closeBank();
+        sleepUntil(() -> !Rs2Bank.isOpen(), 3_000);
+        if (Rs2Bank.isOpen()) {
+            WebWalkLog.spWarn("bank_walk | direct_fallback_bank_close_failed reason={} goal={}", reason, finalTarget);
+            return WalkerState.EXIT;
+        }
+        boolean prepared = Rs2PathApi.prepareInventoryOnlyRoute(finalTarget);
+        WebWalkLog.spWarn("bank_walk | direct_fallback reason={} prepared={} goal={}",
+                reason, prepared, finalTarget);
+        return prepared ? walkWithStateInternal(finalTarget, distance) : WalkerState.EXIT;
     }
 
     public static boolean closeWorldMap() {

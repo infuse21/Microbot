@@ -31,6 +31,14 @@ public class WalledDoorClaimPolicyTest {
     }
 
     @Test
+    public void attemptedDoorCanOwnRecoveryLongerThanAnUndispatchedWalledClaim() {
+        assertEquals(WalledDoorClaimPolicy.Decision.HANDLE_AT_EDGE,
+                WalledDoorClaimPolicy.decide(FROM, TO,
+                        NOW - WalledDoorClaimPolicy.FRESH_MS - 1, NOW,
+                        new WorldPoint(1771, 3589, 0), false, true, 10_000L));
+    }
+
+    @Test
     public void crossedAndExpiredClaimsReleaseOwnership() {
         assertEquals(WalledDoorClaimPolicy.Decision.CROSSED,
                 decide(new WorldPoint(1770, 3590, 0), false, true));

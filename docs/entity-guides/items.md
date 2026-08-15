@@ -180,3 +180,22 @@ Keep action discovery and dispatch separate: `Rs2Reflection.getGroundItemActions
 **Where this applies:** `Rs2GroundItem.interact`, `Rs2TileItemModel.click`, and future ground-item interaction helpers.
 
 **Defensive check:** Drop loot on a tile visually overlapped by an NPC and beside an openable door. Verify the intended item is taken from multiple camera angles and no `Unable to find clicked menu op` engine message appears.
+
+---
+
+## 10. Validate the complete transport withdrawal before choosing a bank route
+
+Bank-path feasibility must compare every accumulated withdrawal quantity against the live bank
+mirror, including summed fares across multiple transports. Revalidate the complete map after the
+bank opens and before withdrawing anything. If the mirror changed or a withdrawal fails, close the
+bank, refresh inventory-only routing, and continue directly instead of returning `EXIT`.
+
+**Why this matters:** A route was labelled satisfiable with an amulet and a 2,500-coin charter fare,
+walked to Falador West bank, withdrew the amulet, then failed on coins and aborted. The next retry
+proved the direct route was executable.
+
+**Where this applies:** `Rs2WalkerBankingPlanner` loadout feasibility and
+`Rs2Walker.walkWithBankingState`.
+
+**Defensive check:** A two-hop fare whose summed cost exceeds the bank count by one must produce an
+unsatisfiable loadout, and a bank-time quantity change must fall back without a partial withdrawal.

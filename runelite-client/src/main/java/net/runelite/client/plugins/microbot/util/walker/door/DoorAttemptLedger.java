@@ -90,6 +90,18 @@ public final class DoorAttemptLedger {
     }
 
     /**
+     * Transfers an exact detected route edge to the door transaction without starting the
+     * anti-hammer cooldown. Detection may happen while the player is still approaching; delaying
+     * the first real interaction because the approach itself counted as a click would add a full
+     * cooldown at every door.
+     */
+    public void claimDetectedEdge(WorldPoint fromWp, WorldPoint toWp, long nowMs) {
+        if (fromWp != null && toWp != null) {
+            latest = new Attempt(fromWp, toWp, nowMs);
+        }
+    }
+
+    /**
      * The anti-hammer gate: true while the edge's last attempt is younger than the cooldown.
      * Purges every expired entry as a side effect, as the map-based version always did.
      */

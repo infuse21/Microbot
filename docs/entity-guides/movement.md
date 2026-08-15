@@ -318,3 +318,23 @@ visible.
 **Defensive check:** Test exact/reverse door edges, the first cardinal and diagonal landing steps,
 an unrelated nearby edge, another plane, and an expired claim. An adjacent fresh claim must select
 the door handler—not replan.
+
+## 15. Door ownership begins at detection and lasts through crossing
+
+A route door must claim its exact attempted edge as soon as the handler detects it, including when
+interaction is deferred because the player is still moving. Until the edge is crossed, expires, or
+strikes out, suppress idle nudges, stall replans, generic recovery clicks, and live-collision
+revalidation. Keep a refused/adjacent route edge as the affected envelope, but prefer the handler's
+exact edge once it is known.
+
+**Why this matters:** At Port Piscarilius, a failed door traversal left the player beside
+`1761,3631 -> 1761,3630`; early idle recovery repeatedly clicked the near-side tile for 13 seconds
+before stall recalculation retried the door. At a nearby double gate, the refused horizontal edge
+was adjacent to the actual north/south locked-door edge, so one edge alone could not describe both
+the route impact and the interaction.
+
+**Where this applies:** Door detection/attempt ledgers, active-route idle nudges, stall recovery,
+live-collision route validation, and walled-route recovery.
+
+**Defensive check:** After a `Found ... door` or `door_interact_deferred` log, no idle nudge, generic
+recovery click, or stall replan may occur before a door retry, crossing, strike-out, or expiry.

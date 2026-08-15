@@ -798,6 +798,10 @@ final class Rs2WalkerDoors {
                                     compactWorldPoint(probe), compactWorldPoint(fromWp), compactWorldPoint(toWp));
                             return false;
                         }
+                        // Detection transfers this route edge to the door transaction before a
+                        // movement defer can yield. Keep it after the global check: that check uses
+                        // the previous claim to distinguish same-edge hammering from chained doors.
+                        doorAttemptLedger.claimDetectedEdge(fromWp, toWp, System.currentTimeMillis());
                         if (doorInteractionDeferredForMovement(probe)) {
                             WebWalkLog.spInfo("door_interact_deferred | reason=moving mode=segment-door probe={} from={} to={}",
                                     compactWorldPoint(probe), compactWorldPoint(fromWp), compactWorldPoint(toWp));
@@ -955,6 +959,9 @@ final class Rs2WalkerDoors {
                     compactWorldPoint(probe), compactWorldPoint(fromWp), compactWorldPoint(toWp));
             return false;
         }
+        // Claim on detection, not only after the movement gate has passed; recovery must not issue
+        // a competing click while this exact route-door interaction approaches the edge.
+        doorAttemptLedger.claimDetectedEdge(fromWp, toWp, System.currentTimeMillis());
         if (doorInteractionDeferredForMovement(probe)) {
             WebWalkLog.spInfo("door_interact_deferred | reason=moving mode=segment-probe probe={} from={} to={}",
                     compactWorldPoint(probe), compactWorldPoint(fromWp), compactWorldPoint(toWp));

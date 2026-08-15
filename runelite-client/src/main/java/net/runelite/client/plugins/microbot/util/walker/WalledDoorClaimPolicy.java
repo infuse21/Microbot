@@ -21,15 +21,27 @@ final class WalledDoorClaimPolicy {
     }
 
     static boolean isFresh(WorldPoint from, WorldPoint to, long claimedAtMs, long nowMs) {
-        return from != null && to != null && claimedAtMs > 0L && nowMs - claimedAtMs <= FRESH_MS;
+        return isFresh(from, to, claimedAtMs, nowMs, FRESH_MS);
+    }
+
+    static boolean isFresh(WorldPoint from, WorldPoint to, long claimedAtMs, long nowMs,
+                           long maxAgeMs) {
+        return from != null && to != null && claimedAtMs > 0L && maxAgeMs >= 0L
+                && nowMs - claimedAtMs <= maxAgeMs;
     }
 
     static Decision decide(WorldPoint from, WorldPoint to, long claimedAtMs, long nowMs,
                            WorldPoint player, boolean moving, boolean nearSideReachable) {
+        return decide(from, to, claimedAtMs, nowMs, player, moving, nearSideReachable, FRESH_MS);
+    }
+
+    static Decision decide(WorldPoint from, WorldPoint to, long claimedAtMs, long nowMs,
+                           WorldPoint player, boolean moving, boolean nearSideReachable,
+                           long maxAgeMs) {
         if (from == null || to == null || player == null || claimedAtMs <= 0L) {
             return Decision.NONE;
         }
-        if (!isFresh(from, to, claimedAtMs, nowMs)) {
+        if (!isFresh(from, to, claimedAtMs, nowMs, maxAgeMs)) {
             return Decision.EXPIRED;
         }
         if (from.getPlane() != to.getPlane() || player.getPlane() != from.getPlane()
