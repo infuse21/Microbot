@@ -2672,7 +2672,7 @@ public class Rs2Walker {
                                     rawAnchorIndex,
                                     Rs2Walker::isKnownWalkableOrUnloaded);
                             WalkExit claimedDoorExit = resolveActiveDoorClaim(playerLoc,
-                                    obstaclePolicy.unreachableDoorTimeoutMs());
+                                    obstaclePolicy.unreachableDoorTimeoutMs(), rawPath);
                             if (claimedDoorExit != null) {
                                 doorOrTransportResult = claimedDoorExit.isDoorLike();
                                 exit = claimedDoorExit; break;
@@ -2961,7 +2961,7 @@ public class Rs2Walker {
                         break;
                     }
                     WalkExit claimedDoorExit = resolveActiveDoorClaim(playerLoc,
-                            obstaclePolicy.segmentDoorTimeoutMs());
+                            obstaclePolicy.segmentDoorTimeoutMs(), rawPath);
                     if (claimedDoorExit != null) {
                         doorOrTransportResult = claimedDoorExit.isDoorLike();
                         exit = claimedDoorExit; break;
@@ -6096,7 +6096,8 @@ public class Rs2Walker {
      * edge until then. This prevents idle nudges, stall replans and generic recovery clicks from
      * competing between detection, interaction and crossing.
      */
-    private static WalkExit resolveActiveDoorClaim(WorldPoint playerLoc, long timeoutMs) {
+    private static WalkExit resolveActiveDoorClaim(WorldPoint playerLoc, long timeoutMs,
+                                                   List<WorldPoint> routePath) {
         long now = System.currentTimeMillis();
         DoorAttemptLedger.Attempt attempted = doorAttemptLedger.latestAttempt(ACTIVE_DOOR_EDGE_CLAIM_MS, now);
         WorldPoint from = attempted == null ? routeState.walledDoorEdgeFrom : attempted.from;
@@ -6118,9 +6119,21 @@ public class Rs2Walker {
                 routeState.doorRecoverySuppressedAtMs = now;
                 return WalkExit.RECOVERY_CLICK_PREEMPTED_BY_ACTION;
             case HANDLE_AT_EDGE:
+                if (tryTraverseOwnedOpenDoor(attempted, from, to, playerLoc, routePath)) {
+                    clearWalledDoorClaim();
+                    return WalkExit.RECENT_DOOR_EDGE_NUDGE;
+                }
                 if (handleDoorsWithTimeoutBudgeted(Arrays.asList(from, to), 0, timeoutMs, true)) {
                     clearWalledDoorClaim();
                     return WalkExit.DOOR_HANDLED_LOCAL_REACHABILITY;
+                }
+                // The interaction above may have opened the edge while its scene-object snapshot
+                // still reported an Open action. Spend that exact live-collision transition now;
+                // passively yielding until the 10s ownership claim expires is unnecessary latency.
+                if (tryTraverseOwnedOpenDoor(attempted, from, to,
+                        Rs2Player.getWorldLocation(), routePath)) {
+                    clearWalledDoorClaim();
+                    return WalkExit.RECENT_DOOR_EDGE_NUDGE;
                 }
                 routeState.doorRecoverySuppressedAtMs = now;
                 WebWalkLog.spInfo("walled_door_owned | edge={}->{} player={} state=await-door-handler",
@@ -7748,6 +7761,35 @@ public class Rs2Walker {
             log.error("Error in banking workflow: " + e.getMessage(), e);
             return WalkerState.EXIT;
         }
+    }
+
+    /**
+     * Lets the door transaction itself cross an edge that live collision proves open. The exact
+     * ledger claim is required: a walled-route envelope alone may be adjacent to the real door and
+     * must never authorize a far-side click. The existing door nudge remains route-aware and waits
+     * for an observed crossing before reporting success.
+     */
+    private static boolean tryTraverseOwnedOpenDoor(DoorAttemptLedger.Attempt exactClaim,
+                                                    WorldPoint from, WorldPoint to,
+                                                    WorldPoint playerLoc,
+                                                    List<WorldPoint> routePath) {
+        if (playerLoc == null || exactClaim == null || from == null || to == null) {
+            return false;
+        }
+        boolean moving = Rs2Player.isMoving();
+        boolean animating = Rs2Player.isAnimating();
+        boolean edgePassable = !moving && !animating && Rs2Tile.isEdgePassable(from, to);
+        boolean exactEdge = exactClaim.isSameDirectedEdge(from, to);
+        if (!WalledDoorClaimPolicy.shouldTraverseOpenEdge(exactEdge, edgePassable, moving, animating)) {
+            return false;
+        }
+        boolean crossed = tryDoorEdgeCrossNudge(from, to, currentTarget, routePath);
+        if (crossed) {
+            doorAttemptLedger.clearLatestAttempt();
+            WebWalkLog.spInfo("door_owned_open_edge_crossed | edge={}->{} player={}",
+                    compactWorldPoint(from), compactWorldPoint(to), compactWorldPoint(playerLoc));
+        }
+        return crossed;
     }
 
     private static WalkerState fallbackDirectFromBank(WorldPoint finalTarget, int distance, String reason) {

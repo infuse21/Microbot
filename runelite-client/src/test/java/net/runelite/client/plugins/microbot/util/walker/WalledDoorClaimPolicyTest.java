@@ -79,6 +79,19 @@ public class WalledDoorClaimPolicyTest {
                 new WorldPoint(2907, 3543, 1), new WorldPoint(2906, 3542, 1)));
     }
 
+    @Test
+    public void exactIdleClaimMayTraverseWhenLiveEdgeIsOpen() {
+        assertTrue(WalledDoorClaimPolicy.shouldTraverseOpenEdge(true, true, false, false));
+    }
+
+    @Test
+    public void openEdgeTraversalRequiresExactClaimAndNoActionInFlight() {
+        assertFalse(WalledDoorClaimPolicy.shouldTraverseOpenEdge(false, true, false, false));
+        assertFalse(WalledDoorClaimPolicy.shouldTraverseOpenEdge(true, false, false, false));
+        assertFalse(WalledDoorClaimPolicy.shouldTraverseOpenEdge(true, true, true, false));
+        assertFalse(WalledDoorClaimPolicy.shouldTraverseOpenEdge(true, true, false, true));
+    }
+
     private static WalledDoorClaimPolicy.Decision decide(WorldPoint player,
                                                          boolean moving,
                                                          boolean reachable) {

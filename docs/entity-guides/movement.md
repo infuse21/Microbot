@@ -338,3 +338,24 @@ live-collision route validation, and walled-route recovery.
 
 **Defensive check:** After a `Found ... door` or `door_interact_deferred` log, no idle nudge, generic
 recovery click, or stall replan may occur before a door retry, crossing, strike-out, or expiry.
+
+## 16. Spend an opened door claim on traversal instead of passive yields
+
+When an exact scene-door claim is at the edge and live collision reports that exact edge passable,
+let the door transaction issue its controlled route-aware cross nudge. Check both before retrying
+the door interaction and immediately after an interaction returns without observing traversal.
+Do not grant this behavior to a merely refused/walled route envelope, and do not click while
+movement or animation is already in flight.
+
+**Why this matters:** At the gates around `1761,3636` and `2936,3451`, the door opened but the
+scene-object snapshot still exposed an `Open` action. Exclusive ownership prevented competing
+recovery correctly, but then emitted `door-traversal-pending-yield` for 6-10 seconds until the
+claim expired. The ordinary route click crossed immediately afterward, proving the delay belonged
+to ownership handoff rather than pathfinding.
+
+**Where this applies:** Active door-claim recovery, post-interaction traversal, live collision edge
+checks, and route-aware door-edge nudges.
+
+**Defensive check:** Once `Rs2Tile.isEdgePassable(from,to)` becomes true for an exact idle claim,
+the next owned action should be a door-edge traversal click; repeated passive pending-yields must
+not continue until claim expiry.

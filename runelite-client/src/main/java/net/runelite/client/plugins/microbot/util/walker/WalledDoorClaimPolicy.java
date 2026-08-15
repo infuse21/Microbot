@@ -75,4 +75,14 @@ final class WalledDoorClaimPolicy {
         return (doorTo.equals(routeFrom) && doorTo.distanceTo2D(routeTo) == 1)
                 || (doorTo.equals(routeTo) && doorTo.distanceTo2D(routeFrom) == 1);
     }
+
+    /**
+     * An opened edge may be spent on a controlled traversal click only by the exact scene-door
+     * transaction. A merely refused route edge is an approach envelope, not proof that somebody
+     * interacted with a door, and movement/animation means the owned action is already in flight.
+     */
+    static boolean shouldTraverseOpenEdge(boolean exactDoorClaim, boolean edgePassable,
+                                          boolean moving, boolean animating) {
+        return exactDoorClaim && edgePassable && !moving && !animating;
+    }
 }
