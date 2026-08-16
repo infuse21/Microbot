@@ -2448,11 +2448,11 @@ public class Rs2Walker {
                             WorldPoint edgeTo = frontier.to();
 
                             // Unified obstacle dispatch for the blocked frontier (P2). One call resolves both
-                            // a rockfall to mine here and a reachable transport/agility-shortcut origin to step
+                            // a rockfall to mine here and a reachable transport/agility-shortcut approach to step
                             // onto below, replacing the former inline rockfall mine and the separate
-                            // findReachableTransportOriginAhead override. A mined rockfall ends recovery this
+                            // findReachableTransportApproachAhead override. A mined rockfall ends recovery this
                             // tick; a no-pickaxe rockfall clears the target (as applyRockfall did) and falls
-                            // through; a transport origin is applied as the recovery target further down. The
+                            // through; a transport approach is applied as the recovery target further down. The
                             // scan is MLM-/proximity-gated inside the resolver, so it is a no-op elsewhere.
                             ObstacleResolution frontierObstacle = resolveRecoveryObstacle(rawPath, rawEdgeStart,
                                     rawEdgeEnd, playerLoc, STALL_RECOVERY_MINIMAP_REACH_EUCLIDEAN, reachableTilesCache,
@@ -2679,12 +2679,12 @@ public class Rs2Walker {
                             }
                             // Precedence (base < raw-gated < shortcut origin) and the hazard asymmetry
                             // between them live with the decision, pinned by its table.
-                            WorldPoint shortcutOrigin =
+                            WorldPoint transportApproach =
                                     frontierObstacle.kind() == ObstacleResolution.Kind.WALK_TO_ORIGIN
                                             ? frontierObstacle.walkTarget()
                                             : null;
                             recoverTarget = FrontierDecision.chooseRecoveryTarget(recoverTarget,
-                                    rawRecoveryTarget, shortcutOrigin, playerLoc,
+                                    rawRecoveryTarget, transportApproach, playerLoc,
                                     Rs2PathApi::shouldAvoidDangerousTile);
                             // The click decision (preemption vs walled vs cooldown vs click) is PURE and
                             // decision-table-tested in RouteRecovery — this shell only carries out the
@@ -4376,7 +4376,7 @@ public class Rs2Walker {
     /**
      * Unified obstacle resolution for a blocked route frontier (P2 dispatch cutover;
      * docs/walker-p2-unification.md). Replaces the recovery block's two special cases — the inline
-     * {@code handleRockfallInRawSegment} mine and the {@code findReachableTransportOriginAhead} override —
+     * {@code handleRockfallInRawSegment} mine and the {@code findReachableTransportApproachAhead} override —
      * with a single call returning one {@link ObstacleResolution}:
      * <ul>
      *   <li>{@link ObstacleResolution.Kind#INTERACTED} / {@link ObstacleResolution.Kind#ABORT}: a rockfall on
@@ -4384,10 +4384,11 @@ public class Rs2Walker {
      *       skipping already-reachable steps, is behaviourally identical to the former
      *       {@code handleRockfallInRawSegment} (same per-edge {@code handleRockfall}, same skip rule) — it
      *       just routes through {@link MineableResolver}.</li>
-     *   <li>{@link ObstacleResolution.Kind#WALK_TO_ORIGIN}: a reachable transport / agility-shortcut origin
-     *       sits ahead within minimap reach; the caller should step onto it so the normal transport handler
-     *       crosses next tick. This reuses the pure, tested {@link RouteRecovery#findReachableTransportOriginAhead}
-     *       scan and lifts its result into the unified model.</li>
+     *   <li>{@link ObstacleResolution.Kind#WALK_TO_ORIGIN}: a transport / agility-shortcut sits ahead within
+     *       minimap reach; the caller should step onto its reachable origin, or the last reachable route tile
+     *       before an object-occupied origin, so the normal transport handler crosses next tick. This reuses
+     *       the pure, tested {@link RouteRecovery#findReachableTransportApproachAhead} scan and lifts its
+     *       result into the unified model.</li>
      *   <li>{@link ObstacleResolution.Kind#NOT_APPLICABLE}: no obstacle here; fall through to door/minimap
      *       recovery.</li>
      * </ul>
@@ -4436,13 +4437,16 @@ public class Rs2Walker {
             }
         }
 
-        // (3) Reachable transport / agility-shortcut origin ahead: wide forward-window scan.
-		WorldPoint shortcutOrigin = RouteRecovery.findReachableTransportOriginAhead(
-				rawPath, playerRawIdx, playerLoc,
-				reachableTilesCache.keySet(), Rs2PathApi::hasCatalogTransportOrigin,
+        // (3) Reachable transport approach ahead: use the origin when standable, otherwise the final
+        // reachable raw-route tile before an object-occupied origin (fairy rings are the common case).
+		WorldPoint transportApproach = RouteRecovery.findReachableTransportApproachAhead(
+				rawPath, playerRawIdx, playerLoc, reachableTilesCache.keySet(),
+				(from, to) -> Rs2PathApi.getActiveTransportEdge(from, to).isPresent(),
                 recoveryMinimapReach - 1, ROUTE_PROGRESS_FORWARD_SEARCH_TILES);
-        if (shortcutOrigin != null && !shortcutOrigin.equals(playerLoc)) {
-            return ObstacleResolution.walkToOrigin(shortcutOrigin);
+        if (transportApproach != null && !transportApproach.equals(playerLoc)) {
+            WebWalkLog.spInfo("recovery_transport_approach | to={} player={}",
+                    compactWorldPoint(transportApproach), compactWorldPoint(playerLoc));
+            return ObstacleResolution.walkToOrigin(transportApproach);
         }
 
         return ObstacleResolution.notApplicable();

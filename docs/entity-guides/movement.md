@@ -359,3 +359,23 @@ checks, and route-aware door-edge nudges.
 **Defensive check:** Once `Rs2Tile.isEdgePassable(from,to)` becomes true for an exact idle claim,
 the next owned action should be a door-edge traversal click; repeated passive pending-yields must
 not continue until claim expiry.
+
+## 17. Approach object-occupied transport origins instead of replanning them as walls
+
+When local recovery reaches the first planned transport edge, target the transport origin if that
+tile is reachable. If collision correctly excludes the origin because the scene object occupies it,
+target the last reachable raw-route tile before the origin. Stop at that first transport edge; never
+scan through it for a later shortcut.
+
+**Why this matters:** On the DIS fairy-ring route, the player stopped at `(1364,2936)` while the
+planned origin `(1359,2941)` was absent from the local BFS. Generic wall recovery launched two
+six-second path recalculations from the same tile. A manual step to `(1359,2940)` immediately let
+the normal fairy-ring handler dispatch, proving the origin was an interaction target rather than a
+walkable recovery tile.
+
+**Where this applies:** Local unreachable-frontier recovery for fairy rings and other object-,
+dialog-, or widget-driven transports whose catalog origin cannot itself be stood on.
+
+**Defensive check:** Model a planned transport whose origin is absent from the reachable set but
+whose preceding raw-route tile is reachable. Recovery must choose that preceding tile and preserve
+the planned transport; it must not return `REPLAN_WALLED` or select a tile beyond the transport.
