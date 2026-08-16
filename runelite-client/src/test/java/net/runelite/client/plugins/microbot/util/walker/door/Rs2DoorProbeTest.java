@@ -103,19 +103,19 @@ public class Rs2DoorProbeTest {
     }
 
 	@Test
-	public void draynorPuzzleDoorRemainsTransportOwnedDespiteOpenAction() {
+	public void draynorPuzzleDoorIsOwnedByItsObjectExecutor() {
 		Rs2TransportEdge puzzleDoor = transport(
 				Rs2TransportType.TRANSPORT, "Door", "Draynor basement puzzle door", "Open");
 
-		assertFalse("exclusive puzzle doors must bypass the generic door cascade",
+		assertTrue("door semantics remain available independently of handler ownership",
 				Rs2DoorProbe.isDoorLikeCatalogTransport(puzzleDoor));
-		assertTrue("the puzzle transport owns this door even though it looks like an ordinary Open door",
-				Rs2DoorProbe.isTransportOwnedDoor(puzzleDoor));
+		assertTrue("the puzzle transport owns this door through its object executor",
+				Rs2DoorProbe.isObjectExecutorTransport(puzzleDoor));
 	}
 
 	@Test
-	public void ordinaryOpeningDoorIsNotExclusivelyTransportOwned() {
-		assertFalse(Rs2DoorProbe.isTransportOwnedDoor(
+	public void ordinaryOpeningDoorIsAlsoOwnedByItsObjectExecutor() {
+		assertTrue(Rs2DoorProbe.isObjectExecutorTransport(
 				transport(Rs2TransportType.TRANSPORT, "Gate", "Gate", "Open")));
 	}
 

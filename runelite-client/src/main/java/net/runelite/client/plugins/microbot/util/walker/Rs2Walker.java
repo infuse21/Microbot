@@ -1712,17 +1712,23 @@ public class Rs2Walker {
     }
 
     private static WalkerState processWalk(WorldPoint target, int distance) {
-        // Solve the Draynor basement lever puzzle first if walking to a basement tile, so the
-        // door-transports are unlocked before pathfinding. No-op outside the basement. The
-        // solver's internal walkTo calls clear currentTarget, so restore it before the real walk.
+        // Stage entry and solve the Draynor basement lever puzzle before pathfinding to a basement
+        // room. This avoids accepting a closer partial route into an unrelated underground map.
+        // The solver's internal walkTo calls clear currentTarget, so restore it before the real walk.
         if (DraynorBasementSolver.isBasementTarget(target)) {
             DraynorBasementSolver.solveIfNeeded(target);
             // The solver's nested walkTo calls clear currentTarget; restore it so the real walk
             // runs — but not if this walk was interrupted/cancelled while the (blocking) solver
             // ran (the solver itself never interrupts, so an interrupt here is an external cancel).
-            if (!Thread.currentThread().isInterrupted()) {
-                setTarget(target, "rs2walker:basement-solve-restore");
+            if (Thread.currentThread().isInterrupted()) {
+                return WalkerState.EXIT;
             }
+            if (!DraynorBasementSolver.isBasementTarget(Rs2Player.getWorldLocation())) {
+                WebWalkLog.spWarn("basement_entry_failed | target={} at={} - refusing disconnected partial route",
+                        target, Rs2Player.getWorldLocation());
+                return WalkerState.UNREACHABLE;
+            }
+            setTarget(target, "rs2walker:basement-solve-restore");
         }
         return processWalk(target, distance, 0);
     }
@@ -2264,17 +2270,16 @@ public class Rs2Walker {
                 }
                 int segDistance = currentWorldPoint.distanceTo2D(playerNearSeg);
                 if (segDistance <= HANDLER_RANGE) {
-                    boolean upcomingNearbyTransport = hasUpcomingNearbyTransportStep(path, i, playerNearSeg,
-                            POST_TRANSPORT_RAW_SCAN_TRANSPORT_LOOKAHEAD_EDGES,
-                            POST_TRANSPORT_RAW_SCAN_TRANSPORT_MAX_DIST);
-                    boolean startupBeforeFirstClick = currentWalkerPhase() == WalkerPhase.STARTUP;
-                    boolean immediateSegmentTransportStep = hasImmediatePlannedTransportStep(path, i, playerNearSeg);
+                    int rawI = (i < smoothedToRaw.length) ? smoothedToRaw[i] : 0;
+                    int rawEnd = rawEndForSmoothedIndex(i, smoothedToRaw, rawPath, path);
+                    SegmentTransportContext transportContext = segmentTransportContext(
+                            rawPath, rawI, rawEnd, path, i, playerNearSeg);
                     boolean recentDoorAttemptNearSegment = hasRecentDoorAttemptNearIndex(path, i);
                     SegmentGate.SegmentAction segmentAction = SegmentGate.decide(
-                            recentTransportWindow, upcomingNearbyTransport, recentDoorAttemptNearSegment,
+                            recentTransportWindow, transportContext.upcomingNearby, recentDoorAttemptNearSegment,
                             isDoorInteractionSettling(), isRecoveryMovementInFlight(),
                             reachableTilesCache.containsKey(currentWorldPoint),
-                            startupBeforeFirstClick, immediateSegmentTransportStep, i, indexOfStartPoint);
+                            currentWalkerPhase() == WalkerPhase.STARTUP, transportContext.startupStep, i, indexOfStartPoint);
                     if (segmentAction.isSkip()) {
                         segmentSkippedThisPass = true;
                         if (segmentAction == SegmentGate.SegmentAction.SKIP_STARTUP_PRECLICK) {
@@ -2285,9 +2290,8 @@ public class Rs2Walker {
                                 target, "i=" + i + " reason=" + segmentAction.wireReason());
                     } else {
                     long segmentHandlerStartAt = System.currentTimeMillis();
-                    int rawI = (i < smoothedToRaw.length) ? smoothedToRaw[i] : 0;
-                    int rawEnd = rawEndForSmoothedIndex(i, smoothedToRaw, rawPath, path);
-                    boolean startupImmediateTransportOnly = startupBeforeFirstClick && immediateSegmentTransportStep;
+                    boolean startupImmediateTransportOnly = currentWalkerPhase() == WalkerPhase.STARTUP
+                            && transportContext.startupStep;
                     // The stationary requirement is why doors only ever opened AFTER the approach walk
                     // finished: the handler was skipped for the whole journey and ran on arrival. For the
                     // NEXT segment on the route the door click should simply supersede our own walk —
@@ -2328,7 +2332,7 @@ public class Rs2Walker {
 
                     // Chain step 2: path-adjacent probes after exact segment-door attempt.
                     boolean allowPathAdjacentProbe = !recentTransportWindow
-                            || upcomingNearbyTransport
+                            || transportContext.upcomingNearby
                             || recentDoorAttemptNearSegment;
                     if (!startupImmediateTransportOnly
                             && !Rs2Player.isMoving() && obstaclePolicy.allowPathAdjacentProbe()
@@ -2360,8 +2364,8 @@ public class Rs2Walker {
                     }
 
                     boolean allowSegmentTransportScan = !recentTransportWindow
-                            || upcomingNearbyTransport
-                            || immediateSegmentTransportStep;
+                            || transportContext.upcomingNearby
+                            || transportContext.startupStep;
                     if ((PohTeleports.isInHouse() || !inInstance) && allowSegmentTransportScan) {
                         // Nearest segment may take its transport from range; anything further along
                         // waits until it becomes nearest, so route order holds.
@@ -2509,14 +2513,14 @@ public class Rs2Walker {
                                 exit = WalkExit.RECENT_DOOR_EDGE_NUDGE;
                                 break;
                             }
-                            if (handlePendingDoorNearRawPath(rawPath, obstaclePolicy.unreachableDoorTimeoutMs(),
-                                    playerLoc, 2, 14)) {
+                            if (handleFirstRecoveryDoor(rawPath, obstaclePolicy.unreachableDoorTimeoutMs(),
+                                    playerLoc, reachableTilesCache)) {
                                 exit = WalkExit.DOOR_HANDLED_LOCAL_REACHABILITY_RAW_SCAN;
                                 break;
                             }
                             if (handleDoorsInRawSegment(rawPath, rawEdgeStart, rawEdgeEnd,
                                     obstaclePolicy.unreachableDoorTimeoutMs(),
-                                    null)) {
+                                    reachableTilesCache)) {
                                 exit = WalkExit.DOOR_HANDLED_LOCAL_REACHABILITY;
                                 break;
                             }
@@ -4726,7 +4730,7 @@ public class Rs2Walker {
                         WebWalkLog.spInfo("ranged_transport_dispatch | origin={} dist={} — clicking from range, server walks us",
                                 compactWorldPoint(routeOrigin), originDistance);
                     }
-                    boolean handledTransport = handleTransports(rawPath, i);
+                    boolean handledTransport = handleTransports(rawPath, i, ranged);
                     transportMs += System.currentTimeMillis() - t;
                     if (handledTransport) {
                         if (!didCurrentTileTransportProgress(before, expectedDestination, target)) {
@@ -6327,12 +6331,18 @@ public class Rs2Walker {
      * @return
      */
     private static boolean handleTransports(List<WorldPoint> path, int indexOfStartPoint) {
+        return handleTransports(path, indexOfStartPoint, false);
+    }
+
+    private static boolean handleTransports(List<WorldPoint> path, int indexOfStartPoint,
+                                            boolean allowServerApproach) {
         Optional<Rs2PathApi.ActiveTransportSelection> selection =
                 Rs2PathApi.getActiveTransportSelection(path, indexOfStartPoint);
         if (selection.isEmpty()) {
             return false;
         }
-        return Rs2WalkerTransports.handleSelectedTransport(path, indexOfStartPoint, selection.get());
+        return Rs2WalkerTransports.handleSelectedTransport(
+                path, indexOfStartPoint, selection.get(), allowServerApproach);
     }
 
 
@@ -6464,7 +6474,7 @@ public class Rs2Walker {
             WebWalkLog.spInfo("ranged_transport_dispatch | origin={} dist={} — clicking from range, server walks us",
                     compactWorldPoint(origin), originDistance);
             WorldPoint before = Rs2Player.getWorldLocation();
-            if (handleTransports(rawPath, ri)) {
+            if (handleTransports(rawPath, ri, true)) {
                 if (didCurrentTileTransportProgress(before, dest, currentTarget)) {
                     return true;
                 }
@@ -6549,8 +6559,64 @@ public class Rs2Walker {
             return false;
         }
         return Rs2PathApi.getActiveTransportEdge(rawPath.get(index), rawPath.get(index + 1))
-                .map(edge -> edge.getType() == Rs2TransportType.TRANSPORT)
+                .map(edge -> edge.getType() == Rs2TransportType.TRANSPORT
+                        && edge.getExecutor() == Rs2TransportExecutor.OBJECT)
                 .orElse(false);
+    }
+
+    /**
+     * Finds the first explicit transport hidden inside one smoothed segment. It may wake the startup
+     * handler only when it is a visible single-click object; encountering any other transport first
+     * preserves route order and leaves the startup minimap behavior unchanged.
+     */
+    static boolean firstObjectTransportInRawSegmentWithinRange(List<WorldPoint> rawPath,
+                                                               int rawFrom,
+                                                               int rawTo,
+                                                               WorldPoint playerLoc,
+                                                               int maxDistance) {
+        if (rawPath == null || rawPath.size() < 2 || playerLoc == null) {
+            return false;
+        }
+        int from = Math.max(0, rawFrom);
+        int to = Math.min(rawPath.size() - 1, Math.max(from, rawTo));
+        for (int i = from; i < to; i++) {
+            if (!hasExplicitTransportStep(rawPath, i)) {
+                continue;
+            }
+            WorldPoint origin = rawPath.get(i);
+            return isObjectInteractionTransportStep(rawPath, i)
+                    && origin != null
+                    && origin.getPlane() == playerLoc.getPlane()
+                    && origin.distanceTo2D(playerLoc) <= Math.max(0, maxDistance);
+        }
+        return false;
+    }
+
+    private static SegmentTransportContext segmentTransportContext(List<WorldPoint> rawPath,
+                                                                    int rawFrom,
+                                                                    int rawTo,
+                                                                    List<WorldPoint> smoothedPath,
+                                                                    int smoothedIndex,
+                                                                    WorldPoint playerLoc) {
+        boolean rangedObjectStep = firstObjectTransportInRawSegmentWithinRange(
+                rawPath, rawFrom, rawTo, playerLoc, HANDLER_RANGE);
+        boolean upcomingNearby = rangedObjectStep || hasUpcomingNearbyTransportStep(
+                smoothedPath, smoothedIndex, playerLoc,
+                POST_TRANSPORT_RAW_SCAN_TRANSPORT_LOOKAHEAD_EDGES,
+                POST_TRANSPORT_RAW_SCAN_TRANSPORT_MAX_DIST);
+        boolean startupStep = rangedObjectStep
+                || hasImmediatePlannedTransportStep(smoothedPath, smoothedIndex, playerLoc);
+        return new SegmentTransportContext(upcomingNearby, startupStep);
+    }
+
+    private static final class SegmentTransportContext {
+        private final boolean upcomingNearby;
+        private final boolean startupStep;
+
+        private SegmentTransportContext(boolean upcomingNearby, boolean startupStep) {
+            this.upcomingNearby = upcomingNearby;
+            this.startupStep = startupStep;
+        }
     }
 
     /** Config kill switch for ranged transport dispatch; on when the config is unavailable. */

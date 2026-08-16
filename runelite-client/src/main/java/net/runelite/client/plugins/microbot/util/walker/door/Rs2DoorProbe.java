@@ -15,6 +15,7 @@ import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2PathApi;
 import net.runelite.client.plugins.microbot.util.walker.Rs2TransportEdge;
+import net.runelite.client.plugins.microbot.util.walker.Rs2TransportExecutor;
 import net.runelite.client.plugins.microbot.util.walker.Rs2TransportType;
 
 /**
@@ -23,7 +24,6 @@ import net.runelite.client.plugins.microbot.util.walker.Rs2TransportType;
  * {@code Rs2Walker}'s static fields. The walker facade owns the state and passes it in.
  */
 public final class Rs2DoorProbe {
-	private static final String DRAYNOR_BASEMENT_PUZZLE_DOOR = "Draynor basement puzzle door";
 
     private Rs2DoorProbe() {
     }
@@ -48,8 +48,9 @@ public final class Rs2DoorProbe {
 
     /**
      * Whether the catalog transport executor, rather than generic door detection, owns this scene
-     * object. Ordinary Open/Pass catalog doors remain generic-door candidates for compatibility;
-     * Draynor puzzle doors are the explicit exception because their varbit-aware rows own crossing.
+     * object. A route-selected OBJECT executor has the exact edge, action and completion predicate;
+     * allowing the geometry-based door cascade to claim the same object gives two independent
+     * handlers permission to cross it and can immediately reverse a successful transport.
      */
     public static boolean isCatalogTransportObject(TileObject object) {
         if (object == null) {
@@ -60,7 +61,6 @@ public final class Rs2DoorProbe {
             return false;
         }
 
-		boolean nonDoorCatalogMatch = false;
 		for (int dx = -1; dx <= 1; dx++) {
             for (int dy = -1; dy <= 1; dy++) {
 				WorldPoint origin = new WorldPoint(loc.getX() + dx, loc.getY() + dy, loc.getPlane());
@@ -68,35 +68,29 @@ public final class Rs2DoorProbe {
 					if (transport == null || transport.getObjectId() != object.getId()) {
 						continue;
 					}
-					if (isTransportOwnedDoor(transport)) {
+					if (isObjectExecutorTransport(transport)) {
 						return true;
 					}
-					nonDoorCatalogMatch |= !isDoorLikeCatalogTransport(transport);
                 }
             }
         }
-		return nonDoorCatalogMatch && !Rs2DoorDetection.isDoorLikeSceneObject(object);
+		return false;
     }
 
 	/**
-	 * True for a catalogued door whose interaction has an exclusive transport executor. These
-	 * objects must never enter the generic scene-door cascade: its geometric segment matching can
-	 * associate the same physical door with a neighbouring route edge and cross it in reverse after
-	 * the transport executor has already completed the intended crossing.
+	 * True for a catalogued interaction handled by the generic object executor. The executor can
+	 * click doors, stairs, ladders, stiles and other one-action scene objects from range; it is also
+	 * the sole owner of those objects while their edge is selected by the route.
 	 */
-	static boolean isTransportOwnedDoor(Rs2TransportEdge transport) {
+	static boolean isObjectExecutorTransport(Rs2TransportEdge transport) {
 		return transport != null
-				&& transport.getType() == Rs2TransportType.TRANSPORT
-				&& DRAYNOR_BASEMENT_PUZZLE_DOOR.equals(transport.getDisplayInfo());
+				&& transport.getExecutor() == Rs2TransportExecutor.OBJECT;
 	}
 
 	public static boolean isDoorLikeCatalogTransport(Rs2TransportEdge transport) {
 		if (transport == null || transport.getType() != Rs2TransportType.TRANSPORT) {
             return false;
         }
-		if (isTransportOwnedDoor(transport)) {
-			return false;
-		}
         // The ACTION wins over the name. A stile is named door-like and a fence gap is not named at
         // all, but both are crossed by moving through them, and the door cascade can only wait for an
         // edge to open — a wait a moves-you obstacle can never satisfy. Deciding on the name alone is

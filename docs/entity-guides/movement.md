@@ -380,12 +380,13 @@ dialog-, or widget-driven transports whose catalog origin cannot itself be stood
 whose preceding raw-route tile is reachable. Recovery must choose that preceding tile and preserve
 the planned transport; it must not return `REPLAN_WALLED` or select a tile beyond the transport.
 
-## 18. Exclusive puzzle doors are transport-owned objects, not just transport edges
+## 18. Catalog object transports own their scene objects, not just their edges
 
-When a stateful puzzle door has a dedicated catalog transport executor, exclude its scene object
-from every generic door scan. Exact-edge suppression is insufficient: door geometry can associate
-the same physical object with a neighbouring diagonal or cardinal route segment after the intended
-transport crossing.
+When a route interaction has a catalog `OBJECT` executor, exclude its scene object from every
+generic door scan. Exact-edge suppression is insufficient: door geometry can associate the same
+physical object with a neighbouring diagonal or cardinal route segment after the intended
+transport crossing. The selected transport owns the click, server approach, and landing; generic
+door detection is reserved for doors that have no object-executor route row.
 
 **Why this matters:** In the Draynor basement, the catalog transport correctly crossed puzzle door
 137 from `(3106,9765)` to `(3104,9765)`. The generic recovery scan then matched that same object to
@@ -393,8 +394,97 @@ transport crossing.
 the intended transport again, producing an endless two-tile ping-pong.
 
 **Where this applies:** Segment-door candidates, raw-scene scans, pending/unresolved-door checks,
-local recovery, and route-ahead door searches. Ordinary catalogued `Open` gates may still use the
-generic door cascade; only rows with explicit exclusive ownership should be suppressed object-wide.
+local recovery, route-ahead door searches, and ordinary catalogued `Open` gates.
 
-**Defensive check:** An exclusive puzzle-door row must remain transport-owned even when its target
-is `Door` and its action is `Open`. A normal catalogued `Open` gate must remain non-exclusive.
+**Defensive check:** Both a puzzle-door row and an ordinary catalogued `Open` gate with an `OBJECT`
+executor must remain transport-owned. An uncatalogued scene door must remain eligible for the
+generic door cascade.
+
+## 19. Ranged object dispatch must not require a reachable catalog origin
+
+Once route ordering has proved an object transport is the next unresolved interaction, click the
+object and let the server choose its approach tile. Do not require the transport origin to appear
+in local reachability first; closed doors often make that synthetic origin unreachable until the
+interaction opens the edge, recreating the one-tile pre-approach that ranged dispatch exists to
+avoid. Retain the reachability requirement for legacy near-origin dispatch and as the fallback after
+a ranged click makes no progress.
+
+**Why this matters:** Stairs usually expose a reachable origin, while closed doors often do not, so
+the same ranged-dispatch setting appeared to work only for stairs and behaved inconsistently for
+doors.
+
+**Where this applies:** Route-ordered object transports, raw-path ranged scans, and transport object
+execution. It does not authorize firing a later interaction past an earlier unresolved route edge.
+
+**Defensive check:** The ranged executor must accept an unreachable origin after the route-order
+gate; its non-ranged overload must continue requiring a reachable origin.
+
+## 20. A ranged door click still requires a reachable near side
+
+Before clicking a generic door from range, require the raw-route tile immediately before that door
+to be present in the current local reachable set. A broad route-ahead scan must stop at the first
+unreachable near side instead of continuing through it to another visible door. This preserves
+server-side approach without allowing the scan to skip an earlier unresolved blocker.
+
+**Why this matters:** In Falador Castle, after descending to `(2995,3341,1)`, recovery scanned ahead
+from `(2991,3341)` and clicked the later door at `(2990,3337)` from five tiles away. The route to
+that door was still blocked by the first door, so the server could not complete the intended
+approach and the walker entered door suppression and wall-replan recovery.
+
+**Where this applies:** Pending-door lookahead, exact raw-segment door handling, local unreachable-
+frontier recovery, and every generic ranged door path. Catalog object transports retain their own
+route-order gate.
+
+**Defensive check:** With two route-ordered doors, mark only the first door's near-side tile locally
+reachable. The first door may dispatch from range; the second must not be considered until its own
+near side becomes reachable after the first crossing.
+
+## 21. An actioned double-gate wing owns the first blocked edge
+
+Derive the first raw-route edge that leaves the player-origin reachable set before running any
+route-ahead door scan. If an actionable door or gate wing is adjacent to either endpoint, give that
+object exclusive ownership even when its wall orientation does not geometrically intersect the raw
+edge. Click it from range and end the pass; do not let an exact-segment door farther ahead act.
+
+**Why this matters:** In Falador Castle the first blocker was the double-gate edge
+`(2991,3341)->(2991,3340)`, but the Open action lived on the neighbouring wing. Exact segment
+matching rejected that wing with `orient-mismatch`, then lookahead clicked the later door at
+`(2990,3337)` from five tiles away. A per-door reachable-near-side check could not fix this because
+the first blocker was never classified as a door edge in the first place.
+
+**Where this applies:** Local unreachable-frontier recovery, double doors/gates with actionless
+slave wings, broad pending-door lookahead, and walled-route ownership.
+
+**Defensive check:** With an actionable wing adjacent to the first reachable-to-unreachable raw
+edge and a geometrically exact door later on the route, only the adjacent wing may be claimed or
+clicked during that pass.
+
+## 22. Stage puzzle-dungeon entry before solving sealed interior rooms
+
+When a destination is inside a stateful dungeon puzzle and the player is outside, first walk to the
+surface side of the dungeon's real entrance and execute that transport into a known-safe room. Only
+then solve the state needed to reach the requested room. Do not pathfind directly toward a currently
+sealed interior room and accept the closest partial component. If every interior target invokes the
+puzzle hook, using an interior staging target can recursively trigger its own entry guard.
+
+**Why this matters:** Draynor Manor's oil room is numerically close to the Dwarven Mine in the
+shared underground coordinate band. With the lever door sealed, a direct search selected the
+Dwarven Mine/MLM cave as its closest partial endpoint, producing a long walk followed by a
+recalculation on nearly every step.
+
+**Pattern to follow:**
+
+```java
+if (isPuzzleTarget(target) && !isInsidePuzzle(player)) {
+    walkTo(SURFACE_ENTRANCE, 1);
+    useEntranceTransport();
+    awaitInside(SAFE_ENTRANCE_ROOM);
+}
+solvePuzzleToward(target);
+```
+
+**Where this applies:** `DraynorBasementSolver`, dungeon-specific solvers, and walker handling of
+`SEARCH_EXHAUSTED` partial routes across disconnected underground components.
+
+**Defensive check:** From a surface tile, a walk to Draynor's oil room must use the Manor ladder at
+`(3092,3361)` and must never use the Dwarven Mine stairs at `(3061,3376)`.
