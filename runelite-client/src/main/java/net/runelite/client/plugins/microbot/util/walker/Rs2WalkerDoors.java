@@ -710,7 +710,7 @@ final class Rs2WalkerDoors {
                     Telemetry.recordDoorReject("door-out-of-range");
                     continue;
                 }
-                if (Rs2DoorProbe.isCatalogTransportObject(object) && !Rs2DoorDetection.isDoorLikeSceneObject(object)) {
+                if (Rs2DoorProbe.isCatalogTransportObject(object)) {
                     Telemetry.recordDoorReject("catalog-transport-object");
                     continue;
                 }
@@ -904,7 +904,7 @@ final class Rs2WalkerDoors {
         if (!Rs2DoorGeometry.isDoorInteractionWithinRange(object, probe, fromWp, toWp, playerLoc, HANDLER_RANGE)) {
             return false;
         }
-        if (Rs2DoorProbe.isCatalogTransportObject(object) && !Rs2DoorDetection.isDoorLikeSceneObject(object)) {
+        if (Rs2DoorProbe.isCatalogTransportObject(object)) {
             return false;
         }
 
@@ -1130,7 +1130,7 @@ final class Rs2WalkerDoors {
         if (probe != null && loc.getPlane() != probe.getPlane()) {
             return false;
         }
-        if (Rs2DoorProbe.isCatalogTransportObject(object) && !Rs2DoorDetection.isDoorLikeSceneObject(object)) {
+        if (Rs2DoorProbe.isCatalogTransportObject(object)) {
             return false;
         }
         // The two-tile radius is right for "is anything here still shut" (verify, then retry) but wrong
@@ -1689,9 +1689,9 @@ final class Rs2WalkerDoors {
     /**
      * Catalog transports normally bypass generic door probing so the exact selected edge keeps
      * execution ownership. Door-like rows are the compatibility exception because many ordinary
-     * Open/Pass rows still rely on the door cascade. The Al Kharid toll gate has an explicit
-     * executor with dialogue and exact-landing semantics, so allowing the generic scanner to take
-     * it first creates two conflicting completion contracts.
+     * Open/Pass rows still rely on the door cascade. Exclusive puzzle-door rows are classified as
+     * transport-owned above this layer; the Al Kharid toll gate remains an explicit coordinate
+     * exception because its dialogue executor also has exact-landing semantics.
      */
     static boolean shouldDeferDoorHandlingToTransport(List<WorldPoint> path, int index) {
         if (!isCatalogBackedTransportSegment(path, index)) {
@@ -2041,7 +2041,7 @@ final class Rs2WalkerDoors {
         WorldPoint location = object.getWorldLocation();
         if (location.getPlane() != playerLoc.getPlane()
                 || location.distanceTo2D(playerLoc) > radiusTiles
-                || (Rs2DoorProbe.isCatalogTransportObject(object) && !Rs2DoorDetection.isDoorLikeSceneObject(object))
+                || Rs2DoorProbe.isCatalogTransportObject(object)
                 || !Rs2DoorGeometry.isDoorOnSegment(object, fromWp, toWp)) {
             return false;
         }
@@ -2072,7 +2072,7 @@ final class Rs2WalkerDoors {
         if (location.getPlane() != playerLoc.getPlane()
                 || location.distanceTo2D(playerLoc) > radiusTiles
                 || doorAttemptLedger.isDoorBlacklisted(location)
-                || (Rs2DoorProbe.isCatalogTransportObject(object) && !Rs2DoorDetection.isDoorLikeSceneObject(object))
+                || Rs2DoorProbe.isCatalogTransportObject(object)
                 || !Rs2DoorGeometry.isDoorOnSegment(object, fromWp, toWp)) {
             return false;
         }
@@ -2205,7 +2205,7 @@ final class Rs2WalkerDoors {
 			String action = Rs2DoorClassifier.pickWalkDoorAction(comp);
 			boolean doorLike = Rs2DoorClassifier.isRouteDoorObject(true, comp.getName(), action);
 			if (!doorLike) continue;
-			if (Rs2DoorProbe.isCatalogTransportObject(w) && !Rs2DoorDetection.isDoorLikeSceneObject(w)) continue;
+			if (Rs2DoorProbe.isCatalogTransportObject(w)) continue;
 			candidates++;
 
 			// Allow empty-action doors: use default interact.
@@ -2230,7 +2230,7 @@ final class Rs2WalkerDoors {
 			String action = Rs2DoorClassifier.pickWalkDoorAction(comp);
 			boolean doorLike = Rs2DoorClassifier.isRouteDoorObject(false, comp.getName(), action);
 			if (!doorLike) continue;
-			if (Rs2DoorProbe.isCatalogTransportObject(g) && !Rs2DoorDetection.isDoorLikeSceneObject(g)) continue;
+			if (Rs2DoorProbe.isCatalogTransportObject(g)) continue;
 			candidates++;
 
 			String actionFinal = action == null ? "" : action;
@@ -2295,7 +2295,7 @@ final class Rs2WalkerDoors {
 
 			boolean doorLike = Rs2DoorClassifier.isRouteDoorObject(true, comp.getName(), action);
 			if (!doorLike) continue;
-			if (Rs2DoorProbe.isCatalogTransportObject(w) && !Rs2DoorDetection.isDoorLikeSceneObject(w)) continue;
+			if (Rs2DoorProbe.isCatalogTransportObject(w)) continue;
 
 			String actionFinal = action == null ? "" : action;
 
@@ -2331,7 +2331,7 @@ final class Rs2WalkerDoors {
 
 			boolean doorLike = Rs2DoorClassifier.isRouteDoorObject(false, comp.getName(), action);
 			if (!doorLike) continue;
-			if (Rs2DoorProbe.isCatalogTransportObject(g) && !Rs2DoorDetection.isDoorLikeSceneObject(g)) continue;
+			if (Rs2DoorProbe.isCatalogTransportObject(g)) continue;
 
 			String actionFinal = action == null ? "" : action;
 

@@ -5442,7 +5442,7 @@ public class Rs2Walker {
 				String action = Rs2DoorClassifier.pickWalkDoorAction(comp);
 				boolean doorLike = Rs2DoorClassifier.isRouteDoorObject(true, comp.getName(), action);
 				if (!doorLike) continue;
-				if (Rs2DoorProbe.isCatalogTransportObject(w) && !Rs2DoorDetection.isDoorLikeSceneObject(w)) continue;
+				if (Rs2DoorProbe.isCatalogTransportObject(w)) continue;
 
 				String actionFinal = action == null ? "" : action;
 
@@ -5480,7 +5480,7 @@ public class Rs2Walker {
 				String action = Rs2DoorClassifier.pickWalkDoorAction(comp);
 				boolean doorLike = Rs2DoorClassifier.isRouteDoorObject(false, comp.getName(), action);
 				if (!doorLike) continue;
-				if (Rs2DoorProbe.isCatalogTransportObject(g) && !Rs2DoorDetection.isDoorLikeSceneObject(g)) continue;
+				if (Rs2DoorProbe.isCatalogTransportObject(g)) continue;
 
 				String actionFinal = action == null ? "" : action;
 
@@ -5620,7 +5620,7 @@ public class Rs2Walker {
         if (object == null || location == null) {
             return;
         }
-        if (Rs2DoorProbe.isCatalogTransportObject(object) && !Rs2DoorDetection.isDoorLikeSceneObject(object)) {
+        if (Rs2DoorProbe.isCatalogTransportObject(object)) {
             return;
         }
         String identity = object.getClass().getSimpleName() + "|" + object.getId() + "|"
@@ -5753,7 +5753,7 @@ public class Rs2Walker {
 						.orElse(null);
 				boolean doorLike = Rs2DoorClassifier.isRouteDoorObject(object instanceof WallObject, comp.getName(), action);
 				if (!doorLike) continue;
-				if (Rs2DoorProbe.isCatalogTransportObject(object) && !Rs2DoorDetection.isDoorLikeSceneObject(object)) continue;
+				if (Rs2DoorProbe.isCatalogTransportObject(object)) continue;
 
 				// Found a likely blocker on-path: hand off to existing door handler (which
 				// includes quest-lock detection, blacklisting, and recalculation).

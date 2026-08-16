@@ -379,3 +379,22 @@ dialog-, or widget-driven transports whose catalog origin cannot itself be stood
 **Defensive check:** Model a planned transport whose origin is absent from the reachable set but
 whose preceding raw-route tile is reachable. Recovery must choose that preceding tile and preserve
 the planned transport; it must not return `REPLAN_WALLED` or select a tile beyond the transport.
+
+## 18. Exclusive puzzle doors are transport-owned objects, not just transport edges
+
+When a stateful puzzle door has a dedicated catalog transport executor, exclude its scene object
+from every generic door scan. Exact-edge suppression is insufficient: door geometry can associate
+the same physical object with a neighbouring diagonal or cardinal route segment after the intended
+transport crossing.
+
+**Why this matters:** In the Draynor basement, the catalog transport correctly crossed puzzle door
+137 from `(3106,9765)` to `(3104,9765)`. The generic recovery scan then matched that same object to
+`(3104,9765)->(3103,9764)`, opened it, and moved the player back to `(3106,9765)`. Recovery dispatched
+the intended transport again, producing an endless two-tile ping-pong.
+
+**Where this applies:** Segment-door candidates, raw-scene scans, pending/unresolved-door checks,
+local recovery, and route-ahead door searches. Ordinary catalogued `Open` gates may still use the
+generic door cascade; only rows with explicit exclusive ownership should be suppressed object-wide.
+
+**Defensive check:** An exclusive puzzle-door row must remain transport-owned even when its target
+is `Door` and its action is `Open`. A normal catalogued `Open` gate must remain non-exclusive.
