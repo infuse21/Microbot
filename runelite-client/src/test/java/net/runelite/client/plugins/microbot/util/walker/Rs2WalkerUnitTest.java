@@ -207,6 +207,24 @@ public class Rs2WalkerUnitTest {
         assertFalse(Rs2WalkerTransports.isTerminalTravelObjectCompositionCandidate(
                 ferry, new WorldPoint(3275, 3144, 0), "Ferry", new String[]{"Board"}));
 
+        // The dispatch resolves the scene object BEFORE the (contains-matching) NPC lookup, so this
+        // matcher is what keeps an NPC terminal from being hijacked by a same-named object. Veos is
+        // the case that must stay rejected: his row's id column holds an NPC id, and his menu offers
+        // Talk-to rather than the row's destination label, so no object can satisfy it.
+        Transport veos = new Transport(
+                new WorldPoint(3055, 3245, 0),
+                new WorldPoint(1824, 3695, 1),
+                "Port Piscarilius",
+                TransportType.SHIP,
+                true,
+                "Port Piscarilius",
+                "Veos",
+                10724,
+                6);
+        assertFalse("an NPC terminal must not resolve to a scene object",
+                Rs2WalkerTransports.isTerminalTravelObjectCompositionCandidate(
+                        veos, veos.getOrigin(), "Veos", new String[]{"Talk-to"}));
+
         Transport ordinaryObject = new Transport(
                 ferry.getOrigin(), ferry.getDestination(), "", TransportType.TRANSPORT,
                 true, "Board", "Ferry", 41311, 8);

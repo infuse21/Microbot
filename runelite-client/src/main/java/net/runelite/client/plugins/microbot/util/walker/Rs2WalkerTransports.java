@@ -334,7 +334,25 @@ final class Rs2WalkerTransports {
                                 break originLoop;
                             }
 
-                            Rs2NpcModel npc = Rs2Npc.getNpc(transport.getName());
+                            // Resolve the SCENE OBJECT before falling back to the NPC lookup.
+                            // Rs2Npc#getNpc matches on CONTAINS, so an object terminal whose name is
+                            // a substring of some unrelated NPC's name lost this if/else to that NPC,
+                            // found none of its actions, and broke the origin loop — abandoning the
+                            // walk. Measured at the Tempoross ferry (boats.tsv "Board;Ferry;41311",
+                            // loctype tempoross_lobby_boat): the boat sat three tiles away with Board
+                            // in its menu and was never clicked.
+                            //
+                            // The row's id column cannot decide this: it holds an OBJECT id for object
+                            // terminals (41311) and an NPC id for NPC terminals (ships.tsv
+                            // "Port Piscarilius;Veos;10724"), so it classifies nothing. What does
+                            // classify is the scene itself — findTerminalTravelObject demands the
+                            // row's EXACT name plus its configured action within 3 tiles of the
+                            // origin, which no NPC terminal can satisfy (Veos offers "Talk-to", not
+                            // the row's destination label). Object first, NPC otherwise.
+                            TileObject declaredTerminalObject = findTerminalTravelObject(transport);
+                            Rs2NpcModel npc = declaredTerminalObject != null
+                                    ? null
+                                    : Rs2Npc.getNpc(transport.getName());
                             if (npc != null && Rs2Npc.canWalkTo(npc, 20)) {
                                 String npcAction = resolveTerminalNpcInteractionAction(
                                         npc, transport);
@@ -408,7 +426,9 @@ final class Rs2WalkerTransports {
                                     }
                                 }
                             } else {
-                                TileObject terminalObject = findTerminalTravelObject(transport);
+                                TileObject terminalObject = declaredTerminalObject != null
+                                        ? declaredTerminalObject
+                                        : findTerminalTravelObject(transport);
                                 if (terminalObject != null) {
                                     String objectAction = resolveTransportObjectAction(
                                             terminalObject,
