@@ -353,15 +353,23 @@ final class Rs2WalkerTransports {
                             Rs2NpcModel npc = declaredTerminalObject != null
                                     ? null
                                     : Rs2Npc.getNpc(transport.getName());
-                            if (npc != null && Rs2Npc.canWalkTo(npc, 20)) {
-                                String npcAction = resolveTerminalNpcInteractionAction(
-                                        npc, transport);
-                                if (npcAction.isEmpty()) {
-                                    WebWalkLog.spWarn(
-                                            "terminal NPC has no supported interaction action name={} configured={} dest={}",
-                                            transport.getName(), transport.getAction(), transport.getDisplayInfo());
-                                    break originLoop;
-                                }
+                            boolean npcUsable = npc != null && Rs2Npc.canWalkTo(npc, 20);
+                            // Resolve the action up front so an NPC that cannot serve this row falls
+                            // THROUGH to the object branch — and, when no object matches either, to
+                            // the approach click below — instead of ending the walk. Aborting here is
+                            // how the Tempoross ferry died: a contains-matched NPC with no usable
+                            // action killed a route the scene could still have travelled.
+                            String npcAction = npcUsable
+                                    ? resolveTerminalNpcInteractionAction(npc, transport)
+                                    : "";
+                            if (npcUsable && npcAction.isEmpty()) {
+                                WebWalkLog.spInfo(
+                                        "terminal NPC has no supported interaction action name={} configured={} dest={} display={} — falling back to the scene object",
+                                        transport.getName(), transport.getAction(),
+                                        compactWorldPoint(transport.getDestination()),
+                                        transport.getDisplayInfo());
+                            }
+                            if (!npcAction.isEmpty()) {
                                 if (!markTerminalTravelAttempt(transport)) {
                                     log.debug("[Walker] terminal travel edge already attempted this walk: {}",
                                             transport.getDisplayInfo());
@@ -436,8 +444,10 @@ final class Rs2WalkerTransports {
                                             .orElse("");
                                     if (objectAction.isEmpty()) {
                                         WebWalkLog.spWarn(
-                                            "terminal object has no supported interaction action name={} configured={} dest={}",
-                                            transport.getName(), transport.getAction(), transport.getDisplayInfo());
+                                            "terminal object has no supported interaction action name={} configured={} dest={} display={}",
+                                            transport.getName(), transport.getAction(),
+                                            compactWorldPoint(transport.getDestination()),
+                                            transport.getDisplayInfo());
                                         break originLoop;
                                     }
                                     if (!markTerminalTravelAttempt(transport)) {
