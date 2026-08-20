@@ -146,13 +146,6 @@ public class PathfinderConfig {
      */
     private volatile int lastComputedInvFingerprint;
     private volatile int previousRefreshInvFingerprint;
-    /**
-     * The transport-refresh cache key computed by the most recent {@code refreshTransports} —
-     * the invalidation key for {@link SealedVerdictMemo} (a verdict proven under one transport
-     * set must not survive into another).
-     */
-    @Getter
-    private volatile int lastTransportRefreshKeyHash;
     /** Which verification component moved on the most recent verify-miss; see the miss log. */
     private volatile String lastVerifyMissDetail = "";
     @Getter
@@ -496,7 +489,6 @@ public class PathfinderConfig {
         final Rs2LeaguesTransport.LeaguesContext leaguesCtx = Rs2LeaguesTransport.leaguesContext();
         lastKeyLeaguesMs = System.currentTimeMillis() - keyStart;
         final int refreshCacheKeyHash = computeTransportRefreshCacheKeyHash(target, leaguesCtx);
-        lastTransportRefreshKeyHash = refreshCacheKeyHash;
         long keyTime = System.currentTimeMillis() - keyStart;
 
         TransportRefreshSnapshot snap = transportRefreshSnapshots.get(refreshCacheKeyHash);

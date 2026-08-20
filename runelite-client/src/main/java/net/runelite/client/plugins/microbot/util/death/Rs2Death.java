@@ -478,19 +478,8 @@ public class Rs2Death {
      */
     public static boolean lootGraveFreeItems() {
         if (!isGraveOpen()) return false;
-
-        if (getGraveFreeItems().isEmpty()) return true;
-
         clickAndSettle(InterfaceID.GravestoneGeneric.FREEBUTTON);
-
-        // Do not report success from the click alone. If the inventory is full or the interaction is
-        // dropped, the free half can remain in the grave while the orchestration layer clears the death
-        // state and moves on. Wait for the interface contents (or the grave itself) to confirm collection.
-        Global.sleepUntil(() -> !hasGrave()
-                        || (isGraveOpen() && getGraveFreeItems().isEmpty())
-                        || Rs2Inventory.isFull(),
-                LOOT_TIMEOUT_MS);
-        return !hasGrave() || (isGraveOpen() && getGraveFreeItems().isEmpty());
+        return true;
     }
 
     /**
@@ -886,15 +875,10 @@ public class Rs2Death {
         if (!openGrave()) return false;
         if (!lootGraveFreeItems()) return false;
 
-        int fee = getGraveFee();
-        boolean paidItemsCollected = lootGravePaidItems(budget);
+        lootGravePaidItems(budget);
 
         closeInterfaces();
-
-        // Declining an over-budget fee is an intentional, successful outcome. Any other false result
-        // means the grave was not emptied (for example, a dropped click or a full inventory), so retain
-        // the death state and let the caller retry.
-        return fee > budget || paidItemsCollected;
+        return true;
     }
 
     /**
@@ -906,10 +890,10 @@ public class Rs2Death {
         if (!enterDeathsOffice()) return false;
         if (!openDeathsOffice()) return false;
 
-        boolean reclaimed = reclaimAll();
+        reclaimAll();
 
         closeInterfaces();
-        return reclaimed;
+        return true;
     }
 
     /**

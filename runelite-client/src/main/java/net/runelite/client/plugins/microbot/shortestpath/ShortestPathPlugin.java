@@ -1076,7 +1076,7 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
         }
 
         if (entry.getOption().equals(CLEAR) && entry.getTarget().equals(PATH)) {
-			shortestPathScript.setTriggerWalker(null, "menu:clear-path");
+			shortestPathScript.setTriggerWalker(null);
         }
     }
 
@@ -1389,7 +1389,7 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
          * Therefor CTRL + X seemed a bit more robust and userfriendly
          */
         if (e.getKeyCode() == KeyEvent.VK_X && e.isControlDown()) {
-			shortestPathScript.setTriggerWalker(null, "hotkey:ctrl+x");
+			shortestPathScript.setTriggerWalker(null);
             e.consume();
         }
     }

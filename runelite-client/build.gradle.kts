@@ -190,6 +190,47 @@ tasks.register<Test>("runTests") {
     }
 }
 
+tasks.register<Test>("runUnitTests") {
+    group = "verification"
+    description = "Run unit tests only (no client, no login) — safe for CI"
+
+    // ClientThreadGuardrailTest scans compiled .class files under runelite-{api,client}/build,
+    // so make sure the main sources are compiled before the test JVM forks.
+    dependsOn(":client:compileJava")
+
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+
+    jvmArgs(
+        "-Dfile.encoding=UTF-8",
+        "-Duser.timezone=Europe/Brussels",
+        "-ea"
+    )
+
+    // Forward the baseline-regenerate flags to the test JVM so contributors can run
+    // `./gradlew :client:runUnitTests -Dmicrobot.guardrail.regenerate-baseline=true` ad-hoc.
+    System.getProperty("microbot.guardrail.regenerate-baseline")?.let {
+        systemProperty("microbot.guardrail.regenerate-baseline", it)
+    }
+    System.getProperty("microbot.queryable-guardrail.regenerate-baseline")?.let {
+        systemProperty("microbot.queryable-guardrail.regenerate-baseline", it)
+    }
+
+    exclude("**/Rs2ActorModelIntegrationTest.class")
+    exclude("**/Rs2WalkerIntegrationTest.class")
+    exclude("**/Rs2ReflectionGroundItemActionsIntegrationTest.class")
+    exclude("**/threadsafety/ClientThreadScannerTest.class")
+    exclude("**/ScreenshotHandlerTest.class")
+
+    useJUnit()
+
+    testLogging {
+        events("passed", "skipped", "failed")
+        showStandardStreams = true
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+    }
+}
+
 tasks.register<JavaExec>("exportLocalPlannerComparison") {
     group = "verification"
     description = "Export deterministic local planner results for the opt-in upstream comparison harness"
@@ -233,47 +274,6 @@ tasks.register<JavaExec>("exportEmbeddedUpstreamPlannerComparison") {
     }
 
     outputs.upToDateWhen { false }
-}
-
-tasks.register<Test>("runUnitTests") {
-    group = "verification"
-    description = "Run unit tests only (no client, no login) — safe for CI"
-
-    // ClientThreadGuardrailTest scans compiled .class files under runelite-{api,client}/build,
-    // so make sure the main sources are compiled before the test JVM forks.
-    dependsOn(":client:compileJava")
-
-    testClassesDirs = sourceSets.test.get().output.classesDirs
-    classpath = sourceSets.test.get().runtimeClasspath
-
-    jvmArgs(
-        "-Dfile.encoding=UTF-8",
-        "-Duser.timezone=Europe/Brussels",
-        "-ea"
-    )
-
-    // Forward the baseline-regenerate flags to the test JVM so contributors can run
-    // `./gradlew :client:runUnitTests -Dmicrobot.guardrail.regenerate-baseline=true` ad-hoc.
-    System.getProperty("microbot.guardrail.regenerate-baseline")?.let {
-        systemProperty("microbot.guardrail.regenerate-baseline", it)
-    }
-    System.getProperty("microbot.queryable-guardrail.regenerate-baseline")?.let {
-        systemProperty("microbot.queryable-guardrail.regenerate-baseline", it)
-    }
-
-    exclude("**/Rs2ActorModelIntegrationTest.class")
-    exclude("**/Rs2WalkerIntegrationTest.class")
-    exclude("**/Rs2ReflectionGroundItemActionsIntegrationTest.class")
-    exclude("**/threadsafety/ClientThreadScannerTest.class")
-    exclude("**/ScreenshotHandlerTest.class")
-
-    useJUnit()
-
-    testLogging {
-        events("passed", "skipped", "failed")
-        showStandardStreams = true
-        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
-    }
 }
 
 tasks.register<Test>("regenerateClientThreadGuardrailBaseline") {

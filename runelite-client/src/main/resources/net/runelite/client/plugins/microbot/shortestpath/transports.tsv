@@ -1366,16 +1366,6 @@
 2554 3475 0	2555 3475 0	Open;Gate;15604									
 2555 3474 0	2554 3474 0	Open;Gate;15605									
 2554 3474 0	2555 3474 0	Open;Gate;15605									
-# MICROBOT: Dwarf Cannon Black Guard camp door (loctype 3 = mcannondoor). A transport door -- clicking
-# it moves you through. It was missing entirely, so the quester could not reach Nulodion: LOS false
-# because the door really is in the way, canReach true because the pathfinder routes the long way
-# round, and the ranged click therefore never completed. Right-click examine gives "Wall ID: 3 X: 3015
-# Y: 3453". Edge measured by crossing it both ways through the agent server, not inferred:
-#   (3017,3447) -> click Open -> (3014,3453)   westward, into the camp
-#   (3014,3453) -> click Open -> (3015,3453)   eastward, back out
-# The door stays shut across both, which is what makes it a transport door rather than an ordinary one.
-3014 3453 0	3015 3453 0	Open;Door;3									
-3015 3453 0	3014 3453 0	Open;Door;3									
 											
 # Tourist Information Center											
 2518 3431 0	2518 3431 1	Climb-up;Staircase;16671									
