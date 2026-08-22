@@ -56,7 +56,7 @@ public final class Rs2TileItemCache {
 
         List<Rs2TileItemModel> result = new ArrayList<>();
 
-        for (var id : Microbot.getWorldViewIds()) {
+        for (var id : Microbot.getActiveWorldViewIds()) {
             WorldView worldView = client.getWorldView(id);
             if (worldView == null) {
                 continue;

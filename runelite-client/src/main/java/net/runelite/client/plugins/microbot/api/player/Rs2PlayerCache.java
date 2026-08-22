@@ -44,7 +44,7 @@ public final class Rs2PlayerCache {
 
         List<Rs2PlayerModel> result = new ArrayList<>();
 
-        for (var id : Microbot.getWorldViewIds()) {
+        for (var id : Microbot.getActiveWorldViewIds()) {
             WorldView worldView = client.getWorldView(id);
             if (worldView == null) {
                 continue;

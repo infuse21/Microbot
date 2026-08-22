@@ -224,6 +224,42 @@ public class Microbot {
 
     @Getter
     private static final Set<Integer> worldViewIds = ConcurrentHashMap.newKeySet();
+
+    /**
+     * The world views the entity caches should read: every view whose {@code WorldViewLoaded} event we
+     * saw, PLUS the current top-level view.
+     *
+     * <p>{@link #getWorldViewIds()} is maintained purely by load/unload events, so a view that loaded
+     * before {@code MicrobotPlugin} subscribed is never in it — and the top-level view is precisely the
+     * one that loads first. Measured in House Thieving: a scene holding 18 NPCs (Aurelia and four
+     * wealthy citizens among them) read as ZERO through Rs2NpcCache because the set was empty;
+     * registering the top-level view by hand immediately produced 18-19 and pickpocketing started.
+     *
+     * <p>Every cache that iterates these ids — NPC, player, tile item, tile object — fails the same way,
+     * and fails SILENTLY: an empty id set yields an empty scene rather than an error, so callers just
+     * see "no NPC found" forever.
+     */
+    public static Set<Integer> getActiveWorldViewIds() {
+        Client c = getClient();
+        WorldView topLevel = c == null ? null : c.getTopLevelWorldView();
+        return worldViewIdsWithTopLevel(worldViewIds, topLevel == null ? null : topLevel.getId());
+    }
+
+    /** Pure half of {@link #getActiveWorldViewIds()}; the client read is the only part that is not. */
+    static Set<Integer> worldViewIdsWithTopLevel(Set<Integer> tracked, Integer topLevelId) {
+        if (topLevelId == null) {
+            return tracked == null ? Set.of() : tracked;
+        }
+        if (tracked == null || tracked.isEmpty()) {
+            return Set.of(topLevelId);
+        }
+        if (tracked.contains(topLevelId)) {
+            return tracked;
+        }
+        Set<Integer> union = new LinkedHashSet<>(tracked);
+        union.add(topLevelId);
+        return union;
+    }
     /**
      * Get the total runtime of the script
      *
