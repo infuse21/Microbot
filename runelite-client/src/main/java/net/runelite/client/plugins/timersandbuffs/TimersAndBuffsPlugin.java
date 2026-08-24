@@ -1220,6 +1220,11 @@ public class TimersAndBuffsPlugin extends Plugin
 	public void onGameTick(GameTick event)
 	{
 		Player player = client.getLocalPlayer();
+		if (player == null)
+		{
+			return;
+		}
+
 		WorldPoint currentWorldPoint = Rs2Player.getWorldLocation();
 
 		if (freezeTimer != null)
