@@ -275,7 +275,9 @@ public final class NavigationEngine
 				&& (decision.getInteraction().getKind() == RouteInteraction.Kind.NPC_TRANSPORT
 					|| decision.getInteraction().getKind()
 						== RouteInteraction.Kind.NPC_DIALOGUE_TRANSPORT
-					|| decision.getInteraction().getKind() == RouteInteraction.Kind.CHARTER_SHIP)
+					|| decision.getInteraction().getKind() == RouteInteraction.Kind.CHARTER_SHIP
+					|| decision.getInteraction().getKind() == RouteInteraction.Kind.FAIRY_RING
+					|| decision.getInteraction().getKind() == RouteInteraction.Kind.SPIRIT_TREE)
 				? NPC_TRANSPORT_COMMAND_TIMEOUT_MS
 				: INTERACTION_COMMAND_BASE_TIMEOUT_MS
 					+ Math.min(MAX_INTERACTION_COMMAND_DISTANCE, distance)
@@ -494,7 +496,9 @@ public final class NavigationEngine
 
 		boolean remoteLandingRequired = (pending.getKind() == RouteInteraction.Kind.NPC_TRANSPORT
 			|| pending.getKind() == RouteInteraction.Kind.NPC_DIALOGUE_TRANSPORT
-			|| pending.getKind() == RouteInteraction.Kind.CHARTER_SHIP)
+			|| pending.getKind() == RouteInteraction.Kind.CHARTER_SHIP
+			|| pending.getKind() == RouteInteraction.Kind.FAIRY_RING
+			|| pending.getKind() == RouteInteraction.Kind.SPIRIT_TREE)
 			&& pending.getStatus() != RouteInteraction.Status.CLEARED;
 		if (session.rawProgressIndex > pending.getRawEdgeIndex() && !remoteLandingRequired)
 		{
@@ -813,6 +817,8 @@ public final class NavigationEngine
 				|| edge.getKind() == RouteEdge.Kind.NPC_TRANSPORT
 				|| edge.getKind() == RouteEdge.Kind.NPC_DIALOGUE_TRANSPORT
 				|| edge.getKind() == RouteEdge.Kind.CHARTER_SHIP
+				|| edge.getKind() == RouteEdge.Kind.FAIRY_RING
+				|| edge.getKind() == RouteEdge.Kind.SPIRIT_TREE
 				|| edge.getKind() == RouteEdge.Kind.ADJACENT_TRANSPORT
 				|| edge.getKind() == RouteEdge.Kind.CATALOG_TRANSITION)
 				&& session.rawProgressIndex <= edge.getRawIndex());

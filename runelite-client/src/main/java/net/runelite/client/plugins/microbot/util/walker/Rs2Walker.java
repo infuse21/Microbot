@@ -88,9 +88,15 @@ import net.runelite.client.plugins.microbot.util.walker.transport.AdjacentTransp
 import net.runelite.client.plugins.microbot.util.walker.transport.CatalogTransitionRouteScanner;
 import net.runelite.client.plugins.microbot.util.walker.transport.CharterShipPolicy;
 import net.runelite.client.plugins.microbot.util.walker.transport.CharterShipRouteScanner;
+import net.runelite.client.plugins.microbot.util.walker.transport.FairyRingPolicy;
+import net.runelite.client.plugins.microbot.util.walker.transport.FairyRingRouteScanner;
+import net.runelite.client.plugins.microbot.util.walker.transport.SpiritTreePolicy;
+import net.runelite.client.plugins.microbot.util.walker.transport.SpiritTreeRouteScanner;
 import net.runelite.client.plugins.microbot.util.walker.transport.Rs2AdjacentTransportScene;
 import net.runelite.client.plugins.microbot.util.walker.transport.Rs2CatalogTransitionScene;
 import net.runelite.client.plugins.microbot.util.walker.transport.Rs2CharterShipScene;
+import net.runelite.client.plugins.microbot.util.walker.transport.Rs2FairyRingScene;
+import net.runelite.client.plugins.microbot.util.walker.transport.Rs2SpiritTreeScene;
 import net.runelite.client.plugins.microbot.util.walker.transport.Rs2SimpleTeleportScene;
 import net.runelite.client.plugins.microbot.util.walker.transport.SimpleTeleportPolicy;
 import net.runelite.client.plugins.microbot.util.walker.transport.SimpleTeleportRouteScanner;
@@ -4704,6 +4710,10 @@ public class Rs2Walker {
 			new NpcDialogueTransportRouteScanner();
 	private static final CharterShipRouteScanner CHARTER_SHIP_ROUTE_SCANNER =
 			new CharterShipRouteScanner();
+	private static final FairyRingRouteScanner FAIRY_RING_ROUTE_SCANNER =
+			new FairyRingRouteScanner();
+	private static final SpiritTreeRouteScanner SPIRIT_TREE_ROUTE_SCANNER =
+			new SpiritTreeRouteScanner();
 
     /**
      * Rockfall resolution over a raw-path segment via {@link MineableResolver}, skipping steps whose both
@@ -8825,6 +8835,34 @@ public class Rs2Walker {
 					: "charter-ship-interaction-rejected";
 				return issued;
 			}
+			if (interaction.getKind() == RouteInteraction.Kind.FAIRY_RING) {
+				boolean issued;
+				if (FairyRingPolicy.isStageAction(interaction.getAction())) {
+					issued = Rs2FairyRingScene.clickStage(interaction.getAction());
+				} else {
+					issued = Rs2FairyRingScene.interactObject(
+						new PlannedEdge(interaction.getFrom(), interaction.getTo()),
+						interaction.getAction());
+				}
+				lastActionType = issued ? "fairy-ring-interaction"
+					: "fairy-ring-interaction-rejected";
+				return issued;
+			}
+			if (interaction.getKind() == RouteInteraction.Kind.SPIRIT_TREE) {
+				boolean issued;
+				if (SpiritTreePolicy.isDestinationAction(interaction.getAction())) {
+					issued = Rs2SpiritTreeScene.selectDestination(
+						interaction.getAction().substring(
+							SpiritTreePolicy.DESTINATION_ACTION_PREFIX.length()));
+				} else {
+					issued = Rs2SpiritTreeScene.interactObject(
+						new PlannedEdge(interaction.getFrom(), interaction.getTo()),
+						interaction.getAction(), interaction.getObjectId());
+				}
+				lastActionType = issued ? "spirit-tree-interaction"
+					: "spirit-tree-interaction-rejected";
+				return issued;
+			}
 			lastActionType = "interaction-rejected";
 			return false;
 		}
@@ -9001,6 +9039,8 @@ public class Rs2Walker {
 		Rs2NpcTransportScene npcTransportScene = new Rs2NpcTransportScene();
 		Rs2NpcDialogueTransportScene npcDialogueScene = new Rs2NpcDialogueTransportScene();
 		Rs2CharterShipScene charterShipScene = new Rs2CharterShipScene();
+		Rs2FairyRingScene fairyRingScene = new Rs2FairyRingScene();
+		Rs2SpiritTreeScene spiritTreeScene = new Rs2SpiritTreeScene();
 		long coinsHeld = Rs2Inventory.itemQuantity(ItemID.COINS);
 		if (pending != null && pending.getGeneration() == plan.getGeneration()) {
 			RouteInteraction current;
@@ -9028,6 +9068,12 @@ public class Rs2Walker {
 			} else if (pending.getKind() == RouteInteraction.Kind.CHARTER_SHIP) {
 				current = CHARTER_SHIP_ROUTE_SCANNER.observePending(pending, player,
 					charterShipScene, HANDLER_RANGE);
+			} else if (pending.getKind() == RouteInteraction.Kind.FAIRY_RING) {
+				current = FAIRY_RING_ROUTE_SCANNER.observePending(pending, player,
+					fairyRingScene, HANDLER_RANGE);
+			} else if (pending.getKind() == RouteInteraction.Kind.SPIRIT_TREE) {
+				current = SPIRIT_TREE_ROUTE_SCANNER.observePending(pending, player,
+					spiritTreeScene, HANDLER_RANGE);
 			} else {
 				return InteractionObservations.NONE;
 			}
@@ -9035,7 +9081,8 @@ public class Rs2Walker {
 					&& current.getStatus() == RouteInteraction.Status.CLEARED
 					? scanForwardRouteInteraction(plan, player, pending.getRawEdgeIndex() + 1,
 						mineableScene, doorScene, transportScene, transitionScene, teleportScene,
-						npcTransportScene, npcDialogueScene, charterShipScene,
+						npcTransportScene, npcDialogueScene, charterShipScene, fairyRingScene,
+						spiritTreeScene,
 						INTERACTION_CHAIN_RANGE, coinsHeld)
 					: null;
 			return new InteractionObservations(current, next);
@@ -9047,7 +9094,8 @@ public class Rs2Walker {
 				: Math.max(0, getClosestTileIndex(rawPath, player));
 		return new InteractionObservations(scanForwardRouteInteraction(plan, player, start,
 			mineableScene, doorScene, transportScene, transitionScene, teleportScene,
-			npcTransportScene, npcDialogueScene, charterShipScene,
+			npcTransportScene, npcDialogueScene, charterShipScene, fairyRingScene,
+			spiritTreeScene,
 			HANDLER_RANGE, coinsHeld), null);
 	}
 
@@ -9058,6 +9106,8 @@ public class Rs2Walker {
 		Rs2NpcTransportScene npcTransportScene,
 		Rs2NpcDialogueTransportScene npcDialogueScene,
 		Rs2CharterShipScene charterShipScene,
+		Rs2FairyRingScene fairyRingScene,
+		Rs2SpiritTreeScene spiritTreeScene,
 		int interactionRange, long coinsHeld) {
 		List<WorldPoint> rawPath = plan.getRawPath();
 		start = Math.max(0, start);
@@ -9095,8 +9145,12 @@ public class Rs2Walker {
 			end - start, player, npcDialogueScene, interactionRange, coinsHeld);
 		RouteInteraction charterShip = CHARTER_SHIP_ROUTE_SCANNER.scan(plan, start,
 			end - start, player, charterShipScene, interactionRange);
+		RouteInteraction fairyRing = FAIRY_RING_ROUTE_SCANNER.scan(plan, start,
+			end - start, player, fairyRingScene, interactionRange);
+		RouteInteraction spiritTree = SPIRIT_TREE_ROUTE_SCANNER.scan(plan, start,
+			end - start, player, spiritTreeScene, interactionRange);
 		return earliestInteraction(mineable, door, transport, transition, teleport,
-			npcTransport, npcDialogue, charterShip);
+			npcTransport, npcDialogue, charterShip, fairyRing, spiritTree);
 	}
 
 	private static RouteInteraction earliestInteraction(RouteInteraction... interactions) {
@@ -12226,7 +12280,10 @@ public class Rs2Walker {
         if (transport.getDisplayInfo() == null || transport.getDisplayInfo().isEmpty()) return false;
 
         // Wait for the widget to become visible
-        boolean isAdventureLogVisible = sleepUntilTrue(() -> !Rs2Widget.isHidden(ComponentID.ADVENTURE_LOG_CONTAINER), Rs2Player::isMoving, 100, 10000);
+        boolean isAdventureLogVisible = sleepUntilTrue(() ->
+                Rs2Widget.isWidgetVisible(InterfaceID.MenuNew.TEXT)
+                        || !Rs2Widget.isHidden(ComponentID.ADVENTURE_LOG_CONTAINER),
+                Rs2Player::isMoving, 100, 10000);
 
         if (!isAdventureLogVisible) {
             log.error("Widget did not become visible within the timeout.");
@@ -12234,7 +12291,12 @@ public class Rs2Walker {
         }
 
         String destinationString = transport.getDisplayInfo().replaceAll("^\\d+:\\s*", "");
-        Widget destinationWidget = Rs2Widget.findWidget(destinationString, List.of(Rs2Widget.getWidget(187, 3)));
+        Widget choices = Rs2Widget.getWidget(InterfaceID.MenuNew.TEXT);
+        if (choices == null) {
+            choices = Rs2Widget.getWidget(187, 3);
+        }
+        Widget destinationWidget = choices == null ? null
+                : Rs2Widget.findWidget(destinationString, List.of(choices));
         if (destinationWidget == null) return false;
 
         Rs2Widget.clickWidget(destinationWidget);
@@ -12372,17 +12434,17 @@ public class Rs2Walker {
                 return false;
             }
 
-            Widget slotOne = Rs2Widget.getWidget(SLOT_ONE);
-            Widget slotTwo = Rs2Widget.getWidget(SLOT_TWO);
-            Widget slotThree = Rs2Widget.getWidget(SLOT_THREE);
-            if (slotOne == null || slotTwo == null || slotThree == null) {
+            int slotOneRotation = fairyRingSlotRotation(SLOT_ONE);
+            int slotTwoRotation = fairyRingSlotRotation(SLOT_TWO);
+            int slotThreeRotation = fairyRingSlotRotation(SLOT_THREE);
+            if (slotOneRotation < 0 || slotTwoRotation < 0 || slotThreeRotation < 0) {
                 log.warn("Fairy ring slot widget(s) are null; interface may have closed unexpectedly.");
                 return false;
             }
 
-            rotateSlotToDesiredRotation(SLOT_ONE, slotOne.getRotationY(), getDesiredRotation(transport.getDisplayInfo().charAt(0)), SLOT_ONE_ACW_ROTATION, SLOT_ONE_CW_ROTATION);
-            rotateSlotToDesiredRotation(SLOT_TWO, slotTwo.getRotationY(), getDesiredRotation(transport.getDisplayInfo().charAt(1)), SLOT_TWO_ACW_ROTATION, SLOT_TWO_CW_ROTATION);
-            rotateSlotToDesiredRotation(SLOT_THREE, slotThree.getRotationY(), getDesiredRotation(transport.getDisplayInfo().charAt(2)), SLOT_THREE_ACW_ROTATION, SLOT_THREE_CW_ROTATION);
+            rotateSlotToDesiredRotation(SLOT_ONE, slotOneRotation, getDesiredRotation(transport.getDisplayInfo().charAt(0)), SLOT_ONE_ACW_ROTATION, SLOT_ONE_CW_ROTATION);
+            rotateSlotToDesiredRotation(SLOT_TWO, slotTwoRotation, getDesiredRotation(transport.getDisplayInfo().charAt(1)), SLOT_TWO_ACW_ROTATION, SLOT_TWO_CW_ROTATION);
+            rotateSlotToDesiredRotation(SLOT_THREE, slotThreeRotation, getDesiredRotation(transport.getDisplayInfo().charAt(2)), SLOT_THREE_ACW_ROTATION, SLOT_THREE_CW_ROTATION);
             Rs2Widget.clickWidget(ComponentID.FAIRY_RING_TELEPORT_BUTTON);
         }
 
@@ -12420,23 +12482,23 @@ public class Rs2Walker {
             final int previousRotation = currentRotation;
             Rs2Widget.clickWidget(rotationWidget);
 
-            sleepUntil(() -> {
-                Widget slotWidget = Rs2Widget.getWidget(slotId);
-                return slotWidget != null && slotWidget.getRotationY() != previousRotation;
-            }, 2000);
+            sleepUntil(() -> fairyRingSlotRotation(slotId) != previousRotation, 2000);
 
-            Widget slotWidget = Rs2Widget.getWidget(slotId);
-            if (slotWidget != null) {
-                currentRotation = slotWidget.getRotationY();
-            } else {
+            int observedRotation = fairyRingSlotRotation(slotId);
+            if (observedRotation < 0) {
                 break;
             }
+            currentRotation = observedRotation;
         }
 
-        sleepUntil(() -> {
-            Widget slotWidget = Rs2Widget.getWidget(slotId);
-            return slotWidget != null && slotWidget.getRotationY() == desiredRotation;
-        }, 3000);
+        sleepUntil(() -> fairyRingSlotRotation(slotId) == desiredRotation, 3000);
+    }
+
+    private static int fairyRingSlotRotation(int slotId) {
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            Widget slotWidget = Microbot.getClient().getWidget(slotId);
+            return slotWidget == null ? -1 : slotWidget.getRotationY();
+        }).orElse(-1);
     }
 
     /**

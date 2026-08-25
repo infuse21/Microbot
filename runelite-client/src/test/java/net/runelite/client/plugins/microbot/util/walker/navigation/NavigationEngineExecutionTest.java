@@ -598,6 +598,130 @@ public class NavigationEngineExecutionTest
 	}
 
 	@Test
+	public void fairyRingAdvancesThroughStagesAndWaitsForExactLanding()
+	{
+		NavigationRouteOptions options = new NavigationRouteOptions(true, true, false, true);
+		NavigationEngineRuntime.ensureRequest(new NavigationRequest(21,
+			Collections.singleton(C), 0, options, "fairy-ring-test"));
+		java.util.List<String> actionsIssued = new java.util.ArrayList<>();
+		WalkerActions actions = new WalkerActions()
+		{
+			@Override
+			public boolean clickTile(WorldPoint target)
+			{
+				return true;
+			}
+
+			@Override
+			public boolean interact(RouteInteraction interaction)
+			{
+				actionsIssued.add(interaction.getAction());
+				return true;
+			}
+		};
+		RouteInteraction equip = fairyRingInteraction("fairy-ring-equip:772", true);
+		RouteInteraction configure = fairyRingInteraction("Configure", true);
+		RouteInteraction rotate = fairyRingInteraction("fairy-ring-rotate:26083347:512", true);
+		RouteInteraction teleport = fairyRingInteraction("fairy-ring-teleport", true);
+		RouteInteraction restoreOpen = fairyRingInteraction(
+			"fairy-ring-restore-open:6563", true);
+		RouteInteraction restore = fairyRingInteraction("fairy-ring-restore:6563", true);
+
+		NavigationExecutionResult equipResult = NavigationEngineRuntime.execute(
+			observation(1, A, fairyRingPlan(1), false, false)
+				.withRouteInteraction(equip), actions);
+		NavigationExecutionResult configureResult = NavigationEngineRuntime.execute(
+			observation(2, A, fairyRingPlan(1), false, false)
+				.withRouteInteraction(configure), actions);
+		NavigationExecutionResult rotateResult = NavigationEngineRuntime.execute(
+			observation(3, A, fairyRingPlan(1), false, false)
+				.withRouteInteraction(rotate), actions);
+		NavigationExecutionResult teleportResult = NavigationEngineRuntime.execute(
+			observation(4, A, fairyRingPlan(1), false, false)
+				.withRouteInteraction(teleport), actions);
+		NavigationExecutionResult voyage = NavigationEngineRuntime.execute(
+			observation(5, new WorldPoint(500, 500, 1), fairyRingPlan(1), false, false)
+				.withRouteInteraction(fairyRingInteraction("fairy-ring-teleport", false)), actions);
+		NavigationExecutionResult landed = NavigationEngineRuntime.execute(
+			observation(6, B, fairyRingPlan(1), false, false)
+				.withRouteInteraction(restoreOpen), actions);
+		NavigationExecutionResult restoreResult = NavigationEngineRuntime.execute(
+			observation(7, B, fairyRingPlan(1), false, false)
+				.withRouteInteraction(restore), actions);
+		NavigationExecutionResult restored = NavigationEngineRuntime.execute(
+			observation(8, B, fairyRingPlan(1), false, false)
+				.withRouteInteraction(restore.withStatus(
+					RouteInteraction.Status.CLEARED, false)), actions);
+
+		assertEquals(NavigationDecision.Type.INTERACT, equipResult.getDecision().getType());
+		assertEquals(NavigationDecision.Type.INTERACT, configureResult.getDecision().getType());
+		assertEquals(NavigationDecision.Type.INTERACT, rotateResult.getDecision().getType());
+		assertEquals(NavigationDecision.Type.INTERACT, teleportResult.getDecision().getType());
+		assertEquals(Arrays.asList("fairy-ring-equip:772", "Configure",
+			"fairy-ring-rotate:26083347:512", "fairy-ring-teleport",
+			"fairy-ring-restore-open:6563", "fairy-ring-restore:6563"), actionsIssued);
+		assertEquals(NavigationDecision.Type.WAIT, voyage.getDecision().getType());
+		assertEquals(NavigationDecision.Type.INTERACT, landed.getDecision().getType());
+		assertEquals(NavigationDecision.Type.INTERACT, restoreResult.getDecision().getType());
+		assertEquals(NavigationDecision.Type.WAIT, restored.getDecision().getType());
+	}
+
+	@Test
+	public void spiritTreeAdvancesThroughDestinationAndWaitsForLanding()
+	{
+		NavigationRouteOptions options = new NavigationRouteOptions(true, true, false, true);
+		NavigationEngineRuntime.ensureRequest(new NavigationRequest(22,
+			Collections.singleton(C), 0, options, "spirit-tree-test"));
+		List<String> actionsIssued = new ArrayList<>();
+		WalkerActions actions = new WalkerActions()
+		{
+			@Override
+			public boolean clickTile(WorldPoint target)
+			{
+				return true;
+			}
+
+			@Override
+			public boolean interact(RouteInteraction interaction)
+			{
+				actionsIssued.add(interaction.getAction());
+				return true;
+			}
+		};
+		RouteEdge treeEdge = new RouteEdge(0, A, B, RouteEdge.Kind.SPIRIT_TREE);
+		RouteEdge onward = new RouteEdge(1, B, C, RouteEdge.Kind.WALK);
+		RoutePlan plan = new RoutePlan(22, 1, A, Collections.singleton(C),
+			Arrays.asList(A, B, C), Arrays.asList(A, B, C), true,
+			Arrays.asList(treeEdge, onward));
+		RouteInteraction object = new RouteInteraction(1, 0, A, B, A,
+			RouteInteraction.Kind.SPIRIT_TREE, RouteInteraction.Status.AVAILABLE,
+			"Travel", true, 1295, A, B);
+		RouteInteraction destination = new RouteInteraction(1, 0, A, B, A,
+			RouteInteraction.Kind.SPIRIT_TREE, RouteInteraction.Status.AVAILABLE,
+			"spirit-tree-destination:Gnome Stronghold", true, 1295, A, B);
+
+		NavigationExecutionResult objectResult = NavigationEngineRuntime.execute(
+			observation(1, A, plan, false, false).withRouteInteraction(object), actions);
+		NavigationExecutionResult destinationResult = NavigationEngineRuntime.execute(
+			observation(2, A, plan, false, false).withRouteInteraction(destination), actions);
+		NavigationExecutionResult transit = NavigationEngineRuntime.execute(
+			observation(3, new WorldPoint(500, 500, 1), plan, false, false)
+				.withRouteInteraction(destination.withStatus(
+					RouteInteraction.Status.AVAILABLE, false)), actions);
+		NavigationExecutionResult landed = NavigationEngineRuntime.execute(
+			observation(4, B, plan, false, false).withRouteInteraction(
+				destination.withStatus(RouteInteraction.Status.CLEARED, false)), actions);
+
+		assertEquals(NavigationDecision.Type.INTERACT, objectResult.getDecision().getType());
+		assertEquals(NavigationDecision.Type.INTERACT,
+			destinationResult.getDecision().getType());
+		assertEquals(Arrays.asList("Travel",
+			"spirit-tree-destination:Gnome Stronghold"), actionsIssued);
+		assertEquals(NavigationDecision.Type.WAIT, transit.getDecision().getType());
+		assertEquals(NavigationDecision.Type.WAIT, landed.getDecision().getType());
+	}
+
+	@Test
 	public void npcTransportIntermediateSceneDoesNotTriggerOffRouteRecovery()
 	{
 		WorldPoint landing = new WorldPoint(2662, 2677, 1);
@@ -890,5 +1014,21 @@ public class NavigationEngineExecutionTest
 		return new RouteInteraction(1, 0, A, B, A,
 			RouteInteraction.Kind.CHARTER_SHIP, RouteInteraction.Status.AVAILABLE,
 			action, ready, 9318, A, B);
+	}
+
+	private static RoutePlan fairyRingPlan(long generation)
+	{
+		RouteEdge first = new RouteEdge(0, A, B, RouteEdge.Kind.FAIRY_RING);
+		RouteEdge second = new RouteEdge(1, B, C, RouteEdge.Kind.WALK);
+		return new RoutePlan(21, generation, A, Collections.singleton(C),
+			Arrays.asList(A, B, C), Arrays.asList(A, B, C), true,
+			Arrays.asList(first, second));
+	}
+
+	private static RouteInteraction fairyRingInteraction(String action, boolean ready)
+	{
+		return new RouteInteraction(1, 0, A, B, A,
+			RouteInteraction.Kind.FAIRY_RING, RouteInteraction.Status.AVAILABLE,
+			action, ready, 6563, A, B);
 	}
 }

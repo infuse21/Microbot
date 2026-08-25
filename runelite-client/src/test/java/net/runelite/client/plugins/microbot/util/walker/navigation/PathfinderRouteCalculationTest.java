@@ -175,6 +175,36 @@ public class PathfinderRouteCalculationTest
 		assertTrue(plan.isEngineSupported());
 	}
 
+	@Test
+	public void fairyRingCatalogEdgeIsPublishedAsEngineOwned()
+	{
+		Transport ring = Transport.loadAllFromResources().values().stream()
+			.flatMap(java.util.Collection::stream)
+			.filter(candidate -> candidate.getType() == TransportType.FAIRY_RING)
+			.filter(candidate -> "AKR".equals(candidate.getDisplayInfo()))
+			.findFirst().orElse(null);
+
+		assertTrue(ring != null);
+		assertEquals(RouteEdge.Kind.FAIRY_RING,
+			PathfinderRouteCalculation.classifyTransportEdge(
+				Collections.singleton(ring)));
+	}
+
+	@Test
+	public void spiritTreeCatalogEdgeIsPublishedAsEngineOwned()
+	{
+		Transport tree = Transport.loadAllFromResources().values().stream()
+			.flatMap(java.util.Collection::stream)
+			.filter(candidate -> candidate.getType() == TransportType.SPIRIT_TREE)
+			.filter(candidate -> "4: Grand Exchange".equals(candidate.getDisplayInfo()))
+			.findFirst().orElse(null);
+
+		assertTrue(tree != null);
+		assertEquals(RouteEdge.Kind.SPIRIT_TREE,
+			PathfinderRouteCalculation.classifyTransportEdge(
+				Collections.singleton(tree)));
+	}
+
 	private static PathfinderConfig config()
 	{
 		PathfinderConfig config = new PathfinderConfig(collisionMap, new HashMap<>(),

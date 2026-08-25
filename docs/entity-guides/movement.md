@@ -996,3 +996,53 @@ are present. Do not fall back to name alone where multiple same-named NPCs share
 
 **Defensive check:** A transformed charter NPC beside the origin resolves, while the same name with
 the wrong action or an actor beyond the origin tolerance remains unavailable.
+
+## 45. Treat fairy-ring travel as observed stages, not one blocking helper
+
+A fairy-ring route can require staff equipment, object interaction, three dial rotations, travel
+confirmation, an unloaded source scene, and restoration of the displaced weapon. None of those
+intermediate commands proves that the directed catalog edge crossed.
+
+**Pattern to follow:** Publish only directed three-letter non-POH rows as `FAIRY_RING`. Preserve the
+original weapon id in the pending interaction and issue at most one stage command per engine pass.
+Capture widget rotations and tile-object composition on the client thread, retain the edge while
+the interface is absent during travel, and clear the teleport only at its directed landing. For
+restoration, force the inventory tab open as its own command, wait until the inventory container is
+visible, then use the normal inventory equip path.
+
+**Defensive check:** Do not equate `issued=true` with restoration. Keep the interaction pending
+until the equipment cache confirms the remembered weapon is worn. Live testing showed that direct
+dispatch to a hidden inventory container could report issuance while leaving the Dramen staff
+equipped. Restoration must also use the immutable pending edge rather than rediscovering the live
+transport row: moving the required staff from inventory to equipment can remove that row from the
+usable transport snapshot at the landing refresh. The original weapon can also briefly appear in
+neither inventory nor equipment while those caches settle after teleporting; treat that absence as
+a wait state, not successful restoration. Keep `DIQ` and configured POH-anchor edges
+legacy-owned until POH instance mapping is migrated.
+
+**Engine ownership check:** Add every migrated remote transport family to both navigation-engine
+remote-edge guards. Raw progress normally jumps beyond the transport edge as soon as the player
+lands; generic crossed-edge retirement must not delete a still-available staged interaction such as
+fairy-ring weapon restoration.
+
+## 46. Spirit-tree routes are object, destination, and directed landing stages
+
+The non-POH spirit-tree catalogue combines an origin object row (`Travel;Spirit Tree;<id>`) with a
+numbered destination row such as `4: Grand Exchange`. A successful object click only opens interface
+`187`; it does not prove travel.
+
+**Pattern to follow:** Resolve the exact catalogue object through the shared tile-object cache near
+the directed origin, publish one `Travel` command, then locate the destination text after removing its
+number/letter prefix and publish one destination command. Keep the pending interaction while both the
+source object and interface are unloaded, and clear it only at the directed catalogue landing.
+
+**Defensive check:** Spirit-tree travel advances raw progress beyond the network edge at landing, so
+it must participate in the navigation engine's remote-edge retention and unresolved-engine-edge
+guards. Exclude synthesized POH rows until POH instance mapping owns their real object coordinate.
+
+Spirit-tree destinations moved from the legacy adventure-log interface `187:3` to the reusable menu
+component `InterfaceID.MenuNew.TEXT` (`947:9`). Resolve the current component first with the existing
+client-thread-safe `Rs2Widget.findWidget` traversal and retain `187:3` only as a compatibility
+fallback. Live Agent Server inspection showed the destination entries as dynamic children of
+`947:9`, including `2: Gnome Stronghold`; hard-coding only the old interface leaves the interaction
+stuck after `Travel`.

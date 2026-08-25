@@ -40,8 +40,10 @@ simple item teleport, direct NPC/ship travel plus gangplanks, paid coin-only cha
 free dialogue-menu NPC/ship/boat travel (`NPC_DIALOGUE_TRANSPORT`, object and NPC actors both
 live-proven) including its coin-paid step 2 (Port Sarim/Musa Point and Ardougne/Brimhaven
 ferries live-accepted both ways; `CONFIRM` stage headless-proven, no post-Sailing coin row
-prompts live). The next Phase 6 family in order is fairy rings, then spirit trees, gliders,
-quetzals, POH, and seasonal transports, with banked-transport route setup last.
+prompts live). Directed three-letter non-POH fairy rings are now live-accepted in both directions,
+including displaced-weapon restoration proven by equipment state. POH/DIQ fairy-ring edges remain
+legacy-owned for the later POH slice. Next: spirit trees, then gliders, quetzals, POH, and seasonal
+transports, with banked-transport route setup last.
 
 **Charter slice closed (2026-08-05):** reverse Catherby-to-Port-Sarim acceptance passed on
 request 2/generation 1. The engine walked from `2809,3441,0` to the charter origin `2792,3414,0`,
@@ -53,7 +55,44 @@ whole run stayed on one request/generation with no replan, no recovery, no dupli
 input, and no legacy markers. Together with the forward Port Sarim-to-Catherby pass, the paid
 coin-only charter family has completed both live acceptance directions.
 
-**Immediate next action:** the dialogue/menu NPC family is scoped (2026-08-05); implement it in
+**Fairy-ring slice closed (2026-08-24):** directed
+three-letter non-POH edges publish as `FAIRY_RING`. One pending interaction advances through
+optional Dramen/Lunar staff equipment, exact last-destination or configure action, individual dial
+rotations, confirmation, remote landing, and original-weapon restoration. The source UI may unload
+during travel; only the directed catalog landing acknowledges the teleport. Restoration forces the
+inventory tab open as a separate `fairy-ring-restore-open:<id>` stage, waits for the item container,
+equips through the normal inventory path, and clears only when
+`Rs2Equipment.isWearing(originalWeaponId)` is true. Live acceptance passed from `3129,3496` to
+`2705,3576` and back on request generations that emitted both restore stages, resumed ordinary
+walking only afterward, and arrived normally. `DIQ` and configured POH-anchor edges stay
+legacy-owned until POH migration. Spirit trees are the next family.
+
+**Spirit-tree slice headless complete; live gate open (2026-08-24):** directed non-POH
+`SPIRIT_TREE` rows are migrated as an object stage (`Travel`), exact adventure-log destination stage,
+and directed remote landing. Synthesized POH rows remain legacy-owned. Policy, scanner, pathfinder
+publication, navigation lifecycle, remote-edge retention, Checkstyle, and thread/query guardrails pass.
+Run one overworld route in both directions before closing live acceptance.
+
+**Landing catalog-disappearance finding (2026-08-24):** the next two-direction run still emitted no
+restore stage. Request 2 captured and equipped Dramen staff `772`, but the landing inventory refresh
+could remove the fairy row from the usable transport snapshot once that required staff was no longer
+in inventory. `Rs2FairyRingScene.restore` then failed its unnecessary transport rediscovery and
+returned `null`, clearing the pending edge. Restoration now uses the immutable pending origin,
+destination, and original weapon id; it no longer depends on the mutable eligibility catalog.
+
+**Landing equipment-cache gap (2026-08-24):** live testing after that change still skipped the restore
+command. Immediately after the teleport/staff swap, the original weapon can briefly be visible in
+neither inventory nor equipment. That absence is now an unsettled wait state; restoration completes
+only when the saved weapon ID is observed equipped. A later trace proved this defensive condition was
+not the cause of the skipped command.
+
+**Remote-edge retirement finding (2026-08-24):** the navigation engine's remote-landing guard covered
+NPC transports and charter ships but omitted `FAIRY_RING`. Landing advanced raw progress beyond the
+fairy edge, so generic crossed-edge retirement deleted the pending restore interaction before dispatch.
+Fairy rings now participate in both remote-edge guards, and the engine test reproduces the landing
+progress jump while requiring both restore commands before the edge can retire.
+
+**Completed dialogue/menu NPC implementation record:** the family was scoped (2026-08-05) in
 three steps. Step 0 fixes a latent hole found in the accepted direct NPC/ship slice:
 `NpcTransportPolicy` admits object-backed rows (Swamp Boaty `Board`, Tempoross `Ferry`, Fremennik
 `Boat`, the DS2/Lithkren `Rowboat` rows, Lunar Isle `Go-inside;House`), but `Rs2NpcTransportScene`
