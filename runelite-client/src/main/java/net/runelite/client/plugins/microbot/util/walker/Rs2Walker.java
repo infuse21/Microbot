@@ -31,6 +31,7 @@ import net.runelite.client.plugins.microbot.util.coords.Rs2WorldPoint;
 import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
+import net.runelite.client.plugins.microbot.util.input.InputArbiter;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
@@ -1470,6 +1471,11 @@ public class Rs2Walker {
         }
         if (isClientThread()) {
             log.warn("Please do not call the walker from the main thread");
+            return WalkerState.EXIT;
+        }
+        // Caller-driven: one click per call, never enters processWalk's loop, so isWalkCancelled
+        // never runs for it.
+        if (InputArbiter.isHuman()) {
             return WalkerState.EXIT;
         }
 
@@ -3375,6 +3381,11 @@ public class Rs2Walker {
     }
 
     private static boolean isWalkCancelled(WorldPoint target) {
+        // The single choke point for stopping a walk: processWalk already consults it at every
+        // checkpoint and inside the movement-wait predicates.
+        if (InputArbiter.isHuman()) {
+            return true;
+        }
         WalkCompletionContext completion = walkCompletionContext.get();
         if (completion != null && Objects.equals(completion.target, target)
                 && evaluateWalkCompletion(completion)) {
