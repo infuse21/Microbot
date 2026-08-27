@@ -277,7 +277,9 @@ public final class NavigationEngine
 						== RouteInteraction.Kind.NPC_DIALOGUE_TRANSPORT
 					|| decision.getInteraction().getKind() == RouteInteraction.Kind.CHARTER_SHIP
 					|| decision.getInteraction().getKind() == RouteInteraction.Kind.FAIRY_RING
-					|| decision.getInteraction().getKind() == RouteInteraction.Kind.SPIRIT_TREE)
+					|| decision.getInteraction().getKind() == RouteInteraction.Kind.SPIRIT_TREE
+					|| decision.getInteraction().getKind() == RouteInteraction.Kind.GNOME_GLIDER
+					|| decision.getInteraction().getKind() == RouteInteraction.Kind.QUETZAL)
 				? NPC_TRANSPORT_COMMAND_TIMEOUT_MS
 				: INTERACTION_COMMAND_BASE_TIMEOUT_MS
 					+ Math.min(MAX_INTERACTION_COMMAND_DISTANCE, distance)
@@ -498,7 +500,9 @@ public final class NavigationEngine
 			|| pending.getKind() == RouteInteraction.Kind.NPC_DIALOGUE_TRANSPORT
 			|| pending.getKind() == RouteInteraction.Kind.CHARTER_SHIP
 			|| pending.getKind() == RouteInteraction.Kind.FAIRY_RING
-			|| pending.getKind() == RouteInteraction.Kind.SPIRIT_TREE)
+			|| pending.getKind() == RouteInteraction.Kind.SPIRIT_TREE
+			|| pending.getKind() == RouteInteraction.Kind.GNOME_GLIDER
+			|| pending.getKind() == RouteInteraction.Kind.QUETZAL)
 			&& pending.getStatus() != RouteInteraction.Status.CLEARED;
 		if (session.rawProgressIndex > pending.getRawEdgeIndex() && !remoteLandingRequired)
 		{
@@ -819,6 +823,8 @@ public final class NavigationEngine
 				|| edge.getKind() == RouteEdge.Kind.CHARTER_SHIP
 				|| edge.getKind() == RouteEdge.Kind.FAIRY_RING
 				|| edge.getKind() == RouteEdge.Kind.SPIRIT_TREE
+				|| edge.getKind() == RouteEdge.Kind.GNOME_GLIDER
+				|| edge.getKind() == RouteEdge.Kind.QUETZAL
 				|| edge.getKind() == RouteEdge.Kind.ADJACENT_TRANSPORT
 				|| edge.getKind() == RouteEdge.Kind.CATALOG_TRANSITION)
 				&& session.rawProgressIndex <= edge.getRawIndex());
@@ -831,7 +837,8 @@ public final class NavigationEngine
 			&& previous.getRawEdgeIndex() == observed.getRawEdgeIndex()
 			&& previous.getKind() == observed.getKind()
 			&& previous.getStatus() == RouteInteraction.Status.AVAILABLE
-			&& observed.getStatus() == RouteInteraction.Status.AVAILABLE
+			&& (observed.getStatus() == RouteInteraction.Status.AVAILABLE
+				|| observed.getStatus() == RouteInteraction.Status.UNAVAILABLE)
 			&& !previous.getAction().equalsIgnoreCase(observed.getAction());
 	}
 

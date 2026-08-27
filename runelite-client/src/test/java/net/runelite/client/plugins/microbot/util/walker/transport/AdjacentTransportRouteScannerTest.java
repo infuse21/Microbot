@@ -100,6 +100,26 @@ public class AdjacentTransportRouteScannerTest
 	}
 
 	@Test
+	public void twoTileDoorRetiresOnlyOnDirectedDestinationSide()
+	{
+		WorldPoint origin = new WorldPoint(20, 20, 0);
+		WorldPoint destination = new WorldPoint(20, 22, 0);
+		RouteInteraction pending = new RouteInteraction(1, 0, origin, destination, origin,
+			RouteInteraction.Kind.ADJACENT_TRANSPORT, RouteInteraction.Status.AVAILABLE,
+			"Open", true, 1967, origin, destination);
+		AdjacentTransportScene stillOpenable = edge ->
+			new AdjacentTransport(null, origin, 1967, "Open", origin, destination);
+
+		RouteInteraction before = new AdjacentTransportRouteScanner().observePending(
+			pending, new WorldPoint(20, 21, 0), stillOpenable, 13);
+		RouteInteraction after = new AdjacentTransportRouteScanner().observePending(
+			pending, destination, stillOpenable, 13);
+
+		assertEquals(RouteInteraction.Status.AVAILABLE, before.getStatus());
+		assertEquals(RouteInteraction.Status.CLEARED, after.getStatus());
+	}
+
+	@Test
 	public void ignoresUnsupportedTransportEdges()
 	{
 		RoutePlan plan = plan(RouteEdge.Kind.WALK, RouteEdge.Kind.TRANSPORT);

@@ -641,6 +641,7 @@ public class Transport {
                 ", itemIdRequirements=" + itemIdRequirements +
                 ", type=" + type +
                 ", duration=" + duration +
+                ", routeTicks=" + TransportCostModel.travelTicks(this) +
                 ", displayInfo='" + displayInfo + '\'' +
                 ", isConsumable=" + isConsumable +
                 ", maxWildernessLevel=" + maxWildernessLevel +

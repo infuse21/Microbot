@@ -4,41 +4,41 @@ import net.runelite.api.coords.WorldPoint;
 
 import java.util.Objects;
 
-/** Immutable live stage for one directed non-POH spirit-tree route. */
-public final class SpiritTree
+/** Immutable live stage for one directed gnome-glider route. */
+public final class GnomeGlider
 {
 	public enum Stage
 	{
-		OBJECT,
+		NPC,
 		DESTINATION,
 		DESTINATION_UNAVAILABLE
 	}
 
 	private final WorldPoint origin;
 	private final WorldPoint destination;
-	private final int objectId;
-	private final String objectAction;
+	private final int npcId;
+	private final String npcAction;
 	private final String destinationName;
-	private final WorldPoint objectTile;
+	private final WorldPoint npcTile;
 	private final Stage stage;
 
-	public SpiritTree(WorldPoint origin, WorldPoint destination, int objectId,
-		String objectAction, String destinationName, WorldPoint objectTile, Stage stage)
+	public GnomeGlider(WorldPoint origin, WorldPoint destination, int npcId,
+		String npcAction, String destinationName, WorldPoint npcTile, Stage stage)
 	{
 		this.origin = Objects.requireNonNull(origin, "origin");
 		this.destination = Objects.requireNonNull(destination, "destination");
-		this.objectId = objectId;
-		this.objectAction = Objects.requireNonNull(objectAction, "objectAction");
+		this.npcId = npcId;
+		this.npcAction = Objects.requireNonNull(npcAction, "npcAction");
 		this.destinationName = Objects.requireNonNull(destinationName, "destinationName");
-		this.objectTile = Objects.requireNonNull(objectTile, "objectTile");
+		this.npcTile = Objects.requireNonNull(npcTile, "npcTile");
 		this.stage = Objects.requireNonNull(stage, "stage");
 	}
 
 	public WorldPoint getOrigin() { return origin; }
 	public WorldPoint getDestination() { return destination; }
-	public int getObjectId() { return objectId; }
-	public String getObjectAction() { return objectAction; }
+	public int getNpcId() { return npcId; }
+	public String getNpcAction() { return npcAction; }
 	public String getDestinationName() { return destinationName; }
-	public WorldPoint getObjectTile() { return objectTile; }
+	public WorldPoint getNpcTile() { return npcTile; }
 	public Stage getStage() { return stage; }
 }

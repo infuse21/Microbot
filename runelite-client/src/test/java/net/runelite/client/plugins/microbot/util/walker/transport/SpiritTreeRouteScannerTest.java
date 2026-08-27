@@ -47,6 +47,22 @@ public class SpiritTreeRouteScannerTest
 		assertEquals(RouteInteraction.Status.CLEARED, landed.getStatus());
 	}
 
+	@Test
+	public void lockedDestinationIsUnavailableAndNeverReadyToClick()
+	{
+		SpiritTreeRouteScanner scanner = new SpiritTreeRouteScanner();
+		MutableScene scene = new MutableScene(SpiritTree.Stage.OBJECT);
+		RouteInteraction object = scanner.scan(plan(), 0, 1, ORIGIN, scene, 13);
+
+		scene.stage = SpiritTree.Stage.DESTINATION_UNAVAILABLE;
+		RouteInteraction unavailable = scanner.observePending(object, ORIGIN, scene, 13);
+
+		assertEquals(RouteInteraction.Status.UNAVAILABLE, unavailable.getStatus());
+		assertEquals(SpiritTreePolicy.destinationAction("Gnome Stronghold"),
+			unavailable.getAction());
+		assertFalse(unavailable.isReady());
+	}
+
 	private static RoutePlan plan()
 	{
 		RouteEdge edge = new RouteEdge(0, ORIGIN, DESTINATION, RouteEdge.Kind.SPIRIT_TREE);

@@ -5,17 +5,17 @@ import net.runelite.client.plugins.microbot.util.walker.navigation.RouteEdge;
 import net.runelite.client.plugins.microbot.util.walker.navigation.RouteInteraction;
 import net.runelite.client.plugins.microbot.util.walker.navigation.RoutePlan;
 import net.runelite.client.plugins.microbot.util.walker.obstacle.PlannedEdge;
-import net.runelite.client.plugins.microbot.util.walker.transport.model.SpiritTree;
+import net.runelite.client.plugins.microbot.util.walker.transport.model.Quetzal;
 
 import java.util.List;
 
-/** Route-order scanner and staged landing observer for spirit-tree travel. */
-public final class SpiritTreeRouteScanner
+/** Route-order scanner and directed landing observer for quetzal travel. */
+public final class QuetzalRouteScanner
 {
-	private static final int LANDING_TOLERANCE = 3;
+	private static final int LANDING_TOLERANCE = 4;
 
 	public RouteInteraction scan(RoutePlan plan, int startRawIndex, int maxEdges,
-		WorldPoint player, SpiritTreeScene scene, int interactionDistance)
+		WorldPoint player, QuetzalScene scene, int interactionDistance)
 	{
 		if (plan == null || scene == null)
 		{
@@ -27,14 +27,14 @@ public final class SpiritTreeRouteScanner
 		for (int i = start; i < end; i++)
 		{
 			RouteEdge edge = edges.get(i);
-			if (edge.getKind() != RouteEdge.Kind.SPIRIT_TREE)
+			if (edge.getKind() != RouteEdge.Kind.QUETZAL)
 			{
 				continue;
 			}
-			SpiritTree tree = scene.find(new PlannedEdge(edge.getFrom(), edge.getTo()));
-			if (tree != null)
+			Quetzal quetzal = scene.find(new PlannedEdge(edge.getFrom(), edge.getTo()));
+			if (quetzal != null)
 			{
-				return interaction(plan.getGeneration(), edge, tree, player,
+				return interaction(plan.getGeneration(), edge, quetzal, player,
 					interactionDistance);
 			}
 		}
@@ -42,7 +42,7 @@ public final class SpiritTreeRouteScanner
 	}
 
 	public RouteInteraction observePending(RouteInteraction pending, WorldPoint player,
-		SpiritTreeScene scene, int interactionDistance)
+		QuetzalScene scene, int interactionDistance)
 	{
 		if (pending == null || scene == null)
 		{
@@ -52,44 +52,36 @@ public final class SpiritTreeRouteScanner
 		{
 			return pending.withStatus(RouteInteraction.Status.CLEARED, false);
 		}
-		SpiritTree tree = scene.observe(new PlannedEdge(pending.getFrom(), pending.getTo()),
-			pending.getAction());
-		if (tree == null)
+		Quetzal quetzal = scene.observe(
+			new PlannedEdge(pending.getFrom(), pending.getTo()), pending.getAction());
+		if (quetzal == null)
 		{
-			// Selecting a destination unloads both source object and interface while
-			// travel is in flight. Preserve the directed landing predicate.
 			return pending.withStatus(RouteInteraction.Status.AVAILABLE, false);
 		}
-		if (tree.getObjectId() != pending.getObjectId())
-		{
-			return pending.withStatus(RouteInteraction.Status.UNAVAILABLE, false);
-		}
-		return interaction(pending.getGeneration(), edge(pending), tree, player,
+		return interaction(pending.getGeneration(), edge(pending), quetzal, player,
 			interactionDistance);
 	}
 
 	private static RouteInteraction interaction(long generation, RouteEdge edge,
-		SpiritTree tree, WorldPoint player, int interactionDistance)
+		Quetzal quetzal, WorldPoint player, int interactionDistance)
 	{
-		boolean unavailable = tree.getStage() == SpiritTree.Stage.DESTINATION_UNAVAILABLE;
-		boolean destination = tree.getStage() == SpiritTree.Stage.DESTINATION || unavailable;
+		boolean destination = quetzal.getStage() == Quetzal.Stage.DESTINATION;
 		String action = destination
-			? SpiritTreePolicy.destinationAction(tree.getDestinationName())
-			: tree.getObjectAction();
-		boolean ready = !unavailable && (destination || player != null
-			&& player.getPlane() == tree.getObjectTile().getPlane()
-			&& player.distanceTo2D(tree.getObjectTile()) <= interactionDistance);
+			? QuetzalPolicy.destinationAction(quetzal.getDestinationName())
+			: QuetzalPolicy.NPC_ACTION;
+		boolean ready = destination || player != null
+			&& player.getPlane() == quetzal.getNpcTile().getPlane()
+			&& player.distanceTo2D(quetzal.getNpcTile()) <= interactionDistance;
 		return new RouteInteraction(generation, edge.getRawIndex(), edge.getFrom(), edge.getTo(),
-			tree.getObjectTile(), RouteInteraction.Kind.SPIRIT_TREE,
-			unavailable ? RouteInteraction.Status.UNAVAILABLE : RouteInteraction.Status.AVAILABLE,
-			action, ready, tree.getObjectId(),
-			tree.getOrigin(), tree.getDestination());
+			quetzal.getNpcTile(), RouteInteraction.Kind.QUETZAL,
+			RouteInteraction.Status.AVAILABLE, action, ready, quetzal.getNpcId(),
+			quetzal.getOrigin(), quetzal.getDestination());
 	}
 
 	private static RouteEdge edge(RouteInteraction pending)
 	{
 		return new RouteEdge(pending.getRawEdgeIndex(), pending.getFrom(), pending.getTo(),
-			RouteEdge.Kind.SPIRIT_TREE);
+			RouteEdge.Kind.QUETZAL);
 	}
 
 	private static boolean hasLanded(RouteInteraction pending, WorldPoint player)

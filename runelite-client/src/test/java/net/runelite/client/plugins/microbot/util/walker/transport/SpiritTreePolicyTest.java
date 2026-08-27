@@ -40,6 +40,16 @@ public class SpiritTreePolicyTest
 			transport(ORIGIN, DESTINATION, "2: Gnome Stronghold", 0), null));
 	}
 
+	@Test
+	public void distinguishesLockedMenuTextFromSelectableDestinations()
+	{
+		assertFalse(SpiritTreePolicy.isDestinationSelectable(
+			"<col=ffffff>7</col>: <col=5f5f5f>Port Sarim</col>", 0xff981f));
+		assertFalse(SpiritTreePolicy.isDestinationSelectable("Port Sarim", 0x5f5f5f));
+		assertTrue(SpiritTreePolicy.isDestinationSelectable(
+			"<col=ffffff>2</col>: Gnome Stronghold", 0xff981f));
+	}
+
 	private static Transport transport(WorldPoint origin, WorldPoint destination,
 		String displayInfo, int objectId)
 	{

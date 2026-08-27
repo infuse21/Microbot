@@ -21,6 +21,29 @@ public class AdjacentTransportPolicyTest
 	}
 
 	@Test
+	public void acceptsDirectedTwoTileStrongholdTreeDoor()
+	{
+		Transport door = transport(A, new WorldPoint(100, 102, 0), "Open", "Tree Door",
+			TransportType.TRANSPORT);
+
+		assertTrue(AdjacentTransportPolicy.isEligible(door));
+	}
+
+	@Test
+	public void doesNotBroadenTwoTileOpenObjectsBeyondStrongholdTreeDoor()
+	{
+		WorldPoint twoTilesAway = new WorldPoint(100, 102, 0);
+
+		assertFalse(AdjacentTransportPolicy.isEligible(
+			transport(A, twoTilesAway, "Open", "Door", TransportType.TRANSPORT)));
+		assertFalse(AdjacentTransportPolicy.isEligible(
+			transport(A, twoTilesAway, "Open", "Tree Door", TransportType.AGILITY_SHORTCUT)));
+		assertFalse(AdjacentTransportPolicy.isEligible(
+			transport(A, new WorldPoint(100, 103, 0), "Open", "Tree Door",
+				TransportType.TRANSPORT)));
+	}
+
+	@Test
 	public void rejectsDialogueAndLaterTransportFamilies()
 	{
 		assertFalse(AdjacentTransportPolicy.isEligible(
@@ -49,6 +72,12 @@ public class AdjacentTransportPolicyTest
 	private static Transport transport(WorldPoint origin, WorldPoint destination, String action,
 		TransportType type)
 	{
-		return new Transport(origin, destination, "test", type, false, action, "object", 123);
+		return transport(origin, destination, action, "object", type);
+	}
+
+	private static Transport transport(WorldPoint origin, WorldPoint destination, String action,
+		String name, TransportType type)
+	{
+		return new Transport(origin, destination, "test", type, false, action, name, 123);
 	}
 }

@@ -205,6 +205,51 @@ public class PathfinderRouteCalculationTest
 				Collections.singleton(tree)));
 	}
 
+	@Test
+	public void gnomeGliderCatalogEdgeIsPublishedAsEngineOwned()
+	{
+		Transport glider = Transport.loadAllFromResources().values().stream()
+			.flatMap(java.util.Collection::stream)
+			.filter(candidate -> candidate.getType() == TransportType.GNOME_GLIDER)
+			.filter(candidate -> "Kar-Hewo".equals(candidate.getDisplayInfo()))
+			.findFirst().orElse(null);
+
+		assertTrue(glider != null);
+		assertEquals(RouteEdge.Kind.GNOME_GLIDER,
+			PathfinderRouteCalculation.classifyTransportEdge(
+				Collections.singleton(glider)));
+	}
+
+	@Test
+	public void quetzalCatalogEdgeIsPublishedAsEngineOwned()
+	{
+		Transport quetzal = Transport.loadAllFromResources().values().stream()
+			.flatMap(java.util.Collection::stream)
+			.filter(candidate -> candidate.getType() == TransportType.QUETZAL)
+			.filter(candidate -> "The Teomat".equals(candidate.getDisplayInfo()))
+			.findFirst().orElse(null);
+
+		assertTrue(quetzal != null);
+		assertEquals(RouteEdge.Kind.QUETZAL,
+			PathfinderRouteCalculation.classifyTransportEdge(
+				Collections.singleton(quetzal)));
+	}
+
+	@Test
+	public void strongholdTreeDoorCatalogEdgeIsPublishedAsEngineOwned()
+	{
+		WorldPoint origin = new WorldPoint(2466, 3493, 0);
+		WorldPoint destination = new WorldPoint(2466, 3491, 0);
+		Transport door = Transport.loadAllFromResources().get(origin).stream()
+			.filter(candidate -> destination.equals(candidate.getDestination()))
+			.filter(candidate -> "Tree Door".equals(candidate.getName()))
+			.findFirst().orElse(null);
+
+		assertTrue(door != null);
+		assertEquals(RouteEdge.Kind.ADJACENT_TRANSPORT,
+			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(door)));
+	}
+
 	private static PathfinderConfig config()
 	{
 		PathfinderConfig config = new PathfinderConfig(collisionMap, new HashMap<>(),

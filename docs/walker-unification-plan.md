@@ -42,8 +42,12 @@ live-proven) including its coin-paid step 2 (Port Sarim/Musa Point and Ardougne/
 ferries live-accepted both ways; `CONFIRM` stage headless-proven, no post-Sailing coin row
 prompts live). Directed three-letter non-POH fairy rings are now live-accepted in both directions,
 including displaced-weapon restoration proven by equipment state. POH/DIQ fairy-ring edges remain
-legacy-owned for the later POH slice. Next: spirit trees, then gliders, quetzals, POH, and seasonal
-transports, with banked-transport route setup last.
+legacy-owned for the later POH slice. Non-POH spirit trees are also live-accepted in both directions,
+including session filtering and replanning for grey locked destinations. Gnome gliders are now
+live-accepted in both directions, including the three Stronghold descents and its two-tile
+`Open;Tree Door` boundary after the reverse landing. Quetzals are headless-complete and awaiting
+live NPC/map/landing acceptance. Next: finish that quetzal gate, then
+POH, and seasonal transports, with banked-transport route setup last.
 
 **Charter slice closed (2026-08-05):** reverse Catherby-to-Port-Sarim acceptance passed on
 request 2/generation 1. The engine walked from `2809,3441,0` to the charter origin `2792,3414,0`,
@@ -65,13 +69,51 @@ equips through the normal inventory path, and clears only when
 `Rs2Equipment.isWearing(originalWeaponId)` is true. Live acceptance passed from `3129,3496` to
 `2705,3576` and back on request generations that emitted both restore stages, resumed ordinary
 walking only afterward, and arrived normally. `DIQ` and configured POH-anchor edges stay
-legacy-owned until POH migration. Spirit trees are the next family.
+legacy-owned until POH migration. Spirit trees and gliders are closed; quetzals are the active family.
 
-**Spirit-tree slice headless complete; live gate open (2026-08-24):** directed non-POH
+**Spirit-tree slice closed (2026-08-25):** directed non-POH
 `SPIRIT_TREE` rows are migrated as an object stage (`Travel`), exact adventure-log destination stage,
-and directed remote landing. Synthesized POH rows remain legacy-owned. Policy, scanner, pathfinder
-publication, navigation lifecycle, remote-edge retention, Checkstyle, and thread/query guardrails pass.
-Run one overworld route in both directions before closing live acceptance.
+and directed remote landing. The current destination interface is `947:9`; grey embedded destination
+text marks configured-but-locked planted trees, which are not clicked and are removed from both
+directions of the session graph before an immediate replan. Grand Exchange/Gnome Stronghold passed
+in both directions. Synthesized POH rows remain legacy-owned. Policy, scanner, pathfinder publication,
+navigation lifecycle, remote-edge retention, Checkstyle, and thread/query guardrails pass.
+
+**Transport-cost calibration (2026-08-25):** path search and direct-vs-bank comparison now share
+`TransportCostModel` instead of letting reconstructed `path.size()` reduce every transport to one
+tick. Successful live traces establish conservative floors of 24 ticks for staged fairy-ring travel
+and 12 ticks for spirit-tree menu travel; explicit larger catalog durations still win, and every
+other interaction costs at least one tick. Live glider inspection confirmed its existing eight-tick
+catalog duration is already conservative, so the shared model records an explicit eight-tick glider
+floor. Transport debug output reports both catalog `duration` and effective `routeTicks`. Add a
+measured floor for each specialised family as it is migrated.
+
+**Gnome-glider slice closed (2026-08-27):** directed `GNOME_GLIDER` rows publish as an NPC
+`Glider` stage, exact generated `InterfaceID.Glidermap` destination-button stage, and directed remote
+landing. Hidden map buttons are never clicked; the destination is session-disabled in both
+directions and the engine replans. Live inspection at White Wolf Mountain verified group `138`, all
+seven generated button constants/actions, the `2465,3501,3` Ta Quir Priw landing, and a transformed
+Captain Bleemadge actor (`10461` live versus catalog `10459`). The cache-backed resolver therefore
+prefers the catalog id but admits a transformed actor only with exact name/action, plane, and origin
+proximity. The forward Stronghold-to-Kar-Hewo engine route live-passed with exactly one actor stage,
+one destination stage, directed landing, ordinary walking, and arrival. The reverse flight also
+landed at the Stronghold top level, but the later plane-zero `Open;Tree Door` edge made the request
+`LEGACY_LOCKED`. Those exact distance-two rows now publish through the existing adjacent-transport
+state machine without broadening other two-tile doors. The final reverse Kar-Hewo-to-Stronghold run
+remained on request 3/generation 1, issued one actor command and one exact `Ta Quir Priw` command,
+observed the directed top-floor landing, chained three `Climb-down` catalog transitions, issued one
+engine-owned `Open` command for the Tree Door, crossed the cleared edge, and arrived at the plane-zero
+target. No `LEGACY_LOCKED`, replan, recovery, or duplicate interaction appeared. The family is closed.
+
+**Quetzal slice active (2026-08-27):** directed `QUETZAL` rows now publish as a live Renu `Travel`
+stage, exact `InterfaceID.QuetzalMenu` destination stage, and directed remote landing. The network
+catalog intentionally has no stable NPC id, so the cache-backed resolver accepts transforming Renu
+definitions only with exact name/action, correct plane, and bounded origin proximity; live ids are
+telemetry and may change between observations. Quetzal-whistle item teleports remain legacy-owned.
+The catalog's six-tick duration is retained as the initial explicit route-cost floor pending live
+calibration. Compile, Checkstyle, policy/scanner, publication, ownership, remote-retention, and
+navigation lifecycle tests pass. Live acceptance requires one route between two unlocked landing
+sites in both directions, including inspection of the current map widget text/action contract.
 
 **Landing catalog-disappearance finding (2026-08-24):** the next two-direction run still emitted no
 restore stage. Request 2 captured and equipped Dramen staff `772`, but the landing inventory refresh

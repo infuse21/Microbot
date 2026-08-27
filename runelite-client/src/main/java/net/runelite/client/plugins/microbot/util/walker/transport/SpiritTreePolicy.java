@@ -11,6 +11,7 @@ import java.util.Locale;
 public final class SpiritTreePolicy
 {
 	public static final String DESTINATION_ACTION_PREFIX = "spirit-tree-destination:";
+	static final int LOCKED_DESTINATION_TEXT_COLOR = 0x5f5f5f;
 
 	private SpiritTreePolicy()
 	{
@@ -45,6 +46,13 @@ public final class SpiritTreePolicy
 	public static boolean isDestinationAction(String action)
 	{
 		return action != null && action.startsWith(DESTINATION_ACTION_PREFIX);
+	}
+
+	static boolean isDestinationSelectable(String widgetText, int textColor)
+	{
+		return textColor != LOCKED_DESTINATION_TEXT_COLOR
+			&& (widgetText == null || !widgetText.toLowerCase(Locale.ROOT)
+				.contains("<col=5f5f5f>"));
 	}
 
 	public static String destinationName(String displayInfo)

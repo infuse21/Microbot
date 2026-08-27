@@ -92,11 +92,17 @@ import net.runelite.client.plugins.microbot.util.walker.transport.FairyRingPolic
 import net.runelite.client.plugins.microbot.util.walker.transport.FairyRingRouteScanner;
 import net.runelite.client.plugins.microbot.util.walker.transport.SpiritTreePolicy;
 import net.runelite.client.plugins.microbot.util.walker.transport.SpiritTreeRouteScanner;
+import net.runelite.client.plugins.microbot.util.walker.transport.GnomeGliderPolicy;
+import net.runelite.client.plugins.microbot.util.walker.transport.GnomeGliderRouteScanner;
+import net.runelite.client.plugins.microbot.util.walker.transport.QuetzalPolicy;
+import net.runelite.client.plugins.microbot.util.walker.transport.QuetzalRouteScanner;
 import net.runelite.client.plugins.microbot.util.walker.transport.Rs2AdjacentTransportScene;
 import net.runelite.client.plugins.microbot.util.walker.transport.Rs2CatalogTransitionScene;
 import net.runelite.client.plugins.microbot.util.walker.transport.Rs2CharterShipScene;
 import net.runelite.client.plugins.microbot.util.walker.transport.Rs2FairyRingScene;
 import net.runelite.client.plugins.microbot.util.walker.transport.Rs2SpiritTreeScene;
+import net.runelite.client.plugins.microbot.util.walker.transport.Rs2GnomeGliderScene;
+import net.runelite.client.plugins.microbot.util.walker.transport.Rs2QuetzalScene;
 import net.runelite.client.plugins.microbot.util.walker.transport.Rs2SimpleTeleportScene;
 import net.runelite.client.plugins.microbot.util.walker.transport.SimpleTeleportPolicy;
 import net.runelite.client.plugins.microbot.util.walker.transport.SimpleTeleportRouteScanner;
@@ -4338,6 +4344,17 @@ public class Rs2Walker {
     }
 
     /**
+     * Scores a valid path in tick-equivalent units, replacing transport jumps with their
+     * calibrated interaction duration instead of counting every jump as one waypoint.
+     */
+    public static int getTotalTravelTicksFromPath(List<WorldPoint> path, WorldPoint destination) {
+        if (getTotalTilesFromPath(path, destination) == Integer.MAX_VALUE) {
+            return Integer.MAX_VALUE;
+        }
+        return TransportCostModel.pathTicks(path, Rs2PathApi.getTransports());
+    }
+
+    /**
      * Gets the total amount of tiles to travel to destination
      * @param destination destination
      * @return total amount of tiles
@@ -4714,6 +4731,10 @@ public class Rs2Walker {
 			new FairyRingRouteScanner();
 	private static final SpiritTreeRouteScanner SPIRIT_TREE_ROUTE_SCANNER =
 			new SpiritTreeRouteScanner();
+	private static final GnomeGliderRouteScanner GNOME_GLIDER_ROUTE_SCANNER =
+			new GnomeGliderRouteScanner();
+	private static final QuetzalRouteScanner QUETZAL_ROUTE_SCANNER =
+			new QuetzalRouteScanner();
 
     /**
      * Rockfall resolution over a raw-path segment via {@link MineableResolver}, skipping steps whose both
@@ -8863,6 +8884,36 @@ public class Rs2Walker {
 					: "spirit-tree-interaction-rejected";
 				return issued;
 			}
+			if (interaction.getKind() == RouteInteraction.Kind.GNOME_GLIDER) {
+				boolean issued;
+				if (GnomeGliderPolicy.isDestinationAction(interaction.getAction())) {
+					issued = Rs2GnomeGliderScene.selectDestination(
+						interaction.getAction().substring(
+							GnomeGliderPolicy.DESTINATION_ACTION_PREFIX.length()));
+				} else {
+					issued = Rs2GnomeGliderScene.interactNpc(
+						new PlannedEdge(interaction.getFrom(), interaction.getTo()),
+						interaction.getAction(), interaction.getObjectId());
+				}
+				lastActionType = issued ? "gnome-glider-interaction"
+					: "gnome-glider-interaction-rejected";
+				return issued;
+			}
+			if (interaction.getKind() == RouteInteraction.Kind.QUETZAL) {
+				boolean issued;
+				if (QuetzalPolicy.isDestinationAction(interaction.getAction())) {
+					issued = Rs2QuetzalScene.selectDestination(
+						interaction.getAction().substring(
+							QuetzalPolicy.DESTINATION_ACTION_PREFIX.length()));
+				} else {
+					issued = Rs2QuetzalScene.interactNpc(
+						new PlannedEdge(interaction.getFrom(), interaction.getTo()),
+						interaction.getAction());
+				}
+				lastActionType = issued ? "quetzal-interaction"
+					: "quetzal-interaction-rejected";
+				return issued;
+			}
 			lastActionType = "interaction-rejected";
 			return false;
 		}
@@ -9041,6 +9092,8 @@ public class Rs2Walker {
 		Rs2CharterShipScene charterShipScene = new Rs2CharterShipScene();
 		Rs2FairyRingScene fairyRingScene = new Rs2FairyRingScene();
 		Rs2SpiritTreeScene spiritTreeScene = new Rs2SpiritTreeScene();
+		Rs2GnomeGliderScene gnomeGliderScene = new Rs2GnomeGliderScene();
+		Rs2QuetzalScene quetzalScene = new Rs2QuetzalScene();
 		long coinsHeld = Rs2Inventory.itemQuantity(ItemID.COINS);
 		if (pending != null && pending.getGeneration() == plan.getGeneration()) {
 			RouteInteraction current;
@@ -9074,6 +9127,12 @@ public class Rs2Walker {
 			} else if (pending.getKind() == RouteInteraction.Kind.SPIRIT_TREE) {
 				current = SPIRIT_TREE_ROUTE_SCANNER.observePending(pending, player,
 					spiritTreeScene, HANDLER_RANGE);
+			} else if (pending.getKind() == RouteInteraction.Kind.GNOME_GLIDER) {
+				current = GNOME_GLIDER_ROUTE_SCANNER.observePending(pending, player,
+					gnomeGliderScene, HANDLER_RANGE);
+			} else if (pending.getKind() == RouteInteraction.Kind.QUETZAL) {
+				current = QUETZAL_ROUTE_SCANNER.observePending(pending, player,
+					quetzalScene, HANDLER_RANGE);
 			} else {
 				return InteractionObservations.NONE;
 			}
@@ -9082,7 +9141,7 @@ public class Rs2Walker {
 					? scanForwardRouteInteraction(plan, player, pending.getRawEdgeIndex() + 1,
 						mineableScene, doorScene, transportScene, transitionScene, teleportScene,
 						npcTransportScene, npcDialogueScene, charterShipScene, fairyRingScene,
-						spiritTreeScene,
+						spiritTreeScene, gnomeGliderScene, quetzalScene,
 						INTERACTION_CHAIN_RANGE, coinsHeld)
 					: null;
 			return new InteractionObservations(current, next);
@@ -9095,7 +9154,7 @@ public class Rs2Walker {
 		return new InteractionObservations(scanForwardRouteInteraction(plan, player, start,
 			mineableScene, doorScene, transportScene, transitionScene, teleportScene,
 			npcTransportScene, npcDialogueScene, charterShipScene, fairyRingScene,
-			spiritTreeScene,
+			spiritTreeScene, gnomeGliderScene, quetzalScene,
 			HANDLER_RANGE, coinsHeld), null);
 	}
 
@@ -9108,6 +9167,8 @@ public class Rs2Walker {
 		Rs2CharterShipScene charterShipScene,
 		Rs2FairyRingScene fairyRingScene,
 		Rs2SpiritTreeScene spiritTreeScene,
+		Rs2GnomeGliderScene gnomeGliderScene,
+		Rs2QuetzalScene quetzalScene,
 		int interactionRange, long coinsHeld) {
 		List<WorldPoint> rawPath = plan.getRawPath();
 		start = Math.max(0, start);
@@ -9149,8 +9210,13 @@ public class Rs2Walker {
 			end - start, player, fairyRingScene, interactionRange);
 		RouteInteraction spiritTree = SPIRIT_TREE_ROUTE_SCANNER.scan(plan, start,
 			end - start, player, spiritTreeScene, interactionRange);
+		RouteInteraction gnomeGlider = GNOME_GLIDER_ROUTE_SCANNER.scan(plan, start,
+			end - start, player, gnomeGliderScene, interactionRange);
+		RouteInteraction quetzal = QUETZAL_ROUTE_SCANNER.scan(plan, start,
+			end - start, player, quetzalScene, interactionRange);
 		return earliestInteraction(mineable, door, transport, transition, teleport,
-			npcTransport, npcDialogue, charterShip, fairyRing, spiritTree);
+			npcTransport, npcDialogue, charterShip, fairyRing, spiritTree, gnomeGlider,
+			quetzal);
 	}
 
 	private static RouteInteraction earliestInteraction(RouteInteraction... interactions) {

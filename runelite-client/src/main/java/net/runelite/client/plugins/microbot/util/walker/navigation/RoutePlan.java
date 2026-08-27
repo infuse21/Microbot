@@ -172,6 +172,8 @@ public final class RoutePlan
 			|| edge.getKind() == RouteEdge.Kind.CHARTER_SHIP
 			|| edge.getKind() == RouteEdge.Kind.FAIRY_RING
 			|| edge.getKind() == RouteEdge.Kind.SPIRIT_TREE
+			|| edge.getKind() == RouteEdge.Kind.GNOME_GLIDER
+			|| edge.getKind() == RouteEdge.Kind.QUETZAL
 			|| edge.getKind() == RouteEdge.Kind.ADJACENT_TRANSPORT
 			|| edge.getKind() == RouteEdge.Kind.CATALOG_TRANSITION);
 	}

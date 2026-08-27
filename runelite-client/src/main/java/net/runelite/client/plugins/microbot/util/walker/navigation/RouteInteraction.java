@@ -17,6 +17,8 @@ public final class RouteInteraction
 		CHARTER_SHIP,
 		FAIRY_RING,
 		SPIRIT_TREE,
+		GNOME_GLIDER,
+		QUETZAL,
 		ADJACENT_TRANSPORT,
 		CATALOG_TRANSITION
 	}

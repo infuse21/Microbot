@@ -31,9 +31,8 @@ public final class Rs2SpiritTreeScene implements SpiritTreeScene
 		{
 			return null;
 		}
-		return findDestinationWidget(destinationName(transport)) != null
-			? stage(transport, transport.getOrigin(), SpiritTree.Stage.DESTINATION)
-			: objectStage(transport);
+		SpiritTree destination = destinationStage(transport);
+		return destination == null ? objectStage(transport) : destination;
 	}
 
 	@Override
@@ -44,9 +43,10 @@ public final class Rs2SpiritTreeScene implements SpiritTreeScene
 		{
 			return null;
 		}
-		if (findDestinationWidget(destinationName(transport)) != null)
+		SpiritTree destination = destinationStage(transport);
+		if (destination != null)
 		{
-			return stage(transport, transport.getOrigin(), SpiritTree.Stage.DESTINATION);
+			return destination;
 		}
 		if (SpiritTreePolicy.isDestinationAction(pendingAction))
 		{
@@ -67,7 +67,36 @@ public final class Rs2SpiritTreeScene implements SpiritTreeScene
 	public static boolean selectDestination(String destination)
 	{
 		Widget widget = findDestinationWidget(destination);
-		return widget != null && Rs2Widget.clickWidget(widget);
+		return widget != null && isSelectable(widget) && Rs2Widget.clickWidget(widget);
+	}
+
+	private static SpiritTree destinationStage(Transport transport)
+	{
+		Widget widget = findDestinationWidget(destinationName(transport));
+		if (widget == null)
+		{
+			return null;
+		}
+		if (!isSelectable(widget))
+		{
+			if (Rs2PathApi.getPathfinderConfig() != null)
+			{
+				Rs2PathApi.getPathfinderConfig()
+					.markSpiritTreeDestinationUnavailable(transport.getDestination());
+			}
+			return stage(transport, transport.getOrigin(),
+				SpiritTree.Stage.DESTINATION_UNAVAILABLE);
+		}
+		return stage(transport, transport.getOrigin(), SpiritTree.Stage.DESTINATION);
+	}
+
+	private static boolean isSelectable(Widget widget)
+	{
+		return Microbot.getClientThread().runOnClientThreadOptional(() ->
+			widget != null && !widget.isHidden()
+				&& SpiritTreePolicy.isDestinationSelectable(widget.getText(),
+					widget.getTextColor()))
+			.orElse(false);
 	}
 
 	private static Transport findTransport(PlannedEdge edge)

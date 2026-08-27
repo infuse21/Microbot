@@ -63,6 +63,8 @@ public class PathfinderConfig {
 	private static final WorldPoint SPIRIT_TREE_PORT_SARIM = new WorldPoint(3058, 3257, 0);
 	private static final WorldPoint SPIRIT_TREE_HOSIDIUS = new WorldPoint(1693, 3540, 0);
 	private static final WorldPoint SPIRIT_TREE_FARMING_GUILD = new WorldPoint(1251, 3750, 0);
+	private final Set<WorldPoint> unavailableSpiritTreeDestinations = ConcurrentHashMap.newKeySet();
+	private final Set<WorldPoint> unavailableGnomeGliderDestinations = ConcurrentHashMap.newKeySet();
 	private static final Set<Long> STATIC_BLOCKED_EDGES_PACKED = loadStaticBlockedEdgesFromResources();
 	// Tiles within 1 of an aggressive-NPC hazard tile (the melee-aggro ring). Stepping onto one
 	// gets a high pathfinding penalty when avoidDangerousNpcs is on, so paths keep >=2 tiles away.
@@ -1081,6 +1083,29 @@ public class PathfinderConfig {
         transportRefreshSnapshots.clear();
     }
 
+	/**
+	 * Excludes a destination that the live spirit-tree menu rendered as locked for this session.
+	 * Both incoming and outgoing network edges are filtered on the next transport refresh.
+	 */
+	public boolean markSpiritTreeDestinationUnavailable(WorldPoint destination) {
+		if (destination == null || !unavailableSpiritTreeDestinations.add(destination)) {
+			return false;
+		}
+		invalidateTransportRefreshCache();
+		WebWalkLog.cfg("spirit_tree_unavailable destination={}", destination);
+		return true;
+	}
+
+	/** Excludes both directions of a destination hidden on the live glider map. */
+	public boolean markGnomeGliderDestinationUnavailable(WorldPoint destination) {
+		if (destination == null || !unavailableGnomeGliderDestinations.add(destination)) {
+			return false;
+		}
+		invalidateTransportRefreshCache();
+		WebWalkLog.cfg("gnome_glider_unavailable destination={}", destination);
+		return true;
+	}
+
     /**
      * Rebuilds base transport definitions from packaged TSV resources and swaps them into {@link #allTransports}.
      * The next {@link #refresh(WorldPoint)} will use the reloaded definitions.
@@ -1258,6 +1283,12 @@ public class PathfinderConfig {
             log.debug("Transport ( O: {} D: {} ) is a spirit tree route but the tree is disabled", transport.getOrigin(), transport.getDestination());
             return false;
         }
+		if (transport.getType() == TransportType.GNOME_GLIDER
+				&& !isGnomeGliderRouteEnabled(transport)) {
+			log.debug("Transport ( O: {} D: {} ) is a gnome glider route but the destination is unavailable",
+				transport.getOrigin(), transport.getDestination());
+			return false;
+		}
         // If you don't meet level requirements
         if (!hasRequiredLevels(transport)) {
             log.debug("Transport ( O: {} D: {} ) requires skill levels {}", transport.getOrigin(), transport.getDestination(), Arrays.toString(transport.getSkillLevels()));
@@ -1399,6 +1430,12 @@ public class PathfinderConfig {
     private boolean isSpiritTreeRouteEnabled(Transport transport) {
         WorldPoint origin = transport.getOrigin();
         WorldPoint destination = transport.getDestination();
+		for (WorldPoint unavailable : unavailableSpiritTreeDestinations) {
+			if ((destination != null && destination.equals(unavailable))
+					|| (origin != null && origin.distanceTo2D(unavailable) <= 5)) {
+				return false;
+			}
+		}
         for (int i = 0; i < SPIRIT_TREE_DESTINATIONS_ORDERED.length; i++) {
             if (!spiritTreeDestinationToggle(i)) {
                 WorldPoint toggledPoint = SPIRIT_TREE_DESTINATIONS_ORDERED[i];
@@ -1410,6 +1447,18 @@ public class PathfinderConfig {
         }
         return true;
     }
+
+	private boolean isGnomeGliderRouteEnabled(Transport transport) {
+		WorldPoint origin = transport.getOrigin();
+		WorldPoint destination = transport.getDestination();
+		for (WorldPoint unavailable : unavailableGnomeGliderDestinations) {
+			if ((destination != null && destination.distanceTo2D(unavailable) <= 3)
+					|| (origin != null && origin.distanceTo2D(unavailable) <= 6)) {
+				return false;
+			}
+		}
+		return true;
+	}
 
     private boolean isFeatureEnabled(Transport transport) {
         TransportType type = transport.getType();

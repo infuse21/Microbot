@@ -12,7 +12,7 @@ import net.runelite.client.plugins.microbot.util.walker.transport.model.Adjacent
 
 import java.util.Comparator;
 
-/** Live adapter for object-backed adjacent same-plane catalog transports. */
+/** Live adapter for short object-backed same-plane catalog transports. */
 public final class Rs2AdjacentTransportScene implements AdjacentTransportScene
 {
 	@Override

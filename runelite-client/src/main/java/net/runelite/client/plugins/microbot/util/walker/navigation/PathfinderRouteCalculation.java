@@ -7,6 +7,8 @@ import net.runelite.client.plugins.microbot.util.walker.transport.CatalogTransit
 import net.runelite.client.plugins.microbot.util.walker.transport.CharterShipPolicy;
 import net.runelite.client.plugins.microbot.util.walker.transport.FairyRingPolicy;
 import net.runelite.client.plugins.microbot.util.walker.transport.SpiritTreePolicy;
+import net.runelite.client.plugins.microbot.util.walker.transport.GnomeGliderPolicy;
+import net.runelite.client.plugins.microbot.util.walker.transport.QuetzalPolicy;
 import net.runelite.client.plugins.microbot.util.walker.transport.SimpleTeleportPolicy;
 import net.runelite.client.plugins.microbot.util.walker.transport.NpcDialogueTransportPolicy;
 import net.runelite.client.plugins.microbot.util.walker.transport.NpcTransportPolicy;
@@ -115,6 +117,14 @@ public final class PathfinderRouteCalculation implements RoutePlanner.Calculatio
 		if (transports.stream().anyMatch(SpiritTreePolicy::isEligible))
 		{
 			return RouteEdge.Kind.SPIRIT_TREE;
+		}
+		if (transports.stream().anyMatch(GnomeGliderPolicy::isEligible))
+		{
+			return RouteEdge.Kind.GNOME_GLIDER;
+		}
+		if (transports.stream().anyMatch(QuetzalPolicy::isEligible))
+		{
+			return RouteEdge.Kind.QUETZAL;
 		}
 		if (transports.stream().anyMatch(AdjacentTransportPolicy::isEligible))
 		{

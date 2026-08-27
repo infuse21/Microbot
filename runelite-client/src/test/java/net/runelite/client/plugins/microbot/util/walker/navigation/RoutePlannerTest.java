@@ -285,6 +285,34 @@ public class RoutePlannerTest
 		assertTrue(plan.isEngineSupported());
 	}
 
+	@Test
+	public void migratedGnomeGliderIsEngineSupportedButNotOrdinary()
+	{
+		WorldPoint a = new WorldPoint(1, 1, 0);
+		WorldPoint b = new WorldPoint(100, 100, 0);
+		RouteEdge transport = new RouteEdge(0, a, b, RouteEdge.Kind.GNOME_GLIDER);
+		RoutePlan plan = new RoutePlan(1, 1, a, Collections.singleton(b),
+			java.util.Arrays.asList(a, b), java.util.Arrays.asList(a, b), true,
+			Collections.singletonList(transport));
+
+		assertFalse(plan.isOrdinaryWalkOnly());
+		assertTrue(plan.isEngineSupported());
+	}
+
+	@Test
+	public void migratedQuetzalIsEngineSupportedButNotOrdinary()
+	{
+		WorldPoint a = new WorldPoint(1, 1, 0);
+		WorldPoint b = new WorldPoint(100, 100, 0);
+		RouteEdge transport = new RouteEdge(0, a, b, RouteEdge.Kind.QUETZAL);
+		RoutePlan plan = new RoutePlan(1, 1, a, Collections.singleton(b),
+			java.util.Arrays.asList(a, b), java.util.Arrays.asList(a, b), true,
+			Collections.singletonList(transport));
+
+		assertFalse(plan.isOrdinaryWalkOnly());
+		assertTrue(plan.isEngineSupported());
+	}
+
 	private static List<Integer> boxed(int[] values)
 	{
 		java.util.ArrayList<Integer> boxed = new java.util.ArrayList<>(values.length);

@@ -1046,3 +1046,67 @@ client-thread-safe `Rs2Widget.findWidget` traversal and retain `187:3` only as a
 fallback. Live Agent Server inspection showed the destination entries as dynamic children of
 `947:9`, including `2: Gnome Stronghold`; hard-coding only the old interface leaves the interaction
 stuck after `Travel`.
+
+Being listed in the spirit-tree menu does not mean a destination is unlocked. Selectable entries use
+text colour `0xff981f`; locked entries render as `0x5f5f5f` and still have normal text widgets. The
+row's base `getTextColor()` remains `0xff981f` for both states; a locked destination instead carries
+markup such as `<col=5f5f5f>Port Sarim</col>` in `getText()`. Inspect both representations on the
+client thread, never click the locked entry, session-disable both directions of its destination in
+`PathfinderConfig`, invalidate the transport memo, and publish `UNAVAILABLE` so the navigation
+engine replans immediately.
+
+Transport route comparison must score reconstructed edges with the same duration model as the
+pathfinder. Counting `path.size()` makes every long-distance transport look like a one-tick hop even
+when `Transport.duration` influenced path selection. Use `TransportCostModel` for both search edges
+and direct-vs-bank scoring. Its measured floors currently reflect successful live traces: 24 ticks
+for staged fairy-ring travel and 12 ticks for spirit-tree menu travel; a larger catalog duration wins.
+
+## 47. Gnome gliders expose transformed captains and generated map buttons
+
+The NPC id stored in `gnome_gliders.tsv` is not always the id exposed by the loaded actor. At White
+Wolf Mountain the catalog identifies Captain Bleemadge as `10459`, while the live cache exposed
+`10461`. Exact-id-only lookup therefore cannot open an otherwise valid glider route.
+
+**Pattern to follow:** Prefer the catalog NPC id, but accept a transformed id only when the actor has
+the exact catalog name, the exact `Glider` action, the correct plane, and lies within a small radius
+of the directed origin. Resolve destinations through `InterfaceID.Glidermap` rather than decimal
+packed ids: the generated button constants correspond to the live destination actions. Treat a
+missing/hidden button on a visible map as unavailable, session-disable both directions, and replan.
+After selection, retain the remote edge until the directed catalog landing is observed.
+
+**Defensive check:** A transformed captain with the wrong action, name, plane, or origin distance
+must not resolve. Opening the map is only stage progress; it is not proof that the flight landed.
+The measured eight-tick catalog cost remains the conservative route floor for this family.
+
+## 48. Short portal doors may span two catalog tiles
+
+Same-plane object transports are usually adjacent, but the Gnome Stronghold `Tree Door` rows cross
+from one side of the doorway to the other with a catalog distance of two. Treating every distance
+greater than one as unsupported forces an otherwise migrated glider route back to the legacy walker
+after it lands.
+
+**Pattern to follow:** Keep ordinary adjacent eligibility unchanged and admit only the exact
+object-backed `Open;Tree Door` transport family at a maximum distance of two. Preserve the directed
+catalog origin and destination so clearance is acknowledged only on the destination side. Do not
+generalize this exception to arbitrary two-tile doors, entrances, gates, or puzzle objects.
+
+**Defensive check:** Both straight and diagonal Stronghold rows publish as adjacent transports;
+an unrelated `Open;Door`, the wrong transport type, or a three-tile tree-door row remains legacy-owned.
+
+## 49. Quetzal routes have no stable catalog NPC id
+
+The `quetzals.tsv` network is assembled from origin-only and destination-only rows. Its directed
+edges intentionally carry no NPC id, name, or action, while the live mount can expose several Renu
+definitions according to quest and appearance state. Requiring one hard-coded green Renu id, or
+persisting the first observed live id as route identity, makes a valid route unavailable when the
+NPC transforms.
+
+**Pattern to follow:** Own only directed `QUETZAL` rows with a named destination. Resolve the live
+actor through the shared NPC cache using exact `Renu` name, exact `Travel` action, correct plane,
+and bounded distance from the catalog origin. Treat the live id as telemetry rather than identity.
+Model `Travel`, exact `InterfaceID.QuetzalMenu` destination selection, and directed landing as
+separate observations. Keep originless quetzal-whistle item transports outside this family.
+
+**Defensive check:** Every known Renu variant with the correct name/action/origin remains eligible;
+the wrong name, missing action, wrong plane, or actor beyond the origin tolerance does not. A map
+click remains pending until the directed catalog landing and cannot be retired by raw-index progress.

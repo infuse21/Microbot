@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.TileObject;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.shortestpath.Transport;
+import net.runelite.client.plugins.microbot.shortestpath.TransportCostModel;
 import net.runelite.client.plugins.microbot.shortestpath.TransportType;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveCollisionOverlay;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveEdgeSource;
@@ -263,7 +264,8 @@ public class CollisionMap {
                     if (isMoa) moaIgnored++;
                     continue;
                 }
-                int cost = config.getDistanceBeforeUsingTeleport() + transport.getDuration();
+                int cost = config.getDistanceBeforeUsingTeleport()
+                        + TransportCostModel.travelTicks(transport);
                 neighbors.add(new TransportNode(transport.getDestination(), node, cost));
                 if (isMoa) {
                     moaAddedHere++;
@@ -271,7 +273,8 @@ public class CollisionMap {
                     moaCosts.add(cost);
                 }
             } else {
-                neighbors.add(new TransportNode(transport.getDestination(), node, transport.getDuration()));
+                neighbors.add(new TransportNode(transport.getDestination(), node,
+                        TransportCostModel.travelTicks(transport)));
             }
             //END microbot variables
         }
@@ -371,9 +374,12 @@ public class CollisionMap {
                     if (config.isIgnoreTeleportAndItems()) {
                         continue;
                     }
-                    neighbors.add(new TransportNode(origin, node, config.getDistanceBeforeUsingTeleport() + transport.getDuration()));
+                    neighbors.add(new TransportNode(origin, node,
+                            config.getDistanceBeforeUsingTeleport()
+                                    + TransportCostModel.travelTicks(transport)));
                 } else {
-                    neighbors.add(new TransportNode(origin, node, transport.getDuration()));
+                    neighbors.add(new TransportNode(origin, node,
+                            TransportCostModel.travelTicks(transport)));
                 }
             }
         }

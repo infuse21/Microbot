@@ -722,6 +722,160 @@ public class NavigationEngineExecutionTest
 	}
 
 	@Test
+	public void lockedSpiritTreeDestinationReplansImmediatelyAfterTravel()
+	{
+		NavigationRouteOptions options = new NavigationRouteOptions(true, true, false, true);
+		NavigationEngineRuntime.ensureRequest(new NavigationRequest(23,
+			Collections.singleton(C), 0, options, "locked-spirit-tree-test"));
+		List<String> actionsIssued = new ArrayList<>();
+		WalkerActions actions = new WalkerActions()
+		{
+			@Override
+			public boolean clickTile(WorldPoint target)
+			{
+				return true;
+			}
+
+			@Override
+			public boolean interact(RouteInteraction interaction)
+			{
+				actionsIssued.add(interaction.getAction());
+				return true;
+			}
+		};
+		RouteEdge treeEdge = new RouteEdge(0, A, B, RouteEdge.Kind.SPIRIT_TREE);
+		RoutePlan plan = new RoutePlan(23, 1, A, Collections.singleton(C),
+			Arrays.asList(A, B, C), Arrays.asList(A, B, C), true,
+			Arrays.asList(treeEdge, new RouteEdge(1, B, C, RouteEdge.Kind.WALK)));
+		RouteInteraction object = new RouteInteraction(1, 0, A, B, A,
+			RouteInteraction.Kind.SPIRIT_TREE, RouteInteraction.Status.AVAILABLE,
+			"Travel", true, 1295, A, B);
+		RouteInteraction locked = new RouteInteraction(1, 0, A, B, A,
+			RouteInteraction.Kind.SPIRIT_TREE, RouteInteraction.Status.UNAVAILABLE,
+			"spirit-tree-destination:Port Sarim", false, 1295, A, B);
+
+		NavigationExecutionResult travel = NavigationEngineRuntime.execute(
+			observation(1, A, plan, false, false).withRouteInteraction(object), actions);
+		NavigationExecutionResult unavailable = NavigationEngineRuntime.execute(
+			observation(2, A, plan, false, false).withRouteInteraction(locked), actions);
+
+		assertEquals(NavigationDecision.Type.INTERACT, travel.getDecision().getType());
+		assertEquals(Collections.singletonList("Travel"), actionsIssued);
+		assertEquals(NavigationDecision.Type.REQUEST_REPLAN,
+			unavailable.getDecision().getType());
+		assertEquals(RecoveryCause.INTERACTION_UNAVAILABLE,
+			unavailable.getDecision().getRecoveryCause());
+	}
+
+	@Test
+	public void gnomeGliderAdvancesThroughDestinationAndWaitsForLanding()
+	{
+		NavigationRouteOptions options = new NavigationRouteOptions(true, true, false, true);
+		NavigationEngineRuntime.ensureRequest(new NavigationRequest(24,
+			Collections.singleton(C), 0, options, "gnome-glider-test"));
+		List<String> actionsIssued = new ArrayList<>();
+		WalkerActions actions = new WalkerActions()
+		{
+			@Override
+			public boolean clickTile(WorldPoint target)
+			{
+				return true;
+			}
+
+			@Override
+			public boolean interact(RouteInteraction interaction)
+			{
+				actionsIssued.add(interaction.getAction());
+				return true;
+			}
+		};
+		RouteEdge gliderEdge = new RouteEdge(0, A, B, RouteEdge.Kind.GNOME_GLIDER);
+		RoutePlan plan = new RoutePlan(24, 1, A, Collections.singleton(C),
+			Arrays.asList(A, B, C), Arrays.asList(A, B, C), true,
+			Arrays.asList(gliderEdge, new RouteEdge(1, B, C, RouteEdge.Kind.WALK)));
+		RouteInteraction npc = new RouteInteraction(1, 0, A, B, A,
+			RouteInteraction.Kind.GNOME_GLIDER, RouteInteraction.Status.AVAILABLE,
+			"Glider", true, 10467, A, B);
+		RouteInteraction destination = new RouteInteraction(1, 0, A, B, A,
+			RouteInteraction.Kind.GNOME_GLIDER, RouteInteraction.Status.AVAILABLE,
+			"gnome-glider-destination:Kar-Hewo", true, 10467, A, B);
+
+		NavigationExecutionResult npcResult = NavigationEngineRuntime.execute(
+			observation(1, A, plan, false, false).withRouteInteraction(npc), actions);
+		NavigationExecutionResult destinationResult = NavigationEngineRuntime.execute(
+			observation(2, A, plan, false, false).withRouteInteraction(destination), actions);
+		NavigationExecutionResult transit = NavigationEngineRuntime.execute(
+			observation(3, new WorldPoint(500, 500, 1), plan, false, false)
+				.withRouteInteraction(destination.withStatus(
+					RouteInteraction.Status.AVAILABLE, false)), actions);
+		NavigationExecutionResult landed = NavigationEngineRuntime.execute(
+			observation(4, B, plan, false, false).withRouteInteraction(
+				destination.withStatus(RouteInteraction.Status.CLEARED, false)), actions);
+
+		assertEquals(NavigationDecision.Type.INTERACT, npcResult.getDecision().getType());
+		assertEquals(NavigationDecision.Type.INTERACT,
+			destinationResult.getDecision().getType());
+		assertEquals(Arrays.asList("Glider", "gnome-glider-destination:Kar-Hewo"),
+			actionsIssued);
+		assertEquals(NavigationDecision.Type.WAIT, transit.getDecision().getType());
+		assertEquals(NavigationDecision.Type.WAIT, landed.getDecision().getType());
+	}
+
+	@Test
+	public void quetzalAdvancesThroughDestinationAndWaitsForLanding()
+	{
+		NavigationRouteOptions options = new NavigationRouteOptions(true, true, false, true);
+		NavigationEngineRuntime.ensureRequest(new NavigationRequest(25,
+			Collections.singleton(C), 0, options, "quetzal-test"));
+		List<String> actionsIssued = new ArrayList<>();
+		WalkerActions actions = new WalkerActions()
+		{
+			@Override
+			public boolean clickTile(WorldPoint target)
+			{
+				return true;
+			}
+
+			@Override
+			public boolean interact(RouteInteraction interaction)
+			{
+				actionsIssued.add(interaction.getAction());
+				return true;
+			}
+		};
+		RouteEdge quetzalEdge = new RouteEdge(0, A, B, RouteEdge.Kind.QUETZAL);
+		RoutePlan plan = new RoutePlan(25, 1, A, Collections.singleton(C),
+			Arrays.asList(A, B, C), Arrays.asList(A, B, C), true,
+			Arrays.asList(quetzalEdge, new RouteEdge(1, B, C, RouteEdge.Kind.WALK)));
+		RouteInteraction npc = new RouteInteraction(1, 0, A, B, A,
+			RouteInteraction.Kind.QUETZAL, RouteInteraction.Status.AVAILABLE,
+			"Travel", true, 13350, A, B);
+		RouteInteraction destination = new RouteInteraction(1, 0, A, B, A,
+			RouteInteraction.Kind.QUETZAL, RouteInteraction.Status.AVAILABLE,
+			"quetzal-destination:The Teomat", true, -1, A, B);
+
+		NavigationExecutionResult npcResult = NavigationEngineRuntime.execute(
+			observation(1, A, plan, false, false).withRouteInteraction(npc), actions);
+		NavigationExecutionResult destinationResult = NavigationEngineRuntime.execute(
+			observation(2, A, plan, false, false).withRouteInteraction(destination), actions);
+		NavigationExecutionResult transit = NavigationEngineRuntime.execute(
+			observation(3, new WorldPoint(500, 500, 1), plan, false, false)
+				.withRouteInteraction(destination.withStatus(
+					RouteInteraction.Status.AVAILABLE, false)), actions);
+		NavigationExecutionResult landed = NavigationEngineRuntime.execute(
+			observation(4, B, plan, false, false).withRouteInteraction(
+				destination.withStatus(RouteInteraction.Status.CLEARED, false)), actions);
+
+		assertEquals(NavigationDecision.Type.INTERACT, npcResult.getDecision().getType());
+		assertEquals(NavigationDecision.Type.INTERACT,
+			destinationResult.getDecision().getType());
+		assertEquals(Arrays.asList("Travel", "quetzal-destination:The Teomat"),
+			actionsIssued);
+		assertEquals(NavigationDecision.Type.WAIT, transit.getDecision().getType());
+		assertEquals(NavigationDecision.Type.WAIT, landed.getDecision().getType());
+	}
+
+	@Test
 	public void npcTransportIntermediateSceneDoesNotTriggerOffRouteRecovery()
 	{
 		WorldPoint landing = new WorldPoint(2662, 2677, 1);

@@ -277,9 +277,9 @@ public final class Rs2WalkerBankingPlanner {
             long directPathEndTime = System.nanoTime();
             double directPathTimeMs = (directPathEndTime - directPathStartTime) / 1_000_000.0;
 
-            int directDistance = Rs2Walker.getTotalTilesFromPath(directPath, target);
+            int directDistance = Rs2Walker.getTotalTravelTicksFromPath(directPath, target);
             performanceLog.append("\t-Direct path calculation: ").append(String.format("%.2f ms", directPathTimeMs))
-                    .append(" (").append(directPath.size()).append(" waypoints, ").append(directDistance).append(" tiles)\n");
+                    .append(" (").append(directPath.size()).append(" waypoints, ").append(directDistance).append(" ticks)\n");
 
             BankLocation nearestBank = null;
             List<WorldPoint> pathToBank = new ArrayList<>();
@@ -308,7 +308,7 @@ public final class Rs2WalkerBankingPlanner {
                         pathToBank = Rs2Walker.getWalkPath(startPoint, bankLocation);
                         long pathToBankEndTime = System.nanoTime();
                         double pathToBankTimeMs = (pathToBankEndTime - pathToBankStartTime) / 1_000_000.0;
-                        int distanceToBank = Rs2Walker.getTotalTilesFromPath(pathToBank, bankLocation);
+                        int distanceToBank = Rs2Walker.getTotalTravelTicksFromPath(pathToBank, bankLocation);
 
                         long pathFromBankStartTime = System.nanoTime();
                         pathFromBankToTarget = Rs2Walker.getWalkPath(bankLocation, target);
@@ -322,13 +322,13 @@ public final class Rs2WalkerBankingPlanner {
                         long itemCount = bankLegTransports.stream()
                                 .filter(t -> t.getType() == TransportType.TELEPORTATION_ITEM)
                                 .count();
-                        int distanceFromBankRaw = Rs2Walker.getTotalTilesFromPath(pathFromBankToTarget, target);
-                        int distanceFromBank = effectiveDistanceFromBank(pathFromBankToTarget, distanceFromBankRaw);
+                        int distanceFromBank = Rs2Walker.getTotalTravelTicksFromPath(
+                                pathFromBankToTarget, target);
 
                         performanceLog.append("\t-Path to bank calculation: ").append(String.format("%.2f ms", pathToBankTimeMs))
-                                .append(" (").append(pathToBank.size()).append(" waypoints, ").append(distanceToBank).append(" tiles)\n");
+                                .append(" (").append(pathToBank.size()).append(" waypoints, ").append(distanceToBank).append(" ticks)\n");
                         performanceLog.append("\t-Path from bank to target with banked items: ").append(String.format("%.2f ms", pathFromBankTimeMs))
-                                .append(" (").append(pathFromBankToTarget.size()).append(" waypoints, ").append(distanceFromBank).append(" tiles)\n");
+                                .append(" (").append(pathFromBankToTarget.size()).append(" waypoints, ").append(distanceFromBank).append(" ticks)\n");
                         performanceLog.append("\t-Bank leg transports: total=").append(bankLegTransports.size())
                                 .append(" spells=").append(spellCount)
                                 .append(" items=").append(itemCount)
@@ -351,21 +351,13 @@ public final class Rs2WalkerBankingPlanner {
                                 firstSpellTransport == null
                                         ? "none"
                                         : firstSpellTransport.getDisplayInfo() + " -> " + firstSpellTransport.getDestination());
-                        if (distanceFromBankRaw != distanceFromBank) {
-                            performanceLog.append("\t-Adjusted bank leg for immediate teleport: raw=")
-                                    .append(distanceFromBankRaw)
-                                    .append(" adjusted=")
-                                    .append(distanceFromBank)
-                                    .append(" tiles\n");
-                        }
-
                         if (distanceToBank != -1
                                 && distanceFromBank != -1
                                 && distanceToBank != Integer.MAX_VALUE
                                 && distanceFromBank != Integer.MAX_VALUE) {
                             bankingRouteDistance = distanceToBank + distanceFromBank;
                         }
-                        performanceLog.append("\t-Total banking route distance: ").append(bankingRouteDistance).append(" tiles\n");
+                        performanceLog.append("\t-Total banking route cost: ").append(bankingRouteDistance).append(" ticks\n");
                     } else {
                         performanceLog.append("\t-Nearest bank search: ").append(String.format("%.2f ms", bankSearchTimeMs))
                                 .append("\t -> No accessible bank found\n");
@@ -398,17 +390,17 @@ public final class Rs2WalkerBankingPlanner {
             final String verdictOneLine;
             if (tie) {
                 if (preferTransportToTarget) {
-                    recommendation = String.format("\tSame tile distance (%d); prefer banking route (prefer transport to target enabled)", directDistance);
+                    recommendation = String.format("\tSame travel cost (%d ticks); prefer banking route (prefer transport to target enabled)", directDistance);
                     verdictOneLine = String.format("tie %dt (prefer bank: transport-to-target)", directDistance);
                 } else {
-                    recommendation = String.format("\tSame tile distance (%d); prefer direct (no bank hop)", directDistance);
+                    recommendation = String.format("\tSame travel cost (%d ticks); prefer direct (no bank hop)", directDistance);
                     verdictOneLine = String.format("tie %dt (prefer direct)", directDistance);
                 }
             } else if (directStrictlyFaster) {
-                recommendation = String.format("\tDirect route is faster (%d vs %d tiles)", directDistance, bankingRouteDistance);
+                recommendation = String.format("\tDirect route is faster (%d vs %d ticks)", directDistance, bankingRouteDistance);
                 verdictOneLine = String.format("direct faster %dt vs %dt", directDistance, bankingRouteDistance);
             } else {
-                recommendation = String.format("\tBanking route is faster (%d vs %d tiles)", bankingRouteDistance, directDistance);
+                recommendation = String.format("\tBanking route is faster (%d vs %d ticks)", bankingRouteDistance, directDistance);
                 verdictOneLine = String.format("bank faster %dt vs %dt", bankingRouteDistance, directDistance);
             }
 
@@ -492,71 +484,4 @@ public final class Rs2WalkerBankingPlanner {
         }
     }
 
-    /**
-     * Score bank->target distance in a way that reflects "bank then immediate teleport" behavior.
-     * For originless TELEPORTATION_ITEM / TELEPORTATION_SPELL edges, trim pre-teleport walking
-     * from the bank leg metric and keep the post-teleport tail.
-     */
-    private static int effectiveDistanceFromBank(List<WorldPoint> pathFromBankToTarget, int rawDistance) {
-        if (pathFromBankToTarget == null || pathFromBankToTarget.isEmpty() || rawDistance == Integer.MAX_VALUE) {
-            return rawDistance;
-        }
-
-        List<Transport> transports = Rs2Walker.getTransportsForPath(pathFromBankToTarget, 0, TransportType.TELEPORTATION_SPELL, true);
-        if (transports.isEmpty()) {
-            return rawDistance;
-        }
-
-        // Use first transport that the bank->target path actually consumes and model:
-        // walk_to_transport + transport_hop + post_transport_tail.
-        Transport firstTransport = transports.get(0);
-        int modeledDistance = transportModeledDistance(pathFromBankToTarget, firstTransport, rawDistance);
-        if (modeledDistance == Integer.MAX_VALUE) {
-            return rawDistance;
-        }
-        return Math.min(rawDistance, modeledDistance);
-    }
-
-    private static boolean isImmediateBankTeleport(Transport transport) {
-        if (transport == null || transport.getOrigin() != null) {
-            return false;
-        }
-        return transport.getType() == TransportType.TELEPORTATION_ITEM
-                || transport.getType() == TransportType.TELEPORTATION_SPELL;
-    }
-
-    private static int transportModeledDistance(List<WorldPoint> pathFromBankToTarget, Transport transport, int fallbackRawDistance) {
-        if (transport == null || pathFromBankToTarget == null || pathFromBankToTarget.isEmpty()) {
-            return fallbackRawDistance;
-        }
-
-        WorldPoint destination = transport.getDestination();
-        if (destination == null) {
-            return fallbackRawDistance;
-        }
-        int destinationIndex = pathFromBankToTarget.indexOf(destination);
-        if (destinationIndex < 0) {
-            return fallbackRawDistance;
-        }
-
-        int originIndex;
-        if (isImmediateBankTeleport(transport)) {
-            originIndex = 0;
-        } else {
-            WorldPoint origin = transport.getOrigin();
-            originIndex = origin == null ? 0 : pathFromBankToTarget.indexOf(origin);
-            if (originIndex < 0) {
-                originIndex = 0;
-            }
-        }
-
-        if (destinationIndex < originIndex) {
-            return fallbackRawDistance;
-        }
-
-        int walkToTransport = Math.max(0, originIndex);
-        int transportHop = 1;
-        int postTransportTail = Math.max(0, pathFromBankToTarget.size() - destinationIndex);
-        return walkToTransport + transportHop + postTransportTail;
-    }
 }
