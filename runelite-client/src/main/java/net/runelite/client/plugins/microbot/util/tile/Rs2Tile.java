@@ -503,6 +503,110 @@ public abstract class Rs2Tile implements Tile {
         return runClientReadBoolean(() -> isTileReachableInternal(targetPoint));
     }
 
+    /**
+     * Whether one adjacent step is currently permitted by the loaded client's collision flags.
+     * Unlike {@link #isTileReachable(WorldPoint)}, this is a constant-time edge observation and can
+     * release a door wait on the tick the server clears that door's blocking flag.
+     *
+     * <p>Unknown states fail closed: off-scene points, instances, unloaded planes and invalid input
+     * all return {@code false}. {@link #lastEdgeDecision()} distinguishes unknown from blocked so a
+     * caller may choose an appropriate fallback.</p>
+     */
+    public static boolean isEdgePassable(WorldPoint from, WorldPoint to) {
+        return runClientReadBoolean(() -> isEdgePassableInternal(from, to));
+    }
+
+    private static volatile String lastEdgeDecision = "-";
+
+    public static String lastEdgeDecision() {
+        return lastEdgeDecision;
+    }
+
+    private static boolean isEdgePassableInternal(WorldPoint from, WorldPoint to) {
+        if (from == null || to == null || from.getPlane() != to.getPlane()) {
+            lastEdgeDecision = "bad-args";
+            return false;
+        }
+
+        int dx = to.getX() - from.getX();
+        int dy = to.getY() - from.getY();
+        if (dx == 0 && dy == 0) {
+            lastEdgeDecision = "same-tile";
+            return true;
+        }
+        if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
+            lastEdgeDecision = "not-adjacent";
+            return false;
+        }
+
+        WorldView worldView = Microbot.getClient().getTopLevelWorldView();
+        if (worldView == null) {
+            lastEdgeDecision = "no-worldview";
+            return false;
+        }
+        if (worldView.getPlane() != from.getPlane()) {
+            lastEdgeDecision = "plane-not-loaded";
+            return false;
+        }
+        if (worldView.isInstance()) {
+            lastEdgeDecision = "instance";
+            return false;
+        }
+
+        int[][] flags = getFlagsInternal();
+        if (flags == null) {
+            lastEdgeDecision = "no-flags";
+            return false;
+        }
+
+        int fromX = from.getX() - worldView.getBaseX();
+        int fromY = from.getY() - worldView.getBaseY();
+        int toX = fromX + dx;
+        int toY = fromY + dy;
+        if (!isWithinBounds(fromX, fromY) || !isWithinBounds(toX, toY)) {
+            lastEdgeDecision = "off-scene";
+            return false;
+        }
+
+        boolean allowed = isStepAllowed(flags, fromX, fromY, dx, dy);
+        lastEdgeDecision = allowed ? "open" : "blocked";
+        return allowed;
+    }
+
+    /** Collision decision isolated from client reads for exhaustive unit testing. */
+    static boolean isStepAllowed(int[][] flags, int fromX, int fromY, int dx, int dy) {
+        if (dx == 0 && dy == 0) {
+            return true;
+        }
+        int toX = fromX + dx;
+        int toY = fromY + dy;
+        if ((flags[toX][toY] & CollisionDataFlag.BLOCK_MOVEMENT_FULL) != 0) {
+            return false;
+        }
+        if (dx == 0 || dy == 0) {
+            return (flags[fromX][fromY] & cardinalBlockFlag(dx, dy)) == 0;
+        }
+        return (flags[fromX][fromY] & cardinalBlockFlag(dx, 0)) == 0
+                && (flags[fromX][fromY] & cardinalBlockFlag(0, dy)) == 0
+                && (flags[toX][fromY]
+                & (CollisionDataFlag.BLOCK_MOVEMENT_FULL | cardinalBlockFlag(0, dy))) == 0
+                && (flags[fromX][toY]
+                & (CollisionDataFlag.BLOCK_MOVEMENT_FULL | cardinalBlockFlag(dx, 0))) == 0;
+    }
+
+    private static int cardinalBlockFlag(int dx, int dy) {
+        if (dx > 0) {
+            return CollisionDataFlag.BLOCK_MOVEMENT_EAST;
+        }
+        if (dx < 0) {
+            return CollisionDataFlag.BLOCK_MOVEMENT_WEST;
+        }
+        if (dy > 0) {
+            return CollisionDataFlag.BLOCK_MOVEMENT_NORTH;
+        }
+        return CollisionDataFlag.BLOCK_MOVEMENT_SOUTH;
+    }
+
     private static boolean isTileReachableInternal(WorldPoint targetPoint) {
         if (targetPoint == null) return false;
 

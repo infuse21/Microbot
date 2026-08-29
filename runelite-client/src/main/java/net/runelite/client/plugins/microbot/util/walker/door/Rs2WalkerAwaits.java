@@ -154,6 +154,15 @@ public final class Rs2WalkerAwaits {
         if (toDist + 1 < fromDist) {
             return true;
         }
+        if (Rs2Tile.isEdgePassable(fromWp, toWp)) {
+            return true;
+        }
+        // A loaded, definitively blocked edge is more authoritative and much cheaper than the
+        // scene-wide reachability fallback. Unknown observations still fall through for instances
+        // and scene-border cases where raw world-to-scene conversion cannot answer safely.
+        if ("blocked".equals(Rs2Tile.lastEdgeDecision())) {
+            return false;
+        }
         try {
             if (!Rs2Player.isMoving() && toDist <= 4 && Rs2Tile.isTileReachable(toWp)) {
                 return true;

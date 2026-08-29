@@ -19,10 +19,9 @@ public class ShortestPathCoreTest {
 	private static final WorldPoint AL_KHARID_GATE_WEST_NORTH = new WorldPoint(3267, 3228, 0);
 	private static final WorldPoint AL_KHARID_GATE_EAST_SOUTH = new WorldPoint(3268, 3227, 0);
 	private static final WorldPoint AL_KHARID_GATE_EAST_NORTH = new WorldPoint(3268, 3228, 0);
-	private static final int AL_KHARID_MINE_MIN_X = 3281;
-	private static final int AL_KHARID_MINE_MAX_X = 3300;
-	private static final int AL_KHARID_MINE_MIN_Y = 3151;
-	private static final int AL_KHARID_MINE_MAX_Y = 3178;
+	private static final WorldPoint AL_KHARID_PALACE_NORTH = new WorldPoint(3293, 3180, 0);
+	private static final WorldPoint AL_KHARID_GLORY_DESTINATION = new WorldPoint(3293, 3163, 0);
+	private static final WorldPoint AL_KHARID_HASSAN = new WorldPoint(3298, 3163, 0);
 
 	@BeforeClass
 	public static void loadCollisionMap() {
@@ -249,42 +248,17 @@ public class ShortestPathCoreTest {
 	}
 
 	@Test
-	public void testAlKharidMinePerimeterBlocksBothDirections() {
-		PathfinderConfig config = createMinimalConfig();
+	public void testPathfinderEntersAlKharidPalaceFromNorth() {
+		for (WorldPoint target : Arrays.asList(AL_KHARID_GLORY_DESTINATION, AL_KHARID_HASSAN)) {
+			Pathfinder pathfinder = new Pathfinder(createMinimalConfig(), AL_KHARID_PALACE_NORTH, target);
 
-		for (int x = AL_KHARID_MINE_MIN_X; x <= AL_KHARID_MINE_MAX_X; x++) {
-			assertBlockedBothDirections(config,
-					new WorldPoint(x, AL_KHARID_MINE_MIN_Y, 0),
-					new WorldPoint(x, AL_KHARID_MINE_MIN_Y - 1, 0));
-			assertBlockedBothDirections(config,
-					new WorldPoint(x, AL_KHARID_MINE_MAX_Y, 0),
-					new WorldPoint(x, AL_KHARID_MINE_MAX_Y + 1, 0));
+			pathfinder.run();
+
+			List<WorldPoint> path = pathfinder.getPath();
+			assertTrue("Route into Al Kharid Palace should complete for " + target, pathfinder.isDone());
+			assertFalse("Route into Al Kharid Palace should not be empty for " + target, path.isEmpty());
+			assertEquals("Route should reach the palace target", target, path.get(path.size() - 1));
 		}
-
-		for (int y = AL_KHARID_MINE_MIN_Y; y <= AL_KHARID_MINE_MAX_Y; y++) {
-			assertBlockedBothDirections(config,
-					new WorldPoint(AL_KHARID_MINE_MIN_X, y, 0),
-					new WorldPoint(AL_KHARID_MINE_MIN_X - 1, y, 0));
-			assertBlockedBothDirections(config,
-					new WorldPoint(AL_KHARID_MINE_MAX_X, y, 0),
-					new WorldPoint(AL_KHARID_MINE_MAX_X + 1, y, 0));
-		}
-	}
-
-	@Test
-	public void testPathfinderRoutesAroundAlKharidMine() {
-		WorldPoint start = new WorldPoint(AL_KHARID_MINE_MIN_X - 1, 3164, 0);
-		WorldPoint target = new WorldPoint(AL_KHARID_MINE_MAX_X + 5, 3164, 0);
-		Pathfinder pathfinder = new Pathfinder(createMinimalConfig(), start, target);
-
-		pathfinder.run();
-
-		List<WorldPoint> path = pathfinder.getPath();
-		assertTrue("Route around Al Kharid mine should complete", pathfinder.isDone());
-		assertFalse("Route around Al Kharid mine should not be empty", path.isEmpty());
-		assertEquals("Route should reach the target", target, path.get(path.size() - 1));
-		assertFalse("Route must not enter the open pit",
-				path.stream().anyMatch(ShortestPathCoreTest::isInsideAlKharidMine));
 	}
 
 	@Test
@@ -907,23 +881,6 @@ public class ShortestPathCoreTest {
 
 	private static boolean isEitherDirection(WorldPoint from, WorldPoint to, WorldPoint a, WorldPoint b) {
 		return (from.equals(a) && to.equals(b)) || (from.equals(b) && to.equals(a));
-	}
-
-	private static void assertBlockedBothDirections(PathfinderConfig config, WorldPoint a, WorldPoint b) {
-		int packedA = WorldPointUtil.packWorldPoint(a);
-		int packedB = WorldPointUtil.packWorldPoint(b);
-		assertTrue("Expected blocked edge " + a + " -> " + b,
-				config.isBlockedTransportStep(packedA, packedB));
-		assertTrue("Expected blocked edge " + b + " -> " + a,
-				config.isBlockedTransportStep(packedB, packedA));
-	}
-
-	private static boolean isInsideAlKharidMine(WorldPoint point) {
-		return point.getPlane() == 0
-				&& point.getX() >= AL_KHARID_MINE_MIN_X
-				&& point.getX() <= AL_KHARID_MINE_MAX_X
-				&& point.getY() >= AL_KHARID_MINE_MIN_Y
-				&& point.getY() <= AL_KHARID_MINE_MAX_Y;
 	}
 
 	private static boolean hasFenceCrossing(List<WorldPoint> path, int minX, int maxX, int northY, int southY, int plane) {
