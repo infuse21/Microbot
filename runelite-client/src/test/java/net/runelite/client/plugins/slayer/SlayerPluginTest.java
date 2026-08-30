@@ -46,6 +46,7 @@ import net.runelite.api.events.GameTick;
 import net.runelite.api.events.VarbitChanged;
 import net.runelite.api.gameval.DBTableID;
 import net.runelite.api.gameval.VarPlayerID;
+import net.runelite.api.gameval.VarbitID;
 import net.runelite.client.Notifier;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.chat.ChatClient;
@@ -261,6 +262,26 @@ public class SlayerPluginTest
 		slayerPlugin.onGameTick(new GameTick());
 
 		verify(infoBoxManager, never()).addInfoBox(any());
+	}
+
+	@Test
+	public void loginInitializesMortimerStreak()
+	{
+		GameStateChanged loggingIn = new GameStateChanged();
+		loggingIn.setGameState(GameState.LOGGING_IN);
+		slayerPlugin.onGameStateChanged(loggingIn);
+
+		when(client.getVarpValue(VarPlayerID.SLAYER_COUNT)).thenReturn(42);
+		when(client.getVarpValue(VarPlayerID.SLAYER_TARGET)).thenReturn(1);
+		when(client.getVarbitValue(VarbitID.SLAYER_MASTER)).thenReturn(10);
+		when(client.getVarpValue(VarPlayerID.SLAYER_MORTIMER_TASKS_COMPLETED)).thenReturn(17);
+		mockDBTable(113, 0, 10, "mocked npc");
+
+		VarbitChanged taskSizeChanged = new VarbitChanged();
+		taskSizeChanged.setVarpId(VarPlayerID.SLAYER_COUNT);
+		slayerPlugin.onVarbitChanged(taskSizeChanged);
+
+		verify(configManager).setRSProfileConfiguration(SlayerConfig.GROUP_NAME, SlayerConfig.STREAK_KEY, 17);
 	}
 
 	@Test
