@@ -755,6 +755,21 @@ public class Rs2PathApiPlanningTest
 		assertEquals(Rs2PlannerShadowComparison.Status.MATCH, match.getStatus());
 		assertFalse(match.isPathMatches());
 		assertTrue(Rs2PathApi.shouldSelectUpstream(match));
+		Rs2PlannerShadowStats beforeInvalidDuration = Rs2PathApi.getShadowStats();
+		try
+		{
+			Rs2PathApi.recordCanaryOutcome(match, 1L, Rs2RouteMetrics.UNAVAILABLE);
+			fail("unavailable canary duration must be rejected");
+		}
+		catch (IllegalArgumentException expected)
+		{
+			// Expected.
+		}
+		Rs2PlannerShadowStats afterInvalidDuration = Rs2PathApi.getShadowStats();
+		assertEquals(beforeInvalidDuration.getUpstreamCanarySelections(),
+			afterInvalidDuration.getUpstreamCanarySelections());
+		assertEquals(beforeInvalidDuration.getCanaryPerformance().getPlanningSamples(),
+			afterInvalidDuration.getCanaryPerformance().getPlanningSamples());
 
 		Rs2RouteResult higherCost = new Rs2RouteResult(
 			start,

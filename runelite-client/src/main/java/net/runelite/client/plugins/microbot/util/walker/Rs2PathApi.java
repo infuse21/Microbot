@@ -1106,13 +1106,18 @@ public final class Rs2PathApi
 		}
 	}
 
-	private static void recordCanaryOutcome(
+	static void recordCanaryOutcome(
 		Rs2PlannerShadowComparison comparison,
 		long planningNanos,
 		long localPlanningNanos)
 	{
 		synchronized (shadowEvidenceMutex)
 		{
+			if (planningNanos < 0L || localPlanningNanos < 0L)
+			{
+				throw new IllegalArgumentException(
+					"canary planning and local search durations must be available");
+			}
 			switch (comparison.getStatus())
 			{
 				case MATCH: upstreamCanarySelections++; break;
@@ -1120,11 +1125,6 @@ public final class Rs2PathApi
 				case FAILED: localFallbackFailures++; break;
 				default: throw new IllegalStateException(
 					"unhandled canary comparison status " + comparison.getStatus());
-			}
-			if (planningNanos < 0L || localPlanningNanos < 0L)
-			{
-				throw new IllegalArgumentException(
-					"canary planning and local search durations must be available");
 			}
 			canaryPlanningSamples++;
 			canaryPlanningNanosTotal = saturatedAdd(

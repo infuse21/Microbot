@@ -5228,13 +5228,15 @@ public class Rs2Walker {
                                                         long setAtMs,
                                                         long lastProgressAtMs,
                                                         long nowMs,
+                                                        int bestDistanceSeen,
                                                         long lastMovedAtMs,
                                                         boolean playerMoving,
                                                         int handoffTiles) {
         if (interim == null) {
             return false;
         }
-        if (shouldClearInterimTarget(interim, playerLoc, setAtMs, lastProgressAtMs, nowMs)) {
+        if (shouldClearInterimTarget(
+                interim, playerLoc, setAtMs, lastProgressAtMs, nowMs, bestDistanceSeen)) {
             return false;
         }
         if (playerLoc == null || playerLoc.getPlane() != interim.getPlane()) {

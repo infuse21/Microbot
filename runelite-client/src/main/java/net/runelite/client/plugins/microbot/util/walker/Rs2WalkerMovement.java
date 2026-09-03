@@ -1135,13 +1135,15 @@ final class Rs2WalkerMovement {
                                                        long setAtMs,
                                                        long lastProgressAtMs,
                                                        long nowMs,
+                                                       int bestDistanceSeen,
                                                        long lastMovedAtMs,
                                                        long lastRecoveryClickAtMs,
                                                        boolean playerMoving) {
         if (interim == null) {
             return false;
         }
-        if (shouldClearInterimTarget(interim, playerLoc, setAtMs, lastProgressAtMs, nowMs)) {
+        if (shouldClearInterimTarget(
+                interim, playerLoc, setAtMs, lastProgressAtMs, nowMs, bestDistanceSeen)) {
             return false;
         }
         if (shouldDeferRouteWorkForActiveInterim(interim,
@@ -1149,6 +1151,7 @@ final class Rs2WalkerMovement {
                 setAtMs,
                 lastProgressAtMs,
                 nowMs,
+                bestDistanceSeen,
                 lastMovedAtMs,
                 playerMoving,
                 INTERIM_CLOSE_TILES)) {
@@ -1177,6 +1180,7 @@ final class Rs2WalkerMovement {
                 routeState.interimSetAtMs,
                 routeState.interimLastProgressAtMs,
                 nowMs,
+                routeState.interimLastDistanceToTarget,
                 routeState.lastMovedTimeMs,
                 routeState.lastUnreachableRecoveryClickAtMs,
                 Rs2Player.isMoving());
@@ -1202,6 +1206,7 @@ final class Rs2WalkerMovement {
                 routeState.interimSetAtMs,
                 routeState.interimLastProgressAtMs,
                 nowMs,
+                routeState.interimLastDistanceToTarget,
                 routeState.lastMovedTimeMs,
                 Rs2Player.isMoving(),
                 INTERIM_CLOSE_TILES);

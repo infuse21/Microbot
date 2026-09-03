@@ -1808,6 +1808,7 @@ public class Rs2WalkerUnitTest {
                 1_000L,
                 2_500L,
                 3_000L,
+                Integer.MAX_VALUE,
                 0L,
                 0L,
                 false));
@@ -1821,6 +1822,7 @@ public class Rs2WalkerUnitTest {
                 1_000L,
                 1_500L,
                 5_000L,
+                Integer.MAX_VALUE,
                 0L,
                 0L,
                 false));
@@ -1834,9 +1836,24 @@ public class Rs2WalkerUnitTest {
                 1_000L,
                 0L,
                 3_000L,
+                Integer.MAX_VALUE,
                 0L,
                 2_000L,
                 false));
+    }
+
+    @Test
+    public void shouldYieldForActiveRecoveryInterim_movingAway_returnsFalse() {
+        assertFalse(Rs2WalkerMovement.shouldYieldForActiveRecoveryInterim(
+                new WorldPoint(2890, 3396, 0),
+                new WorldPoint(2880, 3396, 0),
+                1_000L,
+                4_900L,
+                5_000L,
+                5,
+                0L,
+                0L,
+                true));
     }
 
     @Test
@@ -1847,6 +1864,7 @@ public class Rs2WalkerUnitTest {
                 1_000L,
                 4_500L,
                 5_000L,
+                Integer.MAX_VALUE,
                 0L,
                 true,
                 5));
@@ -1860,6 +1878,7 @@ public class Rs2WalkerUnitTest {
                 1_000L,
                 4_900L,
                 5_000L,
+                Integer.MAX_VALUE,
                 0L,
                 false,
                 5));
@@ -1873,6 +1892,7 @@ public class Rs2WalkerUnitTest {
                 1_000L,
                 4_500L,
                 5_000L,
+                Integer.MAX_VALUE,
                 0L,
                 true,
                 5));
@@ -1886,8 +1906,23 @@ public class Rs2WalkerUnitTest {
                 1_000L,
                 1_500L,
                 5_000L,
+                Integer.MAX_VALUE,
                 0L,
                 false,
+                5));
+    }
+
+    @Test
+    public void shouldDeferRouteWorkForActiveInterim_movingAway_returnsFalse() {
+        assertFalse(Rs2Walker.shouldDeferRouteWorkForActiveInterim(
+                new WorldPoint(2890, 3396, 0),
+                new WorldPoint(2880, 3396, 0),
+                1_000L,
+                4_900L,
+                5_000L,
+                5,
+                0L,
+                true,
                 5));
     }
 
