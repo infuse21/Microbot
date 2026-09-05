@@ -115,6 +115,9 @@ public class F2PWebWalkerHarnessPlugin extends Plugin {
         result.upstreamPlannerShadow = plannerMode(result.plannerMode).comparisonEnabled();
         result.expectLocalFallback = Boolean.parseBoolean(property(
                 TEST_EXPECT_LOCAL_FALLBACK_PROPERTY, EXPECT_LOCAL_FALLBACK_PROPERTY, "false"));
+        Rs2PlannerShadowStats shadowBaseline = result.upstreamPlannerShadow
+                ? Rs2PathApi.getShadowStats()
+                : null;
 
         int exitCode = 0;
         try {
@@ -196,7 +199,7 @@ public class F2PWebWalkerHarnessPlugin extends Plugin {
                 }
             }
 
-            if (!captureShadowEvidence(result)) {
+            if (!captureShadowEvidence(result, shadowBaseline)) {
                 exitCode = 1;
             }
 
@@ -505,7 +508,8 @@ public class F2PWebWalkerHarnessPlugin extends Plugin {
         return lastLocation;
     }
 
-    private boolean captureShadowEvidence(WebWalkerTestResult result) {
+    private boolean captureShadowEvidence(WebWalkerTestResult result,
+                                          Rs2PlannerShadowStats baseline) {
         if (!result.upstreamPlannerShadow) {
             return true;
         }
@@ -513,32 +517,42 @@ public class F2PWebWalkerHarnessPlugin extends Plugin {
         result.shadowSettled = sleepUntil(() -> Rs2PathApi.getShadowStats().getPending() == 0,
                 SHADOW_SETTLE_TIMEOUT_MS);
         Rs2PlannerShadowStats stats = Rs2PathApi.getShadowStats();
+        long submitted = stats.getSubmitted() - baseline.getSubmitted();
+        long completed = stats.getCompleted() - baseline.getCompleted();
+        long discarded = stats.getDiscarded() - baseline.getDiscarded();
+        long pending = submitted - completed - discarded;
+        long divergences = stats.getDivergences() - baseline.getDivergences();
+        long failures = stats.getFailures() - baseline.getFailures();
+        long upstreamCanarySelections = stats.getUpstreamCanarySelections()
+                - baseline.getUpstreamCanarySelections();
+        long localFallbackFailures = stats.getLocalFallbackFailures()
+                - baseline.getLocalFallbackFailures();
         boolean expectedFallbackObserved = !result.expectLocalFallback
-                || (stats.getFailures() > 0
-                    && stats.getLocalFallbackFailures() > 0
-                    && stats.getUpstreamCanarySelections() == 0);
-        boolean unexpectedFailure = !result.expectLocalFallback && stats.getFailures() != 0;
+                || (failures > 0
+                    && localFallbackFailures > 0
+                    && upstreamCanarySelections == 0);
+        boolean unexpectedFailure = !result.expectLocalFallback && failures != 0;
         boolean canarySelectionObserved = plannerMode(result.plannerMode).f2pCanaryEnabled()
                 && !result.expectLocalFallback
-                ? stats.getUpstreamCanarySelections() > 0
+                ? upstreamCanarySelections > 0
                 : true;
         boolean passed = result.shadowSettled
-                && stats.getSubmitted() > 0
-                && stats.getCompleted() > 0
-                && stats.getPending() == 0
-                && stats.getDivergences() == 0
+                && submitted > 0
+                && completed > 0
+                && pending == 0
+                && divergences == 0
                 && !unexpectedFailure
                 && expectedFallbackObserved
                 && canarySelectionObserved;
         if (!passed) {
             result.shadowError = "Planner shadow evidence failed: settled=" + result.shadowSettled
-                    + ", submitted=" + stats.getSubmitted()
-                    + ", completed=" + stats.getCompleted()
-                    + ", pending=" + stats.getPending()
-                    + ", divergences=" + stats.getDivergences()
-                    + ", failures=" + stats.getFailures()
-                    + ", upstreamCanarySelections=" + stats.getUpstreamCanarySelections()
-                    + ", localFallbackFailures=" + stats.getLocalFallbackFailures()
+                    + ", submitted=" + submitted
+                    + ", completed=" + completed
+                    + ", pending=" + pending
+                    + ", divergences=" + divergences
+                    + ", failures=" + failures
+                    + ", upstreamCanarySelections=" + upstreamCanarySelections
+                    + ", localFallbackFailures=" + localFallbackFailures
                     + ", expectLocalFallback=" + result.expectLocalFallback;
         }
         result.addCheck("planner comparison and selection evidence", passed, result.shadowError);
