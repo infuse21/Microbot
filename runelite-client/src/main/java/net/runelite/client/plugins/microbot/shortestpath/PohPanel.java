@@ -3,6 +3,7 @@ package net.runelite.client.plugins.microbot.shortestpath;
 
 import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.gameval.ObjectID;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.shortestpath.components.CheckboxPanel;
 import net.runelite.client.plugins.microbot.shortestpath.components.EnumListPanel;
@@ -191,10 +192,42 @@ public class PohPanel extends PluginPanel {
                 new Transport(exitPortal, "Teleport to House", TransportType.TELEPORTATION_SPELL, true, 19, Map.of(Skill.MAGIC, 40)),
                 new Transport(exitPortal, "Teleport to House tablet: Inside", TransportType.TELEPORTATION_ITEM, true, 19, Set.of(Set.of(8013)))
         ));
-        transportMap.put(outsidePoint, Set.of(
-                new Transport(outsidePoint, exitPortal, location.name() + " -> PoH", TransportType.TELEPORTATION_PORTAL, true, "Home", "Portal", location.getPortalId())
-        ));
+        mergeTransports(transportMap, createHouseEntryPortalTransport(exitPortal, location));
         return transportMap;
+    }
+
+    static Map<WorldPoint, Set<Transport>> createHouseEntryPortalTransport(
+            WorldPoint exitPortal, HouseLocation location) {
+        if (exitPortal == null || location == null) {
+            return Map.of();
+        }
+        WorldPoint outsidePoint = location.getPortalLocation();
+        return Map.of(outsidePoint, Set.of(
+                new Transport(outsidePoint, exitPortal, location.name() + " -> PoH",
+                        TransportType.POH, true, "Home", "Portal",
+                        location.getPortalId())
+        ));
+    }
+
+    static Map<WorldPoint, Set<Transport>> createHouseExitPortalTransport(
+            WorldPoint exitPortal, HouseLocation location) {
+        if (exitPortal == null || location == null) {
+            return Map.of();
+        }
+        WorldPoint outsidePoint = location.getPortalLocation();
+        return Map.of(exitPortal, Set.of(
+                new Transport(exitPortal, outsidePoint, "PoH -> " + location.name(),
+                        TransportType.POH, true, "Enter", "Portal",
+                        ObjectID.POH_EXIT_PORTAL)
+        ));
+    }
+
+    private static void mergeTransports(Map<WorldPoint, Set<Transport>> target,
+            Map<WorldPoint, Set<Transport>> additions) {
+        for (Map.Entry<WorldPoint, Set<Transport>> entry : additions.entrySet()) {
+            target.computeIfAbsent(entry.getKey(), ignored -> new HashSet<>())
+                    .addAll(entry.getValue());
+        }
     }
 
     /**
@@ -212,6 +245,12 @@ public class PohPanel extends PluginPanel {
             Microbot.log("Failed to load exit portal config");
             return allTransports;
         }
+
+        // This is an outgoing PoH edge, so it must be present even while the player is
+        // already inside. PathfinderConfig intentionally omits getTransportsToPoh() in
+        // that state to avoid offering teleports back into the same house.
+        mergeTransports(pohTransports,
+                createHouseExitPortalTransport(exitPortal, HouseLocation.getHouseLocation()));
 
         pohTeleports.addAll(instance.checkboxPanel.getTeleports());
         pohTeleports.addAll(instance.portalPanel.getTeleports());

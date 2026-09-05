@@ -98,6 +98,24 @@ public class NpcDialogueTransportRouteScannerTest
 	}
 
 	@Test
+	public void arrivalContinueIsClosedBeforeLandingClears()
+	{
+		NpcDialogueTransportRouteScanner scanner = new NpcDialogueTransportRouteScanner();
+		MutableScene scene = new MutableScene(NpcDialogueTransport.Stage.CONTINUE);
+		RouteInteraction pending = scanner.scan(plan(), 0, 1, ORIGIN, scene, 13, COINS);
+
+		RouteInteraction arrival = scanner.observePending(pending, DESTINATION, scene, 13, COINS);
+		assertEquals(RouteInteraction.Status.AVAILABLE, arrival.getStatus());
+		assertEquals(NpcDialogueTransportPolicy.CONTINUE_ACTION, arrival.getAction());
+		assertTrue(arrival.isReady());
+
+		scene.visible = false;
+		RouteInteraction cleared = scanner.observePending(arrival, DESTINATION, scene, 13, COINS);
+		assertEquals(RouteInteraction.Status.CLEARED, cleared.getStatus());
+		assertFalse(cleared.isReady());
+	}
+
+	@Test
 	public void actorIdentityMismatchIsUnavailable()
 	{
 		NpcDialogueTransportRouteScanner scanner = new NpcDialogueTransportRouteScanner();
@@ -120,6 +138,84 @@ public class NpcDialogueTransportRouteScannerTest
 			new WorldPoint(ORIGIN.getX() + 20, ORIGIN.getY(), 0), scene, 13, COINS);
 
 		assertFalse(actor.isReady());
+	}
+
+	@Test
+	public void progressesThroughCabinBoyHerbertTravelRequestStage()
+	{
+		NpcDialogueTransportRouteScanner scanner = new NpcDialogueTransportRouteScanner();
+		MutableScene scene = new MutableScene(NpcDialogueTransport.Stage.ACTOR);
+		RouteInteraction actor = scanner.scan(plan(), 0, 1, ORIGIN, scene, 13, COINS);
+
+		scene.stage = NpcDialogueTransport.Stage.TRAVEL_REQUEST;
+		RouteInteraction request = scanner.observePending(actor, ORIGIN, scene, 13, COINS);
+
+		assertEquals(NpcDialogueTransportPolicy.TRAVEL_REQUEST_ACTION, request.getAction());
+		assertTrue(request.isReady());
+	}
+
+	@Test
+	public void equipsGhostspeakRequirementBeforeClickingCaptain()
+	{
+		NpcDialogueTransportRouteScanner scanner = new NpcDialogueTransportRouteScanner();
+		MutableScene scene = new MutableScene(NpcDialogueTransport.Stage.EQUIP_REQUIREMENT);
+
+		RouteInteraction equip = scanner.scan(plan(), 0, 1, ORIGIN, scene, 13, COINS);
+		assertEquals(NpcDialogueTransportPolicy.EQUIP_GHOSTSPEAK_ACTION,
+			equip.getAction());
+		assertTrue(equip.isReady());
+
+		scene.stage = NpcDialogueTransport.Stage.ACTOR;
+		RouteInteraction actor = scanner.observePending(equip, ORIGIN, scene, 13, COINS);
+		assertEquals("Board", actor.getAction());
+		assertTrue(actor.isReady());
+	}
+
+	@Test
+	public void equipsGoldHelmetBeforeTalkingToDondakan()
+	{
+		NpcDialogueTransportRouteScanner scanner = new NpcDialogueTransportRouteScanner();
+		MutableScene scene = new MutableScene(NpcDialogueTransport.Stage.EQUIP_REQUIREMENT);
+		scene.actorName = "Dondakan the Dwarf";
+
+		RouteInteraction equip = scanner.scan(plan(), 0, 1, ORIGIN, scene, 13, COINS);
+		assertEquals(NpcDialogueTransportPolicy.EQUIP_GOLD_HELMET_ACTION,
+			equip.getAction());
+		assertTrue(equip.isReady());
+	}
+
+	@Test
+	public void missingDestinationIsUnavailableNotAnotherMenuClick()
+	{
+		NpcDialogueTransportRouteScanner scanner = new NpcDialogueTransportRouteScanner();
+		MutableScene scene = new MutableScene(NpcDialogueTransport.Stage.ACTOR);
+		RouteInteraction pending = scanner.scan(plan(), 0, 1, ORIGIN, scene, 13, COINS);
+		scene.stage = NpcDialogueTransport.Stage.DESTINATION_UNAVAILABLE;
+		RouteInteraction observed = scanner.observePending(pending, ORIGIN, scene, 13, COINS);
+		assertEquals(RouteInteraction.Status.UNAVAILABLE, observed.getStatus());
+		assertFalse(observed.isReady());
+		RouteInteraction initial = scanner.scan(plan(), 0, 1, ORIGIN, scene, 13, COINS);
+		assertEquals(RouteInteraction.Status.UNAVAILABLE, initial.getStatus());
+		assertFalse(initial.isReady());
+	}
+
+	@Test
+	public void missingDestinationCancelsVisibleMenuBeforeBecomingUnavailable()
+	{
+		NpcDialogueTransportRouteScanner scanner = new NpcDialogueTransportRouteScanner();
+		MutableScene scene = new MutableScene(NpcDialogueTransport.Stage.ACTOR);
+		RouteInteraction pending = scanner.scan(plan(), 0, 1, ORIGIN, scene, 13, COINS);
+		scene.stage = NpcDialogueTransport.Stage.DESTINATION_CANCEL;
+		RouteInteraction cancel = scanner.observePending(pending, ORIGIN, scene, 13, COINS);
+		assertEquals(RouteInteraction.Status.AVAILABLE, cancel.getStatus());
+		assertEquals(NpcDialogueTransportPolicy.CANCEL_UNAVAILABLE_ACTION, cancel.getAction());
+		assertTrue(cancel.isReady());
+		scene.stage = NpcDialogueTransport.Stage.DESTINATION_UNAVAILABLE;
+		RouteInteraction unavailable = scanner.observePending(cancel, ORIGIN, scene, 13, COINS);
+		assertEquals(RouteInteraction.Status.UNAVAILABLE, unavailable.getStatus());
+		assertEquals(NpcDialogueTransportPolicy.DESTINATION_UNAVAILABLE_ACTION,
+			unavailable.getAction());
+		assertFalse(unavailable.isReady());
 	}
 
 	@Test
@@ -148,6 +244,7 @@ public class NpcDialogueTransportRouteScannerTest
 		private NpcDialogueTransport.Stage stage;
 		private boolean visible = true;
 		private int actorId = 33614;
+		private String actorName = "Boaty";
 		private int fareCoins;
 
 		private MutableScene(NpcDialogueTransport.Stage stage)
@@ -167,9 +264,15 @@ public class NpcDialogueTransportRouteScannerTest
 			return visible ? transport() : null;
 		}
 
+		@Override
+		public boolean hasContinue()
+		{
+			return visible && stage == NpcDialogueTransport.Stage.CONTINUE;
+		}
+
 		private NpcDialogueTransport transport()
 		{
-			return new NpcDialogueTransport(ORIGIN, DESTINATION, actorId, "Boaty",
+			return new NpcDialogueTransport(ORIGIN, DESTINATION, actorId, actorName,
 				"Board", "Shayzien", fareCoins, ORIGIN, stage);
 		}
 	}

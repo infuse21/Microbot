@@ -33,7 +33,7 @@ public class NavigationShadowCorpusTest
 	}
 
 	@Test
-	public void interactionAndRecoveryDivergencesAreClassified()
+	public void interactionAndUnownedMovementRecoveryTraceStaysStable()
 	{
 		NavigationEngine engine = engine();
 
@@ -41,13 +41,13 @@ public class NavigationShadowCorpusTest
 			NavigationDecision.Type.INTERACT), NavigationDecision.Type.INTERACT,
 			NavigationComparison.MATCH, NavigationPhase.PERFORMING_INTERACTION);
 		assertStep(engine, observation(A, true, false, true,
-			NavigationDecision.Type.REQUEST_REPLAN), NavigationDecision.Type.WAIT,
-			NavigationComparison.LEGACY_ONLY, NavigationPhase.FOLLOWING_ROUTE);
-		assertEquals(0, engine.snapshot().getRecoveryAttempts());
-		assertStep(engine, observation(A, false, false, true,
 			NavigationDecision.Type.REQUEST_REPLAN), NavigationDecision.Type.REQUEST_REPLAN,
 			NavigationComparison.MATCH, NavigationPhase.REPLANNING);
 		assertEquals(1, engine.snapshot().getRecoveryAttempts());
+		assertStep(engine, observation(A, false, false, true,
+			NavigationDecision.Type.REQUEST_REPLAN), NavigationDecision.Type.REQUEST_REPLAN,
+			NavigationComparison.MATCH, NavigationPhase.REPLANNING);
+		assertEquals(2, engine.snapshot().getRecoveryAttempts());
 	}
 
 	private static NavigationEngine engine()

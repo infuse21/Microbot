@@ -10,6 +10,7 @@ public final class SpiritTree
 	public enum Stage
 	{
 		OBJECT,
+		ORIGIN_UNAVAILABLE,
 		DESTINATION,
 		DESTINATION_UNAVAILABLE
 	}

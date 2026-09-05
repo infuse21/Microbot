@@ -1,9 +1,12 @@
 package net.runelite.client.plugins.microbot.util.walker.transport;
 
+import net.runelite.api.Quest;
+import net.runelite.api.QuestState;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.shortestpath.Transport;
 import net.runelite.client.plugins.microbot.shortestpath.TransportType;
 
+import java.util.Collection;
 import java.util.Locale;
 import java.util.Set;
 
@@ -18,6 +21,15 @@ public final class NpcTransportPolicy
 
 	private static final Set<TransportType> TYPES = Set.of(
 		TransportType.NPC, TransportType.SHIP, TransportType.BOAT);
+	private static final int LIVE_NPC_ORIGIN_RADIUS = 15;
+	private static final Set<String> ORDINARY_DIRECT_ROUTES = Set.of(
+		"3680,2963,0->3786,2824,0|550|Transport|Brother Tranquility||2",
+		"3786,2824,0->3680,2963,0|550|Transport|Brother Tranquility||2",
+		"2484,3486,1->2649,4516,0|1445|Travel|Daero||6",
+		"2649,4518,0->2894,2726,0|1446|Travel|Waydar||4",
+		"2896,2727,0->2393,3465,0|1446|Travel|Waydar||4",
+		"3280,3412,0->1700,3141,0|12888|Travel|Primio|Civitas illa Fortis|6",
+		"1703,3140,0->3280,3412,0|12889|Travel|Primio|Varrock|6");
 
 	private NpcTransportPolicy()
 	{
@@ -25,6 +37,10 @@ public final class NpcTransportPolicy
 
 	public static boolean isEligible(Transport transport)
 	{
+		if (isOrdinaryDirectRoute(transport))
+		{
+			return true;
+		}
 		if (transport == null || transport.getOrigin() == null
 			|| transport.getDestination() == null || transport.getObjectId() <= 0
 			|| isBlank(transport.getAction()) || isBlank(transport.getName())
@@ -38,6 +54,56 @@ public final class NpcTransportPolicy
 		// those legacy-owned until dialogue widgets are represented as engine state.
 		return !normalize(transport.getAction()).equals("talk-to")
 			&& isBlank(transport.getDisplayInfo());
+	}
+
+	static boolean isOrdinaryDirectRoute(Transport transport)
+	{
+		if (transport == null || transport.getType() != TransportType.TRANSPORT
+			|| transport.getOrigin() == null || transport.getDestination() == null
+			|| transport.getObjectId() <= 0 || isBlank(transport.getAction())
+			|| isBlank(transport.getName()) || transport.getCurrencyAmount() != 0
+			|| !isBlank(transport.getCurrencyName()) || transport.isConsumable()
+			|| !transport.getItemIdRequirements().isEmpty() || !transport.getVarbits().isEmpty()
+			|| !transport.getVarplayers().isEmpty()
+			|| !ORDINARY_DIRECT_ROUTES.contains(ordinaryRouteKey(transport)))
+		{
+			return false;
+		}
+		if (transport.getObjectId() == 12888 || transport.getObjectId() == 12889)
+		{
+			return transport.getQuests().size() == 1
+				&& transport.getQuests().get(Quest.CHILDREN_OF_THE_SUN) == QuestState.FINISHED;
+		}
+		return transport.getQuests().isEmpty();
+	}
+
+	static boolean isLiveNpcMatch(Transport transport, String liveName,
+		Collection<String> liveActions, WorldPoint liveTile)
+	{
+		if (!isOrdinaryDirectRoute(transport) || liveName == null || liveActions == null
+			|| liveTile == null || !liveName.equalsIgnoreCase(transport.getName())
+			|| liveTile.distanceTo2D(transport.getOrigin()) > LIVE_NPC_ORIGIN_RADIUS)
+		{
+			return false;
+		}
+		return liveActions.stream().anyMatch(action -> action != null
+			&& normalizeAction(action).equals(normalizeAction(transport.getAction())));
+	}
+
+	private static String ordinaryRouteKey(Transport transport)
+	{
+		WorldPoint origin = transport.getOrigin();
+		WorldPoint destination = transport.getDestination();
+		return pointKey(origin) + "->" + pointKey(destination) + "|"
+			+ transport.getObjectId() + "|" + transport.getAction() + "|"
+			+ transport.getName() + "|"
+			+ (transport.getDisplayInfo() == null ? "" : transport.getDisplayInfo()) + "|"
+			+ transport.getDuration();
+	}
+
+	private static String pointKey(WorldPoint point)
+	{
+		return point.getX() + "," + point.getY() + "," + point.getPlane();
 	}
 
 	/**

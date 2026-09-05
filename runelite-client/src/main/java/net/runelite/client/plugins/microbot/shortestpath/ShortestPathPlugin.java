@@ -59,6 +59,7 @@ import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveCol
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.live.LiveRouteValidator;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.SplitFlagMap;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
+import net.runelite.client.plugins.microbot.util.walker.transport.Rs2NpcDialogueTransportScene;
 import net.runelite.client.plugins.microbot.util.tile.Rs2Tile;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.walker.navigation.NavigationEngineRuntime;
@@ -595,6 +596,9 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
 
     @Subscribe
     public void onGameStateChanged(GameStateChanged event) {
+        if (event.getGameState() == GameState.LOGIN_SCREEN && pathfinderConfig != null) {
+            pathfinderConfig.clearFossilRowboatMenu();
+        }
         if (event.getGameState() == GameState.LOGGED_IN) {
             pendingLoginRefresh = true;
         }
@@ -846,6 +850,7 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
     @Subscribe
     public void onGameTick(GameTick tick) {
         handlePendingLoginRefresh();
+        Rs2NpcDialogueTransportScene.observeFossilRowboatMenu();
         refreshLiveCollision();
 
         if (Rs2Walker.getCurrentTarget() != null) {

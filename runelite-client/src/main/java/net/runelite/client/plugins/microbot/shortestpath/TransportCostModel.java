@@ -15,8 +15,18 @@ public final class TransportCostModel
 	static final int SPIRIT_TREE_MINIMUM_TICKS = 12;
 	/** Live glider menu travel confirms the catalog's eight-tick estimate is conservative. */
 	static final int GNOME_GLIDER_MINIMUM_TICKS = 8;
-	/** Initial quetzal routing floor; recalibrate from the first accepted live traces. */
-	static final int QUETZAL_MINIMUM_TICKS = 6;
+	/** Live quetzal destination selection and landing take roughly 10-12 game ticks. */
+	static final int QUETZAL_MINIMUM_TICKS = 10;
+	/** Live POH physical-portal transitions take roughly 4-7 game ticks. */
+	static final int POH_MINIMUM_TICKS = 6;
+	/** Live canoe construction, selection, and landing take roughly 53-57 game ticks. */
+	static final int CANOE_MINIMUM_TICKS = 54;
+	/** Live Keldagrim train-cart travel takes roughly 26-29 game ticks. */
+	static final int KELDAGRIM_TRAIN_CART_MINIMUM_TICKS = 28;
+	/** Kourend's object, destination menu, and landing need more than its five-tick row. */
+	static final int KOUREND_MINECART_MINIMUM_TICKS = 8;
+	/** Live Soul Wars portal interactions and landing take roughly two to three game ticks. */
+	static final int TELEPORTATION_PORTAL_MINIMUM_TICKS = 3;
 
 	private TransportCostModel()
 	{
@@ -47,6 +57,21 @@ public final class TransportCostModel
 			case QUETZAL:
 				minimum = QUETZAL_MINIMUM_TICKS;
 				break;
+			case POH:
+				minimum = POH_MINIMUM_TICKS;
+				break;
+			case CANOE:
+				minimum = CANOE_MINIMUM_TICKS;
+				break;
+			case MINECART:
+				minimum = transport.getObjectId() == 28835
+					? KOUREND_MINECART_MINIMUM_TICKS
+					: transport.getObjectId() == 16168 ? 21
+						: KELDAGRIM_TRAIN_CART_MINIMUM_TICKS;
+				break;
+			case TELEPORTATION_PORTAL:
+				minimum = TELEPORTATION_PORTAL_MINIMUM_TICKS;
+				break;
 			default:
 				minimum = 1;
 				break;
@@ -71,7 +96,7 @@ public final class TransportCostModel
 			int edgeTicks = TransportEdgeMatcher.find(transports, from, to).stream()
 				.mapToInt(TransportCostModel::travelTicks)
 				.min()
-				.orElseGet(() -> originlessTicks(transports, edgeIndex, to));
+				.orElseGet(() -> originlessTicks(transports, edgeIndex, from, to));
 			if (edgeTicks < 0)
 			{
 				edgeTicks = WorldPointUtil.distanceBetween(from, to);
@@ -86,13 +111,13 @@ public final class TransportCostModel
 	}
 
 	private static int originlessTicks(Map<WorldPoint, Set<Transport>> transports,
-		int edgeIndex, WorldPoint destination)
+		int edgeIndex, WorldPoint origin, WorldPoint destination)
 	{
-		if (edgeIndex != 1 || transports == null || destination == null)
+		if (edgeIndex != 1 || transports == null || origin == null || destination == null)
 		{
 			return -1;
 		}
-		Set<Transport> originless = transports.get(null);
+		Set<Transport> originless = transports.get(origin);
 		if (originless == null)
 		{
 			return -1;

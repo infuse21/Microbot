@@ -7,6 +7,7 @@ import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.api.tileobject.models.Rs2TileObjectModel;
 import net.runelite.client.plugins.microbot.shortestpath.Transport;
 import net.runelite.client.plugins.microbot.shortestpath.TransportEdgeMatcher;
+import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2PathApi;
 import net.runelite.client.plugins.microbot.util.walker.obstacle.PlannedEdge;
 import net.runelite.client.plugins.microbot.util.walker.transport.model.SpiritTree;
@@ -20,6 +21,7 @@ import java.util.List;
 public final class Rs2SpiritTreeScene implements SpiritTreeScene
 {
 	private static final int OBJECT_SEARCH_RADIUS = 4;
+	private static final int MISSING_ORIGIN_CONFIRMATION_RADIUS = 4;
 	private static final int LEGACY_ADVENTURE_LOG_GROUP_ID = 187;
 	private static final int LEGACY_ADVENTURE_LOG_CHOICES_CHILD_ID = 3;
 
@@ -112,8 +114,22 @@ public final class Rs2SpiritTreeScene implements SpiritTreeScene
 	private static SpiritTree objectStage(Transport transport)
 	{
 		Rs2TileObjectModel tree = findTreeObject(transport);
-		return tree == null ? null
-			: stage(transport, tree.getWorldLocation(), SpiritTree.Stage.OBJECT);
+		if (tree != null)
+		{
+			return stage(transport, tree.getWorldLocation(), SpiritTree.Stage.OBJECT);
+		}
+		WorldPoint player = Rs2Player.getWorldLocation();
+		if (player == null || player.getPlane() != transport.getOrigin().getPlane()
+			|| player.distanceTo2D(transport.getOrigin()) > MISSING_ORIGIN_CONFIRMATION_RADIUS)
+		{
+			return null;
+		}
+		if (Rs2PathApi.getPathfinderConfig() != null)
+		{
+			Rs2PathApi.getPathfinderConfig()
+				.markSpiritTreeDestinationUnavailable(transport.getOrigin());
+		}
+		return stage(transport, transport.getOrigin(), SpiritTree.Stage.ORIGIN_UNAVAILABLE);
 	}
 
 	private static Rs2TileObjectModel findTreeObject(Transport transport)

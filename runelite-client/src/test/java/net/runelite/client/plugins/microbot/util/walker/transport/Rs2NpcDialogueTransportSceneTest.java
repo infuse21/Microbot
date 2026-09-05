@@ -31,6 +31,18 @@ public class Rs2NpcDialogueTransportSceneTest
 	}
 
 	@Test
+	public void captainShanksDestinationSentencesMatchCatalogLabels()
+	{
+		List<String> shanks = Arrays.asList("Khazard Port please.",
+			"Port Sarim please.", "Nowhere just at the moment thanks.");
+
+		assertEquals(0, Rs2NpcDialogueTransportScene.matchOptionIndex(shanks,
+			"Khazard Port"));
+		assertEquals(1, Rs2NpcDialogueTransportScene.matchOptionIndex(shanks,
+			"Port Sarim"));
+	}
+
+	@Test
 	public void ambiguousContainmentIsRefused()
 	{
 		List<String> ambiguous = Arrays.asList("Sail to Molch Island now",

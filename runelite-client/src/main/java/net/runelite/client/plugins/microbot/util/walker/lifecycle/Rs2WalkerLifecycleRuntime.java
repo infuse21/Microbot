@@ -14,6 +14,7 @@ import net.runelite.client.plugins.microbot.util.walker.door.DoorInteractionOwne
 import net.runelite.client.plugins.microbot.util.walker.navigation.NavigationEngineRuntime;
 import net.runelite.client.plugins.microbot.util.walker.navigation.NavigationRequest;
 import net.runelite.client.plugins.microbot.util.walker.navigation.NavigationRouteOptions;
+import net.runelite.client.plugins.microbot.util.walker.navigation.NavigationSnapshot;
 import net.runelite.client.plugins.microbot.util.walker.navigation.RoutePlannerRuntime;
 import net.runelite.client.ui.overlay.worldmap.WorldMapPoint;
 import net.runelite.client.ui.overlay.worldmap.WorldMapPointManager;
@@ -31,6 +32,11 @@ public final class Rs2WalkerLifecycleRuntime {
     }
 
     public static void applyWalkerDestination(WorldPoint target, boolean newRequest) {
+        applyWalkerDestination(target, newRequest,
+                reachedDistanceFor(target == null ? Set.of() : Set.of(target)));
+    }
+
+    public static void applyWalkerDestination(WorldPoint target, boolean newRequest, int reachedDistance) {
         if (target == null) {
             return;
         }
@@ -86,7 +92,7 @@ public final class Rs2WalkerLifecycleRuntime {
                 : start;
         Rs2PathApi.setLastLocation(effectiveStart);
         Microbot.getClientThread().runOnSeperateThread(
-                () -> restartPathfinding(effectiveStart, Set.of(target), newRequest));
+                () -> restartPathfinding(effectiveStart, Set.of(target), newRequest, reachedDistance));
     }
 
     public static boolean restartPathfinding(WorldPoint start, WorldPoint end) {
@@ -94,15 +100,24 @@ public final class Rs2WalkerLifecycleRuntime {
     }
 
     public static boolean restartPathfinding(WorldPoint start, Set<WorldPoint> ends) {
-        return restartPathfinding(start, ends, false);
+        return restartPathfinding(start, ends, false, reachedDistanceFor(ends));
     }
 
-    private static boolean restartPathfinding(WorldPoint start, Set<WorldPoint> ends, boolean newRequest) {
+    static int reachedDistanceFor(Set<WorldPoint> ends) {
+        NavigationSnapshot snapshot = NavigationEngineRuntime.getSnapshot();
+        if (snapshot != null && !snapshot.isTerminal()
+                && snapshot.getRequest().getDestinations().equals(ends)) {
+            return snapshot.getRequest().getReachedDistance();
+        }
+        return Rs2Walker.config != null ? Math.max(0, Rs2Walker.config.reachedDistance()) : 0;
+    }
+
+    static RoutePlannerRuntime.Preparation prepareRouteRequest(WorldPoint start, Set<WorldPoint> ends,
+            boolean newRequest, int reachedDistance) {
         RoutePlannerRuntime.Preparation preparation = newRequest
                 ? RoutePlannerRuntime.beginNewRequest()
                 : RoutePlannerRuntime.beginReplan();
         if (ends != null && !ends.isEmpty()) {
-            int reachedDistance = Rs2Walker.config != null ? Math.max(0, Rs2Walker.config.reachedDistance()) : 0;
             boolean ordinaryEngineAllowed = Rs2Walker.config != null
                     && Rs2Walker.config.navigationEngineOrdinaryWalking()
                     && DoorInteractionOwnership.ordinaryEngineAllowed(start, ends);
@@ -112,8 +127,14 @@ public final class Rs2WalkerLifecycleRuntime {
                     ordinaryEngineAllowed,
                     Rs2Walker.config == null ? 10 : Rs2Walker.config.recalculateDistance());
             NavigationEngineRuntime.ensureRequest(new NavigationRequest(preparation.getRequestId(), ends,
-                    reachedDistance, routeOptions, "rs2walker"));
+                    Math.max(0, reachedDistance), routeOptions, "rs2walker"));
         }
+        return preparation;
+    }
+
+    private static boolean restartPathfinding(WorldPoint start, Set<WorldPoint> ends, boolean newRequest,
+            int reachedDistance) {
+        RoutePlannerRuntime.Preparation preparation = prepareRouteRequest(start, ends, newRequest, reachedDistance);
         WorldPoint refreshTarget = ends != null && !ends.isEmpty() ? ends.iterator().next() : null;
         Rs2PathApi.getPathfinderConfig().refresh(refreshTarget);
         if (Rs2Player.isInCave()) {
@@ -135,7 +156,6 @@ public final class Rs2WalkerLifecycleRuntime {
                 }
 
                 WorldPoint lastPath = pathfinderWithoutTeleports.getPath().get(pathfinderWithoutTeleports.getPath().size() - 1);
-                int reachedDistance = Rs2Walker.config != null ? Rs2Walker.config.reachedDistance() : 10;
                 boolean pathWithoutTeleportsIsReachable = lastPath.distanceTo(ends.stream().findFirst().orElse(lastPath)) <= reachedDistance;
                 if (pathWithoutTeleportsIsReachable
                         && basePathAvailable

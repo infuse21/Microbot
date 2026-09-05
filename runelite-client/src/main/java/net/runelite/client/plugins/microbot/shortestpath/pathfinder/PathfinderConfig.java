@@ -24,9 +24,11 @@ import net.runelite.client.plugins.microbot.util.magic.RuneFilter;
 import net.runelite.client.plugins.microbot.util.magic.Runes;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.leaguetransport.Rs2LeaguesTransport;
+import net.runelite.client.plugins.microbot.util.leaguetransport.SeasonalTransportHandlers;
 import net.runelite.client.plugins.microbot.util.poh.PohTeleports;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.walker.WebWalkLog;
+import net.runelite.client.plugins.microbot.util.walker.transport.NpcDialogueTransportPolicy;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -65,6 +67,8 @@ public class PathfinderConfig {
 	private static final WorldPoint SPIRIT_TREE_FARMING_GUILD = new WorldPoint(1251, 3750, 0);
 	private final Set<WorldPoint> unavailableSpiritTreeDestinations = ConcurrentHashMap.newKeySet();
 	private final Set<WorldPoint> unavailableGnomeGliderDestinations = ConcurrentHashMap.newKeySet();
+	private final Set<WorldPoint> unavailableMagicMushtreeDestinations = ConcurrentHashMap.newKeySet();
+	private volatile Set<WorldPoint> unavailableFossilCampDestinations = Collections.emptySet();
 	private static final Set<Long> STATIC_BLOCKED_EDGES_PACKED = loadStaticBlockedEdgesFromResources();
 	// Tiles within 1 of an aggressive-NPC hazard tile (the melee-aggro ring). Stepping onto one
 	// gets a high pathfinding penalty when avoidDangerousNpcs is on, so paths keep >=2 tiles away.
@@ -580,13 +584,15 @@ public class PathfinderConfig {
                         }
                     }
                 }
-                if (t.getItemIdRequirements() != null) {
-                    t.getItemIdRequirements().stream()
+                if (TransportRequirementPolicy.itemIdRequirements(t) != null) {
+                    TransportRequirementPolicy.itemIdRequirements(t).stream()
                             .filter(Objects::nonNull)
                             .forEach(relevantItemIds::addAll);
                 }
-                if (t.getCurrencyAmount() > 0 && t.getCurrencyName() != null && !t.getCurrencyName().isEmpty()) {
-                    relevantCurrencyNames.add(t.getCurrencyName());
+                int currencyAmount = TransportRequirementPolicy.currencyAmount(t);
+                String currencyName = TransportRequirementPolicy.currencyName(t);
+                if (currencyAmount > 0 && currencyName != null && !currencyName.isEmpty()) {
+                    relevantCurrencyNames.add(currencyName);
                 }
             }
         }
@@ -1083,6 +1089,28 @@ public class PathfinderConfig {
         transportRefreshSnapshots.clear();
     }
 
+	/** Called on the client thread with a complete dialogue snapshot; later menus can unlock routes. */
+	public boolean recordFossilRowboatMenu(WorldPoint player, List<String> options) {
+		Set<WorldPoint> missing = NpcDialogueTransportPolicy.missingFossilCampDestinations(player, options);
+		if (missing == null || missing.equals(unavailableFossilCampDestinations)) {
+			return false;
+		}
+		unavailableFossilCampDestinations = missing;
+		invalidateTransportRefreshCache();
+		return true;
+	}
+
+	public boolean isFossilRowboatRouteEnabled(WorldPoint origin, WorldPoint destination) {
+		return !NpcDialogueTransportPolicy.FOSSIL_CAMP.equals(origin)
+			|| !unavailableFossilCampDestinations.contains(destination);
+	}
+
+	/** Login-screen reset prevents one account's observed locks affecting another account. */
+	public void clearFossilRowboatMenu() {
+		unavailableFossilCampDestinations = Collections.emptySet();
+		invalidateTransportRefreshCache();
+	}
+
 	/**
 	 * Excludes a destination that the live spirit-tree menu rendered as locked for this session.
 	 * Both incoming and outgoing network edges are filtered on the next transport refresh.
@@ -1103,6 +1131,16 @@ public class PathfinderConfig {
 		}
 		invalidateTransportRefreshCache();
 		WebWalkLog.cfg("gnome_glider_unavailable destination={}", destination);
+		return true;
+	}
+
+	/** Excludes both directions of a destination labelled as undiscovered on the live mushtree map. */
+	public boolean markMagicMushtreeDestinationUnavailable(WorldPoint destination) {
+		if (destination == null || !unavailableMagicMushtreeDestinations.add(destination)) {
+			return false;
+		}
+		invalidateTransportRefreshCache();
+		WebWalkLog.cfg("magic_mushtree_unavailable destination={}", destination);
 		return true;
 	}
 
@@ -1269,11 +1307,26 @@ public class PathfinderConfig {
     }
 
     private boolean useTransport(Transport transport) {
+        if (!TransportRequirementPolicy.questVariantAvailable(transport)) {
+            return false;
+        }
+        if (transport.getType() == TransportType.BOAT && transport.getObjectId() == 30914
+                && !isFossilRowboatRouteEnabled(transport.getOrigin(), transport.getDestination())) {
+            return false;
+        }
         // Check if the feature flag is disabled
         if (!isFeatureEnabled(transport)) {
             log.debug("Transport Type {} is disabled by feature flag", transport.getType());
             return false;
         }
+		// Do not publish a seasonal edge unless the walker has an executor for that exact
+		// row shape. A config toggle alone previously admitted every packaged League row,
+		// including rows that could only fail and be selected again on the next replan.
+		if (transport.getType() == TransportType.SEASONAL_TRANSPORT
+				&& !SeasonalTransportHandlers.isAvailable(transport)) {
+			log.debug("Seasonal transport ( D: {} ) has no registered executor", transport.getDestination());
+			return false;
+		}
         // If the transport requires you to be in a members world (used for more granular member requirements)
         if (transport.isMembers() && !client.getWorldType().contains(WorldType.MEMBERS)) {
             log.debug("Transport ( O: {} D: {} ) requires members world", transport.getOrigin(), transport.getDestination());
@@ -1286,6 +1339,12 @@ public class PathfinderConfig {
 		if (transport.getType() == TransportType.GNOME_GLIDER
 				&& !isGnomeGliderRouteEnabled(transport)) {
 			log.debug("Transport ( O: {} D: {} ) is a gnome glider route but the destination is unavailable",
+				transport.getOrigin(), transport.getDestination());
+			return false;
+		}
+		if (isMagicMushtreeTransport(transport)
+				&& !isMagicMushtreeRouteEnabled(transport)) {
+			log.debug("Transport ( O: {} D: {} ) is a Magic Mushtree route but the destination is unavailable",
 				transport.getOrigin(), transport.getDestination());
 			return false;
 		}
@@ -1313,20 +1372,22 @@ public class PathfinderConfig {
         }
 
         // If you don't have the required currency & amount for transport
-        if (transport.getCurrencyAmount() > 0) {
+        int currencyAmount = TransportRequirementPolicy.currencyAmount(transport);
+        String currencyName = TransportRequirementPolicy.currencyName(transport);
+        if (currencyAmount > 0) {
             if (refreshCurrencyCache != null) {
-                int[] cached = refreshCurrencyCache.computeIfAbsent(transport.getCurrencyName(), name -> {
+                int[] cached = refreshCurrencyCache.computeIfAbsent(currencyName, name -> {
                     int invCount = Rs2Inventory.itemQuantity(name);
                     int bankCount = useBankItems ? Rs2Bank.count(name) : 0;
                     return new int[]{invCount, bankCount};
                 });
-                if (cached[0] < transport.getCurrencyAmount() && cached[1] < transport.getCurrencyAmount()) {
-                    log.debug("Transport ( O: {} D: {} ) requires {} x {}", transport.getOrigin(), transport.getDestination(), transport.getCurrencyAmount(), transport.getCurrencyName());
+                if (cached[0] < currencyAmount && cached[1] < currencyAmount) {
+                    log.debug("Transport ( O: {} D: {} ) requires {} x {}", transport.getOrigin(), transport.getDestination(), currencyAmount, currencyName);
                     return false;
                 }
-            } else if (!Rs2Inventory.hasItemAmount(transport.getCurrencyName(), transport.getCurrencyAmount())
-                    && !(useBankItems && Rs2Bank.count(transport.getCurrencyName()) >= transport.getCurrencyAmount())) {
-                log.debug("Transport ( O: {} D: {} ) requires {} x {}", transport.getOrigin(), transport.getDestination(), transport.getCurrencyAmount(), transport.getCurrencyName());
+            } else if (!Rs2Inventory.hasItemAmount(currencyName, currencyAmount)
+                    && !(useBankItems && Rs2Bank.count(currencyName) >= currencyAmount)) {
+                log.debug("Transport ( O: {} D: {} ) requires {} x {}", transport.getOrigin(), transport.getDestination(), currencyAmount, currencyName);
                 return false;
             }
         }
@@ -1355,10 +1416,10 @@ public class PathfinderConfig {
         }
 
         // Used for Generic Item Requirements
-        if (!transport.getItemIdRequirements().isEmpty()) {
+        if (!TransportRequirementPolicy.itemIdRequirements(transport).isEmpty()) {
             boolean hasRequiredItems = hasRequiredItems(transport);
             if (!hasRequiredItems) {
-                log.debug("Transport ( O: {} D: {} ) requires items {}", transport.getOrigin(), transport.getDestination(), transport.getItemIdRequirements().stream().flatMap(Set::stream).collect(Collectors.toSet()));
+                log.debug("Transport ( O: {} D: {} ) requires items {}", transport.getOrigin(), transport.getDestination(), TransportRequirementPolicy.itemIdRequirements(transport).stream().flatMap(Set::stream).collect(Collectors.toSet()));
             }
             return hasRequiredItems;
         }
@@ -1460,8 +1521,38 @@ public class PathfinderConfig {
 		return true;
 	}
 
+	private boolean isMagicMushtreeRouteEnabled(Transport transport) {
+		WorldPoint origin = transport.getOrigin();
+		WorldPoint destination = transport.getDestination();
+		for (WorldPoint unavailable : unavailableMagicMushtreeDestinations) {
+			if ((destination != null && destination.distanceTo2D(unavailable) <= 3)
+					|| (origin != null && origin.distanceTo2D(unavailable) <= 5)) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	private boolean isMagicMushtreeTransport(Transport transport) {
+		return transport.getType() == TransportType.MAGIC_MUSHTREE
+			|| (transport.getType() == TransportType.TRANSPORT
+				&& (transport.getObjectId() == 30920 || transport.getObjectId() == 30924)
+				&& "Magic Mushtree".equalsIgnoreCase(transport.getName())
+				&& "Use".equalsIgnoreCase(transport.getAction()));
+	}
+
     private boolean isFeatureEnabled(Transport transport) {
         TransportType type = transport.getType();
+		// Ordinary TSV shadow rows still belong to their network's feature switch.
+		// Otherwise disabling the generated network leaves the same interaction usable.
+		if (isMagicMushtreeTransport(transport)) {
+			type = TransportType.MAGIC_MUSHTREE;
+		} else if (type == TransportType.TRANSPORT
+				&& (transport.getObjectId() == 12003 || transport.getObjectId() == 12094)
+				&& "Fairy ring".equalsIgnoreCase(transport.getName())
+				&& "Use".equalsIgnoreCase(transport.getAction())) {
+			type = TransportType.FAIRY_RING;
+		}
 
         if (!client.getWorldType().contains(WorldType.MEMBERS)) {
             // Transport types that require membership
@@ -1555,12 +1646,12 @@ public class PathfinderConfig {
         if (requiresChronicle(transport)) return hasChronicleCharges();
 
         if (refreshAvailableItemIds != null) {
-            return transport.getItemIdRequirements()
+            return TransportRequirementPolicy.itemIdRequirements(transport)
                     .stream()
                     .flatMap(Collection::stream)
                     .anyMatch(refreshAvailableItemIds::contains);
         }
-        return transport.getItemIdRequirements()
+        return TransportRequirementPolicy.itemIdRequirements(transport)
                 .stream()
                 .flatMap(Collection::stream)
                 .anyMatch(itemId -> Rs2Equipment.isWearing(itemId) || Rs2Inventory.hasItem(itemId) || (ShortestPathPlugin.getPathfinderConfig().useBankItems && Rs2Bank.hasItem(itemId)));
@@ -1593,7 +1684,7 @@ public class PathfinderConfig {
      * Checks if the transport requires the Chronicle
      */
     private boolean requiresChronicle(Transport transport) {
-        return transport.getItemIdRequirements()
+        return TransportRequirementPolicy.itemIdRequirements(transport)
                 .stream()
                 .flatMap(Collection::stream)
                 .anyMatch(itemId -> itemId == ItemID.CHRONICLE);

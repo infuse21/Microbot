@@ -9,10 +9,14 @@ public final class NpcDialogueTransport
 {
 	public enum Stage
 	{
+		EQUIP_REQUIREMENT,
 		ACTOR,
 		CONTINUE,
+		TRAVEL_REQUEST,
 		CONFIRM,
-		DESTINATION
+		DESTINATION,
+		DESTINATION_CANCEL,
+		DESTINATION_UNAVAILABLE
 	}
 
 	private final WorldPoint origin;

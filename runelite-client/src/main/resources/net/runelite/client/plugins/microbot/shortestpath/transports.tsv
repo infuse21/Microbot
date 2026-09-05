@@ -954,8 +954,8 @@
 3237 9858 0	3236 3458 0	Climb-up;Ladder;11806									
 3236 3458 0	3237 9858 0	Open;Manhole;881								2	
 3236 3458 0	3237 9858 0	Climb-down;Manhole;882								2	
-3210 9899 0	3210 9898 0	Slash;Web;733								8	
-3210 9898 0	3210 9899 0	Slash;Web;733								8	
+3210 9899 0	3210 9898 0	Slash;Web;733		13108 13109 13110 13111						8	
+3210 9898 0	3210 9899 0	Slash;Web;733		13108 13109 13110 13111						8	
 3143 3443 0	3143 3444 0	Open;Door;24958	32 Cooking							2	
 3143 3444 0	3143 3443 0	Open;Door;24958	32 Cooking							2	
 3143 3452 0	3144 3452 0	Open;Door;10045									
@@ -2596,8 +2596,8 @@
 2860 9919 0	2860 3519 0	Climb-up;Ladder;17385
 
 # Wilderness
-3158 3950 0	3158 3952 0	Slash;Web;733								4	
-3158 3952 0	3158 3950 0	Slash;Web;733								4	
+3158 3950 0	3158 3952 0	Slash;Web;733		13108 13109 13110 13111						4	
+3158 3952 0	3158 3950 0	Slash;Web;733		13108 13109 13110 13111						4	
 3232 10351 0	3233 3950 0	Use;Crevice;26763									
 3233 3950 0	3232 10351 0	Enter;Cavern;26762									
 3232 3950 0	3232 10351 0	Enter;Cavern;26762									
@@ -2607,14 +2607,14 @@
 3232 3938 0	3233 10332 0	Enter;Cavern;26762									
 3233 10332 0	3233 3938 0	Use;Crevice;26763									
 3233 3938 0	3233 10332 0	Enter;Cavern;26762									
-3095 3957 0	3094 3957 0	Slash;Web;733								4	
-3093 3957 0	3092 3957 0	Slash;Web;733								4	
-3092 3957 0	3093 3957 0	Slash;Web;733								4	
-3094 3957 0	3095 3957 0	Slash;Web;733								4	
-3106 3959 0	3106 3957 0	Slash;Web;733								4	
-3105 3959 0	3105 3957 0	Slash;Web;733								4	
-3105 3957 0	3105 3959 0	Slash;Web;733								4	
-3106 3957 0	3106 3959 0	Slash;Web;733								4	
+3095 3957 0	3094 3957 0	Slash;Web;733		13108 13109 13110 13111						4	
+3093 3957 0	3092 3957 0	Slash;Web;733		13108 13109 13110 13111						4	
+3092 3957 0	3093 3957 0	Slash;Web;733		13108 13109 13110 13111						4	
+3094 3957 0	3095 3957 0	Slash;Web;733		13108 13109 13110 13111						4	
+3106 3959 0	3106 3957 0	Slash;Web;733		13108 13109 13110 13111						4	
+3105 3959 0	3105 3957 0	Slash;Web;733		13108 13109 13110 13111						4	
+3105 3957 0	3105 3959 0	Slash;Web;733		13108 13109 13110 13111						4	
+3106 3957 0	3106 3959 0	Slash;Web;733		13108 13109 13110 13111						4	
 3018 3958 0	3018 3958 1	Climb-up;Ship's ladder;272									
 3018 3958 1	3018 3958 0	Climb-down;Ship's ladder;273									
 3019 3958 1	3019 3960 2	Climb-up;Ship's ladder;245									
@@ -2629,10 +2629,10 @@
 3017 3850 0	3069 10255 0	Climb-down;Ladder;18987								2	
 3068 10256 0	3016 3849 0	Climb-up;Ladder;18988								2	
 3069 10257 0	3016 3849 0	Climb-up;Ladder;18988								2	
-3029 3852 0	3031 3852 0	Slash;Web;733								4	
-3031 3852 0	3029 3852 0	Slash;Web;733								4	
-3115 3858 0	3115 3860 0	Slash;Web;733								4	
-3115 3860 0	3115 3858 0	Slash;Web;733								4	
+3029 3852 0	3031 3852 0	Slash;Web;733		13108 13109 13110 13111						4	
+3031 3852 0	3029 3852 0	Slash;Web;733		13108 13109 13110 13111						4	
+3115 3858 0	3115 3860 0	Slash;Web;733		13108 13109 13110 13111						4	
+3115 3860 0	3115 3858 0	Slash;Web;733		13108 13109 13110 13111						4	
 3069 3857 0	3016 10249 0	Climb-down;Ladder;18989								2	
 3016 10249 0	3070 3856 0	Climb-up;Ladder;18990								2	
 3017 10250 0	3070 3856 0	Climb-up;Ladder;18990								2	
@@ -4027,13 +4027,6 @@
 # Rellekka
 2666 3694 0	2666 3694 1	Climb-up;Ladder;4187								2
 2666 3694 1	2666 3694 0	Climb-down;Ladder;4189								2
-2621 3694 0	2472 3994 0	Travel;Fremennik Boat;37432								2
-2472 3994 0	2621 3692 0	Travel;Fremennik Boat;37408								2
-2621 3693 0	2472 3994 0	Travel;Fremennik Boat;37432								2
-2473 3994 0	2621 3692 0	Travel;Fremennik Boat;37408								2
-2621 3692 0	2472 3994 0	Travel;Fremennik Boat;37432								2
-2621 3691 0	2472 3994 0	Travel;Fremennik Boat;37432								2
-2621 3690 0	2472 3994 0	Travel;Fremennik Boat;37432								2
 2598 3608 0	2596 3608 0	Cross;Broken bridge;4616								2
 2596 3608 0	2598 3608 0	Cross;Broken bridge;4615								2
 
@@ -4707,7 +4700,7 @@
 3224 9600 0	3224 9604 0	Squeeze-through;Hole;6912									
 3226 9542 0	3219 9532 2	Enter;Tunnel;6659									
 3219 9532 2	3226 9542 0	Enter;Tunnel;6658									
-3317 9603 0	2748 5374 0	Open;Door;6919									
+3317 9603 0	2748 5374 0	Open;Door;6919				Death to the Dorgeshuun					
 2748 5374 0	3317 9603 0	Open;Bone door;22945									
 											
 # Mountain camp											
@@ -4752,12 +4745,12 @@
 9363 1050 0	1214 3557 0	Climb;Rope;32507									
 											
 # dragon slayer 2											
-2458 2860 0	2458 2862 0	Pass;Magical Barrier;31616									
-2457 2860 0	2457 2862 0	Pass;Magical Barrier;31616									
-2456 2860 0	2456 2862 0	Pass;Magical Barrier;31616									
-2458 2862 0	2458 2860 0	Pass;Magical Barrier;31616									
-2457 2862 0	2457 2860 0	Pass;Magical Barrier;31616									
-2456 2862 0	2456 2860 0	Pass;Magical Barrier;31616									
+2458 2860 0	2458 2862 0	Pass;Magical Barrier;31616				Dragon Slayer II
+2457 2860 0	2457 2862 0	Pass;Magical Barrier;31616				Dragon Slayer II
+2456 2860 0	2456 2862 0	Pass;Magical Barrier;31616				Dragon Slayer II
+2458 2862 0	2458 2860 0	Pass;Magical Barrier;31616				Dragon Slayer II
+2457 2862 0	2457 2860 0	Pass;Magical Barrier;31616				Dragon Slayer II
+2456 2862 0	2456 2860 0	Pass;Magical Barrier;31616				Dragon Slayer II
 											
 # watchtower											
 2933 4712 2	2549 3112 1	Climb-down;Ladder;2797									
@@ -4773,30 +4766,30 @@
 1639 3673 0	1666 10050 0	Investigate;Statue;27785									
 1666 10050 0	1639 3673 0	Climb-up;Vine ladder;28894									
 1562 3791 0	1617 10101 0	Enter;Hole;28921					5090=1				
-1617 10101 0	1562 3791 0	Climb-up;Vine;28895					5090=1
-1469 3653 0	1650 9987 0	Enter;Hole;28919					5080=1				
-1650 9987 0	1469 3653 0	Climb-up;Vine;28895					5080=1
-1696 3864 0	1719 10101 0	Enter;Hole;28920					5070=1				
-1719 10101 0	1696 3864 0	Climb-up;Vine;28898					5070=1
-1727 9993 0	1803 9968 0	Climb-up;Vine;28897	 				5087=1
+1617 10101 0	1562 3791 0	Climb-up;Vine;28895					
+1469 3653 0	1650 9987 0	Enter;Hole;28919					5088=1				
+1650 9987 0	1469 3653 0	Climb-up;Vine;28895					
+1696 3864 0	1719 10101 0	Enter;Hole;28920					5089=1				
+1719 10101 0	1696 3864 0	Climb-up;Vine;28898					
+1727 9993 0	1803 9968 0	Climb-up;Vine;28897	 				
 1803 9968 0	1727 9993 0	Enter;Strange passage;28918	 				5087=1				
 1670 3569 0	1800 9968 0	Climb-down;Staircase;34865									
 1800 9968 0	1670 3569 0	Climb-up;Staircase;34864									
 1830 9973 0	1702 3575 0	Climb-up;Ladder;34863									
 1830 9975 0	1702 3575 0	Climb-up;Ladder;34863									
 1702 3575 0	1830 9973 0	Climb-down;Ladder;34862								10	
-1833 9944 0	1833 9943 0	Slash;Web;733									
-1833 9943 0	1833 9944 0	Slash;Web;733									
-1841 9934 0	1841 9933 0	Slash;Web;733									
-1841 9933 0	1841 9934 0	Slash;Web;733									
-1842 9934 0	1842 9933 0	Slash;Web;733									
-1842 9933 0	1842 9934 0	Slash;Web;733									
-1849 9934 0	1849 9935 0	Slash;Web;733									
-1849 9935 0	1849 9934 0	Slash;Web;733									
-1850 9934 0	1850 9935 0	Slash;Web;733									
-1850 9935 0	1850 9934 0	Slash;Web;733									
-1847 9920 0	1847 9919 0	Slash;Web;733									
-1847 9919 0	1847 9920 0	Slash;Web;733									
+1833 9944 0	1833 9943 0	Slash;Web;733		13108 13109 13110 13111							
+1833 9943 0	1833 9944 0	Slash;Web;733		13108 13109 13110 13111							
+1841 9934 0	1841 9933 0	Slash;Web;733		13108 13109 13110 13111							
+1841 9933 0	1841 9934 0	Slash;Web;733		13108 13109 13110 13111							
+1842 9934 0	1842 9933 0	Slash;Web;733		13108 13109 13110 13111							
+1842 9933 0	1842 9934 0	Slash;Web;733		13108 13109 13110 13111							
+1849 9934 0	1849 9935 0	Slash;Web;733		13108 13109 13110 13111							
+1849 9935 0	1849 9934 0	Slash;Web;733		13108 13109 13110 13111							
+1850 9934 0	1850 9935 0	Slash;Web;733		13108 13109 13110 13111							
+1850 9935 0	1850 9934 0	Slash;Web;733		13108 13109 13110 13111							
+1847 9920 0	1847 9919 0	Slash;Web;733		13108 13109 13110 13111							
+1847 9919 0	1847 9920 0	Slash;Web;733		13108 13109 13110 13111							
 											
 # Arceuus Library											
 1617 3826 0	1610 3826 1	Climb;Stairs;27853									
@@ -5470,8 +5463,8 @@
 2720 5361 1	2720 5358 0	Climb-down;Stairs;22940								1	
 2721 5361 1	2720 5358 0	Climb-down;Stairs;22940								1	
 2747 5374 0	3317 9603 0	Open;Bone door;22945								1	
-3317 9602 0	2747 5374 0	Open;Door;6919								1	
-3318 9602 0	2748 5374 0	Open;Door;6919								1	
+3317 9602 0	2747 5374 0	Open;Door;6919				Death to the Dorgeshuun				1	
+3318 9602 0	2748 5374 0	Open;Door;6919				Death to the Dorgeshuun				1	
 2736 5352 0	2733 5351 1	Climb-up;Stairs;22931								1	
 2736 5351 0	2733 5351 1	Climb-up;Stairs;22931								1	
 2733 5351 1	2736 5351 0	Climb-down;Stairs;22933								1	
@@ -5672,12 +5665,12 @@
 1470 3652 0	1650 9987 0	Enter;Hole;28915					5088=1			2	
 1470 3654 0	1650 9987 0	Enter;Hole;28915					5088=1			2	
 1471 3653 0	1650 9987 0	Enter;Hole;28915					5088=1			2	
-1563 3790 0	1617 10101 0	Enter;Hole;28915					5088=1			2	
-1563 3792 0	1617 10101 0	Enter;Hole;28915					5088=1			2	
-1564 3791 0	1617 10101 0	Enter;Hole;28915					5088=1			2	
-1695 3865 0	1719 10101 0	Enter;Hole;28915					5088=1			2	
-1696 3866 0	1719 10101 0	Enter;Hole;28915					5088=1			2	
-1697 3865 0	1719 10101 0	Enter;Hole;28915					5088=1			2	
+1563 3790 0	1617 10101 0	Enter;Hole;28915					5090=1			2	
+1563 3792 0	1617 10101 0	Enter;Hole;28915					5090=1			2	
+1564 3791 0	1617 10101 0	Enter;Hole;28915					5090=1			2	
+1695 3865 0	1719 10101 0	Enter;Hole;28915					5089=1			2	
+1696 3866 0	1719 10101 0	Enter;Hole;28915					5089=1			2	
+1697 3865 0	1719 10101 0	Enter;Hole;28915					5089=1			2	
 1726 9994 0	1803 9968 0	Climb-up;Vine;28897								2	
 1725 9993 0	1803 9968 0	Climb-up;Vine;28897								2	
 1726 9992 0	1803 9968 0	Climb-up;Vine;28897								2	
@@ -5956,16 +5949,16 @@
 1633 3963 0	1630 3958 0	Enter;Door of Dinh;29322								1	
 3633 9503 0	3637 9503 0	Climb;Rubble;43724								5	
 3637 9503 0	3633 9503 0	Climb;Rubble;43726								5	
-3613 9482 0	3613 9484 0	Quick-pass;Barrier;43700								5	
-3614 9482 0	3614 9484 0	Quick-pass;Barrier;43700								5	
-3615 9482 0	3615 9484 0	Quick-pass;Barrier;43700								5	
-3616 9482 0	3616 9484 0	Quick-pass;Barrier;43700								5	
-3617 9482 0	3617 9484 0	Quick-pass;Barrier;43700								5	
-3613 9484 0	3613 9482 0	Quick-pass;Barrier;43700								5	
-3614 9484 0	3614 9482 0	Quick-pass;Barrier;43700								5	
-3615 9484 0	3615 9482 0	Quick-pass;Barrier;43700								5	
-3616 9484 0	3616 9482 0	Quick-pass;Barrier;43700								5	
-3617 9484 0	3617 9482 0	Quick-pass;Barrier;43700								5	
+3613 9482 0	3613 9484 0	Quick-pass;Barrier;43700				Temple of the Eye	13691=0			5	
+3614 9482 0	3614 9484 0	Quick-pass;Barrier;43700				Temple of the Eye	13691=0			5	
+3615 9482 0	3615 9484 0	Quick-pass;Barrier;43700				Temple of the Eye	13691=0			5	
+3616 9482 0	3616 9484 0	Quick-pass;Barrier;43700				Temple of the Eye	13691=0			5	
+3617 9482 0	3617 9484 0	Quick-pass;Barrier;43700				Temple of the Eye	13691=0			5	
+3613 9484 0	3613 9482 0	Quick-pass;Barrier;43700				Temple of the Eye				5	
+3614 9484 0	3614 9482 0	Quick-pass;Barrier;43700				Temple of the Eye				5	
+3615 9484 0	3615 9482 0	Quick-pass;Barrier;43700				Temple of the Eye				5	
+3616 9484 0	3616 9482 0	Quick-pass;Barrier;43700				Temple of the Eye				5	
+3617 9484 0	3617 9482 0	Quick-pass;Barrier;43700				Temple of the Eye				5	
 2775 10003 0	2773 10003 0	Jump-over;Strange floor;16544	43 Agility							10	
 2773 10003 0	2775 10003 0	Jump-over;Strange floor;16544	43 Agility							10	
 2770 10002 0	2768 10002 0	Jump-over;Strange floor;16544	43 Agility							10	

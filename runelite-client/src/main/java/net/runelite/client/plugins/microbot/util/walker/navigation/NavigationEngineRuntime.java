@@ -86,7 +86,16 @@ public final class NavigationEngineRuntime
 				&& decision.getInteraction() != null)
 			{
 				issued = actions.interact(decision.getInteraction());
-				engine.recordCommandResult(decision, issued, effectiveObservation.getObservedAtMs());
+				if (actions.interactionPreparedOnly())
+				{
+					engine.recordInteractionPreparation(decision,
+						effectiveObservation.getObservedAtMs());
+				}
+				else
+				{
+					engine.recordCommandResult(decision, issued,
+						effectiveObservation.getObservedAtMs());
+				}
 				snapshot = engine.snapshot();
 			}
 			return new NavigationExecutionResult(decision, engineOwned, issued,

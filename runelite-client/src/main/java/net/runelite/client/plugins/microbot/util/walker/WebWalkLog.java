@@ -215,6 +215,11 @@ public final class WebWalkLog {
         LOG.warn("[WebWalk] bank_walk | failed goal={} state={}", goal, walkerState);
     }
 
+    /** Banked transport transaction phase changes; emitted once per phase, never per tick. */
+    public static void bankSetupInfo(String fmt, Object... args) {
+        LOG.info("[WebWalk] bank_setup | " + fmt, args);
+    }
+
     public static void tmark(String phase, long elapsedMs, WorldPoint goal, WorldPoint at, String detail) {
         LOG.info("[WebWalk] tmark | phase={} elapsed={}ms goal={} at={} detail={}",
                 phase, elapsedMs, goal, at, detail == null ? "-" : detail);

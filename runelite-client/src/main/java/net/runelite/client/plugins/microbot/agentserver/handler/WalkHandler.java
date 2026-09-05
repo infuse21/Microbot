@@ -24,6 +24,7 @@ public class WalkHandler extends AgentHandler {
 	private static final int MAX_TIMEOUT_SECONDS = 600;
 	private static final int DEFAULT_REACHED_DISTANCE = 0;
 	private static final int MAX_REACHED_DISTANCE = 20;
+	private static final long POSITION_COMPLETION_GRACE_NANOS = TimeUnit.SECONDS.toNanos(10);
 
 	private static final AtomicInteger WALK_THREAD_COUNT = new AtomicInteger(1);
 	private static final ExecutorService WALK_EXECUTOR = Executors.newSingleThreadExecutor(r -> {
@@ -113,6 +114,7 @@ public class WalkHandler extends AgentHandler {
 		boolean arrivedByPosition = false;
 		try {
 			long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(timeoutSeconds);
+			long positionReachedAt = 0L;
 			while (true) {
 				if (walkFuture.isDone()) {
 					state = walkFuture.get();
@@ -122,12 +124,21 @@ public class WalkHandler extends AgentHandler {
 
 				int distanceToDestination = distanceTo(destination);
 				if (distanceToDestination >= 0 && distanceToDestination <= reachedDistance) {
-					state = WalkerState.ARRIVED;
-					arrivedByPosition = true;
-					timedOut = false;
-					walkFuture.cancel(true);
-					clearActiveWalk(walkFuture);
-					break;
+					if (positionReachedAt == 0L) {
+						positionReachedAt = System.nanoTime();
+					} else if (System.nanoTime() - positionReachedAt >= POSITION_COMPLETION_GRACE_NANOS) {
+						// A transport may land inside the requested radius before the navigation engine
+						// observes the cleared edge and completes its owning workflow. Give the walker
+						// time to return normally; position remains a bounded fallback for a stuck future.
+						state = WalkerState.ARRIVED;
+						arrivedByPosition = true;
+						timedOut = false;
+						walkFuture.cancel(true);
+						clearActiveWalk(walkFuture);
+						break;
+					}
+				} else {
+					positionReachedAt = 0L;
 				}
 
 				long remainingNanos = deadline - System.nanoTime();

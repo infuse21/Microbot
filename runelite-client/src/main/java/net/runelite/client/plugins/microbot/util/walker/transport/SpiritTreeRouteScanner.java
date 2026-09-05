@@ -71,8 +71,12 @@ public final class SpiritTreeRouteScanner
 	private static RouteInteraction interaction(long generation, RouteEdge edge,
 		SpiritTree tree, WorldPoint player, int interactionDistance)
 	{
-		boolean unavailable = tree.getStage() == SpiritTree.Stage.DESTINATION_UNAVAILABLE;
-		boolean destination = tree.getStage() == SpiritTree.Stage.DESTINATION || unavailable;
+		boolean originUnavailable = tree.getStage() == SpiritTree.Stage.ORIGIN_UNAVAILABLE;
+		boolean destinationUnavailable =
+			tree.getStage() == SpiritTree.Stage.DESTINATION_UNAVAILABLE;
+		boolean unavailable = originUnavailable || destinationUnavailable;
+		boolean destination = tree.getStage() == SpiritTree.Stage.DESTINATION
+			|| destinationUnavailable;
 		String action = destination
 			? SpiritTreePolicy.destinationAction(tree.getDestinationName())
 			: tree.getObjectAction();

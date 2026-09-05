@@ -5,6 +5,10 @@ import net.runelite.client.plugins.microbot.shortestpath.Transport;
 import net.runelite.client.plugins.microbot.shortestpath.TransportType;
 import org.junit.Test;
 
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -34,6 +38,30 @@ public class NpcTransportPolicyTest
 			"Board", "Boaty", "Shayzien")));
 		assertFalse(NpcTransportPolicy.isEligible(row(TransportType.TRANSPORT,
 			"Travel", "Guide", null)));
+	}
+
+	@Test
+	public void acceptsOnlyTheSevenExactOrdinaryDirectNpcRoutes()
+	{
+		List<Transport> rows = Transport.loadAllFromResources().values().stream()
+			.flatMap(java.util.Collection::stream)
+			.filter(candidate -> candidate.getType() == TransportType.TRANSPORT)
+			.filter(candidate -> Set.of("Brother Tranquility", "Daero", "Waydar", "Primio")
+				.contains(candidate.getName()))
+			.collect(Collectors.toList());
+
+		assertEquals(7, rows.size());
+		assertTrue(rows.stream().allMatch(NpcTransportPolicy::isOrdinaryDirectRoute));
+		assertTrue(rows.stream().allMatch(NpcTransportPolicy::isEligible));
+		assertTrue(rows.stream().allMatch(row -> NpcTransportPolicy.isLiveNpcMatch(row,
+			row.getName(), List.of("Talk-to", row.getAction()), row.getOrigin())));
+		assertTrue(rows.stream().allMatch(row -> !NpcTransportPolicy.isLiveNpcMatch(row,
+			row.getName(), List.of("Talk-to"), row.getOrigin())));
+
+		Transport malformed = rows.get(0);
+		malformed.setItemIdRequirements(Set.of(Set.of(995)));
+		assertFalse(NpcTransportPolicy.isOrdinaryDirectRoute(malformed));
+		assertFalse(NpcTransportPolicy.isEligible(malformed));
 	}
 
 	@Test

@@ -80,6 +80,7 @@ import net.runelite.client.plugins.microbot.util.walker.door.Rs2WalkerAwaits;
 import net.runelite.client.plugins.microbot.util.walker.door.model.AwaitTicket;
 import net.runelite.client.plugins.microbot.util.walker.door.model.DoorResolution;
 import net.runelite.client.plugins.microbot.util.walker.banking.Rs2WalkerBankingPlanner;
+import net.runelite.client.plugins.microbot.util.walker.banking.BankedTransportCoordinator;
 import net.runelite.client.plugins.microbot.util.walker.awaits.Rs2WalkerRuntimeAwaits;
 import net.runelite.client.plugins.microbot.util.walker.puzzles.DraynorBasementSolver;
 import net.runelite.client.plugins.microbot.util.walker.stall.Rs2WalkerStallPolicy;
@@ -96,6 +97,20 @@ import net.runelite.client.plugins.microbot.util.walker.transport.GnomeGliderPol
 import net.runelite.client.plugins.microbot.util.walker.transport.GnomeGliderRouteScanner;
 import net.runelite.client.plugins.microbot.util.walker.transport.QuetzalPolicy;
 import net.runelite.client.plugins.microbot.util.walker.transport.QuetzalRouteScanner;
+import net.runelite.client.plugins.microbot.util.walker.transport.TeleportationLeverPolicy;
+import net.runelite.client.plugins.microbot.util.walker.transport.TeleportationLeverRouteScanner;
+import net.runelite.client.plugins.microbot.util.walker.transport.WildernessDitchPolicy;
+import net.runelite.client.plugins.microbot.util.walker.transport.WildernessDitchRouteScanner;
+import net.runelite.client.plugins.microbot.util.walker.transport.JungleObstacleRouteScanner;
+import net.runelite.client.plugins.microbot.util.walker.transport.CanoePolicy;
+import net.runelite.client.plugins.microbot.util.walker.transport.CanoeRouteScanner;
+import net.runelite.client.plugins.microbot.util.walker.transport.MinecartRouteScanner;
+import net.runelite.client.plugins.microbot.util.walker.transport.TeleportationPortalRouteScanner;
+import net.runelite.client.plugins.microbot.util.walker.transport.MinigameTeleportRouteScanner;
+import net.runelite.client.plugins.microbot.util.walker.transport.MagicMushtreePolicy;
+import net.runelite.client.plugins.microbot.util.walker.transport.MagicMushtreeRouteScanner;
+import net.runelite.client.plugins.microbot.util.walker.transport.HotAirBalloonPolicy;
+import net.runelite.client.plugins.microbot.util.walker.transport.HotAirBalloonRouteScanner;
 import net.runelite.client.plugins.microbot.util.walker.transport.Rs2AdjacentTransportScene;
 import net.runelite.client.plugins.microbot.util.walker.transport.Rs2CatalogTransitionScene;
 import net.runelite.client.plugins.microbot.util.walker.transport.Rs2CharterShipScene;
@@ -103,9 +118,20 @@ import net.runelite.client.plugins.microbot.util.walker.transport.Rs2FairyRingSc
 import net.runelite.client.plugins.microbot.util.walker.transport.Rs2SpiritTreeScene;
 import net.runelite.client.plugins.microbot.util.walker.transport.Rs2GnomeGliderScene;
 import net.runelite.client.plugins.microbot.util.walker.transport.Rs2QuetzalScene;
+import net.runelite.client.plugins.microbot.util.walker.transport.Rs2TeleportationLeverScene;
+import net.runelite.client.plugins.microbot.util.walker.transport.Rs2WildernessDitchScene;
+import net.runelite.client.plugins.microbot.util.walker.transport.Rs2JungleObstacleScene;
+import net.runelite.client.plugins.microbot.util.walker.transport.Rs2CanoeScene;
+import net.runelite.client.plugins.microbot.util.walker.transport.Rs2MinecartScene;
+import net.runelite.client.plugins.microbot.util.walker.transport.Rs2TeleportationPortalScene;
+import net.runelite.client.plugins.microbot.util.walker.transport.Rs2MinigameTeleportScene;
+import net.runelite.client.plugins.microbot.util.walker.transport.Rs2MagicMushtreeScene;
+import net.runelite.client.plugins.microbot.util.walker.transport.Rs2HotAirBalloonScene;
 import net.runelite.client.plugins.microbot.util.walker.transport.Rs2SimpleTeleportScene;
 import net.runelite.client.plugins.microbot.util.walker.transport.SimpleTeleportPolicy;
 import net.runelite.client.plugins.microbot.util.walker.transport.SimpleTeleportRouteScanner;
+import net.runelite.client.plugins.microbot.util.walker.transport.ItemTeleportRouteScanner;
+import net.runelite.client.plugins.microbot.util.walker.transport.Rs2ItemTeleportScene;
 import net.runelite.client.plugins.microbot.util.walker.transport.NpcDialogueTransportPolicy;
 import net.runelite.client.plugins.microbot.util.walker.transport.NpcDialogueTransportRouteScanner;
 import net.runelite.client.plugins.microbot.util.walker.transport.NpcTransportPolicy;
@@ -114,7 +140,6 @@ import net.runelite.client.plugins.microbot.util.walker.transport.Rs2NpcDialogue
 import net.runelite.client.plugins.microbot.util.walker.transport.Rs2NpcTransportScene;
 import net.runelite.client.plugins.microbot.api.tileobject.models.Rs2TileObjectModel;
 import net.runelite.client.plugins.microbot.util.walker.transport.model.AdjacentTransport;
-import net.runelite.client.plugins.microbot.util.walker.transport.model.CatalogTransition;
 import net.runelite.client.plugins.microbot.util.walker.lifecycle.Rs2WalkerLifecycleRuntime;
 import net.runelite.client.plugins.microbot.util.walker.navigation.NavigationDecision;
 import net.runelite.client.plugins.microbot.util.walker.navigation.NavigationEngineRuntime;
@@ -146,6 +171,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -1456,9 +1482,10 @@ public class Rs2Walker {
         }
         boolean hasCurrentPath = pathfinder != null
                 && pathfinder.isDone()
-                && pathfinder.getTargets().contains(target);
+                && pathfinder.getTargets().contains(target)
+                && canReuseNavigationRequest(NavigationEngineRuntime.getSnapshot(), target, distance);
         if (!hasCurrentPath) {
-            setTarget(target);
+            setTarget(target, null, distance);
         } else {
             currentTarget = target;
         }
@@ -1651,6 +1678,12 @@ public class Rs2Walker {
             }
         }
         return processWalk(target, distance, 0);
+    }
+
+    static boolean canReuseNavigationRequest(NavigationSnapshot snapshot, WorldPoint target, int distance) {
+        return snapshot != null && !snapshot.isTerminal()
+                && snapshot.getRequest().getDestinations().equals(Set.of(target))
+                && snapshot.getRequest().getReachedDistance() == Math.max(0, distance);
     }
 
     private static WalkerState processWalk(WorldPoint target, int distance, int partialRetries) {
@@ -4524,7 +4557,6 @@ public class Rs2Walker {
             return transportList;
         }
         Map<WorldPoint, Integer> pathFirstIndex = buildPathFirstIndex(path);
-        WorldPoint playerLoc = Rs2Player.getWorldLocation();
         int currentIndex = indexOfStartPoint;
 
         // Loop through the path until the end
@@ -4555,14 +4587,10 @@ public class Rs2Walker {
 
                 // Special handling for teleportation-like transports (originless)
                 // NOTE: Leagues "Area" teleports are injected as SEASONAL_TRANSPORT with null origin.
-                String di = transport.getDisplayInfo();
-                boolean isLeaguesAreaTeleport = transport.getType() == TransportType.SEASONAL_TRANSPORT
-                        && di != null
-                        && di.toLowerCase().startsWith("leagues area:");
+				boolean originlessTeleport = TransportType.isTeleport(
+						transport.getType(), transport.getOrigin());
 
-                if (transport.getType() == TransportType.TELEPORTATION_ITEM
-                        || transport.getType() == TransportType.TELEPORTATION_SPELL
-                        || isLeaguesAreaTeleport)
+				if (originlessTeleport)
                 {
                     // For teleportation, we assume origin is null and simply check if the destination exists in the path.
                     Integer destIndex = pathFirstIndex.get(transport.getDestination());
@@ -4576,28 +4604,17 @@ public class Rs2Walker {
                 }
 
                 // For non-teleportation transports (or if teleportation had a valid origin, though typically null):
-                Collection<WorldPoint> originPoints;
-                if (transport.getOrigin() == null) {
-                    originPoints = Collections.singleton(null);
-                } else {
-                    originPoints = WorldPoint.toLocalInstance(
-                            Microbot.getClient().getTopLevelWorldView(), transport.getOrigin());
-                }
+                Collection<WorldPoint> originPoints = resolvePathTransportOrigins(
+                        transport, pathFirstIndex,
+                        () -> WorldPoint.toLocalInstance(
+                                Microbot.getClient().getTopLevelWorldView(), transport.getOrigin()));
 
                 for (WorldPoint origin : originPoints) {
-                    // If an origin is defined but the player's plane doesn't match, skip it.
-                    if (transport.getOrigin() != null && playerLoc != null
-                            && playerLoc.getPlane() != transport.getOrigin().getPlane()) {
-                        continue;
-                    }
-
                     // For non-teleportation transports, ensure both origin and destination exist in the path
                     // and that the destination comes after the origin.
                     Integer indexOfDestinationValue = pathFirstIndex.get(transport.getDestination());
                     int indexOfDestination = indexOfDestinationValue != null ? indexOfDestinationValue : -1;
-                    if (transport.getType() != TransportType.TELEPORTATION_ITEM
-                            && transport.getType() != TransportType.TELEPORTATION_SPELL
-                            && !isLeaguesAreaTeleport) {
+					if (!originlessTeleport) {
                         Integer indexOfOriginValue = pathFirstIndex.get(transport.getOrigin());
                         int indexOfOrigin = indexOfOriginValue != null ? indexOfOriginValue : -1;
                         if (indexOfOrigin == -1 || indexOfDestination == -1 || indexOfDestination < indexOfOrigin) {
@@ -4633,6 +4650,19 @@ public class Rs2Walker {
         return transportList;
     }
 
+    static Collection<WorldPoint> resolvePathTransportOrigins(
+            Transport transport,
+            Map<WorldPoint, Integer> pathFirstIndex,
+            Supplier<Collection<WorldPoint>> localInstanceOrigins) {
+        if (transport.getOrigin() == null) {
+            return Collections.singleton(null);
+        }
+        if (pathFirstIndex.containsKey(transport.getOrigin())) {
+            return Collections.singleton(transport.getOrigin());
+        }
+        return localInstanceOrigins.get();
+    }
+
     private static Map<WorldPoint, Integer> buildPathFirstIndex(List<WorldPoint> path) {
         Map<WorldPoint, Integer> pathFirstIndex = new HashMap<>(path.size());
         for (int i = 0; i < path.size(); i++) {
@@ -4644,23 +4674,14 @@ public class Rs2Walker {
     /**
      * Applies transport filtering and requirement setup for transport items.
      * This method filters transports to only include those that require items and
-     * sets up item requirements for fairy rings and currency-based transports.
+     * sets up item requirements for fairy rings.
      *
      * @param transports The list of transports to filter and process
      * @return The filtered and processed list of transports
      */
     private static List<Transport> applyTransportFiltering(List<Transport> transports) {
         return transports.stream()
-                .filter(t -> t.getType() == TransportType.TELEPORTATION_ITEM || t.getType() == TransportType.FAIRY_RING ||
-                        t.getType() == TransportType.TELEPORTATION_SPELL || t.getType() == TransportType.CANOE ||
-                        t.getType() == TransportType.BOAT || t.getType() == TransportType.CHARTER_SHIP ||
-                        t.getType() == TransportType.SHIP || t.getType() == TransportType.MINECART ||
-                        t.getType() == TransportType.MAGIC_CARPET || t.getType() == TransportType.SPIRIT_TREE ||
-                        (t.getType() == TransportType.TRANSPORT && t.getCurrencyAmount() > 0) ||
-						(t.getType() == TransportType.SEASONAL_TRANSPORT
-								&& Rs2LeaguesTransport.isLeaguesActive()
-								&& t.getDisplayInfo() != null
-								&& t.getDisplayInfo().toLowerCase().startsWith("leagues area:")))
+				.filter(Rs2WalkerBankingPlanner::requiresBankPlanning)
                 .peek(t -> {
                     // Set fairy ring requirements if not already set
                     if (t.getType() == TransportType.FAIRY_RING &&
@@ -4669,18 +4690,6 @@ public class Rs2Walker {
                                 ItemID.DRAMEN_STAFF,
                                 ItemID.LUNAR_MOONCLAN_LIMINAL_STAFF
                         )));
-                    }
-
-                    // Set currency requirements for currency-based transports
-                    if (isCurrencyBasedTransport(t.getType()) &&
-                            (t.getItemIdRequirements() == null || t.getItemIdRequirements().isEmpty()) &&
-                            t.getCurrencyName() != null && !t.getCurrencyName().isEmpty() && t.getCurrencyAmount() > 0) {
-                        int currencyItemId = getCurrencyItemId(t.getCurrencyName());
-                        if (currencyItemId != -1) {
-                            t.setItemIdRequirements(Set.of(Set.of(currencyItemId)));
-                            log.debug("Set currency requirement for {}: {} x{} (ID: {})",
-                                    t.getType(), t.getCurrencyName(), t.getCurrencyAmount(), currencyItemId);
-                        }
                     }
                 })
                 .collect(Collectors.toList());
@@ -4721,6 +4730,8 @@ public class Rs2Walker {
 			new CatalogTransitionRouteScanner();
 	private static final SimpleTeleportRouteScanner SIMPLE_TELEPORT_ROUTE_SCANNER =
 			new SimpleTeleportRouteScanner();
+	private static final ItemTeleportRouteScanner ITEM_TELEPORT_ROUTE_SCANNER =
+			new ItemTeleportRouteScanner();
 	private static final NpcTransportRouteScanner NPC_TRANSPORT_ROUTE_SCANNER =
 			new NpcTransportRouteScanner();
 	private static final NpcDialogueTransportRouteScanner NPC_DIALOGUE_TRANSPORT_ROUTE_SCANNER =
@@ -4735,6 +4746,23 @@ public class Rs2Walker {
 			new GnomeGliderRouteScanner();
 	private static final QuetzalRouteScanner QUETZAL_ROUTE_SCANNER =
 			new QuetzalRouteScanner();
+	private static final TeleportationLeverRouteScanner TELEPORTATION_LEVER_ROUTE_SCANNER =
+			new TeleportationLeverRouteScanner();
+	private static final WildernessDitchRouteScanner WILDERNESS_DITCH_ROUTE_SCANNER =
+			new WildernessDitchRouteScanner();
+	private static final JungleObstacleRouteScanner JUNGLE_OBSTACLE_ROUTE_SCANNER =
+			new JungleObstacleRouteScanner();
+	private static final CanoeRouteScanner CANOE_ROUTE_SCANNER = new CanoeRouteScanner();
+	private static final MinecartRouteScanner MINECART_ROUTE_SCANNER =
+			new MinecartRouteScanner();
+	private static final TeleportationPortalRouteScanner TELEPORTATION_PORTAL_ROUTE_SCANNER =
+			new TeleportationPortalRouteScanner();
+	private static final MinigameTeleportRouteScanner MINIGAME_TELEPORT_ROUTE_SCANNER =
+			new MinigameTeleportRouteScanner();
+	private static final MagicMushtreeRouteScanner MAGIC_MUSHTREE_ROUTE_SCANNER =
+			new MagicMushtreeRouteScanner();
+	private static final HotAirBalloonRouteScanner HOT_AIR_BALLOON_ROUTE_SCANNER =
+			new HotAirBalloonRouteScanner();
 
     /**
      * Rockfall resolution over a raw-path segment via {@link MineableResolver}, skipping steps whose both
@@ -8667,16 +8695,16 @@ public class Rs2Walker {
 
 		@Override
 		public boolean clickTile(WorldPoint target, String selection) {
-			if ("interaction-edge-crossing".equals(selection)) {
+			if ("interaction-edge-crossing".equals(selection) || "route-end-approach".equals(selection)) {
 				if (walkFastCanvasOnScreenOnly(target, true)) {
-					lastActionType = "canvas-interaction-edge-crossing";
+					lastActionType = "canvas-" + selection;
 					return true;
 				}
 				if (walkMiniMap(target)) {
-					lastActionType = "minimap-interaction-edge-crossing";
+					lastActionType = "minimap-" + selection;
 					return true;
 				}
-				lastActionType = "interaction-edge-crossing-rejected";
+				lastActionType = selection + "-rejected";
 				return false;
 			}
 			return clickTile(target);
@@ -8725,18 +8753,22 @@ public class Rs2Walker {
 				return issued;
 			}
 			if (interaction.getKind() == RouteInteraction.Kind.CATALOG_TRANSITION) {
-				CatalogTransition transition = new Rs2CatalogTransitionScene().find(
-					new PlannedEdge(interaction.getFrom(), interaction.getTo()));
-				if (transition == null
-						|| transition.getCatalogObjectId() != interaction.getObjectId()
-						|| !transition.getAction().equalsIgnoreCase(interaction.getAction())
-						|| transition.getObject() == null) {
-					lastActionType = "catalog-transition-unavailable";
-					return false;
-				}
-				boolean issued = transition.getObject().click(interaction.getAction());
-				lastActionType = issued ? "catalog-transition-interaction"
-					: "catalog-transition-interaction-rejected";
+				Rs2CatalogTransitionScene.DispatchResult result = Rs2CatalogTransitionScene.dispatch(
+					new PlannedEdge(interaction.getFrom(), interaction.getTo()),
+					interaction.getAction(), interaction.getObjectId());
+				lastActionType = result == Rs2CatalogTransitionScene.DispatchResult.ISSUED
+					? "catalog-transition-interaction"
+					: result == Rs2CatalogTransitionScene.DispatchResult.PREPARED
+						? "catalog-transition-preparation"
+						: "catalog-transition-interaction-rejected";
+				// Preparation changes the next observed stage but is not the crossing command.
+				// Keeping it out of the in-flight slot allows the engine to click the barrier
+				// as soon as the equipment cache confirms the amulet.
+				return result == Rs2CatalogTransitionScene.DispatchResult.ISSUED;
+			}
+			if (interaction.getKind() == RouteInteraction.Kind.ITEM_TELEPORT) {
+				boolean issued = new Rs2ItemTeleportScene().dispatch(interaction);
+				lastActionType = issued ? "item-teleport-interaction" : "item-teleport-interaction-rejected";
 				return issued;
 			}
 			if (interaction.getKind() == RouteInteraction.Kind.SIMPLE_TELEPORT) {
@@ -8751,8 +8783,15 @@ public class Rs2Walker {
 					lastActionType = "simple-teleport-unavailable";
 					return false;
 				}
-				boolean issued = teleport.getType() == TransportType.TELEPORTATION_SPELL
-					? handleTeleportSpell(teleport) : handleTeleportItem(teleport);
+				boolean issued;
+				if (teleport.getType() == TransportType.TELEPORTATION_SPELL) {
+					issued = handleTeleportSpell(teleport);
+				} else if (teleport.getType() == TransportType.SEASONAL_TRANSPORT) {
+					issued = attemptObservedWithoutAttemptRecord(teleport,
+						() -> handleSeasonalTransport(teleport));
+				} else {
+					issued = handleTeleportItem(teleport);
+				}
 				lastActionType = issued ? "simple-teleport-interaction"
 					: "simple-teleport-interaction-rejected";
 				return issued;
@@ -8788,6 +8827,13 @@ public class Rs2Walker {
 				return issued;
 			}
 			if (interaction.getKind() == RouteInteraction.Kind.NPC_DIALOGUE_TRANSPORT) {
+				if (NpcDialogueTransportPolicy.CANCEL_UNAVAILABLE_ACTION.equals(interaction.getAction())) {
+					boolean issued = Rs2NpcDialogueTransportScene.cancelUnavailableFossilDestination(
+						new PlannedEdge(interaction.getFrom(), interaction.getTo()));
+					lastActionType = issued ? "npc-dialogue-transport-interaction"
+						: "npc-dialogue-transport-interaction-rejected";
+					return issued;
+				}
 				Transport transport = TransportEdgeMatcher.find(Rs2PathApi.getTransports(),
 					interaction.getFrom(), interaction.getTo()).stream()
 					.filter(NpcDialogueTransportPolicy::isEligible)
@@ -8798,16 +8844,28 @@ public class Rs2Walker {
 					return false;
 				}
 				boolean issued;
-				if (NpcDialogueTransportPolicy.CONTINUE_ACTION.equals(interaction.getAction())) {
+				if (NpcDialogueTransportPolicy.EQUIP_GHOSTSPEAK_ACTION.equals(
+						interaction.getAction())) {
+					issued = NpcDialogueTransportPolicy.isGhostCaptain(transport)
+						&& Rs2NpcDialogueTransportScene.equipGhostspeakItem();
+				} else if (NpcDialogueTransportPolicy.EQUIP_GOLD_HELMET_ACTION.equals(
+						interaction.getAction())) {
+					issued = NpcDialogueTransportPolicy.isDondakan(transport)
+						&& Rs2NpcDialogueTransportScene.equipGoldHelmet();
+				} else if (NpcDialogueTransportPolicy.CONTINUE_ACTION.equals(interaction.getAction())) {
 					issued = Rs2Dialogue.hasContinue();
 					if (issued) {
 						Rs2Dialogue.clickContinue();
 					}
+				} else if (NpcDialogueTransportPolicy.TRAVEL_REQUEST_ACTION.equals(
+						interaction.getAction())) {
+					issued = NpcDialogueTransportPolicy.isCabinBoyHerbert(transport)
+						&& Rs2NpcDialogueTransportScene.selectTravelRequestOption();
 				} else if (NpcDialogueTransportPolicy.CONFIRM_ACTION.equals(interaction.getAction())) {
 					issued = Rs2NpcDialogueTransportScene.selectConfirmOption();
 				} else if (NpcDialogueTransportPolicy.isDestinationAction(interaction.getAction())) {
 					issued = Rs2NpcDialogueTransportScene.selectDestinationOption(
-						transport.getDisplayInfo());
+						NpcDialogueTransportPolicy.destinationOption(transport));
 				} else {
 					Rs2NpcModel npc = Rs2NpcDialogueTransportScene.findActorNpc(transport);
 					if (npc != null) {
@@ -8914,6 +8972,102 @@ public class Rs2Walker {
 					: "quetzal-interaction-rejected";
 				return issued;
 			}
+			if (interaction.getKind() == RouteInteraction.Kind.TELEPORTATION_LEVER) {
+				boolean issued;
+				if (TeleportationLeverPolicy.WARNING_CONTINUE_ACTION.equals(
+						interaction.getAction())) {
+					issued = Rs2TeleportationLeverScene.continueWarning();
+				} else if (TeleportationLeverPolicy.CONFIRM_ACTION.equals(
+						interaction.getAction())) {
+					issued = Rs2TeleportationLeverScene.confirmWarning();
+				} else {
+					issued = Rs2TeleportationLeverScene.interactObject(
+						new PlannedEdge(interaction.getFrom(), interaction.getTo()),
+						interaction.getAction(), interaction.getObjectId());
+				}
+				lastActionType = issued ? "teleportation-lever-interaction"
+					: "teleportation-lever-interaction-rejected";
+				return issued;
+			}
+			if (interaction.getKind() == RouteInteraction.Kind.WILDERNESS_DITCH) {
+				boolean issued = WildernessDitchPolicy.WARNING_ACTION.equals(
+					interaction.getAction())
+					? Rs2WildernessDitchScene.confirmWarning()
+					: Rs2WildernessDitchScene.interactObject(
+						new PlannedEdge(interaction.getFrom(), interaction.getTo()),
+						interaction.getAction(), interaction.getObjectId());
+				lastActionType = issued ? "wilderness-ditch-interaction"
+					: "wilderness-ditch-interaction-rejected";
+				return issued;
+			}
+			if (interaction.getKind() == RouteInteraction.Kind.JUNGLE_OBSTACLE) {
+				boolean issued = Rs2JungleObstacleScene.interactObject(
+					new PlannedEdge(interaction.getFrom(), interaction.getTo()),
+					interaction.getAction(), interaction.getObjectId());
+				lastActionType = issued ? "jungle-obstacle-interaction"
+					: "jungle-obstacle-interaction-rejected";
+				return issued;
+			}
+			if (interaction.getKind() == RouteInteraction.Kind.CANOE) {
+				boolean issued = CanoePolicy.isUiStageAction(interaction.getAction())
+					? Rs2CanoeScene.dispatchStage(interaction.getAction())
+					: Rs2CanoeScene.interactObject(
+						new PlannedEdge(interaction.getFrom(), interaction.getTo()),
+						interaction.getAction(), interaction.getObjectId());
+				lastActionType = issued ? "canoe-interaction"
+					: "canoe-interaction-rejected";
+				return issued;
+			}
+			if (interaction.getKind() == RouteInteraction.Kind.MINECART) {
+				boolean issued = Rs2MinecartScene.dispatch(
+					new PlannedEdge(interaction.getFrom(), interaction.getTo()),
+					interaction.getAction(), interaction.getObjectId());
+				lastActionType = issued ? "minecart-interaction"
+					: "minecart-interaction-rejected";
+				return issued;
+			}
+			if (interaction.getKind() == RouteInteraction.Kind.TELEPORTATION_PORTAL) {
+				boolean issued = Rs2TeleportationPortalScene.interactObject(
+					new PlannedEdge(interaction.getFrom(), interaction.getTo()),
+					interaction.getAction(), interaction.getObjectId());
+				lastActionType = issued ? "teleportation-portal-interaction"
+					: "teleportation-portal-interaction-rejected";
+				return issued;
+			}
+			if (interaction.getKind() == RouteInteraction.Kind.MINIGAME_TELEPORT) {
+				boolean issued = Rs2MinigameTeleportScene.dispatch(
+					new PlannedEdge(interaction.getFrom(), interaction.getTo()),
+					interaction.getAction());
+				lastActionType = issued ? "minigame-teleport-interaction"
+					: "minigame-teleport-interaction-rejected";
+				return issued;
+			}
+			if (interaction.getKind() == RouteInteraction.Kind.MAGIC_MUSHTREE) {
+				boolean issued = MagicMushtreePolicy.isDestinationAction(
+					interaction.getAction())
+					? Rs2MagicMushtreeScene.selectDestination(
+						interaction.getAction().substring(
+							MagicMushtreePolicy.DESTINATION_ACTION_PREFIX.length()))
+					: Rs2MagicMushtreeScene.interactObject(
+						new PlannedEdge(interaction.getFrom(), interaction.getTo()),
+						interaction.getAction(), interaction.getObjectId());
+				lastActionType = issued ? "magic-mushtree-interaction"
+					: "magic-mushtree-interaction-rejected";
+				return issued;
+			}
+			if (interaction.getKind() == RouteInteraction.Kind.HOT_AIR_BALLOON) {
+				boolean issued = HotAirBalloonPolicy.isDestinationAction(
+					interaction.getAction())
+					? Rs2HotAirBalloonScene.selectDestination(
+						interaction.getAction().substring(
+							HotAirBalloonPolicy.DESTINATION_ACTION_PREFIX.length()))
+					: Rs2HotAirBalloonScene.interactObject(
+						new PlannedEdge(interaction.getFrom(), interaction.getTo()),
+						interaction.getAction(), interaction.getObjectId());
+				lastActionType = issued ? "hot-air-balloon-interaction"
+					: "hot-air-balloon-interaction-rejected";
+				return issued;
+			}
 			lastActionType = "interaction-rejected";
 			return false;
 		}
@@ -8922,6 +9076,11 @@ public class Rs2Walker {
         public String getLastActionType() {
             return lastActionType;
         }
+
+		@Override
+		public boolean interactionPreparedOnly() {
+			return "catalog-transition-preparation".equals(lastActionType);
+		}
     };
 
     private static WalkerState tryProcessNavigationEngine(WorldPoint target, int distance) {
@@ -9094,6 +9253,18 @@ public class Rs2Walker {
 		Rs2SpiritTreeScene spiritTreeScene = new Rs2SpiritTreeScene();
 		Rs2GnomeGliderScene gnomeGliderScene = new Rs2GnomeGliderScene();
 		Rs2QuetzalScene quetzalScene = new Rs2QuetzalScene();
+		Rs2TeleportationLeverScene teleportationLeverScene =
+			new Rs2TeleportationLeverScene();
+		Rs2WildernessDitchScene wildernessDitchScene = new Rs2WildernessDitchScene();
+		Rs2JungleObstacleScene jungleObstacleScene = new Rs2JungleObstacleScene();
+		Rs2CanoeScene canoeScene = new Rs2CanoeScene();
+		Rs2MinecartScene minecartScene = new Rs2MinecartScene();
+		Rs2TeleportationPortalScene teleportationPortalScene =
+			new Rs2TeleportationPortalScene();
+		Rs2MinigameTeleportScene minigameTeleportScene =
+			new Rs2MinigameTeleportScene();
+		Rs2MagicMushtreeScene magicMushtreeScene = new Rs2MagicMushtreeScene();
+		Rs2HotAirBalloonScene hotAirBalloonScene = new Rs2HotAirBalloonScene();
 		long coinsHeld = Rs2Inventory.itemQuantity(ItemID.COINS);
 		if (pending != null && pending.getGeneration() == plan.getGeneration()) {
 			RouteInteraction current;
@@ -9112,6 +9283,9 @@ public class Rs2Walker {
 			} else if (pending.getKind() == RouteInteraction.Kind.SIMPLE_TELEPORT) {
 				current = SIMPLE_TELEPORT_ROUTE_SCANNER.observePending(pending, player,
 					teleportScene);
+			} else if (pending.getKind() == RouteInteraction.Kind.ITEM_TELEPORT) {
+				current = ITEM_TELEPORT_ROUTE_SCANNER.observePending(pending, player,
+					new Rs2ItemTeleportScene());
 			} else if (pending.getKind() == RouteInteraction.Kind.NPC_TRANSPORT) {
 				current = NPC_TRANSPORT_ROUTE_SCANNER.observePending(pending, player,
 					npcTransportScene, HANDLER_RANGE);
@@ -9133,6 +9307,33 @@ public class Rs2Walker {
 			} else if (pending.getKind() == RouteInteraction.Kind.QUETZAL) {
 				current = QUETZAL_ROUTE_SCANNER.observePending(pending, player,
 					quetzalScene, HANDLER_RANGE);
+			} else if (pending.getKind() == RouteInteraction.Kind.TELEPORTATION_LEVER) {
+				current = TELEPORTATION_LEVER_ROUTE_SCANNER.observePending(pending, player,
+					teleportationLeverScene, HANDLER_RANGE);
+			} else if (pending.getKind() == RouteInteraction.Kind.WILDERNESS_DITCH) {
+				current = WILDERNESS_DITCH_ROUTE_SCANNER.observePending(pending, player,
+					wildernessDitchScene, HANDLER_RANGE);
+			} else if (pending.getKind() == RouteInteraction.Kind.JUNGLE_OBSTACLE) {
+				current = JUNGLE_OBSTACLE_ROUTE_SCANNER.observePending(pending, player,
+					jungleObstacleScene, HANDLER_RANGE);
+			} else if (pending.getKind() == RouteInteraction.Kind.CANOE) {
+				current = CANOE_ROUTE_SCANNER.observePending(pending, player, canoeScene,
+					HANDLER_RANGE);
+			} else if (pending.getKind() == RouteInteraction.Kind.MINECART) {
+				current = MINECART_ROUTE_SCANNER.observePending(pending, player,
+					minecartScene, HANDLER_RANGE);
+			} else if (pending.getKind() == RouteInteraction.Kind.TELEPORTATION_PORTAL) {
+				current = TELEPORTATION_PORTAL_ROUTE_SCANNER.observePending(pending, player,
+					teleportationPortalScene, HANDLER_RANGE);
+			} else if (pending.getKind() == RouteInteraction.Kind.MINIGAME_TELEPORT) {
+				current = MINIGAME_TELEPORT_ROUTE_SCANNER.observePending(pending, player,
+					minigameTeleportScene);
+			} else if (pending.getKind() == RouteInteraction.Kind.MAGIC_MUSHTREE) {
+				current = MAGIC_MUSHTREE_ROUTE_SCANNER.observePending(pending, player,
+					magicMushtreeScene, HANDLER_RANGE);
+			} else if (pending.getKind() == RouteInteraction.Kind.HOT_AIR_BALLOON) {
+				current = HOT_AIR_BALLOON_ROUTE_SCANNER.observePending(pending, player,
+					hotAirBalloonScene, HANDLER_RANGE);
 			} else {
 				return InteractionObservations.NONE;
 			}
@@ -9142,6 +9343,11 @@ public class Rs2Walker {
 						mineableScene, doorScene, transportScene, transitionScene, teleportScene,
 						npcTransportScene, npcDialogueScene, charterShipScene, fairyRingScene,
 						spiritTreeScene, gnomeGliderScene, quetzalScene,
+						teleportationLeverScene, wildernessDitchScene, jungleObstacleScene,
+						canoeScene,
+						minecartScene,
+						teleportationPortalScene, minigameTeleportScene,
+						magicMushtreeScene, hotAirBalloonScene,
 						INTERACTION_CHAIN_RANGE, coinsHeld)
 					: null;
 			return new InteractionObservations(current, next);
@@ -9154,7 +9360,10 @@ public class Rs2Walker {
 		return new InteractionObservations(scanForwardRouteInteraction(plan, player, start,
 			mineableScene, doorScene, transportScene, transitionScene, teleportScene,
 			npcTransportScene, npcDialogueScene, charterShipScene, fairyRingScene,
-			spiritTreeScene, gnomeGliderScene, quetzalScene,
+			spiritTreeScene, gnomeGliderScene, quetzalScene, teleportationLeverScene,
+			wildernessDitchScene, jungleObstacleScene,
+			canoeScene, minecartScene, teleportationPortalScene,
+			minigameTeleportScene, magicMushtreeScene, hotAirBalloonScene,
 			HANDLER_RANGE, coinsHeld), null);
 	}
 
@@ -9169,6 +9378,15 @@ public class Rs2Walker {
 		Rs2SpiritTreeScene spiritTreeScene,
 		Rs2GnomeGliderScene gnomeGliderScene,
 		Rs2QuetzalScene quetzalScene,
+		Rs2TeleportationLeverScene teleportationLeverScene,
+		Rs2WildernessDitchScene wildernessDitchScene,
+		Rs2JungleObstacleScene jungleObstacleScene,
+		Rs2CanoeScene canoeScene,
+		Rs2MinecartScene minecartScene,
+		Rs2TeleportationPortalScene teleportationPortalScene,
+		Rs2MinigameTeleportScene minigameTeleportScene,
+		Rs2MagicMushtreeScene magicMushtreeScene,
+		Rs2HotAirBalloonScene hotAirBalloonScene,
 		int interactionRange, long coinsHeld) {
 		List<WorldPoint> rawPath = plan.getRawPath();
 		start = Math.max(0, start);
@@ -9200,6 +9418,8 @@ public class Rs2Walker {
 			end - start, player, transitionScene, interactionRange);
 		RouteInteraction teleport = SIMPLE_TELEPORT_ROUTE_SCANNER.scan(plan, start,
 			end - start, player, teleportScene);
+		RouteInteraction itemTeleport = ITEM_TELEPORT_ROUTE_SCANNER.scan(plan, start,
+			end - start, new Rs2ItemTeleportScene());
 		RouteInteraction npcTransport = NPC_TRANSPORT_ROUTE_SCANNER.scan(plan, start,
 			end - start, player, npcTransportScene, interactionRange);
 		RouteInteraction npcDialogue = NPC_DIALOGUE_TRANSPORT_ROUTE_SCANNER.scan(plan, start,
@@ -9214,9 +9434,30 @@ public class Rs2Walker {
 			end - start, player, gnomeGliderScene, interactionRange);
 		RouteInteraction quetzal = QUETZAL_ROUTE_SCANNER.scan(plan, start,
 			end - start, player, quetzalScene, interactionRange);
-		return earliestInteraction(mineable, door, transport, transition, teleport,
+		RouteInteraction teleportationLever = TELEPORTATION_LEVER_ROUTE_SCANNER.scan(
+			plan, start, end - start, player, teleportationLeverScene, interactionRange);
+		RouteInteraction wildernessDitch = WILDERNESS_DITCH_ROUTE_SCANNER.scan(
+			plan, start, end - start, player, wildernessDitchScene, interactionRange);
+		RouteInteraction jungleObstacle = JUNGLE_OBSTACLE_ROUTE_SCANNER.scan(
+			plan, start, end - start, player, jungleObstacleScene, interactionRange);
+		RouteInteraction canoe = CANOE_ROUTE_SCANNER.scan(plan, start, end - start, player,
+			canoeScene, interactionRange);
+		RouteInteraction minecart = MINECART_ROUTE_SCANNER.scan(plan, start,
+			end - start, player, minecartScene, interactionRange);
+		RouteInteraction teleportationPortal = TELEPORTATION_PORTAL_ROUTE_SCANNER.scan(
+			plan, start, end - start, player, teleportationPortalScene,
+			interactionRange);
+		RouteInteraction minigameTeleport = MINIGAME_TELEPORT_ROUTE_SCANNER.scan(
+			plan, start, end - start, player, minigameTeleportScene);
+		RouteInteraction magicMushtree = MAGIC_MUSHTREE_ROUTE_SCANNER.scan(
+			plan, start, end - start, player, magicMushtreeScene, interactionRange);
+		RouteInteraction hotAirBalloon = HOT_AIR_BALLOON_ROUTE_SCANNER.scan(
+			plan, start, end - start, player, hotAirBalloonScene, interactionRange);
+		return earliestInteraction(mineable, door, transport, transition, teleport, itemTeleport,
 			npcTransport, npcDialogue, charterShip, fairyRing, spiritTree, gnomeGlider,
-			quetzal);
+			quetzal, teleportationLever, wildernessDitch, jungleObstacle, canoe, minecart,
+			teleportationPortal,
+			minigameTeleport, magicMushtree, hotAirBalloon);
 	}
 
 	private static RouteInteraction earliestInteraction(RouteInteraction... interactions) {
@@ -9320,6 +9561,10 @@ public class Rs2Walker {
      *                         (teardown-safe). Non-null destinations still require a live client and login/player checks.
      */
     public static void setTarget(WorldPoint target, String clearReasonWhenNull) {
+        setTarget(target, clearReasonWhenNull, null);
+    }
+
+    private static void setTarget(WorldPoint target, String clearReasonWhenNull, Integer reachedDistance) {
         if (target != null && !Microbot.isLoggedIn()) {
             log.warn("Unable to set target: not logged in");
             return;
@@ -9358,7 +9603,11 @@ public class Rs2Walker {
             Rs2PathApi.setMarker(null);
             Rs2PathApi.setStartPointSet(false);
         } else {
-            applyWalkerDestination(target);
+            if (reachedDistance == null) {
+                applyWalkerDestination(target);
+            } else {
+                Rs2WalkerLifecycleRuntime.applyWalkerDestination(target, true, reachedDistance);
+            }
         }
     }
 
@@ -12962,9 +13211,15 @@ public class Rs2Walker {
         TransportRouteAnalysis comparison = compareRoutes(target);
         WebWalkLog.tmark("compare_done", System.currentTimeMillis() - compareStartedAt, target, pl,
                 "direct=" + comparison.getDirectDistance() + " bank=" + comparison.getBankingRouteDistance());
-        List<Transport> missingTransports = getMissingTransports(getTransportsForDestination(target, true, TransportType.TELEPORTATION_SPELL));
+        List<Transport> bankRouteTransports =
+                getTransportsForDestination(target, true, TransportType.TELEPORTATION_SPELL);
+        List<Transport> missingTransports = getMissingTransports(bankRouteTransports);
 
-        Map<Integer, Integer> missingItemsWithQuantities = getMissingTransportItemIdsWithQuantities(missingTransports);
+        // Plan the complete route, not only edges that fail an individual one-use check. Two
+        // teleports can each look usable against the same single tablet or rune stack while the
+        // route as a whole still needs a bank withdrawal.
+        Map<Integer, Integer> missingItemsWithQuantities =
+                getMissingTransportItemIdsWithQuantities(bankRouteTransports);
         if (!missingTransports.isEmpty()) {
             WebWalkLog.bankWalkDebug("missing_items nTrans={} to={} missingKinds={}",
                     missingTransports.size(), target, missingItemsWithQuantities.size());
@@ -13078,21 +13333,7 @@ public class Rs2Walker {
 
 
     /**
-     * Handles the complete banking workflow using legacy walkTo: walk to bank, open, withdraw items, close, continue to target.
-     * Enhanced version that accepts a map of item IDs with their required quantities and returns boolean.
-     *
-     * @param bankLocation The bank location to visit
-     * @param missingItemsWithQuantities Map of item IDs and their required quantities
-     * @param finalTarget The final destination after banking
-     * @return true if the banking workflow was successful, false otherwise
-     */
-    private static boolean walkWithBanking(WorldPoint bankLocation, Map<Integer, Integer> missingItemsWithQuantities, WorldPoint finalTarget) {
-        return walkWithBankingState(bankLocation, missingItemsWithQuantities, finalTarget, 10)== WalkerState.ARRIVED;
-    }
-
-    /**
-     * Handles the complete banking workflow using walkWithState: walk to bank, open, withdraw items, close, continue to target.
-     * Enhanced version that accepts a map of item IDs with their required quantities and returns WalkerState.
+     * Coordinates the bank transaction around two navigation-engine-owned walking legs.
      *
      * @param missingItemsWithQuantities Map of item IDs and their required quantities
      * @param finalTarget The final destination after banking
@@ -13102,69 +13343,49 @@ public class Rs2Walker {
                                                     Map<Integer, Integer> missingItemsWithQuantities,
                                                     WorldPoint finalTarget,int distance) {
         try {
-            if (bankLocation == null || finalTarget == null) {
-                log.warn("Cannot perform banking workflow with null locations");
-                return WalkerState.EXIT;
-            }
-            // Step 1: Walk to bank
-            WalkerState bankWalkResult = walkWithStateInternal(bankLocation, distance);
-            if (bankWalkResult != WalkerState.ARRIVED) {
-                log.warn("Failed to arrive at bank at: " + bankLocation + ", state: " + bankWalkResult);
-                return bankWalkResult;
-            }
-            log.info("Arrived at bank location: " + bankLocation);
-            // Step 2: Open bank
-            closeWorldMap();
-            if (!Rs2Bank.openBank()) {
-                log.warn("Failed to open bank at: " + bankLocation);
-                return WalkerState.EXIT;
-            }
-            if(!sleepUntil(()-> Rs2Bank.isOpen(), 8000)) {
-                log.warn("Failed to open bank within timeout at: " + bankLocation);
-                return WalkerState.EXIT;
-            }
+			BankedTransportCoordinator.Result result = BankedTransportCoordinator.execute(
+					bankLocation, missingItemsWithQuantities, finalTarget, distance,
+					new BankedTransportCoordinator.Operations() {
+						@Override
+						public WalkerState walk(WorldPoint target, int reachedDistance) {
+							return walkWithStateInternal(target, reachedDistance);
+						}
 
-            // Step 3: Withdraw missing transport items
-            if (!missingItemsWithQuantities.isEmpty()) {
-                log.debug("Withdrawing transport items with quantities: " + missingItemsWithQuantities);
-
-                // Withdraw the correct amount of each unique item
-                for (Map.Entry<Integer, Integer> entry : missingItemsWithQuantities.entrySet()) {
-                    int itemId = entry.getKey();
-                    int amountNeeded = entry.getValue();
-                    int currentCount = Rs2Inventory.count(itemId);
-                    int amountToWithdraw = Math.max(0, amountNeeded );
-
-                    if (amountToWithdraw > 0) {
-                        if (Rs2Bank.hasBankItem(itemId, amountToWithdraw)) {
-                            log.debug("Withdrawing {} x {} (item ID: {})", amountToWithdraw, itemId, itemId);
-                            Rs2Bank.withdrawX(itemId, amountToWithdraw);
-                            sleepUntil(() -> Rs2Inventory.count(itemId) >= currentCount + amountToWithdraw, 3000);
-                        } else {
-                            log.warn("Required transport item {} not found in bank (need {} but bank has less)",
-                                    itemId, amountToWithdraw);
-                        }
-                    } else {
-                        log.debug("Already have enough of item {}: {} (need {})", itemId, currentCount, amountNeeded);
-                    }
-                }
-
-                // Wait a bit for all withdrawals to complete
-                sleepTickJitter(1);
-            }
-
-            // Step 4: Close bank
-            Rs2Bank.closeBank();
-            sleepUntil(() -> !Rs2Bank.isOpen(), 3000);
-            if (Rs2Bank.isOpen()) {
-                log.warn("Failed to close bank after withdrawals");
-                return WalkerState.EXIT;
-            }
-            Rs2PathApi.getPathfinderConfig().setUseBankItems(false);
-            Rs2PathApi.getPathfinderConfig().refresh(finalTarget);
-            // Step 5: Continue to final target
-            log.debug("Banking complete, continuing to final target: " + finalTarget);
-            return walkWithStateInternal(finalTarget, distance);
+						@Override public void beforeOpenBank() { closeWorldMap(); }
+						@Override public boolean openBank() { return Rs2Bank.openBank(); }
+						@Override public boolean awaitBankOpen() {
+							return sleepUntil(Rs2Bank::isOpen, 8000);
+						}
+						@Override public int inventoryCount(int itemId) {
+							// Quantities matter for stackable requirements such as runes, coins and
+							// ecto-tokens. count(id) counts occupied slots and would treat any stack
+							// as one item, causing unnecessary or impossible withdrawals.
+							return Rs2Inventory.itemQuantity(itemId);
+						}
+						@Override public boolean hasBankItem(int itemId, int amount) {
+							return Rs2Bank.hasBankItem(itemId, amount);
+						}
+						@Override public boolean withdraw(int itemId, int amount) {
+							return Rs2Bank.withdrawX(itemId, amount);
+						}
+						@Override public boolean awaitInventoryQuantity(int itemId, int amount) {
+							return sleepUntil(() -> Rs2Inventory.itemQuantity(itemId) >= amount, 3000);
+						}
+						@Override public void settleWithdrawals() { sleepTickJitter(1); }
+						@Override public void closeBank() { Rs2Bank.closeBank(); }
+						@Override public boolean awaitBankClosed() {
+							return sleepUntil(() -> !Rs2Bank.isOpen(), 3000);
+						}
+						@Override public void prepareFinalRoute(WorldPoint target) {
+							Rs2PathApi.getPathfinderConfig().setUseBankItems(false);
+							Rs2PathApi.getPathfinderConfig().refresh(target);
+						}
+					});
+			if (result.getWalkerState() == WalkerState.EXIT) {
+				log.warn("Banked transport setup failed at phase={} itemId={}",
+						result.getPhase(), result.getFailedItemId());
+			}
+			return result.getWalkerState();
 
         } catch (Exception e) {
             log.error("Error in banking workflow: " + e.getMessage(), e);

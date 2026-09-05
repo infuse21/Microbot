@@ -132,7 +132,7 @@ Set JVM flag `-Dmicrobot.bank.validateInventorySetup=true` so `Rs2InventorySetup
 
 ---
 
-<!-- Add new gotchas here as numbered entries (## 8, ## 9, ...). -->
+<!-- Add new gotchas as numbered entries below. -->
 
 ## 8. Ground-item action reflection must fail closed to `Take`, not `CANCEL`
 
@@ -180,3 +180,46 @@ Keep action discovery and dispatch separate: `Rs2Reflection.getGroundItemActions
 **Where this applies:** `Rs2GroundItem.interact`, `Rs2TileItemModel.click`, and future ground-item interaction helpers.
 
 **Defensive check:** Drop loot on a tile visually overlapped by an NPC and beside an openable door. Verify the intended item is taken from multiple camera angles and no `Unable to find clicked menu op` engine message appears.
+
+---
+
+## 10. Teleport destination labels are not always executable item actions
+
+Match current item-definition actions/subops exactly, including their parent action, rather than
+assuming the transport display suffix can be clicked. Achievement diary cape rows name NPCs while
+the submenu names regions; Hunter cape's Feldip Hills action is `Carnivorous Chinchompas`, and
+Digsite pendant's Lithkren action is `Lithkren Dungeon`. Inventory and equipment can differ too:
+Strength cape uses `Teleport` in inventory and `Warriors' Guild` when worn.
+
+`Rs2ItemModel.getIndexOfSubAction` uses substring matching: verify its resolved entry is the exact
+desired action before dispatch. Do not fall back to a generic Rub/Teleport command that opens an
+unowned dialogue. Stage tab opening before item use, re-query the item before dispatch, and retain
+pending teleport ownership through landing even if consuming a final charge removes the item.
+
+**Where this applies:** `ItemTeleportPolicy`, `Rs2ItemTeleportScene`, `ItemTeleportRouteScanner`.
+
+## 11. Use an explicit teleport destination instead of a saved default action
+
+Stony basalt's `Troll Stronghold` action follows a player-selected entrance/roof toggle.
+The two catalogue rows share that label but promise different destinations. Resolve the directed
+coordinate to `Troll Stronghold entrance` or `Troll Stronghold roof`; reject unknown coordinates.
+Similarly, select `Grand Exchange` / `Yanille` explicitly on tablets instead of `Break`.
+Retain quest, diary, skill and charge requirements independently of the action mapping.
+
+Inventory-only items have no valid worn command even when the same family executor supports
+equipment. Validate inventory and equipment independently: Morytania legs use `Ecto Teleport`
+versus `Ectofuntus Pit`, and the cloak uses `Monastery Teleport` versus `Kandarin Monastery`.
+Metadata containing an action does not prove that the account has unlocked or charged it.
+
+**Where this applies:** `ItemTeleportPolicy`, teleportation-item resources, and their metadata tests.
+
+## 12. Do not treat stack-display IDs as usable transport alternatives
+
+Calcified moth uses inventory ID `29090`; Mokhaiotl waystone uses `31099`. The extra IDs previously
+listed in their transport rows resolve to `null` item names and have no teleport action in the live
+client. Keep only actual usable inventory IDs in requirements, not stack-display variants.
+Both items are consumed once per teleport. The transport parser recognizes `T` or `yes` for the
+`Consumable` column, not `Y`: the old moth row silently became reusable and two route uses requested
+only one moth. Use `T` and test the parsed resource through the shared quantity collector.
+
+**Where this applies:** `teleportation_items.tsv`, `Transport`, `Rs2WalkerBankingPlanner`.

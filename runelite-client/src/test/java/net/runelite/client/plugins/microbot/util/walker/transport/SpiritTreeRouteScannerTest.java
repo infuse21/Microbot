@@ -63,6 +63,19 @@ public class SpiritTreeRouteScannerTest
 		assertFalse(unavailable.isReady());
 	}
 
+	@Test
+	public void missingOriginIsUnavailableAndNeverReadyToClick()
+	{
+		SpiritTreeRouteScanner scanner = new SpiritTreeRouteScanner();
+		MutableScene scene = new MutableScene(SpiritTree.Stage.ORIGIN_UNAVAILABLE);
+
+		RouteInteraction unavailable = scanner.scan(plan(), 0, 1, ORIGIN, scene, 13);
+
+		assertEquals(RouteInteraction.Status.UNAVAILABLE, unavailable.getStatus());
+		assertEquals("Travel", unavailable.getAction());
+		assertFalse(unavailable.isReady());
+	}
+
 	private static RoutePlan plan()
 	{
 		RouteEdge edge = new RouteEdge(0, ORIGIN, DESTINATION, RouteEdge.Kind.SPIRIT_TREE);

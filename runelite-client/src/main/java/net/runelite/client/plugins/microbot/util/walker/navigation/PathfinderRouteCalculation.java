@@ -9,7 +9,17 @@ import net.runelite.client.plugins.microbot.util.walker.transport.FairyRingPolic
 import net.runelite.client.plugins.microbot.util.walker.transport.SpiritTreePolicy;
 import net.runelite.client.plugins.microbot.util.walker.transport.GnomeGliderPolicy;
 import net.runelite.client.plugins.microbot.util.walker.transport.QuetzalPolicy;
+import net.runelite.client.plugins.microbot.util.walker.transport.TeleportationLeverPolicy;
+import net.runelite.client.plugins.microbot.util.walker.transport.WildernessDitchPolicy;
+import net.runelite.client.plugins.microbot.util.walker.transport.JungleObstaclePolicy;
+import net.runelite.client.plugins.microbot.util.walker.transport.CanoePolicy;
+import net.runelite.client.plugins.microbot.util.walker.transport.MinecartPolicy;
+import net.runelite.client.plugins.microbot.util.walker.transport.TeleportationPortalPolicy;
+import net.runelite.client.plugins.microbot.util.walker.transport.MinigameTeleportPolicy;
+import net.runelite.client.plugins.microbot.util.walker.transport.MagicMushtreePolicy;
+import net.runelite.client.plugins.microbot.util.walker.transport.HotAirBalloonPolicy;
 import net.runelite.client.plugins.microbot.util.walker.transport.SimpleTeleportPolicy;
+import net.runelite.client.plugins.microbot.util.walker.transport.ItemTeleportPolicy;
 import net.runelite.client.plugins.microbot.util.walker.transport.NpcDialogueTransportPolicy;
 import net.runelite.client.plugins.microbot.util.walker.transport.NpcTransportPolicy;
 
@@ -98,6 +108,10 @@ public final class PathfinderRouteCalculation implements RoutePlanner.Calculatio
 		{
 			return RouteEdge.Kind.SIMPLE_TELEPORT;
 		}
+		if (transports.stream().anyMatch(ItemTeleportPolicy::isEligible))
+		{
+			return RouteEdge.Kind.ITEM_TELEPORT;
+		}
 		if (transports.stream().anyMatch(NpcTransportPolicy::isEligible))
 		{
 			return RouteEdge.Kind.NPC_TRANSPORT;
@@ -125,6 +139,42 @@ public final class PathfinderRouteCalculation implements RoutePlanner.Calculatio
 		if (transports.stream().anyMatch(QuetzalPolicy::isEligible))
 		{
 			return RouteEdge.Kind.QUETZAL;
+		}
+		if (transports.stream().anyMatch(TeleportationLeverPolicy::isEligible))
+		{
+			return RouteEdge.Kind.TELEPORTATION_LEVER;
+		}
+		if (transports.stream().anyMatch(WildernessDitchPolicy::isEligible))
+		{
+			return RouteEdge.Kind.WILDERNESS_DITCH;
+		}
+		if (transports.stream().anyMatch(JungleObstaclePolicy::isEligible))
+		{
+			return RouteEdge.Kind.JUNGLE_OBSTACLE;
+		}
+		if (transports.stream().anyMatch(CanoePolicy::isEligible))
+		{
+			return RouteEdge.Kind.CANOE;
+		}
+		if (transports.stream().anyMatch(MinecartPolicy::isEligible))
+		{
+			return RouteEdge.Kind.MINECART;
+		}
+		if (transports.stream().anyMatch(TeleportationPortalPolicy::isEligible))
+		{
+			return RouteEdge.Kind.TELEPORTATION_PORTAL;
+		}
+		if (transports.stream().anyMatch(MinigameTeleportPolicy::isEligible))
+		{
+			return RouteEdge.Kind.MINIGAME_TELEPORT;
+		}
+		if (transports.stream().anyMatch(MagicMushtreePolicy::isEligible))
+		{
+			return RouteEdge.Kind.MAGIC_MUSHTREE;
+		}
+		if (transports.stream().anyMatch(HotAirBalloonPolicy::isEligible))
+		{
+			return RouteEdge.Kind.HOT_AIR_BALLOON;
 		}
 		if (transports.stream().anyMatch(AdjacentTransportPolicy::isEligible))
 		{

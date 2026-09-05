@@ -3,6 +3,9 @@ import net.runelite.client.plugins.microbot.util.walker.geometry.WalkerPathGeome
 import net.runelite.client.plugins.microbot.util.walker.obstacle.Rs2ObstacleHandler;
 import net.runelite.client.plugins.microbot.util.walker.recovery.RouteRecovery;
 import net.runelite.client.plugins.microbot.util.walker.door.Rs2DoorGeometry;
+import net.runelite.client.plugins.microbot.util.walker.navigation.NavigationEngine;
+import net.runelite.client.plugins.microbot.util.walker.navigation.NavigationRequest;
+import net.runelite.client.plugins.microbot.util.walker.navigation.NavigationRouteOptions;
 
 import net.runelite.api.WallObject;
 import net.runelite.api.coords.WorldPoint;
@@ -46,6 +49,20 @@ import static org.mockito.Mockito.when;
  * refactored code paths get caught by {@code runUnitTests}.
  */
 public class Rs2WalkerUnitTest {
+
+    @Test
+    public void cachedRouteRequiresTheSameActiveArrivalContract() {
+        NavigationEngine engine = new NavigationEngine();
+        WorldPoint target = new WorldPoint(3317, 3233, 0);
+        engine.start(new NavigationRequest(1, Set.of(target), 3, NavigationRouteOptions.defaults(), "radius-test"));
+        assertTrue(Rs2Walker.canReuseNavigationRequest(engine.snapshot(), target, 3));
+        assertFalse(Rs2Walker.canReuseNavigationRequest(engine.snapshot(), target, 0));
+        assertFalse(Rs2Walker.canReuseNavigationRequest(engine.snapshot(), target, 6));
+        assertFalse(Rs2Walker.canReuseNavigationRequest(engine.snapshot(), new WorldPoint(3318, 3233, 0), 3));
+        assertFalse(Rs2Walker.canReuseNavigationRequest(null, target, 3));
+        engine.cancel("test-cancelled");
+        assertFalse(Rs2Walker.canReuseNavigationRequest(engine.snapshot(), target, 3));
+    }
 
     @Before
     public void resetTelemetry() {

@@ -45,6 +45,7 @@ final class WalkSession
 	RouteInteraction pendingInteraction;
 	final List<RouteInteraction> clearedInteractionsAwaitingCrossing = new ArrayList<>();
 	boolean interactionCommandPending;
+	WorldPoint interactionCommandOrigin;
 	long interactionCommandDeadlineMs;
 	boolean interactionClearedObserved;
 
@@ -88,6 +89,7 @@ final class WalkSession
 		pendingInteraction = null;
 		clearedInteractionsAwaitingCrossing.clear();
 		interactionCommandPending = false;
+		interactionCommandOrigin = null;
 		interactionCommandDeadlineMs = 0L;
 		interactionClearedObserved = false;
 		routeDistance = Integer.MAX_VALUE;

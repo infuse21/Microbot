@@ -8,6 +8,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static org.junit.Assert.assertEquals;
 
@@ -25,8 +26,22 @@ public class TransportCostModelTest
 			transport(TransportType.SPIRIT_TREE, 0)));
 		assertEquals(8, TransportCostModel.travelTicks(
 			transport(TransportType.GNOME_GLIDER, 0)));
-		assertEquals(6, TransportCostModel.travelTicks(
+		assertEquals(10, TransportCostModel.travelTicks(
 			transport(TransportType.QUETZAL, 0)));
+		assertEquals(6, TransportCostModel.travelTicks(
+			transport(TransportType.POH, 0)));
+		assertEquals(54, TransportCostModel.travelTicks(
+			transport(TransportType.CANOE, 12)));
+		assertEquals(28, TransportCostModel.travelTicks(
+			minecart("Ride", "Train cart", 7028)));
+		assertEquals(21, TransportCostModel.travelTicks(
+			minecart("Travel", "Trapdoor", 16168)));
+		assertEquals(8, TransportCostModel.travelTicks(
+			minecart("Travel", "Minecart", 28835)));
+		assertEquals(3, TransportCostModel.travelTicks(
+			transport(TransportType.TELEPORTATION_PORTAL, 1)));
+		assertEquals(8, TransportCostModel.travelTicks(
+			transport(TransportType.TELEPORTATION_PORTAL, 8)));
 		assertEquals(30, TransportCostModel.travelTicks(
 			transport(TransportType.FAIRY_RING, 30)));
 		assertEquals(1, TransportCostModel.travelTicks(
@@ -50,8 +65,8 @@ public class TransportCostModelTest
 	{
 		Transport teleport = new Transport(null, B, "Teleport",
 			TransportType.TELEPORTATION_SPELL, true, 4);
-		Map<WorldPoint, Set<Transport>> transports = new HashMap<>();
-		transports.put(null, new LinkedHashSet<>(List.of(teleport)));
+		Map<WorldPoint, Set<Transport>> transports = new ConcurrentHashMap<>();
+		transports.put(A, new LinkedHashSet<>(List.of(teleport)));
 
 		assertEquals(4, TransportCostModel.pathTicks(List.of(A, B), transports));
 	}
@@ -59,5 +74,11 @@ public class TransportCostModelTest
 	private static Transport transport(TransportType type, int duration)
 	{
 		return new Transport(A, B, type.name(), type, true, duration);
+	}
+
+	private static Transport minecart(String action, String name, int objectId)
+	{
+		return new Transport(A, B, "", TransportType.MINECART, true,
+			action, name, objectId);
 	}
 }

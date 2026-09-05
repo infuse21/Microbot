@@ -1055,6 +1055,13 @@ client thread, never click the locked entry, session-disable both directions of 
 `PathfinderConfig`, invalidate the transport memo, and publish `UNAVAILABLE` so the navigation
 engine replans immediately.
 
+Farmable spirit trees at Etceteria, Brimhaven, Port Sarim, Hosidius, and the Farming Guild are not
+present merely because the account satisfies the network quests. Keep these destination toggles
+opt-in. If a toggle is stale, confirm the missing `Travel` object only after the player is within
+four tiles of the catalog origin, session-disable both directions through the same unavailable-tree
+set, and publish `UNAVAILABLE` for an immediate replan. Do not infer a distant patch's state from the
+region-local farming transmit varbits.
+
 Transport route comparison must score reconstructed edges with the same duration model as the
 pathfinder. Counting `path.size()` makes every long-distance transport look like a one-tick hop even
 when `Transport.duration` influenced path selection. Use `TransportCostModel` for both search edges
@@ -1110,3 +1117,436 @@ separate observations. Keep originless quetzal-whistle item transports outside t
 **Defensive check:** Every known Renu variant with the correct name/action/origin remains eligible;
 the wrong name, missing action, wrong plane, or actor beyond the origin tolerance does not. A map
 click remains pending until the directed catalog landing and cannot be retired by raw-index progress.
+
+## 50. POH routing coordinates are logical, not loaded-scene coordinates
+
+Inside a player-owned house, `WorldPoint.fromLocalInstance` exposes the reusable house-template
+coordinate while cached objects can expose the loaded instance coordinate. The configured POH exit
+tile is therefore a logical pathfinder anchor and cannot be used as a normal proximity query around
+the loaded exit-portal object. The transport graph must also publish both directions: an outside
+`Home` portal edge does not imply an inside exit edge.
+
+**Pattern to follow:** Store the exit portal's template coordinate as the route origin/destination,
+but resolve the exact `POH_EXIT_PORTAL` object from the shared tile-object cache without a logical
+coordinate radius. Publish exact `Portal/Home` and `Portal/Enter` rows as `TransportType.POH`
+directed catalog
+transitions, retain them through the scene unload, and acknowledge only at the directed logical or
+outside landing. This keeps both physical portal directions behind the master `Use POH` toggle;
+classifying them as `TELEPORTATION_PORTAL` incorrectly couples them to the unrelated generic-portal
+setting. Never use the loaded instance object's world coordinate as a persistent route key.
+
+**Defensive check:** The POH portal graph contains outside-to-inside and inside-to-outside edges.
+Both are engine-owned, while an unrelated teleportation portal action or object name remains
+unsupported. The inside resolver may click the loaded object, but readiness is measured against the
+configured logical exit tile. Detection saves facilities and the logical tile but does not enable
+`Use POH`; verify that master toggle before treating a missing route as an instance-mapping failure.
+
+## 51. Seasonal transport data is not an execution contract
+
+Seasonal TSV rows identify a destination, required item, cost, and League varbit, but they do not
+identify the interface protocol needed after the item is activated. Enabling every row solely from
+`useSeasonalTransports` can therefore publish a route the walker cannot execute and repeatedly select
+the same zero-origin edge.
+
+**Pattern to follow:** Require a registered executor for the exact seasonal row shape before adding
+it to the usable transport graph. Clue compass rows use their destination as the inventory action or
+submenu action. Map of Alacrity rows parse `Region - Destination`, open widget `187:3`, select the
+region and then the destination, treat `<str>` rows as locked, and prefer the displayed hotkey so
+off-screen entries remain usable. A discovered lock must invalidate the transport memo as well as
+the session availability set; otherwise a cached snapshot republishes the rejected edge.
+
+**Defensive check:** Every packaged seasonal row maps to one executor, malformed/unknown rows remain
+unpublished, punctuation and colour markup do not break Map destination matching, and locked rows
+never receive a click. Keep live acceptance deferred when the relevant League world and item are not
+available rather than claiming UI proof from headless parsing tests.
+
+## 52. Bank-route eligibility and withdrawal accounting are one contract
+
+A pathfinder can select a route using an item known to be in the bank while a separate route filter
+silently omits that edge from withdrawal planning. The same split can underfund repeated paid edges,
+over-withdraw reusable equipment once per edge, or begin the final walk after a failed withdrawal.
+Mutating shared currency transports into ordinary item requirements is especially unsafe: later
+checks may mistake one coin for a complete fare and reusable-item aggregation may replace fare sums.
+
+**Pattern to follow:** Use one predicate for route-analysis and withdrawal eligibility. Determine
+originless teleports through `TransportType.isTeleport(type, origin)`, not a hand-written list of
+teleport families. Sum consumables, runes, and currency per use; take the maximum for reusable items;
+then subtract what the inventory already carries at withdrawal time. Keep pure fare metadata intact.
+An explicit coordinator should own the bank leg, open/withdraw/close transaction, final inventory-only
+replan, and target leg, while delegating each walking leg to the navigation engine. A missing bank item,
+failed withdrawal, or unconfirmed inventory update is terminal and must not start the target leg.
+
+**Defensive check:** Exercise a repeated reusable-item route, a repeated coin-fare route, a partial
+inventory shortfall, and an unavailable bank item. The first withdraws one item, the second sums all
+fares, the third withdraws only the difference, and the fourth never issues the final walk.
+
+## 53. One portal action does not always identify one directed landing
+
+A remote transport catalog can contain two edges with the same origin, object id, object name, and
+action but different destinations. Treating both as deterministic engine-owned edges makes route
+selection promise a landing that the input itself cannot select. The Castle Wars Guthix portal is
+the concrete case: six identical object inputs each declare both alliance waiting-room landings.
+
+**Pattern to follow:** Before migrating a direct-action remote family, group rows by the complete
+live input identity and require one destination per group. Resolve the exact object through
+`Microbot.getRs2TileObjectCache()`, issue only the catalog action, and retain the interaction until
+the directed landing is observed. Leave ambiguous groups legacy-owned unless the executor explicitly
+models every valid outcome and replans from the observed landing.
+
+**Defensive check:** Of the 100 packaged generic portal rows, the 88 deterministic rows publish as
+`TELEPORTATION_PORTAL`; all 12 object-`4408` Guthix rows remain `TRANSPORT` / `LEGACY_LOCKED`.
+Unknown object/action/name/display shapes also remain unsupported.
+
+## 54. Staged widget transports must model their parent tab and loading state
+
+A transport widget can be unavailable because its parent tab is closed, visible but still loading,
+or populated without the requested entry. Treating all three states as the same click-ready state can
+toggle the interface closed on every retry or make a valid row look permanently unavailable. The
+grouping/minigame interface is the concrete case: opening the grouping tab, opening the grouping
+panel, opening the activity dropdown, waiting for its dynamic children, selecting the activity, and
+teleporting are separate observable stages.
+
+**Pattern to follow:** Open the parent tab through a non-blocking client-thread action, then advance
+one immutable stage observation at a time. Use the dropdown arrow sprite to distinguish open from
+closed; an open dropdown with no dynamic children is a pending `WAIT` state, while a populated list
+without the requested activity is unavailable. Match catalog and widget labels with normalized case,
+whitespace, and apostrophes so `Giant's Foundry` and `Giants' Foundry` identify the same activity.
+After the teleport input, retain the exact route edge through cooldown-driven catalog disappearance
+until its directed landing is observed.
+
+**Defensive check:** All 20 active packaged minigame rows classify as engine-owned, while the
+commented broken Keldagrim Rat Pits row is excluded. The three active Rat Pits rows model their
+destination option after teleport input. A loading dropdown never receives a second toggle click,
+and cooldown removal of the source row cannot return ownership to legacy orchestration before the
+landing.
+
+## 55. Permutation transport catalogs need runtime-edge and unlock-state checks
+
+A compact network catalog can store several origin rows and destination-only rows, then expand them
+into a larger directed graph at load time. Testing only source-line count misses duplicate, omitted,
+or reversed runtime edges. Magic Mushtrees are the concrete case: two origin tiles at each of four
+locations plus four destination-only rows produce 24 directed runtime edges, not 12 executable
+routes.
+
+**Pattern to follow:** Assert the exact expanded edge count and classify every generated directed
+edge. Resolve the live object through `Microbot.getRs2TileObjectCache()` with exact catalog id,
+name, action, plane, and origin proximity. Treat opening the group-scoped interface and selecting a
+normalized destination label as separate immutable stages. Strip only the displayed numeric prefix;
+do not search unrelated widgets outside the known interface group. Once destination input is issued,
+retain the edge while the source and menu unload and acknowledge only the directed catalog landing.
+
+**Defensive check:** A visible network menu that labels the requested slot `Not yet found` is
+unavailable, not pending or click-ready. It receives no destination input, session-disables every
+directed edge into or out of that network node (including exact legacy shadow rows), invalidates the
+transport snapshot, and requests a bounded replan. Test both that locked-node replan and terminal
+source/menu disappearance, because neither interface closure nor raw-route progress proves remote
+arrival.
+
+## 56. Permutation transport costs belong to the destination half
+
+A compact network can place the live object interaction on origin rows and its per-trip item cost
+on destination-only rows. If the destination column uses an unrecognized resource header, the
+loader still expands a plausible-looking graph but every generated edge silently loses its item
+requirement. Hot-air balloons exposed this failure: the loader recognizes `Item IDs`, not `Items`,
+and each destination consumes a specific log.
+
+**Pattern to follow:** Encode destination requirements under the parser's exact header and mark
+single-use costs as consumable. Include the transport family in the same shared bank-planning
+predicate used by both route analysis and withdrawal collection. Generated origin-to-destination
+edges then inherit the destination log, repeated trips sum that log, and a banked route cannot start
+its final leg without the required inventory update.
+
+**Defensive check:** Assert all 225 generated balloon edges carry exactly one of the six destination
+log ids, are consumable, and participate in bank planning. A two-use route to the same destination
+must withdraw two logs, while malformed or requirement-free balloon rows remain engine-unsupported.
+
+## 57. A direct boundary object can still have an optional warning stage
+
+An object action that normally animates directly across a boundary may instead open a warning for
+accounts that have not disabled it. Wilderness ditches are the concrete case: the catalog exposes
+an exact `Cross;Wilderness Ditch;23271` input, while warning widget `475:11` can appear before the
+crossing. A generic direct-transition handler bypasses the legacy process-loop warning branch and
+can redispatch the object or stall without ever confirming the interface.
+
+**Pattern to follow:** Give warning-capable boundaries a dedicated route kind. Publish immutable
+object and warning observations, issue at most one input per stage, retain the directed edge while
+the object or interface disappears, and clear only at the catalog landing. Match the complete
+catalog identity and geometry instead of broadening every `Cross` action.
+
+**Defensive check:** Every packaged ditch row classifies into the dedicated kind, an unrelated
+bridge remains legacy-owned, warning appearance advances the pending action exactly once, and both
+warning and warning-free flows wait for the directed landing without legacy handoff.
+
+## 58. Exact direct-action families still need a complete identity boundary
+
+An action/name pair can look like a generic one-click scene transition while still belonging to a
+specific obstacle protocol. Dense forest crossings are the concrete case: all current rows use
+`Enter;Dense forest`, but the catalog contains five object IDs and unrelated `Enter` objects have
+different dialogue, requirement, or landing behaviour.
+
+**Pattern to follow:** Before reusing the catalog-transition lifecycle, audit every generated row
+for item and fare requirements, directed-input ambiguity, geometry, and failure behaviour. Pin the
+policy to the exact normalized action, name, and complete current object-ID set. Resolve through
+`Microbot.getRs2TileObjectCache()`, let the navigation engine own the bounded command, and acknowledge
+only the directed catalog landing.
+
+**Defensive check:** All 46 packaged dense-forest rows and only object IDs `3937`, `3938`, `3939`,
+`3998`, and `3999` publish as `CATALOG_TRANSITION`. A neighboring ID, an unrelated `Enter` target,
+or an item/fare requirement stays `TRANSPORT` / `LEGACY_LOCKED`; the production input audit must
+also remain free of ambiguous destinations.
+
+## 59. Transport requirements can depend on completed quest state
+
+A catalog action can encode a fare that is not present in the structured currency column, and the
+same interaction can become free after a quest. Port Phasmatys energy barriers are the concrete
+case: `Pay-toll(2-Ecto)` costs two ecto-tokens before `Ghosts Ahoy` and consumes none afterward.
+Treating every matching row as always paid over-withdraws after the quest; treating the blank
+currency column as free lets pre-quest routes strand at the barrier.
+
+**Pattern to follow:** Resolve one effective currency name and amount from the exact transport
+identity plus the cached quest state, failing closed when the state is unavailable. Use that same
+effective requirement in pathfinder eligibility, transport-cache relevance, bank-planning
+inclusion, inventory checks, and withdrawal aggregation. Do not mutate the shared `Transport` row,
+because its structured fare remains the catalog source and other consumers may distinguish encoded
+from conditional requirements.
+
+**Defensive check:** Before and during `Ghosts Ahoy`, every exact object-`16105`
+`Pay-toll(2-Ecto);Energy Barrier` row resolves to two ecto-tokens and participates in bank planning.
+After quest completion it resolves to zero. Unrelated encoded coin and ecto-token fares retain their
+original name and amount, and ambiguous barrier inputs remain legacy-owned until their directed
+landing protocol is explicit.
+
+## 60. Reuse a direct lifecycle only after proving the complete input is deterministic
+
+A paid action does not automatically imply a dialogue or confirmation stage. Port Phasmatys energy
+barriers expose the payment itself as the object action, `Pay-toll(2-Ecto)`, so adding an inferred
+dialogue step would make the engine wait for an interface that does not belong to the protocol.
+Conversely, identical object input at one origin can still map to multiple catalog destinations and
+cannot safely promise either landing.
+
+**Pattern to follow:** Establish the live menu action from client metadata and game guidance, then
+group the catalog by origin, object id, normalized action, and name. Reuse the bounded direct
+catalog-transition lifecycle only for groups with one directed destination. Keep fare resolution in
+the shared requirement policy rather than the interaction executor, and retain ambiguous groups as
+legacy-owned until their landing model is explicit.
+
+**Defensive check:** The 16 exact object-`16105` energy-barrier rows split into 12 deterministic
+`CATALOG_TRANSITION` rows and four `TRANSPORT` rows from two ambiguous origins. The rebuilt
+production policy probe must report that same `12/4` split; live crossing remains deferred until an
+account is safely positioned with the required quest/fare state.
+
+## 61. Legacy ownership does not validate gameplay prerequisites
+
+Keeping a transport legacy-owned prevents premature interaction migration, but does not stop the
+pathfinder selecting an impossible edge. The three Dorgesh-Kaan `Open;Door;6919` entrance rows had
+no quest metadata, so production eligibility admitted them before `Death to the Dorgeshuun` was
+completed.
+
+**Pattern to follow:** Audit catalog requirements separately from execution ownership. Encode a
+verified unconditional quest-completion gate in the transport resource and test the parsed quest
+state as well as the route classification. Do not infer an entrance gate for a one-way exit or
+flatten a conditional staff, diary, key, or quest-stage protocol into the same static requirement.
+
+**Defensive check:** All three ID 6919 entrance rows require `Death to the Dorgeshuun = FINISHED`
+and remain `TRANSPORT` / legacy-owned. A rebuilt-client availability probe on an account without
+that completion must reject all three; this negative check is not live crossing acceptance.
+
+## 62. A shared transformed object ID does not imply a shared unlock
+
+Different location-specific object definitions can transform into the same interactable object.
+The three surface Catacombs entrances all expose `Hole/Enter` ID `28915` after unlocking, but
+their base objects use independent varbits: `28919 -> 5088`, `28920 -> 5089`, `28921 -> 5090`.
+Copying one transformed row's unlock to the other locations can publish invisible entrances or
+hide an entrance that is actually unlocked.
+
+**Pattern to follow:** Read the base object's varbit and transform array on the client thread.
+Associate catalog requirements with the physical location and directed landing, not only the
+shared transformed ID. Check every approach row, including older base-ID rows, against that
+mapping; preserve exact name/action and bounded-origin matching in the live cache-backed resolver.
+
+**Defensive check:** All four approach rows at each Catacombs entrance require its own unlock
+value `1`. Independently enable each of the three unlocks in a regression and verify that only
+the corresponding destination's rows pass; a read-only runtime audit must find zero discrepancies
+between catalog requirements and base-object definitions.
+
+## 63. Do not require an unlock on the action that creates it
+
+An entrance and its return exit can have different prerequisites. Catacombs surface holes are
+unavailable until their underground vines have been climbed, but the vines themselves must permit
+first use. Copying the incoming hole's unlock condition onto the outgoing vine creates a circular
+dependency and suppresses a valid exit; older rows also carried unrelated varbits.
+
+**Pattern to follow:** Audit both directions independently. Preserve unlock conditions on incoming
+entrances, omit them from unconditional unlocking exits, and keep the directed landing as the
+transition acknowledgement. Reuse an existing engine lifecycle only for the exact verified
+object/action family; a successful metadata check is not proof that a physical crossing or unlock
+write occurred.
+
+**Defensive check:** All 20 Catacombs `Climb-up;Vine` rows have no item, fare, quest, varbit, or
+varplayer requirement. Their 12 surface `Enter;Hole` counterparts retain the location-specific
+unlock tests, including rejection when only another entrance has been unlocked.
+
+## 64. Check that landing tolerance excludes the starting side
+
+A direct action and deterministic destination do not alone prove that an existing transition
+scanner is suitable. Its arrival tolerance may already include the source position. The shared
+catalog scanner previously accepted positions within two tiles of the destination, so a two-tile
+same-plane Steps edge could look landed before any crossing.
+
+**Pattern to follow:** Check directed geometry against the acknowledgement predicate before
+migrating a family. Reject short same-plane rows when the existing predicate cannot distinguish
+the sides; do not globally shrink caller arrival distances or treat object disappearance as proof.
+A proper short-link migration needs a side-aware or progress-aware acknowledgement with tests at
+the source, during approach, and beyond the destination.
+
+**Defensive check:** The audited Steps policy rejects same-plane endpoints within two tiles even
+for an allowed object ID, while accepting its verified cross-plane and distant-exit rows. Kurask
+and Wyvern two-tile steps remain legacy-owned; eligibility is separate from landing correctness.
+
+The shared scanner now also requires a position on or beyond the destination's perpendicular
+boundary for same-plane links up to four tiles, where the two endpoint tolerance areas overlap.
+It uses the full directed catalogue vector, not either axis alone or the raw-route/object tile.
+Longer links and plane changes retain their two-tile landing tolerance. Catalogue interactions must
+also remain pending in `NavigationEngine` until the scanner confirms landing: a nearest-route index
+can advance while a three-tile link is still being approached. Test origin, midpoint, diagonal
+source-side offsets, landing, bounded overshoot, source disappearance, and raw-index advancement.
+
+## 65. Capture the caller's arrival radius in the navigation request
+
+The sidebar's default finish distance is not the distance passed to `walkWithState(target, distance)`.
+The lifecycle adapter previously built every engine request from the sidebar value: a live radius-zero
+request captured five and returned `ARRIVED` four tiles from its goal. Transport landing tolerance
+is a separate predicate and must not replace the caller's final arrival contract either.
+
+**Pattern to follow:** Pass the explicit radius through destination setup and capture it before
+queuing asynchronous planning. Preserve the immutable request's radius for same-destination replans,
+including cave-route comparisons. Reuse a cached route only when its active request matches both
+destination and radius; a completed, cancelled, or differently sized request is not reusable.
+Leave the HTTP endpoint's strict distance check intact rather than widening it to hide early arrival.
+
+**Where this applies:** `Rs2Walker.walkWithStateInternal`, `Rs2WalkerLifecycleRuntime`, and
+`NavigationRequest`. Default-only callers retain the configured default when starting a fresh request.
+
+**Defensive check:** With sidebar distance five, explicit distances zero, three, and six must be
+captured unchanged. Changing the sidebar during a replan must not change the active request, and an
+exact-tile live request must complete only with zero remaining distance after all interactions retire.
+
+## 66. A final raw index is not proof of exact endpoint arrival
+
+After a teleport lands one tile off its catalogue coordinate, nearest-route progress already points
+to the final raw index. Treating that index as route exhaustion immediately replans and can select
+the same charged teleport again instead of walking the remaining tile.
+
+**Pattern to follow:** After retiring the transport, allow a bounded approach to the existing raw
+endpoint when that endpoint satisfies the caller's arrival contract and is on the player's plane
+within normal click reach. Prefer the canvas input for this exact final approach, retain normal
+command acknowledgement/recovery budgets, and acknowledge arrival from position rather than index.
+If the endpoint itself falls outside the requested radius, retain partial-route replan behaviour.
+
+**Where this applies:** `NavigationEngine` route-end handling and `Rs2Walker`'s engine action adapter.
+
+**Defensive check:** An off-centre teleport landing followed by a radius-zero goal issues one ground
+click and completes at the target without requesting another teleport. A nearby partial endpoint
+outside the goal radius still requests a replan rather than receiving an endpoint-approach click.
+
+## 67. Apply transport switches to ordinary rows of the same network
+
+A transport's TSV type is not always its logical network. The catalogue includes twelve
+`TRANSPORT` rows for Magic Mushtrees alongside the generated `MAGIC_MUSHTREE` rows. Checking
+only the enum left six usable ordinary rows published on an account with mushtrees disabled.
+Two ordinary `Use;Fairy ring` rows have the same bypass for `useFairyRings`.
+
+**Pattern to follow:** Resolve these exact object/name/action identities to their logical feature
+type before the shared feature-switch check. Keep their original route type and geometry intact.
+Apply the same filter to the catalogue used by planning and live scene lookup, including after a
+config refresh; do not create a separate executor-specific toggle or broadly gate unrelated objects.
+
+**Where this applies:** `PathfinderConfig.isFeatureEnabled` and transport refresh publication.
+
+**Defensive check:** Exercise all 22 boolean family switches in both states, plus all twelve ordinary
+mushtree and two ordinary fairy-ring rows. With mushtrees disabled, the rebuilt live catalogue must
+contain zero mushtree rows, including after a fresh walk and a cached transport refresh.
+
+## 68. A Travel action is not proof of one-click arrival
+
+The Fossil Island dock rowboat (`30914`, object tile `3723,3805,0`) opens a menu after `Travel`.
+Its route to the Digsite must select `Row to the barge and travel to the Digsite.`, not the shorter
+`Row to the barge.` option. A blank `Display info` caused the row to enter the direct NPC/object
+executor, which had no dialogue stages and waited for a landing that could not happen.
+
+**Pattern to follow:** Encode the observed full destination option in the route resource, so the
+existing dialogue executor owns actor -> option -> continue -> directed landing. Verify the exact
+option against competing prefixes and test the return direction independently; the Barge guard's
+`Quick-Travel` return is still direct and should not be changed into a menu sequence.
+
+**Where this applies:** `ships.tsv`, `NpcTransportPolicy`, `NpcDialogueTransportPolicy` and scenes.
+
+**Defensive check:** The dock-to-Digsite row is dialogue-owned, never direct-owned; the two-option
+menu selects index 1. Rebuilt live tests must finish at both exact endpoints without legacy input.
+
+## 69. Missing rowboat destinations are unlock evidence, not fixed option numbers
+
+The Fossil Island camp rowboat initially offers only the barge, barge-and-Digsite, and Cancel.
+North-island and sea destinations are absent until unlocked through discovery trips. The legacy
+handler presses the first character of labels such as `2. North of Island`; with the locked menu,
+that number instead selects the Digsite. No verified rowboat unlock varbit was found in this audit.
+
+**Pattern to follow:** Observe a complete camp menu on the client thread, anchored by both known
+barge options and Cancel and proximity to the camp boat. Publish an immutable set of missing
+destinations, invalidate transport snapshots when it changes, and exclude only camp's two outgoing
+BOAT rows. Preserve the north/sea discovery directions and Digsite SHIP row. When a planned
+destination is absent, explicitly select Cancel from that verified menu, then publish a distinct
+unavailable stage so the engine drops the original voyage acknowledgement deadline and replans
+immediately. Match the six island routes by unique destination text rather than catalogue ordinals.
+Later observed menus replace the negative evidence, and the login screen clears it so it cannot
+leak between accounts. Before the first observation, state is unknown: this is a session-learned
+gate, not a pre-arrival unlock-varbit check.
+
+**Where this applies:** `PathfinderConfig`, `ShortestPathPlugin.onGameTick`, and NPC dialogue scenes.
+
+**Defensive check:** A locked live menu removes both outgoing camp BOAT rows from publication while
+the Digsite route remains usable. Foreign/incomplete/remote menus cannot alter the gate; synthetic
+later-unlocked menus restore destinations. A pending `Travel` followed by the definitive Cancel and
+unavailable stages must request a replan within the next observations rather than after the 60-second
+voyage deadline. Verify actual unlocked travel separately.
+
+## 70. Model intermediate Talk-to choices as explicit stages
+
+A destination label in a transport row does not mean the first dialogue menu contains that
+destination. Cabin Boy Herbert first asks whether the player wants travel at all; only after selecting
+`Can you take me somewhere?` does the `Travel to <destination>.` menu appear. Treating every
+`Talk-to` route as continue-then-destination either stalls on the first menu or invites broad matching
+that can choose unrelated conversation branches.
+
+**Pattern to follow:** Keep the general `Talk-to` exclusion. Admit only an exact audited actor/route
+contract, represent each intermediate intent option as its own engine stage, and match that prompt
+exactly and uniquely before input. Continue frames may be optional, but a foreign or ambiguous menu
+must receive no input and remain under the bounded interaction deadline.
+
+**Where this applies:** `NpcDialogueTransportPolicy`, `Rs2NpcDialogueTransportScene`, its route
+scanner, and any later specialised NPC/boat conversation migration.
+
+**Defensive check:** All four packaged Herbert rows publish as dialogue-owned; malformed Herbert and
+other `Talk-to` rows remain legacy-owned. The exact request advances to the destination stage, while
+partial or duplicate request labels are rejected.
+
+## 71. Replan when a failed short transition moves behind its command position
+
+Fallible short crossings can send the player backward while their next object remains visible and
+clickable. Retaining that pending edge makes ranged dispatch retry an obstacle that the player can no
+longer reach without traversing earlier edges again.
+
+**Pattern to follow:** Record the player position when issuing a short same-plane catalog transition.
+While its command is pending, project both that position and the current player position onto the
+directed crossing vector. If the player moved materially farther backward, clear the pending command
+and replan immediately from the observed landing; do not wait for the interaction deadline or click
+the stale edge again. Compare against the command position rather than requiring dispatch at the
+catalog origin, because valid ranged interaction can begin several tiles before the obstacle.
+
+**Where this applies:** `NavigationEngine` command acknowledgement for fallible
+`CATALOG_TRANSITION` edges such as the Fremennik basalt causeway.
+
+**Defensive check:** Model a command issued at `2522,3597` for the
+`2522,3600 -> 2522,3602` edge followed by a failed landing at `2522,3595`. The next decision must be
+`REQUEST_REPLAN` with `interaction-displaced-behind-origin`, and the interaction adapter must have
+received exactly one command.

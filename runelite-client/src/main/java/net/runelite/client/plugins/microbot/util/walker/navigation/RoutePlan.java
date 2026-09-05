@@ -167,6 +167,7 @@ public final class RoutePlan
 	{
 		return routeEdges.stream().allMatch(edge -> edge.getKind() == RouteEdge.Kind.WALK
 			|| edge.getKind() == RouteEdge.Kind.SIMPLE_TELEPORT
+			|| edge.getKind() == RouteEdge.Kind.ITEM_TELEPORT
 			|| edge.getKind() == RouteEdge.Kind.NPC_TRANSPORT
 			|| edge.getKind() == RouteEdge.Kind.NPC_DIALOGUE_TRANSPORT
 			|| edge.getKind() == RouteEdge.Kind.CHARTER_SHIP
@@ -174,6 +175,15 @@ public final class RoutePlan
 			|| edge.getKind() == RouteEdge.Kind.SPIRIT_TREE
 			|| edge.getKind() == RouteEdge.Kind.GNOME_GLIDER
 			|| edge.getKind() == RouteEdge.Kind.QUETZAL
+			|| edge.getKind() == RouteEdge.Kind.TELEPORTATION_LEVER
+			|| edge.getKind() == RouteEdge.Kind.WILDERNESS_DITCH
+			|| edge.getKind() == RouteEdge.Kind.JUNGLE_OBSTACLE
+			|| edge.getKind() == RouteEdge.Kind.CANOE
+			|| edge.getKind() == RouteEdge.Kind.MINECART
+			|| edge.getKind() == RouteEdge.Kind.TELEPORTATION_PORTAL
+			|| edge.getKind() == RouteEdge.Kind.MINIGAME_TELEPORT
+			|| edge.getKind() == RouteEdge.Kind.MAGIC_MUSHTREE
+			|| edge.getKind() == RouteEdge.Kind.HOT_AIR_BALLOON
 			|| edge.getKind() == RouteEdge.Kind.ADJACENT_TRANSPORT
 			|| edge.getKind() == RouteEdge.Kind.CATALOG_TRANSITION);
 	}

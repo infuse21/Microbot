@@ -52,6 +52,16 @@ public final class NpcDialogueTransportRouteScanner
 		}
 		if (hasLanded(pending, player))
 		{
+			if (scene.hasContinue())
+			{
+				// Payment can remove this row from the active catalogue before landing.
+				// Finish the dialogue from the already-owned edge instead of requiring
+				// the now-unaffordable transport to resolve again.
+				return new RouteInteraction(pending.getGeneration(), pending.getRawEdgeIndex(),
+					pending.getFrom(), pending.getTo(), pending.getObjectTile(), pending.getKind(),
+					RouteInteraction.Status.AVAILABLE, NpcDialogueTransportPolicy.CONTINUE_ACTION,
+					true, pending.getObjectId(), pending.getCrossingFrom(), pending.getCrossingTo());
+			}
 			return pending.withStatus(RouteInteraction.Status.CLEARED, false);
 		}
 		NpcDialogueTransport transport = scene.observe(
@@ -80,6 +90,24 @@ public final class NpcDialogueTransportRouteScanner
 		boolean ready;
 		switch (transport.getStage())
 		{
+			case EQUIP_REQUIREMENT:
+				action = "Dondakan the Dwarf".equals(transport.getActorName())
+					? NpcDialogueTransportPolicy.EQUIP_GOLD_HELMET_ACTION
+					: NpcDialogueTransportPolicy.EQUIP_GHOSTSPEAK_ACTION;
+				ready = true;
+				break;
+			case TRAVEL_REQUEST:
+				action = NpcDialogueTransportPolicy.TRAVEL_REQUEST_ACTION;
+				ready = true;
+				break;
+			case DESTINATION_CANCEL:
+				action = NpcDialogueTransportPolicy.CANCEL_UNAVAILABLE_ACTION;
+				ready = true;
+				break;
+			case DESTINATION_UNAVAILABLE:
+				action = NpcDialogueTransportPolicy.DESTINATION_UNAVAILABLE_ACTION;
+				ready = false;
+				break;
 			case DESTINATION:
 				action = NpcDialogueTransportPolicy.destinationAction(
 					transport.getDestinationOption());
@@ -112,6 +140,10 @@ public final class NpcDialogueTransportRouteScanner
 		// dialogue stage is open the payment is already in the game's hands.
 		if (transport.getStage() == NpcDialogueTransport.Stage.ACTOR
 			&& transport.getFareCoins() > coinsHeld)
+		{
+			return interaction.withStatus(RouteInteraction.Status.UNAVAILABLE, false);
+		}
+		if (transport.getStage() == NpcDialogueTransport.Stage.DESTINATION_UNAVAILABLE)
 		{
 			return interaction.withStatus(RouteInteraction.Status.UNAVAILABLE, false);
 		}

@@ -1,6 +1,7 @@
 package net.runelite.client.plugins.microbot.util.walker.navigation;
 
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.client.plugins.microbot.util.walker.transport.NpcDialogueTransportPolicy;
 
 import java.util.List;
 
@@ -24,6 +25,10 @@ public final class NavigationEngine
 	private static final long INTERACTION_COMMAND_BASE_TIMEOUT_MS = 5_000L;
 	private static final long INTERACTION_COMMAND_TIMEOUT_PER_TILE_MS = 600L;
 	private static final long NPC_TRANSPORT_COMMAND_TIMEOUT_MS = 30_000L;
+	private static final long HOME_TELEPORT_COMMAND_TIMEOUT_MS = 35_000L;
+	private static final long DIALOGUE_CONTINUE_COMMAND_TIMEOUT_MS = 2_000L;
+	private static final long NPC_DIALOGUE_TRANSPORT_COMMAND_TIMEOUT_MS = 60_000L;
+	private static final long JUNGLE_OBSTACLE_COMMAND_TIMEOUT_MS = 60_000L;
 	private static final int MAX_INTERACTION_COMMAND_DISTANCE = 13;
 	private static final int MAX_ROUTE_EXHAUSTED_ATTEMPTS = 3;
 	private static final int MAX_EXTERNAL_REPLAN_ATTEMPTS = 3;
@@ -155,6 +160,12 @@ public final class NavigationEngine
 					"movement-command-not-acknowledged", observation);
 			}
 		}
+		WorldPoint movementDestination = observation.getMovementDestination();
+		if (movementDestination != null && session.commandTarget != null
+			&& isDivergentCommandDestination(movementDestination))
+		{
+			return requestDestinationMismatch(movementDestination, observation);
+		}
 		// Long-distance interactions can move through a temporary ship deck, cutscene,
 		// or loading scene that is intentionally nowhere near the published raw route.
 		// While the interaction acknowledgement window owns the command, let its
@@ -175,7 +186,7 @@ public final class NavigationEngine
 		int recalculateDistance = session.request.getRouteOptions().getRecalculateDistance();
 		if (recalculateDistance >= 0 && session.routeDistance > recalculateDistance)
 		{
-			if (observation.isMoving() || observation.isAnimating() || observation.isInteracting())
+			if (isWalkerMovementInFlight(observation))
 			{
 				session.transitionTo(NavigationPhase.FOLLOWING_ROUTE,
 					"off-route-movement-in-flight");
@@ -193,7 +204,7 @@ public final class NavigationEngine
 
 		if (observation.isReplanRequested())
 		{
-			if (observation.isMoving() || observation.isAnimating() || observation.isInteracting())
+			if (isWalkerMovementInFlight(observation))
 			{
 				session.transitionTo(NavigationPhase.FOLLOWING_ROUTE,
 					"replan-deferred-command-in-flight");
@@ -205,8 +216,7 @@ public final class NavigationEngine
 		}
 
 		boolean proximityHandoff = isProximityHandoff(observation);
-		if (observation.isAnimating() || observation.isInteracting()
-			|| (observation.isMoving() && !proximityHandoff))
+		if (observation.isMoving() && !proximityHandoff)
 		{
 			session.transitionTo(NavigationPhase.FOLLOWING_ROUTE, "movement-in-flight");
 			return publish(NavigationDecision.of(NavigationDecision.Type.WAIT,
@@ -228,6 +238,22 @@ public final class NavigationEngine
 		List<WorldPoint> rawPath = session.routePlan.getRawPath();
 		if (session.rawProgressIndex >= rawPath.size() - 1)
 		{
+			WorldPoint endpoint = rawPath.get(rawPath.size() - 1);
+			WorldPoint player = observation.getPlayerLocation();
+			// Nearest-raw progress can reach the last index before the caller's radius is satisfied.
+			if (player != null && player.getPlane() == endpoint.getPlane() && hasArrived(endpoint))
+			{
+				int distance = (int) Math.ceil(Math.hypot(endpoint.getX() - player.getX(),
+					endpoint.getY() - player.getY()));
+				if (distance > 0 && distance <= MAX_ROUTE_CLICK_REACH)
+				{
+					RouteClickSelection finish = new RouteClickSelection(endpoint, rawPath.size() - 1,
+						session.routePlan.getSmoothedPath().size() - 1, distance, MAX_ROUTE_CLICK_REACH,
+						"route-end-approach");
+					session.transitionTo(NavigationPhase.FOLLOWING_ROUTE, "route-end-approach");
+					return publish(NavigationDecision.click(finish, 1, "route-end-approach"), observation);
+				}
+			}
 			return requestReplan(RecoveryCause.ROUTE_EXHAUSTED,
 				"route-end-before-arrival", observation);
 		}
@@ -270,16 +296,44 @@ public final class NavigationEngine
 		if (decision.getType() == NavigationDecision.Type.INTERACT)
 		{
 			session.interactionCommandPending = issued;
+			session.interactionCommandOrigin = issued ? session.lastObservedPlayer : null;
 			int distance = interactionCommandDistance(decision.getInteraction());
-			long timeout = decision.getInteraction() != null
+			long timeout = isLongHomeTeleport(decision.getInteraction())
+				? HOME_TELEPORT_COMMAND_TIMEOUT_MS
+				: decision.getInteraction() != null
+				&& decision.getInteraction().getKind()
+					== RouteInteraction.Kind.NPC_DIALOGUE_TRANSPORT
+				&& NpcDialogueTransportPolicy.CONTINUE_ACTION.equals(
+					decision.getInteraction().getAction())
+				? DIALOGUE_CONTINUE_COMMAND_TIMEOUT_MS
+				: decision.getInteraction() != null
+				&& decision.getInteraction().getKind()
+					== RouteInteraction.Kind.NPC_DIALOGUE_TRANSPORT
+				? NPC_DIALOGUE_TRANSPORT_COMMAND_TIMEOUT_MS
+				: decision.getInteraction() != null
+					&& decision.getInteraction().getKind()
+						== RouteInteraction.Kind.JUNGLE_OBSTACLE
+				? JUNGLE_OBSTACLE_COMMAND_TIMEOUT_MS
+				: decision.getInteraction() != null
 				&& (decision.getInteraction().getKind() == RouteInteraction.Kind.NPC_TRANSPORT
-					|| decision.getInteraction().getKind()
-						== RouteInteraction.Kind.NPC_DIALOGUE_TRANSPORT
+					|| decision.getInteraction().getKind() == RouteInteraction.Kind.ITEM_TELEPORT
 					|| decision.getInteraction().getKind() == RouteInteraction.Kind.CHARTER_SHIP
 					|| decision.getInteraction().getKind() == RouteInteraction.Kind.FAIRY_RING
 					|| decision.getInteraction().getKind() == RouteInteraction.Kind.SPIRIT_TREE
 					|| decision.getInteraction().getKind() == RouteInteraction.Kind.GNOME_GLIDER
-					|| decision.getInteraction().getKind() == RouteInteraction.Kind.QUETZAL)
+					|| decision.getInteraction().getKind() == RouteInteraction.Kind.QUETZAL
+					|| decision.getInteraction().getKind()
+						== RouteInteraction.Kind.TELEPORTATION_LEVER
+					|| decision.getInteraction().getKind() == RouteInteraction.Kind.CANOE
+					|| decision.getInteraction().getKind() == RouteInteraction.Kind.MINECART
+					|| decision.getInteraction().getKind()
+						== RouteInteraction.Kind.TELEPORTATION_PORTAL
+					|| decision.getInteraction().getKind()
+						== RouteInteraction.Kind.MINIGAME_TELEPORT
+					|| decision.getInteraction().getKind()
+						== RouteInteraction.Kind.MAGIC_MUSHTREE
+					|| decision.getInteraction().getKind()
+						== RouteInteraction.Kind.HOT_AIR_BALLOON)
 				? NPC_TRANSPORT_COMMAND_TIMEOUT_MS
 				: INTERACTION_COMMAND_BASE_TIMEOUT_MS
 					+ Math.min(MAX_INTERACTION_COMMAND_DISTANCE, distance)
@@ -351,8 +405,7 @@ public final class NavigationEngine
 		{
 			return null;
 		}
-		if (cause == RecoveryCause.INTERACTION_WAIT || observation.isMoving()
-			|| observation.isAnimating() || observation.isInteracting()
+		if (cause == RecoveryCause.INTERACTION_WAIT || isWalkerMovementInFlight(observation)
 			|| hasRecentValidCommand(observation.getObservedAtMs()))
 		{
 			session.transitionTo(NavigationPhase.FOLLOWING_ROUTE,
@@ -461,10 +514,22 @@ public final class NavigationEngine
 		RouteInteraction observed = observation.getRouteInteraction();
 		if (observed != null && observed.getGeneration() == session.generation)
 		{
-			if (interactionStageAdvanced(session.pendingInteraction, observed))
+			RouteInteraction previous = session.pendingInteraction;
+			if (interactionStageAdvanced(previous, observed))
 			{
 				session.interactionCommandPending = false;
+				session.interactionCommandOrigin = null;
 				session.interactionCommandDeadlineMs = 0L;
+			}
+			else if (dialogueVoyageStarted(previous, observed)
+				&& session.interactionCommandPending)
+			{
+				// Intermediate Continue frames remain visible and use the short retry window.
+				// Once the dialogue disappears, the same click may own a real voyage through
+				// a temporary ship scene, so preserve it until the bounded landing deadline.
+				session.interactionCommandDeadlineMs = Math.max(
+					session.interactionCommandDeadlineMs,
+					observation.getObservedAtMs() + NPC_DIALOGUE_TRANSPORT_COMMAND_TIMEOUT_MS);
 			}
 			session.pendingInteraction = observed;
 		}
@@ -495,14 +560,35 @@ public final class NavigationEngine
 			return publish(NavigationDecision.of(NavigationDecision.Type.INTERACT,
 				"interaction-frontier-ready"), observation);
 		}
+		if (failedShortTransitionMovedBehindOrigin(pending,
+			observation.getPlayerLocation()))
+		{
+			session.interactionCommandPending = false;
+			session.interactionCommandOrigin = null;
+			session.interactionCommandDeadlineMs = 0L;
+			return requestReplan(RecoveryCause.INTERACTION_UNAVAILABLE,
+				"interaction-displaced-behind-origin", observation);
+		}
 
-		boolean remoteLandingRequired = (pending.getKind() == RouteInteraction.Kind.NPC_TRANSPORT
+		boolean remoteLandingRequired = (pending.getKind() == RouteInteraction.Kind.SIMPLE_TELEPORT
+			|| pending.getKind() == RouteInteraction.Kind.NPC_TRANSPORT
+			|| pending.getKind() == RouteInteraction.Kind.ITEM_TELEPORT
 			|| pending.getKind() == RouteInteraction.Kind.NPC_DIALOGUE_TRANSPORT
 			|| pending.getKind() == RouteInteraction.Kind.CHARTER_SHIP
 			|| pending.getKind() == RouteInteraction.Kind.FAIRY_RING
 			|| pending.getKind() == RouteInteraction.Kind.SPIRIT_TREE
 			|| pending.getKind() == RouteInteraction.Kind.GNOME_GLIDER
-			|| pending.getKind() == RouteInteraction.Kind.QUETZAL)
+			|| pending.getKind() == RouteInteraction.Kind.QUETZAL
+			|| pending.getKind() == RouteInteraction.Kind.TELEPORTATION_LEVER
+			|| pending.getKind() == RouteInteraction.Kind.WILDERNESS_DITCH
+			|| pending.getKind() == RouteInteraction.Kind.JUNGLE_OBSTACLE
+			|| pending.getKind() == RouteInteraction.Kind.CANOE
+			|| pending.getKind() == RouteInteraction.Kind.MINECART
+			|| pending.getKind() == RouteInteraction.Kind.TELEPORTATION_PORTAL
+			|| pending.getKind() == RouteInteraction.Kind.MINIGAME_TELEPORT
+			|| pending.getKind() == RouteInteraction.Kind.MAGIC_MUSHTREE
+			|| pending.getKind() == RouteInteraction.Kind.HOT_AIR_BALLOON
+			|| pending.getKind() == RouteInteraction.Kind.CATALOG_TRANSITION)
 			&& pending.getStatus() != RouteInteraction.Status.CLEARED;
 		if (session.rawProgressIndex > pending.getRawEdgeIndex() && !remoteLandingRequired)
 		{
@@ -532,6 +618,7 @@ public final class NavigationEngine
 		if (pending.getStatus() == RouteInteraction.Status.CLEARED)
 		{
 			session.interactionCommandPending = false;
+			session.interactionCommandOrigin = null;
 			session.interactionCommandDeadlineMs = 0L;
 			RouteInteraction next = observation.getNextRouteInteraction();
 			if (canChainInteraction(pending, next))
@@ -585,6 +672,7 @@ public final class NavigationEngine
 				&& observation.getObservedAtMs() >= session.interactionCommandDeadlineMs)
 			{
 				session.interactionCommandPending = false;
+				session.interactionCommandOrigin = null;
 				session.interactionCommandDeadlineMs = 0L;
 			}
 			else
@@ -627,8 +715,73 @@ public final class NavigationEngine
 	{
 		session.pendingInteraction = null;
 		session.interactionCommandPending = false;
+		session.interactionCommandOrigin = null;
 		session.interactionCommandDeadlineMs = 0L;
 		session.interactionClearedObserved = false;
+	}
+
+	private static boolean isLongHomeTeleport(RouteInteraction interaction)
+	{
+		return interaction != null
+			&& interaction.getKind() == RouteInteraction.Kind.SIMPLE_TELEPORT
+			&& "Lumbridge Home Teleport".equalsIgnoreCase(interaction.getAction());
+	}
+
+	public synchronized void recordInteractionPreparation(NavigationDecision decision,
+		long commandAtMs)
+	{
+		if (session == null || session.phase.isTerminal() || decision == null
+			|| decision.getType() != NavigationDecision.Type.INTERACT)
+		{
+			return;
+		}
+		session.lastCommandAtMs = commandAtMs;
+		session.interactionCommandPending = false;
+		session.interactionCommandOrigin = null;
+		session.interactionCommandDeadlineMs = 0L;
+		session.commandRejected = false;
+	}
+
+	private boolean isWalkerMovementInFlight(NavigationObservation observation)
+	{
+		WorldPoint movementDestination = observation.getMovementDestination();
+		return observation.isMoving() && session.commandTarget != null
+			&& movementDestination != null
+			&& !isDivergentCommandDestination(movementDestination);
+	}
+
+	/**
+	 * A failed short crossing can relocate the player behind the edge that was actually
+	 * attempted. Retaining that later pending edge makes ranged dispatch skip the earlier
+	 * crossings needed to reach it again; force the next plan to start at the real landing.
+	 */
+	private boolean failedShortTransitionMovedBehindOrigin(RouteInteraction pending,
+		WorldPoint player)
+	{
+		if (!session.interactionCommandPending
+			|| pending.getKind() != RouteInteraction.Kind.CATALOG_TRANSITION
+			|| session.interactionCommandOrigin == null || player == null)
+		{
+			return false;
+		}
+		WorldPoint origin = pending.getCrossingFrom();
+		WorldPoint destination = pending.getCrossingTo();
+		if (origin.getPlane() != destination.getPlane()
+			|| player.getPlane() != origin.getPlane()
+			|| origin.distanceTo2D(destination) > 4
+			|| session.interactionCommandOrigin.getPlane() != origin.getPlane()
+			|| player.distanceTo2D(session.interactionCommandOrigin) <= 1)
+		{
+			return false;
+		}
+		int dx = destination.getX() - origin.getX();
+		int dy = destination.getY() - origin.getY();
+		int commandProjection = (session.interactionCommandOrigin.getX() - origin.getX()) * dx
+			+ (session.interactionCommandOrigin.getY() - origin.getY()) * dy;
+		int playerProjection = (player.getX() - origin.getX()) * dx
+			+ (player.getY() - origin.getY()) * dy;
+		return (dx != 0 || dy != 0)
+			&& playerProjection < commandProjection;
 	}
 
 	private int interactionCommandDistance(RouteInteraction interaction)
@@ -818,6 +971,7 @@ public final class NavigationEngine
 		}
 		return session.routePlan.getRouteEdges().stream()
 			.anyMatch(edge -> (edge.getKind() == RouteEdge.Kind.SIMPLE_TELEPORT
+				|| edge.getKind() == RouteEdge.Kind.ITEM_TELEPORT
 				|| edge.getKind() == RouteEdge.Kind.NPC_TRANSPORT
 				|| edge.getKind() == RouteEdge.Kind.NPC_DIALOGUE_TRANSPORT
 				|| edge.getKind() == RouteEdge.Kind.CHARTER_SHIP
@@ -825,6 +979,15 @@ public final class NavigationEngine
 				|| edge.getKind() == RouteEdge.Kind.SPIRIT_TREE
 				|| edge.getKind() == RouteEdge.Kind.GNOME_GLIDER
 				|| edge.getKind() == RouteEdge.Kind.QUETZAL
+				|| edge.getKind() == RouteEdge.Kind.TELEPORTATION_LEVER
+				|| edge.getKind() == RouteEdge.Kind.WILDERNESS_DITCH
+				|| edge.getKind() == RouteEdge.Kind.JUNGLE_OBSTACLE
+				|| edge.getKind() == RouteEdge.Kind.CANOE
+				|| edge.getKind() == RouteEdge.Kind.MINECART
+				|| edge.getKind() == RouteEdge.Kind.TELEPORTATION_PORTAL
+				|| edge.getKind() == RouteEdge.Kind.MINIGAME_TELEPORT
+				|| edge.getKind() == RouteEdge.Kind.MAGIC_MUSHTREE
+				|| edge.getKind() == RouteEdge.Kind.HOT_AIR_BALLOON
 				|| edge.getKind() == RouteEdge.Kind.ADJACENT_TRANSPORT
 				|| edge.getKind() == RouteEdge.Kind.CATALOG_TRANSITION)
 				&& session.rawProgressIndex <= edge.getRawIndex());
@@ -833,13 +996,34 @@ public final class NavigationEngine
 	private static boolean interactionStageAdvanced(RouteInteraction previous,
 		RouteInteraction observed)
 	{
+		boolean dialogueFrameReappeared = previous != null
+			&& previous.getKind() == RouteInteraction.Kind.NPC_DIALOGUE_TRANSPORT
+			&& NpcDialogueTransportPolicy.CONTINUE_ACTION.equals(previous.getAction())
+			&& previous.getAction().equalsIgnoreCase(observed.getAction())
+			&& !previous.isReady() && observed.isReady();
 		return previous != null && previous.getGeneration() == observed.getGeneration()
 			&& previous.getRawEdgeIndex() == observed.getRawEdgeIndex()
 			&& previous.getKind() == observed.getKind()
 			&& previous.getStatus() == RouteInteraction.Status.AVAILABLE
 			&& (observed.getStatus() == RouteInteraction.Status.AVAILABLE
 				|| observed.getStatus() == RouteInteraction.Status.UNAVAILABLE)
-			&& !previous.getAction().equalsIgnoreCase(observed.getAction());
+			&& (!previous.getAction().equalsIgnoreCase(observed.getAction())
+				|| dialogueFrameReappeared);
+	}
+
+	private static boolean dialogueVoyageStarted(RouteInteraction previous,
+		RouteInteraction observed)
+	{
+		return previous != null
+			&& previous.getGeneration() == observed.getGeneration()
+			&& previous.getRawEdgeIndex() == observed.getRawEdgeIndex()
+			&& previous.getKind() == RouteInteraction.Kind.NPC_DIALOGUE_TRANSPORT
+			&& observed.getKind() == RouteInteraction.Kind.NPC_DIALOGUE_TRANSPORT
+			&& previous.getStatus() == RouteInteraction.Status.AVAILABLE
+			&& observed.getStatus() == RouteInteraction.Status.AVAILABLE
+			&& NpcDialogueTransportPolicy.CONTINUE_ACTION.equals(previous.getAction())
+			&& previous.getAction().equalsIgnoreCase(observed.getAction())
+			&& previous.isReady() && !observed.isReady();
 	}
 
 	private static int closestForwardIndex(List<WorldPoint> path, WorldPoint player, int currentIndex)

@@ -9,4 +9,6 @@ public interface NpcDialogueTransportScene
 	NpcDialogueTransport find(PlannedEdge edge);
 
 	NpcDialogueTransport observe(PlannedEdge edge, String pendingAction);
+
+	boolean hasContinue();
 }

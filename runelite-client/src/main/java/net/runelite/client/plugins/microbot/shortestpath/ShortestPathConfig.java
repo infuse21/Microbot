@@ -813,56 +813,56 @@ public interface ShortestPathConfig extends Config {
 	@ConfigItem(
 			keyName = "spiritTreeEtceteria",
 			name = "Etceteria",
-			description = "Use the spirit tree teleport to Etceteria",
+			description = "Use the player-grown spirit tree at Etceteria when it is fully grown",
 			position = 0,
 			section = sectionSpiritTrees
 	)
 	default boolean spiritTreeEtceteria() {
-		return true;
+		return false;
 	}
 
 	@ConfigItem(
 			keyName = "spiritTreeBrimhaven",
 			name = "Brimhaven",
-			description = "Use the spirit tree teleport to Brimhaven",
+			description = "Use the player-grown spirit tree at Brimhaven when it is fully grown",
 			position = 1,
 			section = sectionSpiritTrees
 	)
 	default boolean spiritTreeBrimhaven() {
-		return true;
+		return false;
 	}
 
 	@ConfigItem(
 			keyName = "spiritTreePortSarim",
 			name = "Port Sarim",
-			description = "Use the spirit tree teleport to Port Sarim",
+			description = "Use the player-grown spirit tree at Port Sarim when it is fully grown",
 			position = 2,
 			section = sectionSpiritTrees
 	)
 	default boolean spiritTreePortSarim() {
-		return true;
+		return false;
 	}
 
 	@ConfigItem(
 			keyName = "spiritTreeHosidius",
 			name = "Hosidius",
-			description = "Use the spirit tree teleport to Hosidius",
+			description = "Use the player-grown spirit tree at Hosidius when it is fully grown",
 			position = 3,
 			section = sectionSpiritTrees
 	)
 	default boolean spiritTreeHosidius() {
-		return true;
+		return false;
 	}
 
 	@ConfigItem(
 			keyName = "spiritTreeFarmingGuild",
 			name = "Farming Guild",
-			description = "Use the spirit tree teleport to the Farming Guild",
+			description = "Use the player-grown spirit tree at the Farming Guild when it is fully grown",
 			position = 4,
 			section = sectionSpiritTrees
 	)
     default boolean spiritTreeFarmingGuild() {
-        return true;
+        return false;
     }
 
     @ConfigSection(

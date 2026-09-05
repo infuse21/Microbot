@@ -133,8 +133,8 @@ public final class LiveCollisionCapture {
 
     /**
      * Scans the loaded scene for objects owned by the runtime door handler. Wall objects contribute
-     * only their oriented door edge; game-object doors contribute the edges touching their footprint
-     * because they do not expose a wall orientation.
+     * their oriented edge plus all edges touching their tile, because a closed wall door can also set
+     * transient corner blocks. Game-object doors contribute all edges touching their footprint.
      */
     private static LiveCollisionDoorMask findDoorEdges(WorldView wv, int planeCount) {
         final Tile[][][] tiles = wv.getScene().getTiles();
@@ -167,8 +167,8 @@ public final class LiveCollisionCapture {
                             wall.getId(), LiveCollisionCapture::isOpenableDoor)) {
                         doorEdges.markWall(z, sx, sy, wall.getOrientationA(), wall.getOrientationB());
                         // Closed wall doors can also block the diagonal edges cutting their corners.
-                        // Defer every edge touching the footprint to the static map so those transient
-                        // blocks are never learned and persisted as permanent walls.
+                        // Exempt every edge touching the footprint so those transient blocks are never
+                        // learned and persisted as permanent walls.
                         doorEdges.markGameObject(z, sx, sy, sx, sy);
                     }
                     final GameObject[] gameObjects = tile.getGameObjects();

@@ -117,7 +117,13 @@ public final class Rs2LeaguesTransport
 
 	public static boolean matchesLeaguesAreaTransportPrefix(Transport transport)
 	{
-		if (transport == null || transport.getDisplayInfo() == null || !isLeaguesActive())
+		return isLeaguesActive() && hasLeaguesAreaTransportPrefix(transport);
+	}
+
+	/** Pure row-shape check used while filtering the transport catalog. */
+	public static boolean hasLeaguesAreaTransportPrefix(Transport transport)
+	{
+		if (transport == null || transport.getDisplayInfo() == null)
 		{
 			return false;
 		}

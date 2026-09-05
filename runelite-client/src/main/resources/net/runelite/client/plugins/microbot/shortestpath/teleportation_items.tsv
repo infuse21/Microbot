@@ -315,9 +315,9 @@
 #mythical cape (instead of using the item name we use the action teleport, we use the itemids to verifiy the item)										
 2457 2850 0		21913;22114;24855				Y	F	19	4	Mythical cape: Teleport
 # Stony Basalt - 4493 is DIARY_FREMENNIK_HARD										
-2845 3694 0		22601				Y	T	19	4	Stony basalt: Troll Stronghold
-2837 3695 0	73 Agility	22601		4493=1		Y	T	19	4	Stony basalt: Troll Stronghold
-2846 3938 0		22599				Y	T	19	4	Icy basalt: Weiss
+2845 3694 0		22601	Making Friends with My Arm			Y	T	19	4	Stony basalt: Troll Stronghold
+2837 3695 0	73 Agility	22601	Making Friends with My Arm	4493=1		Y	T	19	4	Stony basalt: Troll Stronghold
+2846 3938 0		22599	Making Friends with My Arm			Y	T	19	4	Icy basalt: Weiss
 										
 # Other										
 1934 4428 0		26948				Y	T	19	4	Pharaoh's sceptre: Jalsavrah
@@ -372,10 +372,10 @@
 2952 9574 0		30638				Y	T	19	4	Giantsoul Amulet: Branda and Eldric
 
 #Ruins of Mokhaiotl
-1311 9497 0		31099;31101;31102;31103;31104;31105	The Final Dawn			Y	T	29	4	Mokhaiotl waystone: Channel
+1311 9497 0		31099	The Final Dawn			Y	T	29	4	Mokhaiotl waystone: Channel
 
 #Varlemore Waystone
-1439 9564 0		29090;29092;29093;29094;29095;29096;29097	Perilous Moons			Y	Y	29	4	Calcified moth: Crush
+1439 9564 0		29090	Perilous Moons			Y	T	20	4	Calcified moth: Crush
 # Cowbell amulet (Varlamore) - backfilled 2026-07-20 from upstream Skretzo/shortest-path
 3259 3277 0		33104				Y	T	20	4	Cowbell amulet
 # Sailors amulet (charged, Varlamore) - backfilled 2026-07-20 from upstream

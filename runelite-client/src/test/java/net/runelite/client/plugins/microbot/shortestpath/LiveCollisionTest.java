@@ -148,6 +148,26 @@ public class LiveCollisionTest {
     }
 
     @Test
+    public void wallDoorFootprintPreventsPersistedCornerBlocks() {
+        int[][][] flags = openScene();
+        final int dx = 50, dy = 50;
+        flags[0][dx][dy] |= CollisionDataFlag.BLOCK_MOVEMENT_NORTH
+                | CollisionDataFlag.BLOCK_MOVEMENT_EAST
+                | CollisionDataFlag.BLOCK_MOVEMENT_SOUTH
+                | CollisionDataFlag.BLOCK_MOVEMENT_WEST;
+
+        LiveCollisionDoorMask doorEdges = new LiveCollisionDoorMask(1);
+        doorEdges.markWall(0, dx, dy, 2, 0);
+        doorEdges.markGameObject(0, dx, dy, dx, dy);
+        LiveCollisionSnapshot snap = LiveCollisionCapture.build(BASE_X, BASE_Y, 1, flags, doorEdges);
+
+        assertEquals(Boolean.TRUE, snap.edge(BASE_X + dx, BASE_Y + dy, 0, FLAG_NORTH));
+        assertEquals(Boolean.TRUE, snap.edge(BASE_X + dx, BASE_Y + dy, 0, FLAG_EAST));
+        assertEquals(Boolean.TRUE, snap.edge(BASE_X + dx, BASE_Y + dy - 1, 0, FLAG_NORTH));
+        assertEquals(Boolean.TRUE, snap.edge(BASE_X + dx - 1, BASE_Y + dy, 0, FLAG_EAST));
+    }
+
+    @Test
     public void gameObjectDoorEdgesRecordedPassableWhenTilesStandable() {
         int[][][] flags = openScene();
         final int dx = 50, dy = 50;

@@ -1,5 +1,6 @@
 package net.runelite.client.plugins.microbot.util.walker.transport;
 
+import net.runelite.api.NPCComposition;
 import net.runelite.api.ObjectComposition;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.Microbot;
@@ -12,7 +13,11 @@ import net.runelite.client.plugins.microbot.util.walker.Rs2PathApi;
 import net.runelite.client.plugins.microbot.util.walker.obstacle.PlannedEdge;
 import net.runelite.client.plugins.microbot.util.walker.transport.model.NpcTransport;
 
+import java.util.Arrays;
 import java.util.Comparator;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /** Resolves exact eligible NPC or tile-object travel rows against the shared caches. */
 public final class Rs2NpcTransportScene implements NpcTransportScene
@@ -44,12 +49,31 @@ public final class Rs2NpcTransportScene implements NpcTransportScene
 	public static Rs2NpcModel findNpc(Transport transport)
 	{
 		Rs2NpcModel npc = Rs2Npc.getNpc(transport.getObjectId());
-		if (npc == null || npc.getName() == null
-			|| !npc.getName().equalsIgnoreCase(transport.getName()))
+		if (npc != null && npc.getName() != null
+			&& npc.getName().equalsIgnoreCase(transport.getName()))
+		{
+			return npc;
+		}
+		if (!NpcTransportPolicy.isOrdinaryDirectRoute(transport))
 		{
 			return null;
 		}
-		return npc;
+		return Rs2Npc.getNpcs(candidate -> NpcTransportPolicy.isLiveNpcMatch(transport,
+			candidate.getName(), actions(candidate), candidate.getWorldLocation()))
+			.min(Comparator.comparingInt(candidate -> candidate.getWorldLocation()
+				.distanceTo2D(transport.getOrigin())))
+			.orElse(null);
+	}
+
+	private static List<String> actions(Rs2NpcModel npc)
+	{
+		return Stream.of(npc.getComposition(), npc.getTransformedComposition())
+			.filter(java.util.Objects::nonNull)
+			.map(NPCComposition::getActions)
+			.filter(java.util.Objects::nonNull)
+			.flatMap(Arrays::stream)
+			.filter(java.util.Objects::nonNull)
+			.collect(Collectors.toList());
 	}
 
 	/**

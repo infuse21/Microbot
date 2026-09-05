@@ -25,13 +25,33 @@ public class SimpleTeleportPolicyTest
 	}
 
 	@Test
-	public void rejectsMenusHomeTeleportAndNonTeleportRows()
+	public void rejectsMenusOtherHomeTeleportsAndNonTeleportRows()
 	{
 		assertFalse(SimpleTeleportPolicy.isEligible(spell("Varrock Teleport: Grand Exchange")));
-		assertFalse(SimpleTeleportPolicy.isEligible(spell("Lumbridge Home Teleport")));
+		assertFalse(SimpleTeleportPolicy.isEligible(spell("Teleport to House: Outside")));
 		assertFalse(SimpleTeleportPolicy.isEligible(item("Games necklace: Burthorpe")));
 		assertFalse(SimpleTeleportPolicy.isEligible(new Transport(null, DESTINATION,
 			"walk", TransportType.TRANSPORT, false, 1)));
+	}
+
+	@Test
+	public void acceptsOnlyTheExactLongHomeTeleportContract()
+	{
+		Transport home = spell("Lumbridge Home Teleport");
+		assertTrue(SimpleTeleportPolicy.isEligible(home));
+		assertTrue(SimpleTeleportPolicy.isLumbridgeHomeTeleport(home));
+		assertFalse(SimpleTeleportPolicy.isLumbridgeHomeTeleport(
+			spell("Lumbridge Home Teleport: Alternate")));
+	}
+
+	@Test
+	public void acceptsOnlyExecutableSeasonalRows()
+	{
+		assertTrue(SimpleTeleportPolicy.isEligible(seasonal(
+			"Map of Alacrity: Asgarnia - Falador wall")));
+		assertTrue(SimpleTeleportPolicy.isEligible(seasonal(
+			"Clue compass: B. Barbarian Village")));
+		assertFalse(SimpleTeleportPolicy.isEligible(seasonal("Unknown relic: Somewhere")));
 	}
 
 	private static Transport spell(String display)
@@ -44,5 +64,11 @@ public class SimpleTeleportPolicyTest
 	{
 		return new Transport(DESTINATION, display, TransportType.TELEPORTATION_ITEM,
 			false, 19, Set.of(Collections.singleton(8007)));
+	}
+
+	private static Transport seasonal(String display)
+	{
+		return new Transport(DESTINATION, display, TransportType.SEASONAL_TRANSPORT,
+			false, 20, Set.of(Collections.singleton(33233)));
 	}
 }

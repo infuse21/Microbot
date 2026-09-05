@@ -25,4 +25,10 @@ public interface WalkerActions
 	{
 		return "adapter";
 	}
+
+	/** @return true when input prepared the interaction but did not issue its crossing command. */
+	default boolean interactionPreparedOnly()
+	{
+		return false;
+	}
 }

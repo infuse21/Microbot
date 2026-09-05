@@ -80,7 +80,22 @@ public final class CatalogTransitionRouteScanner
 	private static boolean hasLanded(RouteInteraction pending, WorldPoint player)
 	{
 		WorldPoint destination = pending.getCrossingTo();
-		return player != null && player.getPlane() == destination.getPlane()
-			&& player.distanceTo2D(destination) <= LANDING_TOLERANCE;
+		if (player == null || player.getPlane() != destination.getPlane()
+			|| player.distanceTo2D(destination) > LANDING_TOLERANCE)
+		{
+			return false;
+		}
+		WorldPoint origin = pending.getCrossingFrom();
+		if (origin.getPlane() != destination.getPlane()
+			|| origin.distanceTo2D(destination) > 2 * LANDING_TOLERANCE)
+		{
+			return true;
+		}
+		// Overlapping landing areas need proof of reaching the destination side, not just proximity.
+		int dx = destination.getX() - origin.getX();
+		int dy = destination.getY() - origin.getY();
+		return (dx != 0 || dy != 0)
+			&& (player.getX() - destination.getX()) * dx
+				+ (player.getY() - destination.getY()) * dy >= 0;
 	}
 }
