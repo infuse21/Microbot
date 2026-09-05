@@ -1,4 +1,4 @@
-# Origin	Destination	menuOption menuTarget objectID	Skills	Item IDs	Currency	Quests	Varbits	Varplayers	isMembers	Duration	Display info
+# Origin	Destination	menuOption menuTarget objectID	Skills	Item IDs	Currency	Quests	Varbits	Varplayers	isMembers	Duration	Display info	Consumable
 # Tutorial Island											
 3097 3107 0	3098 3107 0	Open;Door;9398								1	
 3098 3107 0	3097 3107 0	Open;Door;9398								1	
@@ -3453,32 +3453,48 @@
 2783 4973 1	2845 4973 2	Climb-up;Ladder;6502								2	
 											
 # Kalphite Lair											
-3226 3108 0	3483 9510 2	Climb-down;Tunnel entrance;3827									
+3226 3108 0	3483 9510 2	Climb-down;Tunnel entrance;3827		954			4586=0					T
+3226 3108 0	3483 9510 2	Climb-down;Tunnel entrance;3827					4586=1
 3483 9510 2	3226 3108 0	Climb-up;Rope;3829									
-3226 3109 0	3483 9510 2	Climb-down;Tunnel entrance;3827									
-3227 3110 0	3483 9510 2	Climb-down;Tunnel entrance;3827									
-3228 3110 0	3483 9510 2	Climb-down;Tunnel entrance;3827									
-3227 3107 0	3483 9510 2	Climb-down;Tunnel entrance;3827									
-3228 3107 0	3483 9510 2	Climb-down;Tunnel entrance;3827									
-3229 3109 0	3483 9510 2	Climb-down;Tunnel entrance;3827									
-3229 3108 0	3483 9510 2	Climb-down;Tunnel entrance;3827									
+3226 3109 0	3483 9510 2	Climb-down;Tunnel entrance;3827		954			4586=0					T
+3226 3109 0	3483 9510 2	Climb-down;Tunnel entrance;3827					4586=1
+3227 3110 0	3483 9510 2	Climb-down;Tunnel entrance;3827		954			4586=0					T
+3227 3110 0	3483 9510 2	Climb-down;Tunnel entrance;3827					4586=1
+3228 3110 0	3483 9510 2	Climb-down;Tunnel entrance;3827		954			4586=0					T
+3228 3110 0	3483 9510 2	Climb-down;Tunnel entrance;3827					4586=1
+3227 3107 0	3483 9510 2	Climb-down;Tunnel entrance;3827		954			4586=0					T
+3227 3107 0	3483 9510 2	Climb-down;Tunnel entrance;3827					4586=1
+3228 3107 0	3483 9510 2	Climb-down;Tunnel entrance;3827		954			4586=0					T
+3228 3107 0	3483 9510 2	Climb-down;Tunnel entrance;3827					4586=1
+3229 3109 0	3483 9510 2	Climb-down;Tunnel entrance;3827		954			4586=0					T
+3229 3109 0	3483 9510 2	Climb-down;Tunnel entrance;3827					4586=1
+3229 3108 0	3483 9510 2	Climb-down;Tunnel entrance;3827		954			4586=0					T
+3229 3108 0	3483 9510 2	Climb-down;Tunnel entrance;3827					4586=1
 3484 9510 2	3226 3108 0	Climb-up;Rope;3829									
 3483 9509 2	3226 3108 0	Climb-up;Rope;3829									
 3514 9521 2	2711 5206 0	Enter;Tunnel;23596									
 2711 5206 0	3514 9521 2	Enter;Blocked tunnel;22656									
 3514 9520 2	2711 5206 0	Enter;Tunnel;23596									
 2711 5207 0	3514 9520 2	Enter;Blocked tunnel;22657									
-3508 9498 2	3508 9493 0	Climb-down;Tunnel entrance;23609									
+3508 9498 2	3508 9493 0	Climb-down;Tunnel entrance;23609		954			11705=0					T
+3508 9498 2	3508 9493 0	Climb-down;Tunnel entrance;23609					11705>0
 3508 9493 0	3508 9497 2	Climb-up;Rope;3832									
-3508 9497 2	3508 9493 0	Climb-down;Tunnel entrance;23609									
+3508 9497 2	3508 9493 0	Climb-down;Tunnel entrance;23609		954			11705=0					T
+3508 9497 2	3508 9493 0	Climb-down;Tunnel entrance;23609					11705>0
 3507 9494 0	3508 9497 2	Climb-up;Rope;3832									
-3509 9496 2	3508 9493 0	Climb-down;Tunnel entrance;23609									
-3510 9496 2	3508 9493 0	Climb-down;Tunnel entrance;23609									
+3509 9496 2	3508 9493 0	Climb-down;Tunnel entrance;23609		954			11705=0					T
+3509 9496 2	3508 9493 0	Climb-down;Tunnel entrance;23609					11705>0
+3510 9496 2	3508 9493 0	Climb-down;Tunnel entrance;23609		954			11705=0					T
+3510 9496 2	3508 9493 0	Climb-down;Tunnel entrance;23609					11705>0
 3508 9494 0	3508 9497 2	Climb-up;Rope;3832									
-3509 9499 2	3508 9493 0	Climb-down;Tunnel entrance;23609									
-3510 9499 2	3508 9493 0	Climb-down;Tunnel entrance;23609									
-3511 9497 2	3508 9493 0	Climb-down;Tunnel entrance;23609									
-3511 9498 2	3508 9493 0	Climb-down;Tunnel entrance;23609									
+3509 9499 2	3508 9493 0	Climb-down;Tunnel entrance;23609		954			11705=0					T
+3509 9499 2	3508 9493 0	Climb-down;Tunnel entrance;23609					11705>0
+3510 9499 2	3508 9493 0	Climb-down;Tunnel entrance;23609		954			11705=0					T
+3510 9499 2	3508 9493 0	Climb-down;Tunnel entrance;23609					11705>0
+3511 9497 2	3508 9493 0	Climb-down;Tunnel entrance;23609		954			11705=0					T
+3511 9497 2	3508 9493 0	Climb-down;Tunnel entrance;23609					11705>0
+3511 9498 2	3508 9493 0	Climb-down;Tunnel entrance;23609		954			11705=0					T
+3511 9498 2	3508 9493 0	Climb-down;Tunnel entrance;23609					11705>0
 											
 # Dorgesh-Kaan											
 2715 5241 0	2719 5241 3	Climb-up;Ladder;22600								2	
@@ -4085,12 +4101,12 @@
 2585 10259 0	2585 10262 0	Squeeze-through;Crevice;15194									
 2585 10262 0	2585 10259 0	Squeeze-through;Crevice;15195									
 2618 10266 0	2620 3864 0	Climb-up;Exit;15193									
-2620 3864 0	2619 10265 0	Climb-down;Hole;15203									
+2620 3864 0	2619 10265 0	Climb-down;Hole;15203					2141>119
 2619 10265 0	2620 3864 0	Climb-up;Exit;15193									
-2619 3865 0	2619 10265 0	Climb-down;Hole;15203									
+2619 3865 0	2619 10265 0	Climb-down;Hole;15203					2141>119
 2618 10264 0	2620 3864 0	Climb-up;Exit;15193									
 2617 10265 0	2620 3864 0	Climb-up;Exit;15193									
-2621 3865 0	2619 10265 0	Climb-down;Hole;15203									
+2621 3865 0	2619 10265 0	Climb-down;Hole;15203					2141>119
 2614 3866 0	2615 3867 1	Climb-up;Staircase;16671								1	
 2615 3867 1	2614 3866 0	Climb-down;Staircase;16673								1	
 2613 3866 0	2615 3867 1	Climb-up;Staircase;16671								1	
@@ -4475,30 +4491,30 @@
 2900 3719 0	2898 3715 0	Move;Boulder;26415									
 2899 3713 0	2904 3720 0	Crawl-through;Little crack;26382									
 2904 3720 0	2899 3713 0	Crawl-through;Little crack;26382									
-2916 3748 0	2882 5311 2	Climb-down;Hole;26419									
+2916 3748 0	2882 5311 2	Climb-down;Hole;26419					3966=1
 2880 5311 2	2916 3745 0	Climb;Rope;26370									
-2916 3745 0	2882 5311 2	Climb-down;Hole;26419									
+2916 3745 0	2882 5311 2	Climb-down;Hole;26419					3966=1
 2882 5311 2	2916 3745 0	Climb;Rope;26370									
-2916 3746 0	2882 5311 2	Climb-down;Hole;26419									
+2916 3746 0	2882 5311 2	Climb-down;Hole;26419					3966=1
 2881 5310 2	2916 3745 0	Climb;Rope;26370									
-2917 3744 0	2882 5311 2	Climb-down;Hole;26419									
-2918 3744 0	2882 5311 2	Climb-down;Hole;26419									
-2919 3744 0	2882 5311 2	Climb-down;Hole;26419									
-2920 3744 0	2882 5311 2	Climb-down;Hole;26419									
-2916 3747 0	2882 5311 2	Climb-down;Hole;26419									
-2917 3749 0	2882 5311 2	Climb-down;Hole;26419									
-2918 3749 0	2882 5311 2	Climb-down;Hole;26419									
-2919 3749 0	2882 5311 2	Climb-down;Hole;26419									
-2920 3749 0	2882 5311 2	Climb-down;Hole;26419									
-2921 3748 0	2882 5311 2	Climb-down;Hole;26419									
-2921 3747 0	2882 5311 2	Climb-down;Hole;26419									
-2921 3746 0	2882 5311 2	Climb-down;Hole;26419									
+2917 3744 0	2882 5311 2	Climb-down;Hole;26419					3966=1
+2918 3744 0	2882 5311 2	Climb-down;Hole;26419					3966=1
+2919 3744 0	2882 5311 2	Climb-down;Hole;26419					3966=1
+2920 3744 0	2882 5311 2	Climb-down;Hole;26419					3966=1
+2916 3747 0	2882 5311 2	Climb-down;Hole;26419					3966=1
+2917 3749 0	2882 5311 2	Climb-down;Hole;26419					3966=1
+2918 3749 0	2882 5311 2	Climb-down;Hole;26419					3966=1
+2919 3749 0	2882 5311 2	Climb-down;Hole;26419					3966=1
+2920 3749 0	2882 5311 2	Climb-down;Hole;26419					3966=1
+2921 3748 0	2882 5311 2	Climb-down;Hole;26419					3966=1
+2921 3747 0	2882 5311 2	Climb-down;Hole;26419					3966=1
+2921 3746 0	2882 5311 2	Climb-down;Hole;26419					3966=1
 2912 5300 2	2914 5300 1	Climb-down;Rock;26561									
-2914 5300 1	2912 5299 2	Climb-up;Rope;26371									
+2914 5300 1	2912 5299 2	Climb-up;Rope;26371					3967=1
 2920 5276 1	2920 5274 0	Climb-down;Rock;26562									
-2920 5274 0	2919 5276 1	Climb-up;Rope;26375									
-2919 5274 0	2919 5276 1	Climb-up;Rope;26375									
-2915 5300 1	2912 5299 2	Climb-up;Rope;26371									
+2920 5274 0	2919 5276 1	Climb-up;Rope;26375					3968=1
+2919 5274 0	2919 5276 1	Climb-up;Rope;26375					3968=1
+2915 5300 1	2912 5299 2	Climb-up;Rope;26371					3967=1
 2909 3686 0	2911 3686 0	Climb;Rocks;3748									
 2911 3686 0	2909 3686 0	Climb;Rocks;3748									
 2909 3687 0	2911 3687 0	Climb;Rocks;3748									
@@ -5181,30 +5197,28 @@
 2655 4830 0	3302 3477 0	Use;Portal;34751									
 											
 # Moons of Peril											
-1374 9667 0	1347 9590 0	Pass-Through;Entrance;51377
-1347 9590 0	1374 9667 0	Pass-Through;Entrance;51375
-1418 9632 0	1387 9591 0	Pass-Through;Entrance;51377
-1387 9591 0	1418 9632 0	Pass-Through;Entrance;51375
-1513 9563 0	1355 9538 0	Pass-Through;Entrance;51377
-1355 9538 0	1513 9563 0	Pass-Through;Entrance;51375
-1526 9671 0	1513 9596 0	Pass-Through;Entrance;51377
-1513 9596 0	1526 9671 0	Pass-Through;Entrance;51377
-1522 9719 0	1390 9676 0	Pass-Through;Entrance;51378
-1390 9676 0	1522 9719 0	Pass-Through;Entrance;51378
-1403 9717 0	1422 9649 1	Pass-Through;Entrance;51375
-1422 9649 1	1403 9717 0	Pass-Through;Entrance;51376
-1388 9575 0	1423 9615 1	Pass-Through;Entrance;51375
-1423 9615 1	1388 9575 0	Pass-Through;Entrance;51376
-1480 9669 0	1457 9649 1	Pass-Through;Entrance;51375
-1457 9649 1	1480 9669 0	Pass-Through;Entrance;51376
-1510 9675 0	1461 9632 0	Pass-Through;Entrance;51375
-1461 9632 0	1510 9675 0	Pass-Through;Entrance;51377
-1440 9653 0	1403 9704 0	Pass-Through;Entrance;51377
-1403 9704 0	1440 9653 0	Pass-Through;Entrance;51377
-1440 9615 1	1439 9599 1	Pass-Through;Entrance;51377
-1439 9599 1	1440 9615 1	Pass-Through;Entrance;51375
-1440 9509 1	1435 3128 0	Pass-Through;Entrance;51375
-1435 3128 0	1440 9509 1	Pass-Through;Entrance;51375
+1374 9667 0	1347 9590 0	Pass-Through;Entrance;51377				Perilous Moons=IN_PROGRESS
+1347 9590 0	1374 9667 0	Pass-Through;Entrance;51375				Perilous Moons=IN_PROGRESS
+1418 9632 0	1387 9591 0	Pass-Through;Entrance;51377				Perilous Moons=IN_PROGRESS
+1387 9591 0	1418 9632 0	Pass-Through;Entrance;51375				Perilous Moons=IN_PROGRESS
+1513 9563 0	1355 9538 0	Pass-Through;Entrance;51377				Perilous Moons=IN_PROGRESS
+1355 9538 0	1513 9563 0	Pass-Through;Entrance;51375				Perilous Moons=IN_PROGRESS
+1526 9671 0	1513 9596 0	Pass-Through;Entrance;51377				Perilous Moons=IN_PROGRESS
+1513 9596 0	1526 9671 0	Pass-Through;Entrance;51377				Perilous Moons=IN_PROGRESS
+1522 9719 0	1390 9676 0	Pass-Through;Entrance;51378				Perilous Moons=IN_PROGRESS
+1390 9676 0	1522 9719 0	Pass-Through;Entrance;51378				Perilous Moons=IN_PROGRESS
+1403 9717 0	1422 9649 1	Pass-Through;Entrance;51375				Perilous Moons=IN_PROGRESS
+1422 9649 1	1403 9717 0	Pass-Through;Entrance;51376				Perilous Moons=IN_PROGRESS
+1388 9575 0	1423 9615 1	Pass-Through;Entrance;51375				Perilous Moons=IN_PROGRESS
+1423 9615 1	1388 9575 0	Pass-Through;Entrance;51376				Perilous Moons=IN_PROGRESS
+1480 9669 0	1457 9649 1	Pass-Through;Entrance;51375				Perilous Moons=IN_PROGRESS
+1457 9649 1	1480 9669 0	Pass-Through;Entrance;51376				Perilous Moons=IN_PROGRESS
+1510 9675 0	1461 9632 0	Pass-Through;Entrance;51375				Perilous Moons=IN_PROGRESS
+1461 9632 0	1510 9675 0	Pass-Through;Entrance;51377				Perilous Moons=IN_PROGRESS
+1440 9653 0	1403 9704 0	Pass-Through;Entrance;51377				Perilous Moons=IN_PROGRESS
+1403 9704 0	1440 9653 0	Pass-Through;Entrance;51377				Perilous Moons=IN_PROGRESS
+1440 9615 1	1439 9599 1	Pass-Through;Entrance;51377				Perilous Moons=IN_PROGRESS
+1439 9599 1	1440 9615 1	Pass-Through;Entrance;51375				Perilous Moons=IN_PROGRESS
 											
 # Legends Guild											
 2732 3376 0	2732 3380 1	Climb-up;Staircase;15653									
@@ -5830,8 +5844,8 @@
 1643 3449 0	1646 9848 0	Enter;Cave;31690					6027>6			2	
 1644 3448 0	1646 9848 0	Enter;Cave;31690					6027>6			2	
 1645 3448 0	1646 9848 0	Enter;Cave;31690					6027>6			2	
-1673 9800 0	1677 9747 0	Climb-down;Tunnel entrance;31692								2	
-1677 9747 0	1673 9800 0	Climb-down;Tunnel entrance;31692								2	
+1673 9800 0	1677 9747 0	Climb-down;Tunnel entrance;31692				The Depths of Despair=IN_PROGRESS				2
+1677 9747 0	1673 9800 0	Climb-down;Tunnel entrance;31692				The Depths of Despair=IN_PROGRESS				2
 2822 3745 0	2803 10187 0	Enter;Cave entrance;5007								1	
 2822 3744 0	2803 10187 0	Enter;Cave entrance;5007								1	
 2822 3743 0	2803 10187 0	Enter;Cave entrance;5007								1	
@@ -6004,9 +6018,9 @@
 2700 3405 3	2700 3405 2	Climb-down;Ladder;16679									
 2699 3406 3	2700 3405 2	Climb-down;Ladder;16679									
 2699 3404 3	2700 3405 2	Climb-down;Ladder;16679									
-1435 3128 0	1439 9509 1	Pass-through;Entrance;51375				Perilous Moons					
-1436 3128 0	1439 9509 1	Pass-through;Entrance;51375				Perilous Moons					
-1439 9509 1	1435 3128 0	Pass-through;Entrance;51375				Perilous Moons					
+1435 3128 0	1439 9509 1	Pass-through;Entrance;51375				Perilous Moons=IN_PROGRESS
+1436 3128 0	1439 9509 1	Pass-through;Entrance;51375				Perilous Moons=IN_PROGRESS
+1439 9509 1	1435 3128 0	Pass-through;Entrance;51375				Perilous Moons=IN_PROGRESS
 2457 3186 0	2355 9394 0	Climb-down;Stairs;25432									
 2458 3185 0	2355 9394 0	Climb-down;Stairs;25432									
 2355 9394 0	2458 3185 0	Climb-up;Stairs;25429									

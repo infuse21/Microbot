@@ -100,6 +100,16 @@ public class CatalogTransitionRouteScannerTest
 	}
 
 	@Test
+	public void ropePreparationCanAdvanceToClimbStage()
+	{
+		RouteInteraction observed = new CatalogTransitionRouteScanner().observePending(
+			interaction("Use rope"), A, edge -> transition("Climb-down"), 13);
+
+		assertEquals(RouteInteraction.Status.AVAILABLE, observed.getStatus());
+		assertEquals("Climb-down", observed.getAction());
+	}
+
+	@Test
 	public void shortLandingUsesCatalogEndpointsNotRawOrObjectTiles()
 	{
 		WorldPoint to = new WorldPoint(12, 10, 0);

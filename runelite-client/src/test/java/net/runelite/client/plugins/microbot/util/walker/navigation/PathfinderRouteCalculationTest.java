@@ -63,7 +63,7 @@ public class PathfinderRouteCalculationTest
 		}
 		assertEquals(128, candidates);
 		assertEquals(99, migrated);
-		assertEquals(1559, legacy);
+		assertEquals(1476, legacy);
 	}
 
 	private static SplitFlagMap collisionMap;
@@ -545,7 +545,7 @@ public class PathfinderRouteCalculationTest
 		assertEquals(50, stiles.stream().filter(candidate ->
 			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(candidate))
 				== RouteEdge.Kind.CATALOG_TRANSITION).count());
-		assertEquals(1083, ordinary.stream().filter(candidate ->
+		assertEquals(1000, ordinary.stream().filter(candidate ->
 			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(candidate))
 				== RouteEdge.Kind.TRANSPORT).count());
 		java.util.Set<Integer> directManifestIds = new java.util.HashSet<>(java.util.Arrays.asList(
@@ -919,6 +919,188 @@ public class PathfinderRouteCalculationTest
 				vine.getDestination());
 			assertTrue(previous == null || previous.equals(vine.getDestination()));
 		}
+	}
+
+	@Test
+	public void neypotzliEntrancesRequireQuestAccessAndPublishExactTransitions()
+	{
+		Set<Integer> entranceIds = Set.of(51375, 51376, 51377, 51378);
+		java.util.List<Transport> entrances = Transport.loadAllFromResources().values().stream()
+			.flatMap(java.util.Collection::stream)
+			.filter(row -> entranceIds.contains(row.getObjectId()))
+			.filter(row -> "Entrance".equals(row.getName()))
+			.filter(row -> row.getAction().replace("-", "").equalsIgnoreCase("PassThrough"))
+			.collect(java.util.stream.Collectors.toList());
+
+		assertEquals(25, entrances.size());
+		java.util.Map<String, WorldPoint> directedInputs = new HashMap<>();
+		for (Transport entrance : entrances)
+		{
+			assertEquals(Collections.singletonMap(Quest.PERILOUS_MOONS, QuestState.IN_PROGRESS),
+				entrance.getQuests());
+			assertTrue(entrance.getItemIdRequirements().isEmpty());
+			assertEquals(0, entrance.getCurrencyAmount());
+			assertEquals(RouteEdge.Kind.CATALOG_TRANSITION,
+				PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(entrance)));
+			String input = entrance.getOrigin() + ":" + entrance.getObjectId();
+			WorldPoint previous = directedInputs.putIfAbsent(input, entrance.getDestination());
+			assertTrue(previous == null || previous.equals(entrance.getDestination()));
+		}
+		Transport unrelated = new Transport(new WorldPoint(100, 100, 0),
+			new WorldPoint(103, 100, 0), "test", TransportType.TRANSPORT,
+			false, "Pass-through", "Entrance", 51375);
+		assertEquals(RouteEdge.Kind.TRANSPORT,
+			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(unrelated)));
+	}
+
+	@Test
+	public void exactClimbUpRopesPublishOnlyWhenInstalledStateIsEncoded()
+	{
+		Set<Integer> ropeIds = Set.of(3829, 3832, 6439, 13999, 26371, 26375, 28687, 30234, 51647);
+		java.util.List<Transport> ropes = Transport.loadAllFromResources().values().stream()
+			.flatMap(java.util.Collection::stream)
+			.filter(row -> row.getType() == TransportType.TRANSPORT)
+			.filter(row -> "Climb-up".equals(row.getAction()) && "Rope".equals(row.getName()))
+			.collect(java.util.stream.Collectors.toList());
+
+		assertEquals(21, ropes.size());
+		assertEquals(ropeIds, ropes.stream().map(Transport::getObjectId)
+			.collect(java.util.stream.Collectors.toSet()));
+		java.util.Map<String, WorldPoint> directedInputs = new HashMap<>();
+		for (Transport rope : ropes)
+		{
+			assertTrue(rope.getItemIdRequirements().isEmpty());
+			assertEquals(0, rope.getCurrencyAmount());
+			assertEquals(RouteEdge.Kind.CATALOG_TRANSITION,
+				PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(rope)));
+			if (rope.getObjectId() == 26371 || rope.getObjectId() == 26375)
+			{
+				int expectedVarbit = rope.getObjectId() == 26371 ? 3967 : 3968;
+				assertEquals(1, rope.getVarbits().size());
+				net.runelite.client.plugins.microbot.shortestpath.TransportVarbit requirement =
+					rope.getVarbits().iterator().next();
+				assertEquals(expectedVarbit, requirement.getVarbitId());
+				assertFalse(requirement.matches(0));
+				assertTrue(requirement.matches(1));
+			}
+			else
+			{
+				assertTrue(rope.getVarbits().isEmpty());
+			}
+			String input = rope.getOrigin() + ":" + rope.getObjectId();
+			WorldPoint previous = directedInputs.putIfAbsent(input, rope.getDestination());
+			assertTrue(previous == null || previous.equals(rope.getDestination()));
+		}
+		Transport unrelated = new Transport(new WorldPoint(100, 100, 0),
+			new WorldPoint(103, 100, 0), "test", TransportType.TRANSPORT,
+			false, "Climb-up", "Rope", 13999);
+		assertEquals(RouteEdge.Kind.TRANSPORT,
+			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(unrelated)));
+	}
+
+	@Test
+	public void exactClimbDownHolesPublishOnlyAfterTheirSetupState()
+	{
+		Set<Integer> holeIds = Set.of(15203, 26419);
+		java.util.List<Transport> holes = Transport.loadAllFromResources().values().stream()
+			.flatMap(java.util.Collection::stream)
+			.filter(row -> row.getType() == TransportType.TRANSPORT)
+			.filter(row -> "Climb-down".equals(row.getAction()) && "Hole".equals(row.getName()))
+			.collect(java.util.stream.Collectors.toList());
+
+		assertEquals(18, holes.size());
+		assertEquals(holeIds, holes.stream().map(Transport::getObjectId)
+			.collect(java.util.stream.Collectors.toSet()));
+		java.util.Map<String, WorldPoint> directedInputs = new HashMap<>();
+		for (Transport hole : holes)
+		{
+			assertTrue(hole.getItemIdRequirements().isEmpty());
+			assertEquals(0, hole.getCurrencyAmount());
+			assertEquals(RouteEdge.Kind.CATALOG_TRANSITION,
+				PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(hole)));
+			assertEquals(1, hole.getVarbits().size());
+			net.runelite.client.plugins.microbot.shortestpath.TransportVarbit requirement =
+				hole.getVarbits().iterator().next();
+			if (hole.getObjectId() == 15203)
+			{
+				assertEquals(2141, requirement.getVarbitId());
+				assertEquals(net.runelite.client.plugins.microbot.shortestpath.TransportVarbit.Operator.GREATER_THAN,
+					requirement.getOperator());
+				assertEquals(119, requirement.getValue());
+				assertFalse(requirement.matches(119));
+				assertTrue(requirement.matches(120));
+			}
+			else
+			{
+				assertEquals(3966, requirement.getVarbitId());
+				assertFalse(requirement.matches(0));
+				assertTrue(requirement.matches(1));
+			}
+			String input = hole.getOrigin() + ":" + hole.getObjectId();
+			WorldPoint previous = directedInputs.putIfAbsent(input, hole.getDestination());
+			assertTrue(previous == null || previous.equals(hole.getDestination()));
+		}
+		Transport unrelated = new Transport(new WorldPoint(100, 100, 0),
+			new WorldPoint(103, 100, 0), "test", TransportType.TRANSPORT,
+			false, "Climb-down", "Hole", 26419);
+		assertEquals(RouteEdge.Kind.TRANSPORT,
+			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(unrelated)));
+	}
+
+	@Test
+	public void tunnelEntrancesEncodeRopeSetupInstalledStateAndQuestAccess()
+	{
+		java.util.List<Transport> tunnels = Transport.loadAllFromResources().values().stream()
+			.flatMap(java.util.Collection::stream)
+			.filter(row -> row.getType() == TransportType.TRANSPORT)
+			.filter(row -> "Climb-down".equals(row.getAction())
+				&& "Tunnel entrance".equals(row.getName()))
+			.collect(java.util.stream.Collectors.toList());
+
+		assertEquals(34, tunnels.size());
+		assertEquals(Set.of(3827, 23609, 31692), tunnels.stream().map(Transport::getObjectId)
+			.collect(java.util.stream.Collectors.toSet()));
+		for (Transport tunnel : tunnels)
+		{
+			assertEquals(RouteEdge.Kind.CATALOG_TRANSITION,
+				PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(tunnel)));
+			if (tunnel.getObjectId() == 31692)
+			{
+				assertEquals(2, tunnel.getDuration());
+				assertTrue(tunnel.getItemIdRequirements().isEmpty());
+				assertEquals(Collections.singletonMap(Quest.THE_DEPTHS_OF_DESPAIR,
+					QuestState.IN_PROGRESS), tunnel.getQuests());
+				continue;
+			}
+			assertEquals(1, tunnel.getVarbits().size());
+			net.runelite.client.plugins.microbot.shortestpath.TransportVarbit requirement =
+				tunnel.getVarbits().iterator().next();
+			assertEquals(tunnel.getObjectId() == 3827 ? 4586 : 11705,
+				requirement.getVarbitId());
+			if (tunnel.getItemIdRequirements().isEmpty())
+			{
+				assertFalse(tunnel.isConsumable());
+				assertFalse(requirement.matches(0));
+				assertTrue(requirement.matches(1));
+			}
+			else
+			{
+				assertEquals(Set.of(Set.of(954)), tunnel.getItemIdRequirements());
+				assertTrue(tunnel.isConsumable());
+				assertTrue(requirement.matches(0));
+				assertFalse(requirement.matches(1));
+			}
+		}
+		assertEquals(16, tunnels.stream().filter(row -> row.getObjectId() != 31692)
+			.filter(row -> row.getItemIdRequirements().isEmpty()).count());
+		assertEquals(16, tunnels.stream().filter(row -> row.getObjectId() != 31692)
+			.filter(row -> !row.getItemIdRequirements().isEmpty()).count());
+
+		Transport unrelated = new Transport(new WorldPoint(100, 100, 0),
+			new WorldPoint(103, 100, 0), "test", TransportType.TRANSPORT,
+			false, "Climb-down", "Tunnel entrance", 3827);
+		assertEquals(RouteEdge.Kind.TRANSPORT,
+			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(unrelated)));
 	}
 
 	@Test

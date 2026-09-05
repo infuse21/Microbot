@@ -72,6 +72,11 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 			{
 				return transition(direct, transport, action, pohPortal);
 			}
+			if (CatalogTransitionPolicy.isKalphiteRopeSetup(transport))
+			{
+				return transition(direct, transport,
+					CatalogTransitionPolicy.ATTACH_ROPE_ACTION, false);
+			}
 		}
 		if (!CatalogTransitionPolicy.supportsClosedVariant(transport.getAction()))
 		{
@@ -103,7 +108,7 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 	/** Dispatches one non-blocking preparation or object command for an exact route edge. */
 	public static DispatchResult dispatch(PlannedEdge edge, String action, int catalogObjectId)
 	{
-		Transport transport = findTransport(edge, catalogObjectId);
+		Transport transport = findTransport(edge, action, catalogObjectId);
 		if (transport == null)
 		{
 			return DispatchResult.REJECTED;
@@ -117,6 +122,23 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 				.mapToInt(Integer::intValue).toArray(), "Wear")
 				? DispatchResult.PREPARED : DispatchResult.REJECTED;
 		}
+		if (requiresRopePreparation(transport, action))
+		{
+			CatalogTransition transition = find(transport);
+			if (transition == null || transition.getCatalogObjectId() != catalogObjectId
+				|| !transition.getAction().equalsIgnoreCase(action)
+				|| transition.getObject() == null)
+			{
+				return DispatchResult.REJECTED;
+			}
+			if (Rs2Inventory.getSelectedItemId() != CatalogTransitionPolicy.ROPE_ITEM_ID)
+			{
+				return Rs2Inventory.use(CatalogTransitionPolicy.ROPE_ITEM_ID)
+					? DispatchResult.PREPARED : DispatchResult.REJECTED;
+			}
+			return transition.getObject().click("Use")
+				? DispatchResult.ISSUED : DispatchResult.REJECTED;
+		}
 		CatalogTransition transition = find(transport);
 		boolean issued = transition != null && transition.getCatalogObjectId() == catalogObjectId
 			&& transition.getAction().equalsIgnoreCase(action) && transition.getObject() != null
@@ -124,16 +146,31 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 		return issued ? DispatchResult.ISSUED : DispatchResult.REJECTED;
 	}
 
-	private static Transport findTransport(PlannedEdge edge, int catalogObjectId)
+	private static Transport findTransport(PlannedEdge edge, String action, int catalogObjectId)
 	{
 		if (edge == null || edge.from() == null || edge.to() == null)
 		{
 			return null;
 		}
-		return TransportEdgeMatcher.find(Rs2PathApi.getTransports(), edge.from(), edge.to()).stream()
+		return findTransport(TransportEdgeMatcher.find(Rs2PathApi.getTransports(),
+			edge.from(), edge.to()), action, catalogObjectId);
+	}
+
+	static Transport findTransport(java.util.Collection<Transport> candidates, String action,
+		int catalogObjectId)
+	{
+		return candidates.stream()
 			.filter(CatalogTransitionPolicy::isEligible)
 			.filter(candidate -> candidate.getObjectId() == catalogObjectId)
+			.filter(candidate -> !CatalogTransitionPolicy.ATTACH_ROPE_ACTION.equalsIgnoreCase(action)
+				|| requiresRopePreparation(candidate, action))
 			.findFirst().orElse(null);
+	}
+
+	static boolean requiresRopePreparation(Transport transport, String action)
+	{
+		return CatalogTransitionPolicy.ATTACH_ROPE_ACTION.equalsIgnoreCase(action)
+			&& CatalogTransitionPolicy.isKalphiteRopeSetup(transport);
 	}
 
 	private static String resolveLiveAction(Rs2TileObjectModel object, Transport transport)
@@ -152,6 +189,11 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 		boolean freeEnergyBarrier)
 	{
 		String direct = resolveAction(actions, transport.getAction());
+		if (direct == null && transport.getObjectId() == 23609
+			&& CatalogTransitionPolicy.isKalphiteRopeDescentRoute(transport))
+		{
+			direct = resolveAction(actions, "Climb-down (normal)");
+		}
 		if (direct != null || !EnergyBarrierPolicy.isEligible(transport)
 			|| !freeEnergyBarrier)
 		{

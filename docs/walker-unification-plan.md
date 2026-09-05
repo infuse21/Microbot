@@ -101,6 +101,19 @@ belonging to eight inputs that each declare two directed destinations remain leg
 102 rows retain bank planning for one reusable machete or axe alternative. Representative live
 acceptance remains deferred because these crossings are in hazardous jungle/dungeon areas and no
 character movement was attempted.
+All 25 canonical Neypotzli `Pass-through;Entrance` rows now reuse the direct catalog-transition
+lifecycle. Every row requires `Perilous Moons=IN_PROGRESS`; two older surface rows with a stale
+`(1440,9509,1)` landing were removed in favour of the later canonical `(1439,9509,1)` approaches.
+The exact route manifest prevents unrelated Entrance objects from inheriting ownership. This slice
+is headless-complete and live-deferred because the account must first gain access during the quest.
+All 21 exact `Climb-up;Rope` rows are now engine-owned catalog transitions. Twenty newly migrated
+routes join the previously supported route; the four Saradomin God Wars rows are available only
+after their permanent ropes are installed, using varbits 3967 and 3968. A rebuilt-client probe
+confirmed all 21 classify correctly while the uninstalled God Wars routes remain unavailable.
+All 18 exact `Climb-down;Hole` rows are now engine-owned as well. The three Royal Trouble cave
+rows require its action-bearing quest stage (`2141>119`), and the 15 God Wars entrance rows require
+the permanently installed rope (`3966=1`). On the rebuilt client both varbits were zero and all 18
+routes were correctly filtered from pathfinder availability.
 All 16 exact Chasm of Fire `Enter;Lift` rows now share the direct catalog-transition lifecycle;
 actual lift use remains live-deferred because every landing is inside the demon-filled dungeon.
 All ten directed Fremennik basalt-causeway rows now share that lifecycle and are live-accepted in
@@ -1256,7 +1269,8 @@ chopping, deterministic ecto barriers, and exact Wilderness-sword web rows were 
 by the contracts below; the remaining families stay locked until each required item,
 warning/dialogue, transformed-object, and landing protocol is isolated.
 
-The exact ordinary `Cross;Wilderness Ditch;23271` family is now headless-complete behind its own
+The exact ordinary `Cross;Wilderness Ditch;23271` family is now headless- and representative-live-
+complete behind its own
 staged engine interaction. A read-only production probe found 670 rows across 670 distinct directed
 inputs, all item-free and fare-free three-tile crossings with no ambiguity. The engine observes the
 exact cache-backed object, issues one `Cross`, handles optional warning widget `475:11` as a separate
@@ -1264,9 +1278,13 @@ command, retains ownership while either stage disappears, and acknowledges only 
 catalog landing. It does not broaden generic `Cross` rows or rely on the legacy process-loop warning
 branch. Policy, scanner, engine-stage, generated-route, broad transport, benchmark, and Checkstyle
 tests pass. After a rebuilt-client restart, the production classifier confirmed all 670 rows publish
-as `WILDERNESS_DITCH`. Live acceptance is deliberately deferred because entering this family crosses
-the Wilderness boundary; no login, character movement, or interaction was attempted for this
-headless slice.
+as `WILDERNESS_DITCH`. Rebuilt-client acceptance passed at the Edgeville boundary on 2026-09-05 with
+an empty inventory. South-to-north request 2/generation 1 issued one `Cross` command and one exact
+`wilderness-ditch-confirm` command, continued by a single raw-route lookahead, and arrived exactly at
+`(3185,3524,0)`. North-to-south request 5/generation 1 issued one `Cross`, continued by one raw-route
+lookahead, and arrived exactly at `(3185,3518,0)`. Neither accepted trace contained a replan,
+`LEGACY_LOCKED`, `processWalk`, duplicate interaction, or ownership handoff. A manual crossing made
+between the completed requests was excluded from the reverse acceptance trace.
 
 The exact ordinary `Enter;Dense forest` protocol is now headless-complete through the existing
 `CATALOG_TRANSITION` lifecycle. A rebuilt-client production probe found 46 directed rows across 46
@@ -1280,6 +1298,103 @@ only at the directed landing. The rebuilt production classifier confirmed all 46
 and the pathfinder benchmark pass. Live acceptance is deliberately deferred because the available
 obstacles are in hazardous Tirannwn and the account is not positioned for a safe representative
 run; no character movement or interaction was attempted for this headless slice.
+
+The exact Neypotzli `Pass-through;Entrance` protocol is now headless-complete through the same
+`CATALOG_TRANSITION` lifecycle. The resource previously contained 27 matching rows: 22 internal
+links without any quest gate, two stale surface links landing at `(1440,9509,1)`, and a later
+three-row surface block landing at the canonical `(1439,9509,1)` coordinate. The stale pair has
+been removed, and all 25 canonical rows now require `Perilous Moons=IN_PROGRESS`, matching the
+documented requirement that access is gained during the quest rather than only after completion.
+Eligibility is frozen to every exact directed route, object ID, normalized `Pass-through` action,
+and `Entrance` name; a synthetic route using the same object ID remains legacy-owned. The
+fail-first regression first reproduced the 27-row duplicate and missing requirements, then pinned
+the corrected count, prerequisites, unambiguous inputs, and engine classification. The unchanged
+production-classifier probe reports **1,056** remaining ordinary legacy rows, down from **1,083**;
+the generated legacy floor is **1,532**, down from **1,559**, while the loaded transport count is
+6,303 after removing the two source duplicates. Compilation, the broad transport, route, core,
+and pathfinder-benchmark suite, and both Checkstyle tasks pass. Physical acceptance remains
+deferred because the test account has not gained Neypotzli access during Perilous Moons; no
+character movement or interaction was attempted for this slice, and Phase 6 remains open.
+
+The exact `Climb-up;Rope` family is now headless-complete through `CATALOG_TRANSITION`. The
+pre-change rebuilt-client probe found 21 rows but only the existing object-51647 route was
+engine-owned. The remaining 20 routes cover Tolna's Rift, two Kalphite Lair exits, Smoke Dungeon,
+the two Saradomin God Wars internal ropes, the Chasm of Fire, and the Crash Site Cavern. Their
+directed inputs are unique and their immutable object definitions expose `Climb-up`, except for
+God Wars object IDs 26371 and 26375: those are varbit-driven wrappers with no usable action until
+the permanent ropes have been installed. The four affected resource rows now require installed
+state `3967=1` or `3968=1`; this deliberately does not turn rope installation into a banked item
+requirement or apply the one-way entry Agility requirement to an exit.
+
+An exact route manifest limits ownership to those 20 newly migrated rows, while the prior route
+keeps its existing audited policy. The fail-first regression pins all 21 rows, the exact object-ID
+set, unique directed inputs, item- and fare-free requirements, both installed-state predicates,
+and synthetic-route exclusion. After rebuilding, the live metadata probe reported `rows=21`,
+`supported=21`, current install varbits `0/0`, and `usable=17`; all four God Wars routes were
+correctly filtered. The production remainder probe reports **1,036** ordinary legacy rows, down
+from **1,056**, and a generated legacy floor of **1,512**, down from **1,532**. Compilation, the
+broad transport, route, core, and pathfinder-benchmark suite, and both Checkstyle tasks pass. The
+probe was undeployed, and no character movement or interaction was attempted. Physical crossing
+acceptance remains deferred because these routes are in hazardous or quest-gated dungeons; the
+result is metadata, availability, classification, and rebuilt-client acceptance rather than a live
+crossing claim.
+
+The exact `Climb-down;Hole` family is now headless- and negative-live-complete through
+`CATALOG_TRANSITION`. The pre-change resource contained 18 legacy-owned rows with no requirements:
+three approaches to the Royal Trouble cave hole (object 15203) and 15 approaches to the main God
+Wars Dungeon hole (object 26419). Runtime definitions proved that neither base object is an
+unconditional `Climb-down`: object 15203 uses varbit 2141 and exposes its action-bearing object
+15202 only from quest-stage value 120, while object 26419 uses varbit 3966 and transforms from
+`Tie-rope` object 26417 to `Climb-down` object 26418 after permanent setup. The OSRS Wiki evidence
+independently confirms that the Royal Trouble dungeon is initially inaccessible until the quest
+grants access and that God Wars requires a rope on first entry.
+
+The three Royal Trouble rows now require `2141>119`, and the 15 God Wars rows require `3966=1`.
+An exact 18-route manifest prevents unrelated holes or shared object IDs from inheriting ownership;
+rope installation remains quest/setup responsibility rather than a fabricated consumable banking
+requirement. The fail-first regression reproduced legacy classification, then pinned the exact row
+and object-ID sets, unique directed inputs, both activation thresholds, requirement-free inventory
+semantics, engine classification, and synthetic-route exclusion. Compilation, the broad transport,
+route, core, and pathfinder-benchmark suite, and both Checkstyle tasks pass. The production
+remainder probe reports **1,018** ordinary legacy rows, down from **1,036**, and a generated legacy
+floor of **1,494**, down from **1,512**. After rebuilding and logging in, the live probe reported
+`rows=18`, `supported=18`, varbits `royal=0` and `godWars=0`, and `usable=0`; this proves both locked
+states are excluded. The probe was undeployed and the character remained idle at Edgeville. No
+physical crossing was attempted, so positive crossing acceptance remains deferred for the relevant
+quest/setup state and hazardous dungeon.
+
+The exact `Climb-down;Tunnel entrance` family is now headless-complete through
+`CATALOG_TRANSITION`. Its 18 directed links cover eight surface approaches to the outer Kalphite
+Lair, eight approaches to the Kalphite Queen chamber, and the two Crabclaw Caves links used by
+The Depths of Despair. Runtime object definitions showed that both Kalphite entrance IDs are
+varbit-driven wrappers: before setup they expose no climb action, while attaching a rope changes
+them to an action-bearing descent. The resource therefore models each Kalphite link as two mutually
+exclusive variants: a consumable rope (`954`) setup row at `4586=0` or `11705=0`, and an item-free
+installed row at `4586=1` or `11705>0`. Crabclaw Caves now requires
+`The Depths of Despair=IN_PROGRESS`, matching access gained during the quest.
+
+The cache-backed scene performs rope setup as two non-blocking engine stages: select the exact rope,
+then issue one widget-target-on-object command. If setup only installs the rope, the observed action
+advances from `Use rope` to `Climb-down`; if the game descends immediately, normal directed-landing
+acknowledgement clears the edge. The Queen chamber's transformed object can expose both
+`Climb-down (normal)` and `Climb-down (private)`, so the exact audited family resolves only the normal
+action. Bank planning counts one rope per setup edge and can withdraw the consumable requirement.
+Fail-first data, action-resolution, stage-advance, and banking tests reproduced the previous gaps,
+then passed with the implementation. The broad walker transport and banking suites, route
+calculation, shortest-path core, live-collision, cost-model, and benchmark tests all pass, as do both
+Checkstyle tasks. This removes 18 ordinary legacy rows, reducing that remainder from **1,018 to
+1,000** and the generated legacy floor from **1,494 to 1,476**. On the rebuilt logged-in client, the
+corrected read-only probe reported `rows=34 setup=16 installed=16 crabclaw=2 supported=34`, both
+Kalphite setup varbits at zero, and `usable=0`; the locked/itemless account therefore publishes none
+of these routes. Positive physical crossing remains deferred because the current account lacks the
+quest access and the Kalphite routes are hazardous; no character movement or interaction was
+attempted.
+
+Follow-up review corrected a setup-to-climb handoff: the scene can observe `Climb-down` before the
+filtered transport catalogue replaces its setup row. Dispatch now allows that retained row to
+perform the observed climb and selects rope preparation only for the explicit `Use rope` stage.
+A regression covers both plain and normal-instance climb actions against a setup-only catalogue.
+The two Crabclaw rows also retain their original two-tick duration after correcting its TSV column.
 
 The exact item-gated Kharazi `Chop-down` protocol is now headless-complete behind a dedicated
 `JUNGLE_OBSTACLE` route kind. A rebuilt-client production probe found 92 rows across 84 exact

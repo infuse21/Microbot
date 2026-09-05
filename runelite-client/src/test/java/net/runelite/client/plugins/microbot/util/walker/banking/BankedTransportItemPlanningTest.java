@@ -127,6 +127,26 @@ public class BankedTransportItemPlanningTest {
 	}
 
 	@Test
+	public void repeatedKalphiteRopeSetupsWithdrawOneRopePerInstallation()
+	{
+		List<Transport> setupRows = all.stream()
+				.filter(t -> t.getType() == TransportType.TRANSPORT)
+				.filter(t -> "Climb-down".equals(t.getAction()))
+				.filter(t -> "Tunnel entrance".equals(t.getName()))
+				.filter(t -> t.getObjectId() == 3827)
+				.filter(t -> !t.getItemIdRequirements().isEmpty())
+				.limit(2)
+				.collect(Collectors.toList());
+
+		assertEquals(2, setupRows.size());
+		assertTrue(setupRows.stream().allMatch(Transport::isConsumable));
+		assertTrue(setupRows.stream().allMatch(Rs2WalkerBankingPlanner::requiresBankPlanning));
+		Map<Integer, Integer> requirements =
+				Rs2WalkerBankingPlanner.getMissingTransportItemIdsWithQuantities(setupRows);
+		assertEquals(2, requirements.getOrDefault(ItemID.ROPE, 0).intValue());
+	}
+
+	@Test
 	public void repeatedNonConsumableSeasonalEdgesNeedOneItem() {
 		Transport map = all.stream()
 				.filter(t -> t.getType() == TransportType.SEASONAL_TRANSPORT)

@@ -1550,3 +1550,67 @@ catalog origin, because valid ranged interaction can begin several tiles before 
 `2522,3600 -> 2522,3602` edge followed by a failed landing at `2522,3595`. The next decision must be
 `REQUEST_REPLAN` with `interaction-displaced-behind-origin`, and the interaction adapter must have
 received exactly one command.
+
+## 72. Correct duplicate geometry before migrating a direct entrance family
+
+An older transport block can coexist with a later correction for the same physical entrance. If
+the two versions declare nearby but different landings, treating the whole action/object family as
+direct creates competing promises even though each individual row looks deterministic. Neypotzli's
+surface entrance exposed this with stale `(1440,9509,1)` rows beside the canonical
+`(1439,9509,1)` routes. Its internal entrances also omitted the access requirement, while a later
+surface block accidentally required quest completion instead of the in-progress state that first
+grants access.
+
+**Pattern to follow:** Audit exact directed inputs across the complete resource before adding policy.
+Remove superseded geometry, apply the verified minimum quest state to every route in the inaccessible
+network, and freeze engine ownership to the canonical directed route keys. Do not broaden ownership
+from a shared object ID or action/name pair, and do not use legacy ownership as a substitute for
+correct pathfinder eligibility.
+
+**Defensive check:** Assert the canonical row count, exact quest-state map, unique destination per
+input, and engine classification for every route. A synthetic route using one of the same object IDs
+outside the frozen manifest must remain legacy-owned.
+
+## 73. Gate transformed setup objects on the installed state
+
+A transport catalog ID can identify a varbit-driven wrapper rather than the action-bearing object
+that exists after permanent setup. An action and name recorded in `transports.tsv` therefore do not
+prove that the interaction is currently available. The Saradomin God Wars ropes expose this shape:
+their wrapper definitions have no usable action until the corresponding permanent rope is installed,
+then transform to the variant that exposes `Climb-up`. The main God Wars entrance similarly changes
+from `Tie-rope` to `Climb-down`, while the Royal Trouble cave hole stays actionless until its late
+quest-stage varbit exposes the climb-down variant.
+
+**Pattern to follow:** Inspect the base object's transform varbit and every transformed definition.
+Gate the route on the verified installed-state value while keeping the exact directed route manifest
+as the ownership boundary. Do not add the setup item to an exit route or make bank planning solve a
+quest/setup step, and do not apply an entry-only skill requirement to the reverse exit.
+
+**Defensive check:** Assert that the route is unavailable at varbit value zero and eligible at value
+one, that the installed variant exposes the expected action, and that ordinary immutable ropes are
+unaffected. Also retain a synthetic-route check so sharing the wrapper object ID cannot broaden
+engine ownership beyond the audited rows.
+
+## 74. Model consumable setup and installed traversal as separate route variants
+
+A physical entrance can require a one-time consumable before it exposes its normal traversal action.
+Treating the entrance as always installed publishes an unusable edge; treating it only as an item-use
+row keeps consuming the setup item after installation and makes banking over-withdraw. Kalphite Lair
+entrances demonstrate both cases, and the inner entrance may additionally expose normal and private
+instance actions after setup.
+
+**Pattern to follow:** Encode mutually exclusive rows for the same directed link: one consumable
+item-gated row for the exact uninstalled varbit state and one item-free row for the installed state.
+Keep both variants behind the same exact route manifest. Dispatch item-on-object as non-blocking
+stages (select the required item, then issue the widget-target command), and let observation advance
+to the normal traversal action or clear at the directed landing. If a transformed object offers
+multiple traversal modes, resolve the verified normal action explicitly rather than prefix-matching.
+
+**Defensive check:** Assert both variants per physical link, disjoint varbit predicates, consumable
+banking totals across repeated setup edges, stage advancement from item use to traversal, and exact
+selection of the normal live action. A synthetic route sharing the object ID must remain legacy-owned.
+
+After installation, the live object may expose its climb action before the filtered catalogue is
+refreshed. Allow that observed climb through the retained setup row, and choose item preparation
+only for the explicit `Use rope` stage. Requiring an installed catalogue variant at dispatch can
+otherwise reject the very stage the scene scanner just published.
