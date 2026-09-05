@@ -190,6 +190,51 @@ tasks.register<Test>("runTests") {
     }
 }
 
+tasks.register<JavaExec>("exportLocalPlannerComparison") {
+    group = "verification"
+    description = "Export deterministic local planner results for the opt-in upstream comparison harness"
+
+    dependsOn(":client:compileJava", ":client:compileTestJava")
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("net.runelite.client.plugins.microbot.util.walker.LocalPlannerComparisonMain")
+
+    val corpus = providers.gradleProperty("plannerCorpus")
+    val output = providers.gradleProperty("plannerOutput")
+    doFirst {
+        require(corpus.isPresent && output.isPresent) {
+            "exportLocalPlannerComparison requires -PplannerCorpus=<path> and -PplannerOutput=<path>"
+        }
+        args(rootProject.file(corpus.get()).absolutePath, rootProject.file(output.get()).absolutePath)
+        systemProperty("microbot.planner.revision",
+            providers.gradleProperty("plannerRevision").getOrElse("unknown"))
+    }
+
+    outputs.upToDateWhen { false }
+}
+
+tasks.register<JavaExec>("exportEmbeddedUpstreamPlannerComparison") {
+    group = "verification"
+    description = "Export results from the production-packaged pinned upstream planner adapter"
+
+    dependsOn(":client:compileJava", ":client:compileTestJava")
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass.set("net.runelite.client.plugins.microbot.util.walker.LocalPlannerComparisonMain")
+
+    val corpus = providers.gradleProperty("plannerCorpus")
+    val output = providers.gradleProperty("plannerOutput")
+    doFirst {
+        require(corpus.isPresent && output.isPresent) {
+            "exportEmbeddedUpstreamPlannerComparison requires -PplannerCorpus=<path> and -PplannerOutput=<path>"
+        }
+        args(rootProject.file(corpus.get()).absolutePath, rootProject.file(output.get()).absolutePath)
+        systemProperty("microbot.planner.revision",
+            providers.gradleProperty("plannerRevision").getOrElse("unknown"))
+        systemProperty("microbot.planner.embedded-upstream", "true")
+    }
+
+    outputs.upToDateWhen { false }
+}
+
 tasks.register<Test>("runUnitTests") {
     group = "verification"
     description = "Run unit tests only (no client, no login) — safe for CI"
