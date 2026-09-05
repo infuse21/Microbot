@@ -1125,7 +1125,7 @@ public class PathfinderConfig
 		String treeName = getPlantedSpiritTreeName(x, y);
 		if (treeName == null)
 		{
-			return false; // 
+			return false;
 		}
 		if (availableSpiritTrees == null)
 		{

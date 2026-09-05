@@ -14,7 +14,6 @@ import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.shortestpath.PlannerSelectionMode;
-import net.runelite.client.plugins.microbot.agentserver.handler.WalkerShadowHandler;
 import net.runelite.client.plugins.microbot.testing.TestResult;
 import net.runelite.client.plugins.microbot.testing.TestResultWriter;
 import net.runelite.client.plugins.microbot.util.walker.Rs2PathApi;
@@ -513,8 +512,6 @@ public class F2PWebWalkerHarnessPlugin extends Plugin {
         result.shadowSettled = sleepUntil(() -> Rs2PathApi.getShadowStats().getPending() == 0,
                 SHADOW_SETTLE_TIMEOUT_MS);
         Rs2PlannerShadowStats stats = Rs2PathApi.getShadowStats();
-        result.shadowEvidence = WalkerShadowHandler.snapshot();
-
         boolean expectedFallbackObserved = !result.expectLocalFallback
                 || (stats.getFailures() > 0
                     && stats.getLocalFallbackFailures() > 0
@@ -841,7 +838,6 @@ public class F2PWebWalkerHarnessPlugin extends Plugin {
         public boolean expectLocalFallback;
         public boolean shadowSettled;
         public String shadowError;
-        public Map<String, Object> shadowEvidence;
         public List<String> selectedRoutes = new ArrayList<>();
         public List<RouteOutcome> routes = new ArrayList<>();
 

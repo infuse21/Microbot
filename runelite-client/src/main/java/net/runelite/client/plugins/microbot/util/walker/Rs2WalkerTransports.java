@@ -1874,6 +1874,9 @@ final class Rs2WalkerTransports {
         Optional<TransportExecutionRegistry.HomeTeleport> homeTeleport =
                 TransportExecutionRegistry.homeTeleportFor(transport.getDisplayInfo());
         if (homeTeleport.isPresent()) {
+            if (!isTeleportSpellUsableDuringCombat(transport, Rs2Player.isInCombat())) {
+                return false;
+            }
             return Rs2Magic.quickCast(homeTeleport.get().getDisplayName());
         }
 
@@ -1882,6 +1885,11 @@ final class Rs2WalkerTransports {
             return Rs2Magic.cast(magicSpell, option, identifier);
         }
         return false;
+    }
+
+    static boolean isTeleportSpellUsableDuringCombat(Transport transport, boolean inCombat) {
+        return transport != null && (!inCombat
+                || !TransportExecutionRegistry.homeTeleportFor(transport.getDisplayInfo()).isPresent());
     }
 
     /**
