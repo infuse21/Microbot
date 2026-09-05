@@ -42,6 +42,7 @@ import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
         name = "F2P Web Walker Harness",
         description = "Runs F2P-only in-game webwalker regression routes in test mode",
         tags = {"microbot", "test", "webwalker", "f2p"},
+        enabledByDefault = false,
         hidden = true
 )
 @Slf4j
@@ -136,7 +137,6 @@ public class F2PWebWalkerHarnessPlugin extends Plugin {
                 }
 
                 applyShortestPathOverrides(route, result.plannerMode);
-                long expectedExecutorBefore = shadowExecutorCompleted(route.expectedShadowExecutor);
                 long activeReplansBefore = shadowCoverageCompleted(
                         Rs2PlannerShadowContext.Coverage.ACTIVE_REPLAN);
                 long recoveryReplansBefore = shadowCoverageCompleted(
@@ -147,6 +147,7 @@ public class F2PWebWalkerHarnessPlugin extends Plugin {
                 long bankRouteItemGatedBefore = shadowCoverageCompleted(
                         Rs2PlannerShadowContext.Coverage.BANK_ROUTE_FROM_BANK_SELECTS_ITEM_GATED_TRANSPORT);
                 runBankRouteComparisons(route);
+                long expectedExecutorBefore = shadowExecutorCompleted(route.expectedShadowExecutor);
                 RouteOutcome outcome = runRoute(route, result.walkTimeoutMs);
                 result.routes.add(outcome);
 

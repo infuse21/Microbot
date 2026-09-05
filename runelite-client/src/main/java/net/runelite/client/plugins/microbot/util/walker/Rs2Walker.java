@@ -1732,6 +1732,7 @@ public class Rs2Walker {
             if (!DraynorBasementSolver.isBasementTarget(Rs2Player.getWorldLocation())) {
                 WebWalkLog.spWarn("basement_entry_failed | target={} at={} - refusing disconnected partial route",
                         target, Rs2Player.getWorldLocation());
+                setTarget(null, "rs2walker:processWalk:basement-entry-failed");
                 return WalkerState.UNREACHABLE;
             }
             setTarget(target, "rs2walker:basement-solve-restore");
@@ -6145,7 +6146,11 @@ public class Rs2Walker {
                     return WalkExit.RECENT_DOOR_EDGE_NUDGE;
                 }
                 if (handleDoorsWithTimeoutBudgeted(Arrays.asList(from, to), 0, timeoutMs, true)) {
-                    clearWalledDoorClaim();
+                    if (attempted != null) {
+                        doorAttemptLedger.clearLatestAttempt();
+                    } else {
+                        clearWalledDoorClaim();
+                    }
                     return WalkExit.DOOR_HANDLED_LOCAL_REACHABILITY;
                 }
                 // The interaction above may have opened the edge while its scene-object snapshot

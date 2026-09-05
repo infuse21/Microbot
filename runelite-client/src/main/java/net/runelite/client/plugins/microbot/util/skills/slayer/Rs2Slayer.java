@@ -4,6 +4,7 @@ import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.DBTableID;
 import net.runelite.api.gameval.ItemID;
 import net.runelite.api.gameval.VarPlayerID;
+import net.runelite.api.gameval.VarbitID;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.shortestpath.Transport;
 import net.runelite.client.plugins.microbot.shortestpath.TransportType;
@@ -307,7 +308,8 @@ public class Rs2Slayer {
             return Rs2Inventory.hasItem(ItemID.DRAMEN_STAFF) ||
                     Rs2Equipment.isWearing(ItemID.DRAMEN_STAFF) ||
                     Rs2Inventory.hasItem(ItemID.LUNAR_MOONCLAN_LIMINAL_STAFF) ||
-                    Rs2Equipment.isWearing(ItemID.LUNAR_MOONCLAN_LIMINAL_STAFF);
+                    Rs2Equipment.isWearing(ItemID.LUNAR_MOONCLAN_LIMINAL_STAFF) ||
+                    Microbot.getVarbitValue(VarbitID.LUMBRIDGE_DIARY_ELITE_COMPLETE) == 1;
         } else if (transport.getType() == TransportType.TELEPORTATION_ITEM) {
             return transport.getItemRequirements().stream()
                     .allMatch(requirement -> requirement.isSatisfiedBy(Rs2Slayer::carriedItemQuantity));

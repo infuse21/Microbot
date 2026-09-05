@@ -826,7 +826,7 @@ final class Rs2WalkerTransports {
                             // we are no longer on the origin we did cross, so suppress both tiles
                             // regardless of the landing verdict. The landing result itself is
                             // unchanged — this still returns false and replans.
-                            if (isAdjacentSamePlaneTransport(transport)
+                            if (isShortSamePlaneTransport(transport)
                                     && afterInteraction != null
                                     && !afterInteraction.equals(transport.getOrigin())) {
                                 markShortSamePlaneTransportHandled(transport, object);

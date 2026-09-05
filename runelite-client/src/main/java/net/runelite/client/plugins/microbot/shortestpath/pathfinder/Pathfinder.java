@@ -331,8 +331,8 @@ public class Pathfinder implements Runnable {
     private static final long SEALED_SUBSTITUTE_NODE_BUDGET = 50_000L;
 
     /** The targets the search LOOPS actually chase; equals {@link #targetsPacked} except in sealed mode. */
-    private int[] searchTargetsPacked;
-    private boolean sealedTargetMode;
+    private volatile int[] searchTargetsPacked;
+    private volatile boolean sealedTargetMode;
     private long cutoffOverrideMillis = -1L;
     /** See {@link #getReachedSealedSubstitute()}. Volatile: written by the search thread, read by the walker. */
     private volatile int reachedSealedSubstitutePacked = -1;

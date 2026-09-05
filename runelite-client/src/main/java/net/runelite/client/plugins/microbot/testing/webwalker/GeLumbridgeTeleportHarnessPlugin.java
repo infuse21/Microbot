@@ -36,6 +36,7 @@ import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
         name = "GE Lumbridge Teleport Harness",
         description = "Stress tests webwalking between Lumbridge Castle and the Grand Exchange",
         tags = {"microbot", "test", "webwalker", "teleport"},
+        enabledByDefault = false,
         hidden = true
 )
 @Slf4j
@@ -108,6 +109,9 @@ public class GeLumbridgeTeleportHarnessPlugin extends Plugin {
         result.walkTimeoutMs = intProperty(WALK_TIMEOUT_PROPERTY, DEFAULT_WALK_TIMEOUT_MS);
         result.upstreamPlannerShadow = Boolean.parseBoolean(
                 System.getProperty(UPSTREAM_PLANNER_SHADOW_PROPERTY, "false"));
+        Rs2PlannerShadowStats shadowBaseline = result.upstreamPlannerShadow
+                ? Rs2PathApi.getShadowStats()
+                : null;
 
         int exitCode = 0;
         try {
@@ -151,7 +155,7 @@ public class GeLumbridgeTeleportHarnessPlugin extends Plugin {
                 }
             }
 
-            if (!captureShadowEvidence(result)) {
+            if (!captureShadowEvidence(result, shadowBaseline)) {
                 exitCode = 1;
             }
 
@@ -274,7 +278,8 @@ public class GeLumbridgeTeleportHarnessPlugin extends Plugin {
         }
     }
 
-    private boolean captureShadowEvidence(GeLumbridgeTeleportResult result) {
+    private boolean captureShadowEvidence(GeLumbridgeTeleportResult result,
+                                          Rs2PlannerShadowStats baseline) {
         if (!result.upstreamPlannerShadow) {
             return true;
         }
@@ -282,19 +287,25 @@ public class GeLumbridgeTeleportHarnessPlugin extends Plugin {
         result.shadowSettled = sleepUntil(() -> Rs2PathApi.getShadowStats().getPending() == 0,
                 SHADOW_SETTLE_TIMEOUT_MS);
         Rs2PlannerShadowStats stats = Rs2PathApi.getShadowStats();
+        long submitted = stats.getSubmitted() - baseline.getSubmitted();
+        long completed = stats.getCompleted() - baseline.getCompleted();
+        long discarded = stats.getDiscarded() - baseline.getDiscarded();
+        long pending = submitted - completed - discarded;
+        long divergences = stats.getDivergences() - baseline.getDivergences();
+        long failures = stats.getFailures() - baseline.getFailures();
         boolean passed = result.shadowSettled
-                && stats.getSubmitted() > 0
-                && stats.getCompleted() > 0
-                && stats.getPending() == 0
-                && stats.getDivergences() == 0
-                && stats.getFailures() == 0;
+                && submitted > 0
+                && completed > 0
+                && pending == 0
+                && divergences == 0
+                && failures == 0;
         if (!passed) {
             result.shadowError = "Planner shadow evidence failed: settled=" + result.shadowSettled
-                    + ", submitted=" + stats.getSubmitted()
-                    + ", completed=" + stats.getCompleted()
-                    + ", pending=" + stats.getPending()
-                    + ", divergences=" + stats.getDivergences()
-                    + ", failures=" + stats.getFailures();
+                    + ", submitted=" + submitted
+                    + ", completed=" + completed
+                    + ", pending=" + pending
+                    + ", divergences=" + divergences
+                    + ", failures=" + failures;
         }
         result.addCheck("upstream planner shadow", passed, result.shadowError);
         return passed;
