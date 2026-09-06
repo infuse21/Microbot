@@ -24,6 +24,7 @@
  */
 package net.runelite.client.plugins.worldhopper.ping;
 
+import java.io.IOException;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import org.junit.Test;
@@ -32,6 +33,12 @@ import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 
 public class PingTest
 {
+	@Test(expected = IOException.class)
+	public void rejectsEmptyPortList() throws Exception
+	{
+		Ping.tcpPing(InetAddress.getLoopbackAddress(), new int[0]);
+	}
+
 	@Test
 	public void retriesNextTcpPort() throws Exception
 	{

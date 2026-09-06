@@ -294,6 +294,11 @@ public class Ping
 
 	static int tcpPing(InetAddress inetAddress, int... ports) throws IOException
 	{
+		if (ports.length == 0)
+		{
+			throw new IOException("No TCP ports configured");
+		}
+
 		IOException lastException = null;
 		for (int port : ports)
 		{
