@@ -152,6 +152,14 @@ public final class CatalogTransitionPolicy
 		"2724,4452,0->2807,4493,0|4942|goup|lift",
 		"2723,4452,0->2807,4493,0|4942|goup|lift",
 		"2722,4452,0->2807,4493,0|4942|goup|lift");
+	private static final Set<String> MORT_MYRE_TREE_BRIDGE_ROUTES = Set.of(
+		"3502,3432,0->3502,3425,0|5003|crossbridge|tree",
+		"3502,3425,0->3502,3432,0|5003|crossbridge|tree",
+		"3503,3431,0->3502,3425,0|5003|crossbridge|tree",
+		"3501,3426,0->3502,3432,0|5003|crossbridge|tree");
+	private static final Set<String> CRASH_SITE_OPENING_ROUTES = Set.of(
+		"2435,3519,0->1987,5568,0|28807|passthrough|opening",
+		"1987,5568,0->2435,3519,0|28807|passthrough|opening");
 	private static final Set<String> SWAN_SONG_HOLE_ROUTES = Set.of(
 		"2344,3650,0->2344,3655,0|12656|enter|hole",
 		"2344,3655,0->2344,3650,0|12656|enter|hole");
@@ -350,9 +358,20 @@ public final class CatalogTransitionPolicy
 		"3422,3551,1->3422,3551,0|16538|climbdown|spikey chain",
 		"3422,3549,1->3422,3549,0|16538|climbdown|spikey chain",
 		"3423,3550,1->3423,3550,0|16538|climbdown|spikey chain");
+	private static final Set<String> ROOT_AND_MUD_ROUTE_KEYS = Set.of(
+		"2467,9903,0->2467,9905,0|2451|push|roots",
+		"2467,9905,0->2467,9903,0|2451|push|roots",
+		"2468,9903,0->2468,9905,0|2451|push|roots",
+		"2468,9905,0->2468,9903,0|2451|push|roots",
+		"2620,9797,0->2623,3391,0|13|climbover|mud pile",
+		"2620,9796,0->2623,3391,0|13|climbover|mud pile",
+		"2621,9795,0->2623,3391,0|13|climbover|mud pile");
 	private static final Set<String> FORTIS_COLOSSEUM_ENTRANCE_ROUTE_KEYS = Set.of(
 		"1795,3107,0->1799,9506,0|50749|enter|colosseum entrance",
 		"1795,3106,0->1799,9506,0|50749|enter|colosseum entrance");
+	private static final Set<String> LUMBER_YARD_BROKEN_FENCE_ROUTE_KEYS = Set.of(
+		"3308,3491,0->3308,3493,0|2618|climbover|broken fence",
+		"3308,3493,0->3308,3491,0|2618|climbover|broken fence");
 	private static final Set<String> SHADOW_LADDER_ROUTE_KEYS = Set.of(
 		"2547,3422,0->2630,5071,0|6560|climbdown|ladder",
 		"2546,3421,0->2630,5071,0|6560|climbdown|ladder",
@@ -601,6 +620,13 @@ public final class CatalogTransitionPolicy
 		"2461,10417,0->2465,4010,0|37411|exit|steps",
 		"3366,11483,0->3361,3148,0|44636|exit|exit",
 		"3225,12445,0->3225,6046,0|36691|exit|steps");
+	private static final Set<String> AUDITED_BOSS_EXIT_ROUTES = Set.of(
+		"1240,1226,0->1291,1253,0|21772|exit|portcullis",
+		"1304,1290,0->1309,1269,0|21772|exit|portcullis",
+		"1368,1226,0->1328,1253,0|21772|exit|portcullis",
+		"3232,10351,0->3233,3950,0|26763|use|crevice",
+		"3243,10351,0->3242,3948,0|26763|use|crevice",
+		"3233,10332,0->3233,3938,0|26763|use|crevice");
 	private static final Set<String> CAMDOZAAL_ROUTES = Set.of(
 		"2998,3494,0->2952,5762,0|41357|enter|ruins entrance",
 		"2952,5762,0->2998,3494,0|41446|exit|ruins exit");
@@ -913,7 +939,9 @@ public final class CatalogTransitionPolicy
 		return isAuditedDirectDoor(transport)
 			|| isAuditedAccessDoor(transport)
 			|| isSlayerTowerChain(transport)
+			|| isRootOrMudTransition(transport)
 			|| isFortisColosseumEntrance(transport)
+			|| isLumberYardBrokenFence(transport)
 			|| isAbyssExitRift(transport)
 			|| isAbyssPassage(transport)
 			|| isRunecraftingExitPortal(transport)
@@ -922,6 +950,9 @@ public final class CatalogTransitionPolicy
 			|| isCompletedQuestTunnel(transport)
 			|| isHauntedMineCartTunnel(transport)
 			|| isHauntedMineStairsOrLift(transport)
+			|| isMortMyreTreeBridge(transport)
+			|| isCrashSiteOpening(transport)
+			|| isAuditedBossExit(transport)
 			|| isSwanSongHole(transport)
 			|| isMolchLizardTempleTransition(transport)
 			|| isMeiyerditchFloor(transport)
@@ -1248,6 +1279,25 @@ public final class CatalogTransitionPolicy
 			normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
 	}
 
+	static boolean isAuditedBossExit(Transport transport)
+	{
+		return transport != null && transport.getType() == TransportType.TRANSPORT
+			&& transport.getOrigin() != null && transport.getDestination() != null
+			&& transport.isMembers() && !transport.isConsumable()
+			&& transport.getCurrencyAmount() == 0 && !transport.isQuestLocked()
+			&& transport.getItemIdRequirements().isEmpty()
+			&& transport.getVarbits().isEmpty() && transport.getVarplayers().isEmpty()
+			&& java.util.Arrays.stream(transport.getSkillLevels()).allMatch(level -> level == 0)
+			&& transport.getDuration() == 1
+			&& AUDITED_BOSS_EXIT_ROUTES.contains(routeKey(transport,
+				normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
+	}
+
+	static boolean isAuditedBossExitObject(int objectId)
+	{
+		return objectId == 21772 || objectId == 26763;
+	}
+
 	static boolean isCamdozaalRoute(Transport transport)
 	{
 		if (transport == null || transport.getType() != TransportType.TRANSPORT
@@ -1536,8 +1586,7 @@ public final class CatalogTransitionPolicy
 		return transport != null && transport.getType() == TransportType.TRANSPORT
 			&& transport.getOrigin() != null && transport.getDestination() != null
 			&& transport.isMembers() && !transport.isConsumable()
-			&& hasHauntedMineStairsOrLiftItems(transport)
-			&& transport.getCurrencyAmount() == 0
+			&& transport.getItemIdRequirements().isEmpty() && transport.getCurrencyAmount() == 0
 			&& transport.getQuests().equals(Map.of(Quest.ENAKHRAS_LAMENT, QuestState.FINISHED))
 			&& transport.getVarbits().isEmpty() && transport.getVarplayers().isEmpty()
 			&& java.util.Arrays.stream(transport.getSkillLevels()).allMatch(level -> level == 0)
@@ -1599,6 +1648,32 @@ public final class CatalogTransitionPolicy
 		return transport.getObjectId() == 4971
 			? transport.getItemIdRequirements().equals(Set.of(Set.of(4075)))
 			: transport.getItemIdRequirements().isEmpty();
+	}
+
+	static boolean isMortMyreTreeBridge(Transport transport)
+	{
+		return transport != null && transport.getType() == TransportType.TRANSPORT
+			&& transport.getOrigin() != null && transport.getDestination() != null
+			&& transport.isMembers() && !transport.isConsumable()
+			&& transport.getItemIdRequirements().isEmpty() && transport.getCurrencyAmount() == 0
+			&& transport.getQuests().equals(Map.of(Quest.PRIEST_IN_PERIL, QuestState.FINISHED))
+			&& transport.getVarbits().isEmpty() && transport.getVarplayers().isEmpty()
+			&& java.util.Arrays.stream(transport.getSkillLevels()).allMatch(level -> level == 0)
+			&& MORT_MYRE_TREE_BRIDGE_ROUTES.contains(routeKey(transport,
+				normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
+	}
+
+	static boolean isCrashSiteOpening(Transport transport)
+	{
+		return transport != null && transport.getType() == TransportType.TRANSPORT
+			&& transport.getOrigin() != null && transport.getDestination() != null
+			&& transport.isMembers() && !transport.isConsumable()
+			&& transport.getItemIdRequirements().isEmpty() && transport.getCurrencyAmount() == 0
+			&& transport.getQuests().equals(Map.of(Quest.MONKEY_MADNESS_II, QuestState.FINISHED))
+			&& transport.getVarbits().isEmpty() && transport.getVarplayers().isEmpty()
+			&& java.util.Arrays.stream(transport.getSkillLevels()).allMatch(level -> level == 0)
+			&& CRASH_SITE_OPENING_ROUTES.contains(routeKey(transport,
+				normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
 	}
 
 	static boolean isSwanSongHole(Transport transport)
@@ -1995,7 +2070,8 @@ public final class CatalogTransitionPolicy
 
 	static boolean isAuditedAccessDoorObject(int objectId)
 	{
-		return objectId == 11665 || objectId == 22945 || objectId == 34843 || objectId == 50749;
+		return objectId == 2618 || objectId == 11665 || objectId == 22945
+			|| objectId == 34843 || objectId == 50749;
 	}
 
 	static boolean isSlayerTowerChain(Transport transport)
@@ -2017,6 +2093,29 @@ public final class CatalogTransitionPolicy
 		return objectId == 16537 || objectId == 16538;
 	}
 
+	static boolean isRootOrMudTransition(Transport transport)
+	{
+		if (transport == null || transport.getType() != TransportType.TRANSPORT
+			|| transport.getOrigin() == null || transport.getDestination() == null
+			|| !transport.isMembers() || transport.getDuration() != 1 || transport.isConsumable()
+			|| transport.getCurrencyAmount() != 0 || !transport.getItemIdRequirements().isEmpty()
+			|| !transport.getVarbits().isEmpty() || !transport.getVarplayers().isEmpty()
+			|| java.util.Arrays.stream(transport.getSkillLevels()).anyMatch(level -> level != 0)
+			|| !ROOT_AND_MUD_ROUTE_KEYS.contains(routeKey(transport,
+				normalizeDirectAction(transport.getAction()), normalize(transport.getName()))))
+		{
+			return false;
+		}
+		return transport.getObjectId() == 13 && transport.getQuests().isEmpty()
+			|| transport.getObjectId() == 2451 && transport.getQuests().equals(
+				Map.of(Quest.THE_GRAND_TREE, QuestState.FINISHED));
+	}
+
+	static boolean isRootOrMudObject(int objectId)
+	{
+		return objectId == 13 || objectId == 2451;
+	}
+
 	private static boolean isFortisColosseumEntrance(Transport transport)
 	{
 		return transport != null && transport.getOrigin() != null && transport.getDestination() != null
@@ -2027,6 +2126,20 @@ public final class CatalogTransitionPolicy
 			&& transport.getVarbits().isEmpty() && transport.getVarplayers().isEmpty()
 			&& java.util.Arrays.stream(transport.getSkillLevels()).allMatch(level -> level == 0)
 			&& FORTIS_COLOSSEUM_ENTRANCE_ROUTE_KEYS.contains(routeKey(transport,
+				normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
+	}
+
+	private static boolean isLumberYardBrokenFence(Transport transport)
+	{
+		return transport != null && transport.getOrigin() != null && transport.getDestination() != null
+			&& transport.getType() == TransportType.TRANSPORT && !transport.isMembers()
+			&& !transport.isConsumable() && transport.getCurrencyAmount() == 0
+			&& (transport.getDuration() == 0 || transport.getDuration() == 6)
+			&& transport.getItemIdRequirements().isEmpty()
+			&& transport.getQuests().isEmpty() && transport.getVarbits().isEmpty()
+			&& transport.getVarplayers().isEmpty()
+			&& java.util.Arrays.stream(transport.getSkillLevels()).allMatch(level -> level == 0)
+			&& LUMBER_YARD_BROKEN_FENCE_ROUTE_KEYS.contains(routeKey(transport,
 				normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
 	}
 

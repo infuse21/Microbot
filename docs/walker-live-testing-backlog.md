@@ -21,6 +21,18 @@ additive totals; source rows, generated edges and duplicated approaches must not
 
 ## Latest work versus earlier headless batches
 
+### Audited boundary, boss-exit and unsafe-access cleanup - 2026-09-08
+
+- **Headless:** 25 exact tree/root/mud/fence/opening/odd-wall and outward boss-exit transitions are
+  engine-owned with exact identity, requirement and directed-landing contracts.
+- **Not live-pending:** four equipped-sled slopes, five directionally invalid Resource Area fare
+  rows, one malformed remote odd wall and four ungated southern Brimhaven ropes are runtime-disabled.
+  Restore them only after their equipment, fare or permanent-unlock protocols are represented.
+  Current classifier floor: 181 ordinary plus 23 item rows, 204 total.
+- **Live pending:** traverse each migrated family in both available directions where applicable;
+  for Cerberus and Scorpia, test only prepared outward exits and verify exact landing with no legacy
+  handoff. These are hazardous locations and this batch adds no combat or death protection.
+
 ### Haunted Mine, Slayer Tower and unsafe-environment cleanup - 2026-09-08
 
 - **Headless:** five glowing-fungus Haunted Mine stairs, five post-quest lifts and eight level-61

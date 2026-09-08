@@ -50,6 +50,9 @@ public final class AdjacentTransportPolicy
 		"3267,3228,0->3268,3228,0|2787",
 		"3268,3227,0->3267,3227,0|2788",
 		"3268,3228,0->3267,3228,0|2789");
+	private static final Set<String> EDGEVILLE_ODD_WALL_ROUTES = Set.of(
+		"3094,9895,0->3093,9895,0|1736", "3093,9895,0->3094,9895,0|1736",
+		"3094,9896,0->3093,9896,0|1734", "3093,9896,0->3094,9896,0|1734");
 	private static final Set<Integer> WILDERNESS_SWORDS = Set.of(
 		ItemID.WILDERNESS_SWORD_EASY, ItemID.WILDERNESS_SWORD_MEDIUM,
 		ItemID.WILDERNESS_SWORD_HARD, ItemID.WILDERNESS_SWORD_ELITE);
@@ -79,6 +82,7 @@ public final class AdjacentTransportPolicy
 			return isDraynorBasementDoor(transport);
 		}
 		String action = transport.getAction().toLowerCase(Locale.ROOT);
+		if (isEdgevilleOddWall(transport)) return true;
 		if ("pick-lock".equals(action)) return isYanillePickLockDoor(transport);
 		if (isWideGate(transport)) return true;
 		boolean directRocks = type == TransportType.TRANSPORT
@@ -103,6 +107,25 @@ public final class AdjacentTransportPolicy
 		return distance <= ADJACENT_DISTANCE || isStrongholdTreeDoor(transport, action, distance)
 			|| slashableWeb && distance <= SHORT_PORTAL_DISTANCE
 			|| molchMysticalBarrier && distance <= SHORT_PORTAL_DISTANCE;
+	}
+
+	static boolean isEdgevilleOddWall(Transport transport)
+	{
+		if (transport == null || transport.getOrigin() == null || transport.getDestination() == null)
+		{
+			return false;
+		}
+		return transport.getType() == TransportType.TRANSPORT
+			&& "push".equals(normalize(transport.getAction()))
+			&& "odd looking wall".equals(normalize(transport.getName()))
+			&& !transport.isMembers() && !transport.isConsumable()
+			&& transport.getDuration() == 0 && transport.getCurrencyAmount() == 0
+			&& transport.getItemIdRequirements().isEmpty()
+			&& transport.getQuests().isEmpty() && transport.getVarbits().isEmpty()
+			&& transport.getVarplayers().isEmpty()
+			&& java.util.Arrays.stream(transport.getSkillLevels()).allMatch(level -> level == 0)
+			&& EDGEVILLE_ODD_WALL_ROUTES.contains(pointKey(transport.getOrigin()) + "->"
+				+ pointKey(transport.getDestination()) + "|" + transport.getObjectId());
 	}
 
 	static boolean isWideGate(Transport transport)

@@ -87,8 +87,10 @@ public final class CatalogTransitionRouteScanner
 				pending.getCrossingFrom(), destination, player);
 		}
 		if (CatalogTransitionPolicy.isTarnsJumpObject(pending.getObjectId())
+			|| CatalogTransitionPolicy.isAuditedBossExitObject(pending.getObjectId())
 			|| CatalogTransitionPolicy.isAuditedAccessDoorObject(pending.getObjectId())
 			|| CatalogTransitionPolicy.isSlayerTowerChainObject(pending.getObjectId())
+			|| CatalogTransitionPolicy.isRootOrMudObject(pending.getObjectId())
 			|| CatalogTransitionPolicy.isIsafdarCrossingObject(pending.getObjectId())
 			|| CatalogTransitionPolicy.isFremennikSurfaceBridgeObject(pending.getObjectId())
 			|| CatalogTransitionPolicy.isAuditedAgilityTraversalObject(pending.getObjectId())

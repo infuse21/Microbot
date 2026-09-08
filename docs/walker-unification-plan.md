@@ -21,6 +21,24 @@ headless batches, outstanding branches of representative live passes, and contra
 implementation. As of 2026-09-06 the user requests headless-first progress; deferred physical tests
 remain open rather than blocking each batch or being silently marked complete.
 
+## Audited boundary, boss-exit and unsafe-access cleanup - 2026-09-08
+
+Twenty-five exact ordinary transitions now use NavigationEngine catalogue ownership: four Mort
+Myre tree crossings, four Grand Tree roots, three outward Plague City mud piles, six Cerberus and
+Scorpia boss exits, four Edgeville odd-wall crossings, both post-Monkey-Madness-II Crash Site
+openings, and both Lumber Yard broken-fence directions. Each family is pinned to its exact directed
+geometry, object/action identity, requirements and observed destination; the route scanner keeps
+ownership until that destination is reached.
+
+Fourteen incomplete or malformed source rows no longer enter the runtime graph. These are four
+equipped-sled Trollweiss slopes, five Resource Area gate rows with fares attached to the wrong
+direction, one remote odd-wall duplicate that conflicts with the canonical goo-vine route, and four
+southern Brimhaven rope approaches that omit Banisoch's one-time 5,000-trading-stick unlock. OSRS
+Wiki/cache MCP evidence and focused policy, source-shape, classification and landing tests cover the
+batch. The classifier floor is now **204 legacy entries**: 181 ordinary `TRANSPORT` and 23
+`TELEPORTATION_ITEM` entries. Physical traversal of migrated routes remains pending, and disabled
+rows are implementation work rather than live-only deferrals.
+
 ## Haunted Mine, Slayer Tower and unsafe-environment cleanup - 2026-09-08
 
 Eighteen exact transitions now use catalogue/NavigationEngine ownership. Five Haunted Mine dark

@@ -84,11 +84,6 @@ public class IsafdarTransportTest
 	{
 		List<Transport> leaves = Transport.loadAllFromResources().values().stream().flatMap(Collection::stream)
 			.filter(row -> row.getObjectId() == 3925).collect(Collectors.toList());
-		assertEquals(4, leaves.size());
-		for (Transport row : leaves)
-		{
-			assertEquals(RouteEdge.Kind.TRANSPORT,
-				PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(row)));
-		}
+		assertEquals(0, leaves.size());
 	}
 }

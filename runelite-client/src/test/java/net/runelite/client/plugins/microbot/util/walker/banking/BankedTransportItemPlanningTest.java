@@ -518,7 +518,7 @@ public class BankedTransportItemPlanningTest {
         }
     }
 
-    /** The complete upstream Kharazi family uses either one machete or one axe alternative. */
+    /** Every safely modelled Kharazi row uses either one machete or one axe alternative. */
     @Test
     public void everyMacheteAndAxeGatedJungleObstacleQualifies() {
         List<Transport> jungle = all.stream()
@@ -528,7 +528,7 @@ public class BankedTransportItemPlanningTest {
                         || "Jungle tree".equals(t.getName()))
                 .collect(Collectors.toList());
 
-        assertEquals(92, jungle.size());
+        assertEquals(76, jungle.size());
         assertTrue(jungle.stream().allMatch(t -> t.getItemIdRequirements().size() == 1));
         assertTrue(jungle.stream().allMatch(
                 Rs2WalkerBankingPlanner::planningCoversPlainTransport));
