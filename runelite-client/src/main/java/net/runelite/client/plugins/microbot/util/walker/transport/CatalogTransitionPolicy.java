@@ -141,6 +141,17 @@ public final class CatalogTransitionPolicy
 		15830, Quest.PRIEST_IN_PERIL,
 		29332, Quest.HAUNTED_MINE,
 		29333, Quest.HAUNTED_MINE);
+	private static final Set<String> HAUNTED_MINE_STAIRS_AND_LIFT_ROUTES = Set.of(
+		"2750,4438,0->2811,4454,0|4971|walkdown|stairs",
+		"2750,4437,0->2811,4454,0|4971|walkdown|stairs",
+		"2750,4436,0->2811,4454,0|4971|walkdown|stairs",
+		"2691,4438,0->2758,4454,0|4971|walkdown|stairs",
+		"2691,4437,0->2758,4454,0|4971|walkdown|stairs",
+		"2807,4493,0->2725,4452,0|4940|godown|lift",
+		"2725,4452,0->2807,4493,0|4942|goup|lift",
+		"2724,4452,0->2807,4493,0|4942|goup|lift",
+		"2723,4452,0->2807,4493,0|4942|goup|lift",
+		"2722,4452,0->2807,4493,0|4942|goup|lift");
 	private static final Set<String> SWAN_SONG_HOLE_ROUTES = Set.of(
 		"2344,3650,0->2344,3655,0|12656|enter|hole",
 		"2344,3655,0->2344,3650,0|12656|enter|hole");
@@ -330,6 +341,15 @@ public final class CatalogTransitionPolicy
 		"2747,5374,0->3317,9603,0|22945|open|bone door",
 		"1802,9958,0->1802,9956,0|34843|open|temple door",
 		"1802,9956,0->1802,9958,0|34843|open|temple door");
+	private static final Set<String> SLAYER_TOWER_CHAIN_ROUTE_KEYS = Set.of(
+		"3421,3550,0->3421,3550,1|16537|climbup|spikey chain",
+		"3422,3551,0->3422,3551,1|16537|climbup|spikey chain",
+		"3423,3550,0->3423,3550,1|16537|climbup|spikey chain",
+		"3422,3549,0->3422,3549,1|16537|climbup|spikey chain",
+		"3421,3550,1->3421,3550,0|16538|climbdown|spikey chain",
+		"3422,3551,1->3422,3551,0|16538|climbdown|spikey chain",
+		"3422,3549,1->3422,3549,0|16538|climbdown|spikey chain",
+		"3423,3550,1->3423,3550,0|16538|climbdown|spikey chain");
 	private static final Set<String> FORTIS_COLOSSEUM_ENTRANCE_ROUTE_KEYS = Set.of(
 		"1795,3107,0->1799,9506,0|50749|enter|colosseum entrance",
 		"1795,3106,0->1799,9506,0|50749|enter|colosseum entrance");
@@ -775,7 +795,8 @@ public final class CatalogTransitionPolicy
 			|| isHeroesRockSlide(transport) || isStrongholdSlayerTunnel(transport)
 			|| isWeissHole(transport) || isWeissPostQuestDirect(transport)
 			|| isPostQuestIceTrollCave(transport)
-			|| isPostQuestMyrequeDoor(transport))
+			|| isPostQuestMyrequeDoor(transport)
+			|| isHauntedMineStairsOrLift(transport))
 		{
 			return true;
 		}
@@ -891,6 +912,7 @@ public final class CatalogTransitionPolicy
 		String name = normalize(transport.getName());
 		return isAuditedDirectDoor(transport)
 			|| isAuditedAccessDoor(transport)
+			|| isSlayerTowerChain(transport)
 			|| isFortisColosseumEntrance(transport)
 			|| isAbyssExitRift(transport)
 			|| isAbyssPassage(transport)
@@ -899,6 +921,7 @@ public final class CatalogTransitionPolicy
 			|| isEnakhraMagicBarrier(transport)
 			|| isCompletedQuestTunnel(transport)
 			|| isHauntedMineCartTunnel(transport)
+			|| isHauntedMineStairsOrLift(transport)
 			|| isSwanSongHole(transport)
 			|| isMolchLizardTempleTransition(transport)
 			|| isMeiyerditchFloor(transport)
@@ -1513,7 +1536,8 @@ public final class CatalogTransitionPolicy
 		return transport != null && transport.getType() == TransportType.TRANSPORT
 			&& transport.getOrigin() != null && transport.getDestination() != null
 			&& transport.isMembers() && !transport.isConsumable()
-			&& transport.getItemIdRequirements().isEmpty() && transport.getCurrencyAmount() == 0
+			&& hasHauntedMineStairsOrLiftItems(transport)
+			&& transport.getCurrencyAmount() == 0
 			&& transport.getQuests().equals(Map.of(Quest.ENAKHRAS_LAMENT, QuestState.FINISHED))
 			&& transport.getVarbits().isEmpty() && transport.getVarplayers().isEmpty()
 			&& java.util.Arrays.stream(transport.getSkillLevels()).allMatch(level -> level == 0)
@@ -1555,6 +1579,26 @@ public final class CatalogTransitionPolicy
 			&& transport.getQuests().equals(Map.of(quest, QuestState.FINISHED))
 			&& HAUNTED_MINE_CART_TUNNEL_ROUTES.contains(routeKey(transport,
 				normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
+	}
+
+	static boolean isHauntedMineStairsOrLift(Transport transport)
+	{
+		return transport != null && transport.getType() == TransportType.TRANSPORT
+			&& transport.getOrigin() != null && transport.getDestination() != null
+			&& transport.isMembers() && !transport.isConsumable()
+			&& hasHauntedMineStairsOrLiftItems(transport) && transport.getCurrencyAmount() == 0
+			&& transport.getQuests().equals(Map.of(Quest.HAUNTED_MINE, QuestState.FINISHED))
+			&& transport.getVarbits().isEmpty() && transport.getVarplayers().isEmpty()
+			&& java.util.Arrays.stream(transport.getSkillLevels()).allMatch(level -> level == 0)
+			&& HAUNTED_MINE_STAIRS_AND_LIFT_ROUTES.contains(routeKey(transport,
+				normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
+	}
+
+	private static boolean hasHauntedMineStairsOrLiftItems(Transport transport)
+	{
+		return transport.getObjectId() == 4971
+			? transport.getItemIdRequirements().equals(Set.of(Set.of(4075)))
+			: transport.getItemIdRequirements().isEmpty();
 	}
 
 	static boolean isSwanSongHole(Transport transport)
@@ -1952,6 +1996,25 @@ public final class CatalogTransitionPolicy
 	static boolean isAuditedAccessDoorObject(int objectId)
 	{
 		return objectId == 11665 || objectId == 22945 || objectId == 34843 || objectId == 50749;
+	}
+
+	static boolean isSlayerTowerChain(Transport transport)
+	{
+		return transport != null && transport.getType() == TransportType.TRANSPORT
+			&& transport.getOrigin() != null && transport.getDestination() != null
+			&& transport.isMembers() && transport.getDuration() == 1 && !transport.isConsumable()
+			&& transport.getCurrencyAmount() == 0 && transport.getItemIdRequirements().isEmpty()
+			&& transport.getQuests().isEmpty() && transport.getVarbits().isEmpty()
+			&& transport.getVarplayers().isEmpty()
+			&& transport.getSkillLevels()[net.runelite.api.Skill.AGILITY.ordinal()] == 61
+			&& java.util.Arrays.stream(transport.getSkillLevels()).sum() == 61
+			&& SLAYER_TOWER_CHAIN_ROUTE_KEYS.contains(routeKey(transport,
+				normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
+	}
+
+	static boolean isSlayerTowerChainObject(int objectId)
+	{
+		return objectId == 16537 || objectId == 16538;
 	}
 
 	private static boolean isFortisColosseumEntrance(Transport transport)

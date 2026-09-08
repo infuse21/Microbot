@@ -88,6 +88,7 @@ public final class CatalogTransitionRouteScanner
 		}
 		if (CatalogTransitionPolicy.isTarnsJumpObject(pending.getObjectId())
 			|| CatalogTransitionPolicy.isAuditedAccessDoorObject(pending.getObjectId())
+			|| CatalogTransitionPolicy.isSlayerTowerChainObject(pending.getObjectId())
 			|| CatalogTransitionPolicy.isIsafdarCrossingObject(pending.getObjectId())
 			|| CatalogTransitionPolicy.isFremennikSurfaceBridgeObject(pending.getObjectId())
 			|| CatalogTransitionPolicy.isAuditedAgilityTraversalObject(pending.getObjectId())

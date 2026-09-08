@@ -234,12 +234,13 @@
 											
 # Falador											
 3054 3382 0	3065 9951 0	Climb-down;Staircase;24249								1	
-3065 9951 0	3053 3382 0	Leave;Old passageway;31892									
+# Removed seasonal prop: the Old School Museum passageway's Leave option only reports that it cannot be used.
+# 3065 9951 0	3053 3382 0	Leave;Old passageway;31892
 3053 3382 0	3065 9951 0	Climb-down;Staircase;24249								1	
-3065 9952 0	3053 3382 0	Leave;Old passageway;31892									
-3014 9952 0	3038 3382 0	Leave;Old passageway;31892									
+# 3065 9952 0	3053 3382 0	Leave;Old passageway;31892
+# 3014 9952 0	3038 3382 0	Leave;Old passageway;31892
 3038 3382 0	3014 9951 0	Climb-down;Staircase;24248								1	
-3014 9951 0	3038 3382 0	Leave;Old passageway;31892									
+# 3014 9951 0	3038 3382 0	Leave;Old passageway;31892
 3037 3382 0	3014 9951 0	Climb-down;Staircase;24248								1	
 3038 3382 0	3039 3383 1	Climb-up;Staircase;24248								1	
 3039 3383 1	3037 3382 0	Climb-down;Staircase;24252								1	
@@ -1248,11 +1249,12 @@
 2906 9876 0	2906 3476 0	Climb-up;Ladder;24717									
 2907 3475 0	2906 9876 0	Climb-down;Ladder;24718									
 2907 9875 0	2906 3476 0	Climb-up;Ladder;24717									
-2898 3469 0	2901 9867 0	Enter;Manhole;24842									
+# Unsupported: Grim Tales manhole is a quest-state object leading into an aggressive experiment area; these rows encode neither state nor access.
+# 2898 3469 0	2901 9867 0	Enter;Manhole;24842
 2901 9867 0	2899 3469 0	Climb-up;Staircase;24687									
-2899 3469 0	2901 9867 0	Enter;Manhole;24842									
-2899 3470 0	2901 9867 0	Enter;Manhole;24842									
-2899 3468 0	2901 9867 0	Enter;Manhole;24842									
+# 2899 3469 0	2901 9867 0	Enter;Manhole;24842
+# 2899 3470 0	2901 9867 0	Enter;Manhole;24842
+# 2899 3468 0	2901 9867 0	Enter;Manhole;24842
 2877 3482 0	2876 9878 0	Climb-down;Stairs;57				Fishing Contest
 2876 9879 0	2877 3482 0	Climb-up;Stairs;56				Fishing Contest
 2876 3482 0	2876 9878 0	Climb-down;Stairs;57				Fishing Contest
@@ -1609,10 +1611,11 @@
 # Stepping Stones
 2647 9557 0	2649 9562 0	Jump-from;Stepping stone;21739
 2649 9562 0	2647 9557 0	Jump-from;Stepping stone;21738
-2695 9533 0	2697 9525 0	Cross;Stepping stone;19040
-2697 9525 0	2695 9533 0	Cross;Stepping stone;19040
-2690 9547 0	2682 9548 0	Cross;Stepping stone;19040
-2682 9548 0	2690 9547 0	Cross;Stepping stone;19040
+# Unsupported: island-bound eastern Brimhaven stepping stones require 56 Agility, but these rows do not identify the asymmetric direction.
+# 2695 9533 0	2697 9525 0	Cross;Stepping stone;19040
+# 2697 9525 0	2695 9533 0	Cross;Stepping stone;19040
+# 2690 9547 0	2682 9548 0	Cross;Stepping stone;19040
+# 2682 9548 0	2690 9547 0	Cross;Stepping stone;19040
 # Log Balance
 2682 9506 0	2687 9506 0	Walk-across;Log balance;20882
 2687 9506 0	2682 9506 0	Walk-across;Log balance;20884
@@ -2372,14 +2375,14 @@
 # Slayer Tower											
 3417 3536 0	3412 9932 3	Climb-down;Ladder;30191									
 3412 9932 3	3417 3536 0	Climb-up;Ladder;30192									
-3421 3550 0	3421 3550 1	Climb-up;Spikey chain;16537									
-3422 3551 0	3422 3551 1	Climb-up;Spikey chain;16537									
-3423 3550 0	3423 3550 1	Climb-up;Spikey chain;16537									
-3422 3549 0	3422 3549 1	Climb-up;Spikey chain;16537									
-3421 3550 1	3421 3550 0	Climb-down;Spikey chain;16538									
-3422 3551 1	3422 3551 0	Climb-down;Spikey chain;16538									
-3422 3549 1	3422 3549 0	Climb-down;Spikey chain;16538									
-3423 3550 1	3423 3550 0	Climb-down;Spikey chain;16538									
+3421 3550 0	3421 3550 1	Climb-up;Spikey chain;16537	61 Agility						Y	1
+3422 3551 0	3422 3551 1	Climb-up;Spikey chain;16537	61 Agility						Y	1
+3423 3550 0	3423 3550 1	Climb-up;Spikey chain;16537	61 Agility						Y	1
+3422 3549 0	3422 3549 1	Climb-up;Spikey chain;16537	61 Agility						Y	1
+3421 3550 1	3421 3550 0	Climb-down;Spikey chain;16538	61 Agility						Y	1
+3422 3551 1	3422 3551 0	Climb-down;Spikey chain;16538	61 Agility						Y	1
+3422 3549 1	3422 3549 0	Climb-down;Spikey chain;16538	61 Agility						Y	1
+3423 3550 1	3423 3550 0	Climb-down;Spikey chain;16538	61 Agility						Y	1
 3427 3555 1	3427 3556 1	Open;Door;2104									
 3427 3556 1	3427 3555 1	Open;Door;2104									
 3426 3555 1	3426 3556 1	Open;Door;2102									
@@ -3558,13 +3561,14 @@
 3354 2959 1	3353 2961 0	Climb-down;Staircase;6243								1	
 											
 # Smoke Dungeon											
-3310 2961 0	3206 9379 0	Climb-down;Smokey well;6279				Desert Treasure I=IN_PROGRESS
+# Unsupported: Smoke Dungeon entry requires protective headgear; without it the destination deals 20 damage every 12 seconds.
+# 3310 2961 0	3206 9379 0	Climb-down;Smokey well;6279				Desert Treasure I=IN_PROGRESS
 3206 9379 0	3310 2961 0	Climb-up;Rope;6439									
-3309 2962 0	3206 9379 0	Climb-down;Smokey well;6279				Desert Treasure I=IN_PROGRESS
+# 3309 2962 0	3206 9379 0	Climb-down;Smokey well;6279				Desert Treasure I=IN_PROGRESS
 3205 9380 0	3310 2961 0	Climb-up;Rope;6439									
-3311 2962 0	3206 9379 0	Climb-down;Smokey well;6279				Desert Treasure I=IN_PROGRESS
+# 3311 2962 0	3206 9379 0	Climb-down;Smokey well;6279				Desert Treasure I=IN_PROGRESS
 3204 9379 0	3310 2961 0	Climb-up;Rope;6439									
-3310 2963 0	3206 9379 0	Climb-down;Smokey well;6279				Desert Treasure I=IN_PROGRESS
+# 3310 2963 0	3206 9379 0	Climb-down;Smokey well;6279				Desert Treasure I=IN_PROGRESS
 3205 9378 0	3310 2961 0	Climb-up;Rope;6439									
 3304 9376 0	3305 9376 0	Open;Gate;6452									
 3305 9376 0	3304 9376 0	Open;Gate;6452									
@@ -3689,21 +3693,21 @@
 3436 9637 0	3441 3232 0	Crawl-through;Cart tunnel;4920				Priest in Peril=FINISHED			Y	1
 3435 9635 0	2800 4429 0	Crawl-through;Cart tunnel;29332				Haunted Mine=FINISHED			Y	1
 2800 4429 0	3435 9635 0	Crawl-through;Cart tunnel;29333				Haunted Mine=FINISHED			Y	1
-2758 4454 0	2691 4437 0	Walk-up;Stairs;4973									
-2712 4593 0	2691 4437 0	Walk-up;Stairs;4972									
-2712 4592 0	2691 4437 0	Walk-up;Stairs;4972									
-2730 4563 0	2750 4437 0	Walk-up;Stairs;4972									
-2730 4562 0	2750 4437 0	Walk-up;Stairs;4972									
-2691 4437 0	2712 4593 0	Walk-down;Stairs;4971									
-2691 4438 0	2712 4593 0	Walk-down;Stairs;4971									
-2750 4437 0	2730 4563 0	Walk-down;Stairs;4971									
-2750 4438 0	2730 4563 0	Walk-down;Stairs;4971									
-2750 4436 0	2730 4563 0	Walk-down;Stairs;4971									
-2807 4493 0	2725 4452 0	Go-down;Lift;4940									
-2725 4452 0	2807 4493 0	Go-up;Lift;4942									
-2724 4452 0	2807 4493 0	Go-up;Lift;4942									
-2723 4452 0	2807 4493 0	Go-up;Lift;4942									
-2722 4452 0	2807 4493 0	Go-up;Lift;4942									
+2758 4454 0	2691 4437 0	Walk-up;Stairs;4973
+2712 4593 0	2691 4437 0	Walk-up;Stairs;4972
+2712 4592 0	2691 4437 0	Walk-up;Stairs;4972
+2730 4563 0	2750 4437 0	Walk-up;Stairs;4972
+2730 4562 0	2750 4437 0	Walk-up;Stairs;4972
+2691 4437 0	2712 4593 0	Walk-down;Stairs;4971
+2691 4438 0	2712 4593 0	Walk-down;Stairs;4971
+2750 4437 0	2730 4563 0	Walk-down;Stairs;4971
+2750 4438 0	2730 4563 0	Walk-down;Stairs;4971
+2750 4436 0	2730 4563 0	Walk-down;Stairs;4971
+2807 4493 0	2725 4452 0	Go-down;Lift;4940				Haunted Mine=FINISHED			Y	1
+2725 4452 0	2807 4493 0	Go-up;Lift;4942				Haunted Mine=FINISHED			Y	1
+2724 4452 0	2807 4493 0	Go-up;Lift;4942				Haunted Mine=FINISHED			Y	1
+2723 4452 0	2807 4493 0	Go-up;Lift;4942				Haunted Mine=FINISHED			Y	1
+2722 4452 0	2807 4493 0	Go-up;Lift;4942				Haunted Mine=FINISHED			Y	1
 2797 4529 0	2733 4529 0	Climb-up;Ladder;4968								2	
 2733 4529 0	2797 4529 0	Climb-down;Ladder;4967								2	
 2796 4528 0	2732 4528 0	Climb-up;Ladder;4968								2	
@@ -3780,13 +3784,13 @@
 2758 4453 0	2691 4437 0	Walk-up;Stairs;4973									
 2811 4454 0	2750 4437 0	Walk-up;Stairs;4973									
 2811 4453 0	2750 4437 0	Walk-up;Stairs;4973									
-2750 4438 0	2811 4454 0	Walk-down;Stairs;4971		4075							
-2750 4437 0	2811 4454 0	Walk-down;Stairs;4971		4075							
-2750 4436 0	2811 4454 0	Walk-down;Stairs;4971		4075							
+2750 4438 0	2811 4454 0	Walk-down;Stairs;4971		4075		Haunted Mine=FINISHED			Y	1
+2750 4437 0	2811 4454 0	Walk-down;Stairs;4971		4075		Haunted Mine=FINISHED			Y	1
+2750 4436 0	2811 4454 0	Walk-down;Stairs;4971		4075		Haunted Mine=FINISHED			Y	1
 2799 4453 0	2798 4453 0	Open;Door;4962									
 2798 4453 0	2799 4453 0	Open;Door;4962									
-2691 4438 0	2758 4454 0	Walk-down;Stairs;4971		4075							
-2691 4437 0	2758 4454 0	Walk-down;Stairs;4971		4075							
+2691 4438 0	2758 4454 0	Walk-down;Stairs;4971		4075		Haunted Mine=FINISHED			Y	1
+2691 4437 0	2758 4454 0	Walk-down;Stairs;4971		4075		Haunted Mine=FINISHED			Y	1
 2773 4450 0	2773 4449 0	Open;Large door;4963		4077							
 2772 4450 0	2772 4449 0	Open;Large door;4964		4077							
 											
@@ -4975,8 +4979,9 @@
 2234 3149 0	2231 3149 0	Enter;Dense forest;3937									
 2237 3149 0	2234 3149 0	Enter;Dense forest;3938									
 2240 3149 0	2237 3149 0	Enter;Dense forest;3939									
-2274 3172 0	2274 3176 0	Jump;Leaves;3925									
-2274 3176 0	2274 3172 0	Jump;Leaves;3925									
+# Unsupported: Regicide leaf traps can fail for 15 damage and need failure-landing recovery.
+# 2274 3172 0	2274 3176 0	Jump;Leaves;3925
+# 2274 3176 0	2274 3172 0	Jump;Leaves;3925
 # 2234 3181 0	2238 3181 0	Pass;Sticks;3922
 # 2238 3181 0	2234 3181 0	Pass;Sticks;3922
 2238 3219 0	2235 3219 0	Enter;Dense forest;3939									
@@ -4993,8 +4998,8 @@
 2271 3192 0	2274 3192 0	Enter;Dense forest;3937									
 2268 3192 0	2271 3192 0	Enter;Dense forest;3939									
 2265 3192 0	2268 3192 0	Enter;Dense forest;3938									
-2267 3201 0	2267 3205 0	Jump;Leaves;3925									
-2267 3205 0	2267 3201 0	Jump;Leaves;3925									
+# 2267 3201 0	2267 3205 0	Jump;Leaves;3925
+# 2267 3205 0	2267 3201 0	Jump;Leaves;3925
 2284 3188 0	2287 3188 0	Step-over;Tripwire;3921									
 2287 3188 0	2284 3188 0	Step-over;Tripwire;3921									
 2306 3194 0	2304 3194 0	Pass;Tree;8742									
@@ -5192,10 +5197,11 @@
 1314 3665 0	1314 10063 0	Enter;Lizard dwelling;34403									
 1329 3670 0	1330 10069 0	Enter;Lizard dwelling;34403									
 1329 3669 0	1330 10069 0	Enter;Lizard dwelling;34403									
-1293 10091 0	1293 10093 0	Pass;Mystical barrier;34542
-1292 10091 0	1292 10093 0	Pass;Mystical barrier;34542
-1293 10093 0	1293 10091 0	Pass;Mystical barrier;34542
-1292 10093 0	1292 10091 0	Pass;Mystical barrier;34542
+# Unsupported: this barrier enters Karuulm's extreme-heat floor and needs boot/elite-diary protection plus warning handling.
+# 1293 10091 0	1293 10093 0	Pass;Mystical barrier;34542
+# 1292 10091 0	1292 10093 0	Pass;Mystical barrier;34542
+# 1293 10093 0	1293 10091 0	Pass;Mystical barrier;34542
+# 1292 10093 0	1292 10091 0	Pass;Mystical barrier;34542
 1296 10096 0	1298 10096 0	Pass;Mystical barrier;34643
 1296 10097 0	1298 10097 0	Pass;Mystical barrier;34643
 1298 10096 0	1296 10096 0	Pass;Mystical barrier;34643
@@ -5338,13 +5344,14 @@
 3101 9755 0	3099 9755 0	Open;Door;141					1790=1;1791=1;1793=1			1	Draynor basement puzzle door
 # --- Backfilled 2026-07-20 from upstream Skretzo/shortest-path (7e7e5bf94b): routes absent locally (intentional exclusions omitted) ---
 3205 3209 1	3206 3208 0	Climb-down;Staircase;16672								1	
-3169 3171 0	3169 9571 0	Climb-down;Dark hole;5947								2	
+# Unsupported: Lumbridge Swamp dark hole requires installed-rope and safe-light state; open flames can ignite swamp gas.
+# 3169 3171 0	3169 9571 0	Climb-down;Dark hole;5947								2
 3169 9571 0	3169 3171 0	Climb;Climbing rope;5946							Y	2
-3168 3172 0	3168 9572 0	Climb-down;Dark hole;5947								2	
+# 3168 3172 0	3168 9572 0	Climb-down;Dark hole;5947								2
 3168 9572 0	3168 3172 0	Climb;Climbing rope;5946							Y	2
-3170 3172 0	3170 9572 0	Climb-down;Dark hole;5947								2	
+# 3170 3172 0	3170 9572 0	Climb-down;Dark hole;5947								2
 3170 9572 0	3170 3172 0	Climb;Climbing rope;5946							Y	2
-3169 3173 0	3167 9573 0	Climb-down;Dark hole;5947								2	
+# 3169 3173 0	3167 9573 0	Climb-down;Dark hole;5947								2
 # 3225 9542 0	3219 9532 2	Enter;Tunnel;6659								2
 # 3227 9542 0	3219 9532 2	Enter;Tunnel;6659								2
 # 3218 9532 2	3226 9542 0	Enter;Tunnel;6658								2
@@ -5991,10 +5998,11 @@
 3615 9484 0	3615 9482 0	Quick-pass;Barrier;43700				Temple of the Eye				5	
 3616 9484 0	3616 9482 0	Quick-pass;Barrier;43700				Temple of the Eye				5	
 3617 9484 0	3617 9482 0	Quick-pass;Barrier;43700				Temple of the Eye				5	
-2775 10003 0	2773 10003 0	Jump-over;Strange floor;16544	43 Agility							10	
-2773 10003 0	2775 10003 0	Jump-over;Strange floor;16544	43 Agility							10	
-2770 10002 0	2768 10002 0	Jump-over;Strange floor;16544	43 Agility							10	
-2768 10002 0	2770 10002 0	Jump-over;Strange floor;16544	43 Agility							10	
+# DEFERRED: Strange floor has a level-dependent failure chance; safe damage/failure recovery is not encoded.
+# 2775 10003 0	2773 10003 0	Jump-over;Strange floor;16544	43 Agility							10
+# 2773 10003 0	2775 10003 0	Jump-over;Strange floor;16544	43 Agility							10
+# 2770 10002 0	2768 10002 0	Jump-over;Strange floor;16544	43 Agility							10
+# 2768 10002 0	2770 10002 0	Jump-over;Strange floor;16544	43 Agility							10
 3230 9609 0	3313 9613 0	Mines;Kazgar;7301				Death to the Dorgeshuun			Y	8	Mines
 3230 9609 0	3245 9648 0	Watermill;Kazgar;7301				Death to the Dorgeshuun			Y	8	Watermill
 3317 9612 0	3232 9610 0	Cellar;Mistag;7299				Death to the Dorgeshuun			Y	8	Cellar

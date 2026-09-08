@@ -21,6 +21,18 @@ additive totals; source rows, generated edges and duplicated approaches must not
 
 ## Latest work versus earlier headless batches
 
+### Haunted Mine, Slayer Tower and unsafe-environment cleanup - 2026-09-08
+
+- **Headless:** five glowing-fungus Haunted Mine stairs, five post-quest lifts and eight level-61
+  Slayer Tower chains are exact engine-owned transitions. The chain contract treats its documented
+  damage failure as a successful plane transition only after the exact destination is observed.
+- **Not live-pending:** 32 source-disabled rows omit failure recovery, asymmetric skill gates,
+  light/rope/protective-equipment state, quest state, heat safety, or describe an unusable museum
+  prop. Restore them only with those protocols encoded. Current classifier floor: 218 ordinary
+  plus 23 item rows, 241 total.
+- **Live pending:** traverse the fungus stairs and lift in both directions, then a medium Slayer
+  Tower chain including a damage failure, verifying exact landing and no legacy handoff.
+
 ### Access doors, cart tunnels and hazard-route pruning - 2026-09-08
 
 - **Headless:** eight access doors, eight Haunted Mine cart tunnels and two Fortis Colosseum lobby

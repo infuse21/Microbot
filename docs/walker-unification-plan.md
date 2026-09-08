@@ -21,6 +21,22 @@ headless batches, outstanding branches of representative live passes, and contra
 implementation. As of 2026-09-06 the user requests headless-first progress; deferred physical tests
 remain open rather than blocking each batch or being silently marked complete.
 
+## Haunted Mine, Slayer Tower and unsafe-environment cleanup - 2026-09-08
+
+Eighteen exact transitions now use catalogue/NavigationEngine ownership. Five Haunted Mine dark
+stairs preserve their reusable glowing-fungus requirement, and the five flooded-lift approaches
+require completed Haunted Mine. Eight medium Slayer Tower chains require 61 Agility and retain
+ownership across their documented 2-5-damage failure because failure still reaches the directed
+opposite floor.
+
+Thirty-two incomplete or unusable ordinary rows are now source-only: failure-prone Slayer Tower
+floors and Regicide leaf traps; asymmetric eastern Brimhaven stepping stones; rope/light/gas-gated
+Lumbridge and Smoke Dungeon entrances; Grim Tales basement manholes; Karuulm heat barriers; and
+four Old School Museum passageway props whose Leave action cannot transport the player. Wiki/cache
+MCP evidence and focused source, policy and landing tests cover every group. The classifier floor
+is now **241 legacy entries**: 218 ordinary `TRANSPORT` and 23 `TELEPORTATION_ITEM` entries.
+Physical traversal of migrated routes remains pending.
+
 ## Access doors, cart tunnels and hazard-route pruning - 2026-09-08
 
 Eighteen exact direct boundaries now use catalogue/NavigationEngine ownership. Four Ranging Guild

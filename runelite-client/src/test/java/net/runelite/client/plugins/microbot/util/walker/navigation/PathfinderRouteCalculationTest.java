@@ -127,7 +127,7 @@ public class PathfinderRouteCalculationTest
 		}
 		assertEquals(127, candidates);
 		assertEquals(104, migrated);
-		assertEquals(291, legacy);
+		assertEquals(241, legacy);
 	}
 
 	@Test
@@ -623,7 +623,7 @@ public class PathfinderRouteCalculationTest
 		assertEquals(50, stiles.stream().filter(candidate ->
 			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(candidate))
 				== RouteEdge.Kind.CATALOG_TRANSITION).count());
-		assertEquals(268, ordinary.stream().filter(candidate ->
+		assertEquals(218, ordinary.stream().filter(candidate ->
 			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(candidate))
 				== RouteEdge.Kind.TRANSPORT).count());
 		java.util.Set<Integer> directManifestIds = new java.util.HashSet<>(java.util.Arrays.asList(
@@ -1286,7 +1286,7 @@ public class PathfinderRouteCalculationTest
 	}
 
 	@Test
-	public void molchMysticalBarriersPublishAndKaruulmHazardStaysLocked()
+	public void molchMysticalBarriersPublishAndKaruulmHazardIsRemoved()
 	{
 		java.util.List<Transport> barriers = Transport.loadAllFromResources().values()
 			.stream().flatMap(java.util.Collection::stream)
@@ -1295,11 +1295,11 @@ public class PathfinderRouteCalculationTest
 			.filter(candidate -> "Mystical barrier".equals(candidate.getName()))
 			.collect(java.util.stream.Collectors.toList());
 
-		assertEquals(20, barriers.size());
+		assertEquals(16, barriers.size());
 		assertEquals(16, barriers.stream().filter(candidate ->
 			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(candidate))
 				== RouteEdge.Kind.ADJACENT_TRANSPORT).count());
-		assertEquals(4, barriers.stream().filter(candidate -> candidate.getObjectId() == 34542)
+		assertEquals(0, barriers.stream().filter(candidate -> candidate.getObjectId() == 34542)
 			.filter(candidate -> PathfinderRouteCalculation.classifyTransportEdge(
 				Collections.singleton(candidate)) == RouteEdge.Kind.TRANSPORT).count());
 	}
