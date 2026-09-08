@@ -6,6 +6,7 @@ import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.Skill;
 import net.runelite.client.plugins.microbot.shortestpath.Transport;
 import net.runelite.client.plugins.microbot.shortestpath.TransportType;
+import net.runelite.client.plugins.microbot.shortestpath.TransportVarbit;
 import org.junit.Test;
 
 import java.util.Map;
@@ -314,6 +315,137 @@ public class CatalogTransitionPolicyTest
 
 		rows.get(0).getQuests().clear();
 		assertFalse(CatalogTransitionPolicy.isLithkrenBrokenDoor(rows.get(0)));
+	}
+
+	@Test
+	public void acceptsOnlyTheSixExactDirectOutwardExits()
+	{
+		java.util.List<Transport> rows = Transport.loadAllFromResources().values().stream()
+			.flatMap(java.util.Collection::stream)
+			.filter(CatalogTransitionPolicy::isDirectOutwardExit)
+			.collect(java.util.stream.Collectors.toList());
+		assertEquals(6, rows.size());
+		assertTrue(rows.stream().allMatch(CatalogTransitionPolicy::isEligible));
+		assertTrue(rows.stream().allMatch(row -> row.isMembers() && !row.isQuestLocked()
+			&& !row.isConsumable() && row.getItemIdRequirements().isEmpty()
+			&& row.getCurrencyAmount() == 0 && row.getVarbits().isEmpty()
+			&& row.getVarplayers().isEmpty()));
+
+		Transport exit = rows.get(0);
+		Transport freeWorldCopy = new Transport(exit.getOrigin(), exit.getDestination(),
+			exit.getDisplayInfo(), exit.getType(), false, exit.getAction(), exit.getName(),
+			exit.getObjectId());
+		assertFalse(CatalogTransitionPolicy.isDirectOutwardExit(freeWorldCopy));
+	}
+
+	@Test
+	public void acceptsOnlyTheExactCompletedCamdozaalBoundary()
+	{
+		java.util.List<Transport> rows = Transport.loadAllFromResources().values().stream()
+			.flatMap(java.util.Collection::stream)
+			.filter(CatalogTransitionPolicy::isCamdozaalRoute)
+			.collect(java.util.stream.Collectors.toList());
+		assertEquals(2, rows.size());
+		assertTrue(rows.stream().allMatch(CatalogTransitionPolicy::isEligible));
+		assertTrue(rows.stream().allMatch(row -> !row.isMembers()
+			&& row.getQuests().equals(Map.of(Quest.BELOW_ICE_MOUNTAIN, QuestState.FINISHED))));
+
+		rows.get(0).getQuests().clear();
+		assertFalse(CatalogTransitionPolicy.isCamdozaalRoute(rows.get(0)));
+	}
+
+	@Test
+	public void acceptsOnlyTheSixExactUnlockedPassages()
+	{
+		java.util.List<Transport> rows = Transport.loadAllFromResources().values().stream()
+			.flatMap(java.util.Collection::stream)
+			.filter(row -> Set.of(11355, 28918, 42249).contains(row.getObjectId()))
+			.collect(java.util.stream.Collectors.toList());
+		assertEquals(6, rows.size());
+		assertEquals(2, rows.stream().filter(row -> row.getObjectId() == 11355).count());
+		assertEquals(3, rows.stream().filter(row -> row.getObjectId() == 28918).count());
+		assertEquals(1, rows.stream().filter(row -> row.getObjectId() == 42249).count());
+		assertTrue(rows.stream().allMatch(CatalogTransitionPolicy::isUnlockedPassage));
+		assertTrue(rows.stream().allMatch(CatalogTransitionPolicy::isEligible));
+		assertTrue(rows.stream().allMatch(Transport::isMembers));
+
+		Transport killerwatt = rows.stream().filter(row -> row.getObjectId() == 11355)
+			.findFirst().orElseThrow(AssertionError::new);
+		assertEquals(Map.of(Quest.ERNEST_THE_CHICKEN, QuestState.FINISHED),
+			killerwatt.getQuests());
+		killerwatt.getQuests().clear();
+		assertFalse(CatalogTransitionPolicy.isUnlockedPassage(killerwatt));
+
+		Transport forthos = rows.stream().filter(row -> row.getObjectId() == 28918)
+			.findFirst().orElseThrow(AssertionError::new);
+		forthos.getVarbits().clear();
+		assertFalse(CatalogTransitionPolicy.isUnlockedPassage(forthos));
+
+		Transport foreignRoute = new Transport(new WorldPoint(1804, 9968, 0),
+			new WorldPoint(1727, 9993, 0), "test", TransportType.TRANSPORT, true,
+			"Enter", "Strange passage", 28918);
+		foreignRoute.getVarbits().add(new TransportVarbit(
+			5087, 1, TransportVarbit.Operator.EQUAL));
+		assertFalse(CatalogTransitionPolicy.isUnlockedPassage(foreignRoute));
+	}
+
+	@Test
+	public void unsafeIcePathExtremeColdGatesAreNotLoaded()
+	{
+		assertTrue(Transport.loadAllFromResources().values().stream()
+			.flatMap(java.util.Collection::stream)
+			.noneMatch(row -> row.getObjectId() == 5043 || row.getObjectId() == 5044));
+	}
+
+	@Test
+	public void acceptsOnlyTheSixCanonicalHeroesRockSlides()
+	{
+		java.util.List<Transport> rows = Transport.loadAllFromResources().values().stream()
+			.flatMap(java.util.Collection::stream)
+			.filter(candidate -> candidate.getObjectId() == 2634)
+			.collect(java.util.stream.Collectors.toList());
+		assertEquals(6, rows.size());
+		assertTrue(rows.stream().allMatch(CatalogTransitionPolicy::isHeroesRockSlide));
+		assertTrue(rows.stream().allMatch(CatalogTransitionPolicy::isEligible));
+		assertTrue(rows.stream().allMatch(row -> row.isMembers() && row.getDuration() == 10
+			&& row.getSkillLevels()[Skill.MINING.ordinal()] == 50
+			&& row.getQuests().equals(Map.of(Quest.HEROES_QUEST, QuestState.FINISHED))));
+
+		rows.get(0).getQuests().clear();
+		assertFalse(CatalogTransitionPolicy.isHeroesRockSlide(rows.get(0)));
+	}
+
+	@Test
+	public void acceptsOnlyTheExactStrongholdSlayerTunnelApproaches()
+	{
+		java.util.List<Transport> rows = Transport.loadAllFromResources().values().stream()
+			.flatMap(java.util.Collection::stream)
+			.filter(candidate -> candidate.getType() == TransportType.TRANSPORT)
+			.filter(candidate -> candidate.getObjectId() == 30174)
+			.collect(java.util.stream.Collectors.toList());
+		assertEquals(2, rows.size());
+		assertTrue(rows.stream().allMatch(CatalogTransitionPolicy::isStrongholdSlayerTunnel));
+		assertTrue(rows.stream().allMatch(CatalogTransitionPolicy::isEligible));
+		assertTrue(rows.stream().allMatch(row -> row.isMembers() && !row.isQuestLocked()
+			&& row.getSkillLevels()[Skill.AGILITY.ordinal()] == 72));
+	}
+
+	@Test
+	public void acceptsOnlyTheFiveCompletedWeissHoleApproaches()
+	{
+		java.util.List<Transport> rows = Transport.loadAllFromResources().values().stream()
+			.flatMap(java.util.Collection::stream)
+			.filter(candidate -> candidate.getObjectId() == 33227)
+			.collect(java.util.stream.Collectors.toList());
+		assertEquals(5, rows.size());
+		assertTrue(rows.stream().allMatch(CatalogTransitionPolicy::isWeissHole));
+		assertTrue(rows.stream().allMatch(CatalogTransitionPolicy::isEligible));
+		assertTrue(rows.stream().allMatch(row -> row.isMembers()
+			&& row.getQuests().equals(Map.of(
+				Quest.MAKING_FRIENDS_WITH_MY_ARM, QuestState.FINISHED))));
+
+		rows.get(0).getQuests().clear();
+		assertFalse(CatalogTransitionPolicy.isWeissHole(rows.get(0)));
 	}
 
 	@Test

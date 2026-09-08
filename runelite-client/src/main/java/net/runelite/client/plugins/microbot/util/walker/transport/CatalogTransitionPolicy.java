@@ -505,6 +505,41 @@ public final class CatalogTransitionPolicy
 		"1566,5061,0->3549,10481,0|32132|enter|broken grandiose doors",
 		"1565,5061,0->3549,10481,0|32132|enter|broken grandiose doors",
 		"3680,3854,0->3595,10291,0|32132|enter|broken grandiose doors");
+	private static final Set<String> DIRECT_OUTWARD_EXIT_ROUTES = Set.of(
+		"2409,9812,0->2402,3419,0|17223|exit|tunnel",
+		"2408,9812,0->2402,3419,0|17222|exit|tunnel",
+		"3728,5692,0->3060,9766,0|26655|exit|tunnel",
+		"2461,10417,0->2465,4010,0|37411|exit|steps",
+		"3366,11483,0->3361,3148,0|44636|exit|exit",
+		"3225,12445,0->3225,6046,0|36691|exit|steps");
+	private static final Set<String> CAMDOZAAL_ROUTES = Set.of(
+		"2998,3494,0->2952,5762,0|41357|enter|ruins entrance",
+		"2952,5762,0->2998,3494,0|41446|exit|ruins exit");
+	private static final Set<String> HEROES_ROCK_SLIDE_ROUTES = Set.of(
+		"2840,3516,0->2836,3517,0|2634|mine|rock slide",
+		"2839,3516,0->2836,3517,0|2634|mine|rock slide",
+		"2837,3517,0->2840,3516,0|2634|mine|rock slide",
+		"2837,3518,0->2840,3517,0|2634|mine|rock slide",
+		"2840,3517,0->2837,3518,0|2634|mine|rock slide",
+		"2840,3518,0->2837,3519,0|2634|mine|rock slide");
+	private static final Set<String> STRONGHOLD_SLAYER_TUNNEL_ROUTES = Set.of(
+		"2435,9807,0->2429,9807,0|30174|enter|tunnel",
+		"2435,9806,0->2429,9806,0|30174|enter|tunnel");
+	private static final Set<String> WEISS_HOLE_ROUTES = Set.of(
+		"2855,3941,0->2859,3968,0|33227|descend|hole",
+		"2854,3941,0->2859,3968,0|33227|descend|hole",
+		"2853,3941,0->2859,3968,0|33227|descend|hole",
+		"2856,3941,0->2859,3968,0|33227|descend|hole",
+		"2852,3941,0->2859,3968,0|33227|descend|hole");
+	private static final Set<Integer> ROCK_SLIDE_PICKAXE_IDS = Set.of(
+		1265, 1267, 1269, 12297, 1273, 1271, 1275, 11920, 23680, 23276, 13243, 20014);
+	private static final Set<String> UNLOCKED_PASSAGE_ROUTES = Set.of(
+		"3110,3363,2->2677,5214,2|11355|enter|interdimensional rift",
+		"3111,3363,2->2677,5214,2|11355|enter|interdimensional rift",
+		"1803,9968,0->1727,9993,0|28918|enter|strange passage",
+		"1803,9968,0->1726,9994,0|28918|enter|strange passage",
+		"1803,9967,0->1726,9994,0|28918|enter|strange passage",
+		"1461,9879,0->1639,10046,0|42249|enter|strange passage");
 	private static final Set<Integer> MOR_UL_REK_CAPE_IDS = Set.of(6570, 13329, 24134, 24223);
 	private static final Set<Set<Integer>> MOR_UL_REK_CAPES = Set.of(MOR_UL_REK_CAPE_IDS);
 	private static final int GUARDIANS_OF_THE_RIFT_BARRIER_ID = 43700;
@@ -657,7 +692,10 @@ public final class CatalogTransitionPolicy
 			|| isWaterfallThroneDoor(transport) || isMorUlRekHotVentDoor(transport)
 			|| isCrandorHole(transport) || isShiloBrokenCart(transport)
 			|| isStrongholdEscape(transport) || isWintertodtDoor(transport)
-			|| isLithkrenBrokenDoor(transport))
+			|| isLithkrenBrokenDoor(transport) || isDirectOutwardExit(transport)
+			|| isCamdozaalRoute(transport) || isUnlockedPassage(transport)
+			|| isHeroesRockSlide(transport) || isStrongholdSlayerTunnel(transport)
+			|| isWeissHole(transport))
 		{
 			return true;
 		}
@@ -1039,6 +1077,134 @@ public final class CatalogTransitionPolicy
 		}
 		return LITHKREN_BROKEN_DOOR_ROUTES.contains(routeKey(transport,
 			normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
+	}
+
+	static boolean isDirectOutwardExit(Transport transport)
+	{
+		if (!isBareDirectRoute(transport) || !transport.isMembers() || transport.getDuration() != 0
+			|| java.util.Arrays.stream(transport.getSkillLevels()).anyMatch(level -> level != 0))
+		{
+			return false;
+		}
+		return DIRECT_OUTWARD_EXIT_ROUTES.contains(routeKey(transport,
+			normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
+	}
+
+	static boolean isCamdozaalRoute(Transport transport)
+	{
+		if (transport == null || transport.getType() != TransportType.TRANSPORT
+			|| transport.getOrigin() == null || transport.getDestination() == null
+			|| transport.isConsumable() || transport.getCurrencyAmount() != 0 || transport.isMembers()
+			|| !transport.getItemIdRequirements().isEmpty() || !transport.getVarbits().isEmpty()
+			|| !transport.getVarplayers().isEmpty()
+			|| java.util.Arrays.stream(transport.getSkillLevels()).anyMatch(level -> level != 0)
+			|| transport.getDuration() != 0
+			|| !transport.getQuests().equals(Map.of(Quest.BELOW_ICE_MOUNTAIN, QuestState.FINISHED)))
+		{
+			return false;
+		}
+		return CAMDOZAAL_ROUTES.contains(routeKey(transport,
+			normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
+	}
+
+	static boolean isHeroesRockSlide(Transport transport)
+	{
+		if (transport == null || transport.getType() != TransportType.TRANSPORT
+			|| transport.getOrigin() == null || transport.getDestination() == null
+			|| transport.getObjectId() != 2634 || transport.isConsumable()
+			|| transport.getCurrencyAmount() != 0 || !transport.isMembers()
+			|| !transport.getItemIdRequirements().equals(Set.of(ROCK_SLIDE_PICKAXE_IDS))
+			|| !transport.getVarbits().isEmpty() || !transport.getVarplayers().isEmpty()
+			|| transport.getDuration() != 10
+			|| !transport.getQuests().equals(Map.of(Quest.HEROES_QUEST, QuestState.FINISHED))
+			|| !hasOnlySkill(transport, net.runelite.api.Skill.MINING, 50))
+		{
+			return false;
+		}
+		return HEROES_ROCK_SLIDE_ROUTES.contains(routeKey(transport,
+			normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
+	}
+
+	static boolean isStrongholdSlayerTunnel(Transport transport)
+	{
+		if (transport == null || transport.getType() != TransportType.TRANSPORT
+			|| transport.getOrigin() == null || transport.getDestination() == null
+			|| transport.getObjectId() != 30174 || transport.isConsumable()
+			|| transport.getCurrencyAmount() != 0 || !transport.isMembers()
+			|| !transport.getItemIdRequirements().isEmpty() || transport.isQuestLocked()
+			|| !transport.getVarbits().isEmpty() || !transport.getVarplayers().isEmpty()
+			|| transport.getDuration() != 0
+			|| !hasOnlySkill(transport, net.runelite.api.Skill.AGILITY, 72))
+		{
+			return false;
+		}
+		return STRONGHOLD_SLAYER_TUNNEL_ROUTES.contains(routeKey(transport,
+			normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
+	}
+
+	static boolean isWeissHole(Transport transport)
+	{
+		if (transport == null || transport.getType() != TransportType.TRANSPORT
+			|| transport.getOrigin() == null || transport.getDestination() == null
+			|| transport.getObjectId() != 33227 || transport.isConsumable()
+			|| transport.getCurrencyAmount() != 0 || !transport.isMembers()
+			|| !transport.getItemIdRequirements().isEmpty()
+			|| !transport.getVarbits().isEmpty() || !transport.getVarplayers().isEmpty()
+			|| transport.getDuration() != 0
+			|| !transport.getQuests().equals(Map.of(
+				Quest.MAKING_FRIENDS_WITH_MY_ARM, QuestState.FINISHED))
+			|| java.util.Arrays.stream(transport.getSkillLevels()).anyMatch(level -> level != 0))
+		{
+			return false;
+		}
+		return WEISS_HOLE_ROUTES.contains(routeKey(transport,
+			normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
+	}
+
+	private static boolean hasOnlySkill(Transport transport, net.runelite.api.Skill skill, int level)
+	{
+		int[] levels = transport.getSkillLevels();
+		for (int i = 0; i < levels.length; i++)
+		{
+			if (levels[i] != (i == skill.ordinal() ? level : 0))
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+	static boolean isUnlockedPassage(Transport transport)
+	{
+		if (transport == null || transport.getType() != TransportType.TRANSPORT
+			|| transport.getOrigin() == null || transport.getDestination() == null
+			|| transport.isConsumable() || transport.getCurrencyAmount() != 0
+			|| !transport.isMembers() || !transport.getItemIdRequirements().isEmpty()
+			|| !transport.getVarplayers().isEmpty()
+			|| java.util.Arrays.stream(transport.getSkillLevels()).anyMatch(level -> level != 0)
+			|| !UNLOCKED_PASSAGE_ROUTES.contains(routeKey(transport,
+				normalizeDirectAction(transport.getAction()), normalize(transport.getName()))))
+		{
+			return false;
+		}
+		if (transport.getObjectId() == 11355)
+		{
+			return transport.getDuration() == 1 && transport.getVarbits().isEmpty()
+				&& transport.getQuests().equals(Map.of(Quest.ERNEST_THE_CHICKEN,
+					QuestState.FINISHED));
+		}
+		if (!transport.getQuests().isEmpty())
+		{
+			return false;
+		}
+		if (transport.getObjectId() == 28918)
+		{
+			boolean zeroDuration = transport.getDestination().equals(new WorldPoint(1727, 9993, 0));
+			return transport.getDuration() == (zeroDuration ? 0 : 1)
+				&& hasExactVarbit(transport, 5087, 1);
+		}
+		return transport.getObjectId() == 42249 && transport.getDuration() == 2
+			&& hasExactVarbit(transport, 12341, 1);
 	}
 
 	private static boolean isBareDirectRoute(Transport transport)

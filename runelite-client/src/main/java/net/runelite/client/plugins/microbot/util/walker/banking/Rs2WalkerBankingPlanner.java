@@ -277,7 +277,12 @@ public final class Rs2WalkerBankingPlanner {
 								Set.of(Set.of(ItemID.CHRONICLE))))
 					|| (transport.getDisplayInfo().startsWith("Pharaoh's sceptre:")
 						&& transport.getItemIdRequirements().equals(
-								Set.of(Set.of(26948), Set.of(26950)))));
+								Set.of(Set.of(26948), Set.of(26950))))
+					|| (transport.getDisplayInfo().startsWith("Quetzal whistle:")
+						&& transport.getItemIdRequirements().equals(Set.of(
+							Set.of(ItemID.HG_QUETZALWHISTLE_BASIC),
+							Set.of(ItemID.HG_QUETZALWHISTLE_ENHANCED),
+							Set.of(ItemID.HG_QUETZALWHISTLE_PERFECTED)))));
 	}
 
     private static void addAlternativeWithdrawal(Set<Integer> alternatives, int requiredUses,

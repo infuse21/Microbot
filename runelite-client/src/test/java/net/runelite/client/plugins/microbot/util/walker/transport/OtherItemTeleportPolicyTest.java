@@ -142,6 +142,29 @@ public class OtherItemTeleportPolicyTest
 	}
 
 	@Test
+	public void quetzalWhistlesUseExactMapModeAndDestinationContracts()
+	{
+		int rows = 0;
+		for (Set<Transport> group : Transport.loadAllFromResources().values())
+		{
+			for (Transport row : group)
+			{
+				if (!ItemTeleportPolicy.isQuetzalWhistle(row))
+				{
+					continue;
+				}
+				rows++;
+				assertTrue(ItemTeleportPolicy.isEligible(row));
+				assertEquals("Signal", ItemTeleportPolicy.inventoryAction(row));
+				assertNull(ItemTeleportPolicy.equipmentAction(row));
+				assertTrue(row.getVarbits().stream().anyMatch(gate ->
+					gate.getVarbitId() == 19681 && gate.getValue() == 0));
+			}
+		}
+		assertEquals(14, rows);
+	}
+
+	@Test
 	public void calcifiedMothAndSlepeUseExactAuditedContracts()
 	{
 		Transport moth = find("Calcified moth: Crush");

@@ -127,7 +127,7 @@ public class PathfinderRouteCalculationTest
 		}
 		assertEquals(127, candidates);
 		assertEquals(104, migrated);
-		assertEquals(516, legacy);
+		assertEquals(460, legacy);
 	}
 
 	@Test
@@ -623,7 +623,7 @@ public class PathfinderRouteCalculationTest
 		assertEquals(50, stiles.stream().filter(candidate ->
 			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(candidate))
 				== RouteEdge.Kind.CATALOG_TRANSITION).count());
-		assertEquals(479, ordinary.stream().filter(candidate ->
+		assertEquals(437, ordinary.stream().filter(candidate ->
 			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(candidate))
 				== RouteEdge.Kind.TRANSPORT).count());
 		java.util.Set<Integer> directManifestIds = new java.util.HashSet<>(java.util.Arrays.asList(
@@ -880,7 +880,10 @@ public class PathfinderRouteCalculationTest
 			candidate.getObjectId()))
 			.filter(candidate -> PathfinderRouteCalculation.classifyTransportEdge(
 				Collections.singleton(candidate)) == RouteEdge.Kind.CATALOG_TRANSITION).count());
-		assertEquals(13, tunnels.stream().filter(candidate -> candidate.getObjectId() != 2141)
+		assertEquals(2, tunnels.stream().filter(candidate -> candidate.getObjectId() == 30174)
+			.filter(candidate -> PathfinderRouteCalculation.classifyTransportEdge(
+				Collections.singleton(candidate)) == RouteEdge.Kind.CATALOG_TRANSITION).count());
+		assertEquals(11, tunnels.stream().filter(candidate -> candidate.getObjectId() != 2141)
 			.filter(candidate -> PathfinderRouteCalculation.classifyTransportEdge(
 				Collections.singleton(candidate)) == RouteEdge.Kind.TRANSPORT).count());
 	}

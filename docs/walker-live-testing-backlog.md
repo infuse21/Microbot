@@ -21,6 +21,32 @@ additive totals; source rows, generated edges and duplicated approaches must not
 
 ## Latest work versus earlier headless batches
 
+### Ice Queen rock slides, Stronghold tunnel, and Weiss exits - 2026-09-08
+
+- **Headless:** six canonical Ice Queen rock slides are engine-owned with completed Heroes' Quest,
+  50 Mining and reusable-pickaxe banking; four malformed shadows are runtime-disabled. Both
+  level-72 Stronghold Slayer Cave tunnel approaches and five completed-quest Weiss hole approaches
+  are engine-owned, with the tunnel also respecting the agility-shortcut toggle.
+- **Live pending:** cross each family once with exact requirements, verify the selected landing,
+  normal recovery through the rock-slide delay, toggle rejection for the tunnel, and no legacy
+  handoff. The four malformed rock-slide rows are removed coverage, not pending live tests.
+
+### Killerwatt and unlocked Catacombs passages - 2026-09-08
+
+- **Headless:** two completed-Ernest Killerwatt rifts, three varbit-unlocked Forthos passages and
+  one varbit-unlocked Giants' Den passage are exact engine-owned members routes.
+- **Live pending:** cross one Killerwatt rift and each passage family in both available states,
+  verifying locked routes are absent, exact landings complete, and no legacy handoff occurs.
+
+### Direct outward exits, Camdozaal, and Ice Path safety - 2026-09-08
+
+- **Headless:** six exact members-only outward dungeon exits and both F2P Camdozaal boundary rows
+  are engine-owned; Camdozaal requires completed Below Ice Mountain. Eleven Ice Path gates are
+  runtime-disabled because their extreme-cold/stat-drain route needs a route-wide safety contract.
+- **Live pending:** cross representative outward exits and both Camdozaal directions, verifying the
+  exact interaction and landing with no legacy handoff. Ice Path is pending implementation, not a
+  live-only test and not migrated coverage.
+
 ### Outward rope-exit transitions - 2026-09-08
 
 - **Headless:** 15 exact fixed-landing rope exits are engine-owned across Lumbridge Swamp Caves,
@@ -486,9 +512,9 @@ Do not label these as "just waiting for live testing":
   segments and malformed Mountain Camp/Observatory setup rows need separately verified replacements.
   All grapple rows and 53 post-quest multi-code rows are
   headless-complete above, and the 12 redundant random Guthix rows were removed.
-- 37 item rows after the Crafting Guild Max cape cutover: 23 jewellery/cape exceptions (20 other
-  Max destinations, Black chinchompa Hunter cape and two Camulet rows) and 14 whistles. Some need data/charge fixes rather
-  than a new executor.
+- 23 item rows after the Quetzal-whistle cutover: 23 jewellery/cape exceptions (20 other Max
+  destinations, Black chinchompa Hunter cape and two Camulet rows). Some need data/charge fixes
+  rather than a new executor.
 - The ten alternate spell overrides are headless-complete above; representative live acceptance is
   still pending.
 - Ordinary specialised remainder: Draynor lever-solver ownership (unlocked door crossing is migrated),
@@ -502,7 +528,7 @@ The production classifier, not this prose list, is authoritative for the remaini
 Pre-Zanaris checkpoint: 1,466 legacy edges, including 990 ordinary TRANSPORT edges; after the
 headless Zanaris cutover: 1,465 and 989; after Waterfall internal doors: 1,463 and 987;
 after Draynor unlocked crossings: 1,445 and 969 respectively; after Yanille pick-lock:
-1,443 and 967 respectively. The current classifier is 516 total: 479 ordinary TRANSPORT and 37
+1,443 and 967 respectively. The current classifier is 502 total: 479 ordinary TRANSPORT and 23
 TELEPORTATION_ITEM rows, with
 no ordinary FAIRY_RING or GRAPPLE_SHORTCUT row remaining. Classifier counts
 are not percentages of live acceptance or estimates of implementation effort.

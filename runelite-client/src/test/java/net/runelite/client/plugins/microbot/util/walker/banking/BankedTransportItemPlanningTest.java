@@ -262,6 +262,19 @@ public class BankedTransportItemPlanningTest {
 	}
 
 	@Test
+	public void repeatedQuetzalWhistleTeleportsNeedOneChargedContainer()
+	{
+		Transport whistle = teleport("Quetzal whistle: Hunter Guild");
+		Map<Integer, Integer> requirements =
+			Rs2WalkerBankingPlanner.getMissingTransportItemIdsWithQuantities(
+				List.of(whistle, whistle));
+
+		assertTrue("the catalog models a consumed stored charge", whistle.isConsumable());
+		assertEquals(1, requirements.values().stream().mapToInt(Integer::intValue).sum());
+		assertTrue(Set.of(29271, 29273, 29275).containsAll(requirements.keySet()));
+	}
+
+	@Test
 	public void repeatedSceptreTeleportsNeedOneChargedContainer()
 	{
 		Transport jaltevas = teleport("Pharaoh's sceptre: Jaltevas");

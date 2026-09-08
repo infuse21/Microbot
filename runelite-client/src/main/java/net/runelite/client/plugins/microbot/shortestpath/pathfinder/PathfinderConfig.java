@@ -1628,6 +1628,10 @@ public class PathfinderConfig {
 				&& ("Climb-up".equalsIgnoreCase(transport.getAction())
 					|| "Climb-down".equalsIgnoreCase(transport.getAction()))) {
 			type = TransportType.AGILITY_SHORTCUT;
+		} else if (type == TransportType.TRANSPORT && transport.getObjectId() == 30174
+				&& "Tunnel".equalsIgnoreCase(transport.getName())
+				&& "Enter".equalsIgnoreCase(transport.getAction())) {
+			type = TransportType.AGILITY_SHORTCUT;
 		} else if (type == TransportType.TRANSPORT
 				&& ((transport.getObjectId() == 3522
 						&& "Bridge".equalsIgnoreCase(transport.getName())

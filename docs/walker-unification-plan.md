@@ -21,6 +21,66 @@ headless batches, outstanding branches of representative live passes, and contra
 implementation. As of 2026-09-06 the user requests headless-first progress; deferred physical tests
 remain open rather than blocking each batch or being silently marked complete.
 
+## Ice Queen rock slides, Stronghold tunnel, and Weiss exits - 2026-09-08
+
+Six canonical Ice Queen's Lair rock-slide routes now use exact catalogue/NavigationEngine
+ownership. They require a members world, `Heroes' Quest=FINISHED`, 50 Mining and one reusable
+pickaxe from the existing alternative set; four older rows that omitted the quest, level and
+canonical landings remain only as commented malformed evidence. The ten-tick transition window
+allows the single Mine action to clear and cross the respawning slide without surrendering
+ownership.
+
+Both Stronghold Slayer Cave tunnel approaches now require 72 Agility, are members-only, respect
+the web-walker agility-shortcut toggle, and retain ownership to their exact landing. Five Weiss
+`Descend;Hole;33227` approaches are likewise exact members-only transitions gated by
+`Making Friends with My Arm=FINISHED`. Wiki MCP and cache identities back all three contracts;
+focused policy, feature-toggle, classifier and route-publication tests pass. The classifier floor
+is now **460 legacy entries**: 437 ordinary `TRANSPORT` and 23 `TELEPORTATION_ITEM` entries.
+
+## Killerwatt and unlocked Catacombs passages - 2026-09-08
+
+Six exact members-only unlocked passages now use catalogue/NavigationEngine ownership. The two
+Killerwatt-plane rifts require `Ernest the Chicken=FINISHED`; three Forthos Dungeon strange
+passages retain unlock varbit 5087, and the Giants' Den passage retains unlock varbit 12341. The
+directed manifest also preserves their distinct durations and landings, so an unrelated rift or
+same-named passage cannot widen the policy. MCP-backed policy, scanner, classifier and route tests
+pass, reducing the then-current floor to **477 legacy entries**: 454 ordinary and 23 item rows.
+
+## Direct outward exits, Camdozaal, and Ice Path safety - 2026-09-08
+
+Six exact members-only outward dungeon exits now use catalogue/NavigationEngine ownership. Their
+source-side presence proves the player has already reached the enclosed area, so entrance-only
+quest or setup requirements are not copied onto these one-way exits; the directed tuple still pins
+the exact object, action and surface landing.
+
+Both free-to-play Camdozaal boundary rows now require `Below Ice Mountain=FINISHED`, matching the
+Wiki MCP evidence that the ruins become accessible after quest completion. The 11 Ice Path gate
+rows are retained only as commented audit evidence and are absent from the runtime graph: clicking
+the gate enters an extreme-cold area that drains stats and disables running, which needs a
+route-wide safety contract rather than a generic door interaction. Focused tests pin the six/two
+exact manifests, quest and members metadata, and the absence of Ice Path rows. Together with the
+Quetzal-whistle cutover below, the classifier floor is now **483 legacy entries**: 460 ordinary
+`TRANSPORT` and 23 `TELEPORTATION_ITEM` entries; physical acceptance remains pending.
+
+## Quetzal whistle destination-map teleports - 2026-09-08
+
+All 14 Quetzal whistle rows now use the item-teleport/NavigationEngine lifecycle: open the
+inventory tab, issue exact `Signal`, select the exact destination from whistle interface 949, and
+retain ownership until the directed landing. The saved direct-to-Hunter-Guild setting varbit 19681
+is required to be zero; the walker preserves a nonzero user setting and declines these map routes
+instead of guessing a destination or changing the setting. The six existing destination-build
+varbits remain mandatory, and hidden or struck-through destination widgets are never clicked.
+
+Basic, enhanced and perfected whistles expose the same inventory-only action and hold stored
+charges without changing item ID. Banking therefore withdraws one reusable physical whistle across
+repeated route edges rather than one whistle per stored charge. An exhausted whistle cannot open
+the destination stage and remains subject to bounded NavigationEngine command recovery; exact
+per-item charge preflight remains a live acceptance branch because no client varbit or item-ID
+variant exposes the stored count. Focused policy, route-publication and banking checks are included.
+The classifier floor is now **502 legacy entries**: 479 ordinary `TRANSPORT` and 23
+`TELEPORTATION_ITEM` entries. Physical charged, final-charge, exhausted and delayed-map cases remain
+live-deferred, so Phase 6 remains open.
+
 ## Lithkren broken doors and unsafe shadow-route cleanup - 2026-09-08
 
 Nine exact members-only Broken Grandiose Doors routes now use catalogue/NavigationEngine ownership

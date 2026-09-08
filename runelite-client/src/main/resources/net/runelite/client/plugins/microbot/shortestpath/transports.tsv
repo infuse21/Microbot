@@ -339,8 +339,8 @@
 2908 3336 2	2908 3336 1	Climb-down;Staircase;11890								1	
 											
 # Killerwatt Plane											
-3110 3363 2	2677 5214 2	Enter;Interdimensional rift;11355				Ernest the Chicken				1
-3111 3363 2	2677 5214 2	Enter;Interdimensional rift;11355				Ernest the Chicken				1
+3110 3363 2	2677 5214 2	Enter;Interdimensional rift;11355				Ernest the Chicken=FINISHED			yes	1
+3111 3363 2	2677 5214 2	Enter;Interdimensional rift;11355				Ernest the Chicken=FINISHED			yes	1
 											
 # Ferox Enclave											
 3140 3637 0	3137 3637 1	Climb;Stairs;39643								1	
@@ -1955,14 +1955,14 @@
 2430 3424 0	2429 9824 0	Enter;Cave;26709									
 2429 9824 0	2430 3424 0	Use;Tunnel;27257									
 2429 9825 0	2430 3424 0	Use;Tunnel;27258									
-2435 9807 0	2429 9807 0	Enter;Tunnel;30174									
-2435 9806 0	2429 9806 0	Enter;Tunnel;30174									
+2435 9807 0	2429 9807 0	Enter;Tunnel;30174	72 Agility						yes
+2435 9806 0	2429 9806 0	Enter;Tunnel;30174	72 Agility						yes
 2402 3420 0	2409 9812 0	Enter;Cave entrance;17209									
-2409 9812 0	2402 3419 0	Exit;Tunnel;17223									
+2409 9812 0	2402 3419 0	Exit;Tunnel;17223							yes
 2402 3419 0	2409 9812 0	Enter;Cave entrance;17209									
 2402 3418 0	2409 9812 0	Enter;Cave entrance;17209									
 2403 3421 0	2409 9812 0	Enter;Cave entrance;17209									
-2408 9812 0	2402 3419 0	Exit;Tunnel;17222									
+2408 9812 0	2402 3419 0	Exit;Tunnel;17222							yes
 2403 3417 0	2409 9812 0	Enter;Cave entrance;17209									
 2405 3420 0	2409 9812 0	Enter;Cave entrance;17209									
 2405 3419 0	2409 9812 0	Enter;Cave entrance;17209									
@@ -2414,7 +2414,7 @@
 3061 3377 0	3058 9777 0	Climb-down;Staircase;16664									
 3058 9776 0	3061 3376 0	Climb-up;Staircase;23969									
 3061 3376 0	3058 9776 0	Climb-down;Staircase;16664									
-3728 5692 0	3060 9766 0	Exit;Tunnel;26655									
+3728 5692 0	3060 9766 0	Exit;Tunnel;26655							yes
 3060 9766 0	3728 5692 0	Enter;Cave;26654									
 											
 # Rimmington											
@@ -2522,10 +2522,11 @@
 2894 3567 0	2894 3566 0	Open;Large door;3743
 
 # Ice Wolf Mountain
-2837 3517 0	2840 3517 0	Mine;Rock slide;2634		1265;1267;1269;12297;1273;1271;1275;11920;23680
-2837 3518 0	2840 3518 0	Mine;Rock slide;2634		1265;1267;1269;12297;1273;1271;1275;11920;23680
-2840 3517 0	2837 3517 0	Mine;Rock slide;2634		1265;1267;1269;12297;1273;1271;1275;11920;23680
-2840 3518 0	2837 3518 0	Mine;Rock slide;2634		1265;1267;1269;12297;1273;1271;1275;11920;23680
+# REMOVED: malformed Rock slide shadows omitted 50 Mining, Heroes' Quest and canonical landings.
+# 2837 3517 0	2840 3517 0	Mine;Rock slide;2634		1265;1267;1269;12297;1273;1271;1275;11920;23680
+# 2837 3518 0	2840 3518 0	Mine;Rock slide;2634		1265;1267;1269;12297;1273;1271;1275;11920;23680
+# 2840 3517 0	2837 3517 0	Mine;Rock slide;2634		1265;1267;1269;12297;1273;1271;1275;11920;23680
+# 2840 3518 0	2837 3518 0	Mine;Rock slide;2634		1265;1267;1269;12297;1273;1271;1275;11920;23680
 2844 3516 0	2844 9916 0	Climb-down;Ladder;16680
 2845 3515 0	2845 9915 0	Climb-down;Ladder;16680
 2846 3516 0	2846 9916 0	Climb-down;Ladder;16680
@@ -4054,7 +4055,7 @@
 
 # Isle of Stone											
 2465 4010 0	2461 10417 0	Enter;Cave;37433									
-2461 10417 0	2465 4010 0	Exit;Steps;37411									
+2461 10417 0	2465 4010 0	Exit;Steps;37411							yes
 2468 10403 0	2471 10403 0	Climb;Steps;37417									
 2471 10403 0	2468 10403 0	Climb;Steps;37417									
 											
@@ -4247,13 +4248,13 @@
 2852 3936 0	2850 3936 0	Cross;Little boulder;33312									
 2850 3936 0	2852 3936 0	Cross;Little boulder;33312									
 2858 3968 0	2854 3941 0	Enter;Cave Entrance;33329									
-2855 3941 0	2859 3968 0	Descend;Hole;33227									
+2855 3941 0	2859 3968 0	Descend;Hole;33227				Making Friends with My Arm=FINISHED			yes
 2859 3968 0	2854 3941 0	Enter;Cave Entrance;33329									
-2854 3941 0	2859 3968 0	Descend;Hole;33227									
+2854 3941 0	2859 3968 0	Descend;Hole;33227				Making Friends with My Arm=FINISHED			yes
 2860 3968 0	2854 3941 0	Enter;Cave Entrance;33329									
-2853 3941 0	2859 3968 0	Descend;Hole;33227									
-2856 3941 0	2859 3968 0	Descend;Hole;33227									
-2852 3941 0	2859 3968 0	Descend;Hole;33227									
+2853 3941 0	2859 3968 0	Descend;Hole;33227				Making Friends with My Arm=FINISHED			yes
+2856 3941 0	2859 3968 0	Descend;Hole;33227				Making Friends with My Arm=FINISHED			yes
+2852 3941 0	2859 3968 0	Descend;Hole;33227				Making Friends with My Arm=FINISHED			yes
 2869 3941 0	2845 10351 0	Descend;Stairs;33234									
 2845 10351 0	2869 3941 0	Climb;Steps;33261									
 2844 10351 0	2869 3941 0	Climb;Steps;33261									
@@ -4468,17 +4469,18 @@
 2892 10074 2	2893 3671 0	Exit;Cave Exit;3760									
 2894 3671 0	2893 10074 2	Enter;Cave Entrance;3759									
 2894 10074 2	2893 3671 0	Exit;Cave Exit;3760									
-2837 3736 0	2839 3739 0	Go-through;Ice gate;5044									
-2839 3739 0	2837 3739 0	Go-through;Ice gate;5043									
-2837 3739 0	2839 3739 0	Go-through;Ice gate;5043									
-2839 3737 0	2837 3739 0	Go-through;Ice gate;5044									
-2837 3738 0	2839 3739 0	Go-through;Ice gate;5044									
-2839 3738 0	2837 3739 0	Go-through;Ice gate;5044									
-2837 3737 0	2839 3739 0	Go-through;Ice gate;5044									
-2839 3736 0	2837 3739 0	Go-through;Ice gate;5044									
-2837 3740 0	2839 3739 0	Go-through;Ice gate;5043									
-2839 3740 0	2837 3739 0	Go-through;Ice gate;5043									
-2839 3741 0	2837 3739 0	Go-through;Ice gate;5043									
+# DEFERRED: Ice Path requires a route-wide extreme-cold safety contract.
+# 2837 3736 0	2839 3739 0	Go-through;Ice gate;5044
+# 2839 3739 0	2837 3739 0	Go-through;Ice gate;5043
+# 2837 3739 0	2839 3739 0	Go-through;Ice gate;5043
+# 2839 3737 0	2837 3739 0	Go-through;Ice gate;5044
+# 2837 3738 0	2839 3739 0	Go-through;Ice gate;5044
+# 2839 3738 0	2837 3739 0	Go-through;Ice gate;5044
+# 2837 3737 0	2839 3739 0	Go-through;Ice gate;5044
+# 2839 3736 0	2837 3739 0	Go-through;Ice gate;5044
+# 2837 3740 0	2839 3739 0	Go-through;Ice gate;5043
+# 2839 3740 0	2837 3739 0	Go-through;Ice gate;5043
+# 2839 3741 0	2837 3739 0	Go-through;Ice gate;5043
 2867 3720 0	2874 3720 0	Enter;Cave Entrance;6440									
 2874 3720 0	2867 3719 0	Enter;Cave Exit;6447									
 2867 3719 0	2874 3720 0	Enter;Cave Entrance;6440									
@@ -4675,8 +4677,8 @@
 1630 3963 0	1630 3968 0	Enter;Doors of dinh;29322							yes	1
 											
 # Camdozaal											
-2998 3494 0	2952 5762 0	Enter;Ruins Entrance;41357				Below Ice Mountain
-2952 5762 0	2998 3494 0	Exit;Ruins Exit;41446				Below Ice Mountain
+2998 3494 0	2952 5762 0	Enter;Ruins Entrance;41357				Below Ice Mountain=FINISHED
+2952 5762 0	2998 3494 0	Exit;Ruins Exit;41446				Below Ice Mountain=FINISHED
 											
 # Magic guild											
 2590 3088 0	2590 3092 1	Climb-up;Staircase;15645									
@@ -4702,7 +4704,7 @@
 3290 3037 1	3290 3037 0	Climb-down;Ladder;18904									
 											
 # Kovac											
-3366 11483 0	3361 3148 0	Exit;Exit;44636									
+3366 11483 0	3361 3148 0	Exit;Exit;44636							yes
 3361 3148 0	3366 11483 0	Enter;Cave;44635									
 											
 # Hazeel cult											
@@ -4792,7 +4794,7 @@
 1696 3864 0	1719 10101 0	Enter;Hole;28920					5089=1				
 1719 10101 0	1696 3864 0	Climb-up;Vine;28898					
 1727 9993 0	1803 9968 0	Climb-up;Vine;28897	 				
-1803 9968 0	1727 9993 0	Enter;Strange passage;28918	 				5087=1				
+1803 9968 0	1727 9993 0	Enter;Strange passage;28918					5087=1		yes
 1670 3569 0	1800 9968 0	Climb-down;Staircase;34865									
 1800 9968 0	1670 3569 0	Climb-up;Staircase;34864									
 1830 9973 0	1702 3575 0	Climb-up;Ladder;34863									
@@ -5109,7 +5111,7 @@
 3263 6024 0	2239 3269 0	Exit;City Gate;36522				Song of the Elves
 3225 6046 0	3225 12445 0	Enter;Cave;36690									
 3226 6046 0	3225 12445 0	Enter;Cave;36690									
-3225 12445 0	3225 6046 0	Exit;Steps;36691									
+3225 12445 0	3225 6046 0	Exit;Steps;36691							yes
 											
 # Mount Karuulm Dungeon											
 # DEFERRED: Karuulm route requires route-wide heat-protection readiness.
@@ -5671,8 +5673,8 @@
 1825 9973 0	1824 9973 0	Open;Temple Door;34843					8398=1			2	
 1802 9958 0	1802 9956 0	Open;Temple Door;34843					8397=1			2	
 1802 9956 0	1802 9958 0	Open;Temple Door;34843					8397=1			2	
-1803 9968 0	1726 9994 0	Enter;Strange passage;28918					5087=1			1	
-1803 9967 0	1726 9994 0	Enter;Strange passage;28918					5087=1			1	
+1803 9968 0	1726 9994 0	Enter;Strange passage;28918					5087=1		yes	1
+1803 9967 0	1726 9994 0	Enter;Strange passage;28918					5087=1		yes	1
 1470 3652 0	1650 9987 0	Enter;Hole;28915					5088=1			2	
 1470 3654 0	1650 9987 0	Enter;Hole;28915					5088=1			2	
 1471 3653 0	1650 9987 0	Enter;Hole;28915					5088=1			2	
@@ -5698,7 +5700,7 @@
 1639 10046 0	1461 9879 0	Climb-up;Vine;42350								2	
 1639 10048 0	1461 9879 0	Climb-up;Vine;42350								2	
 1640 10047 0	1461 9879 0	Climb-up;Vine;42350								2	
-1461 9879 0	1639 10046 0	Enter;Strange passage;42249					12341=1			2	
+1461 9879 0	1639 10046 0	Enter;Strange passage;42249					12341=1		yes	2
 1665 10051 0	1639 3673 0	Climb-up;Vine ladder;28894								2	
 1666 10052 0	1639 3673 0	Climb-up;Vine ladder;28894								2	
 1667 10051 0	1639 3673 0	Climb-up;Vine ladder;28894								2	
@@ -5871,12 +5873,12 @@
 2896 2727 0	2393 3465 0	Travel;Waydar;1446								4	
 2762 2989 0	2760 9389 0	Search;Well stacked rocks;2234								15	
 2764 9376 0	2765 2976 0	Climb;Climbing rocks;2236								15	
-2840 3516 0	2836 3517 0	Mine;Rock slide;2634	50 Mining	1265 1267 1269 12297 1273 1271 1275 11920 23680 23276 13243 20014						10	
-2839 3516 0	2836 3517 0	Mine;Rock slide;2634	50 Mining	1265 1267 1269 12297 1273 1271 1275 11920 23680 23276 13243 20014						10	
-2837 3517 0	2840 3516 0	Mine;Rock slide;2634	50 Mining	1265 1267 1269 12297 1273 1271 1275 11920 23680 23276 13243 20014						10	
-2837 3518 0	2840 3517 0	Mine;Rock slide;2634	50 Mining	1265 1267 1269 12297 1273 1271 1275 11920 23680 23276 13243 20014						10	
-2840 3517 0	2837 3518 0	Mine;Rock slide;2634	50 Mining	1265 1267 1269 12297 1273 1271 1275 11920 23680 23276 13243 20014						10	
-2840 3518 0	2837 3519 0	Mine;Rock slide;2634	50 Mining	1265 1267 1269 12297 1273 1271 1275 11920 23680 23276 13243 20014						10	
+2840 3516 0	2836 3517 0	Mine;Rock slide;2634	50 Mining	1265 1267 1269 12297 1273 1271 1275 11920 23680 23276 13243 20014		Heroes' Quest=FINISHED			yes	10
+2839 3516 0	2836 3517 0	Mine;Rock slide;2634	50 Mining	1265 1267 1269 12297 1273 1271 1275 11920 23680 23276 13243 20014		Heroes' Quest=FINISHED			yes	10
+2837 3517 0	2840 3516 0	Mine;Rock slide;2634	50 Mining	1265 1267 1269 12297 1273 1271 1275 11920 23680 23276 13243 20014		Heroes' Quest=FINISHED			yes	10
+2837 3518 0	2840 3517 0	Mine;Rock slide;2634	50 Mining	1265 1267 1269 12297 1273 1271 1275 11920 23680 23276 13243 20014		Heroes' Quest=FINISHED			yes	10
+2840 3517 0	2837 3518 0	Mine;Rock slide;2634	50 Mining	1265 1267 1269 12297 1273 1271 1275 11920 23680 23276 13243 20014		Heroes' Quest=FINISHED			yes	10
+2840 3518 0	2837 3519 0	Mine;Rock slide;2634	50 Mining	1265 1267 1269 12297 1273 1271 1275 11920 23680 23276 13243 20014		Heroes' Quest=FINISHED			yes	10
 1475 3687 0	1470 3687 0	Climb;Handholds;27362								6	
 1470 3687 0	1475 3687 0	Climb;Handholds;42009								6	
 1460 3690 0	1456 3690 0	Climb;Handholds;27362								6	

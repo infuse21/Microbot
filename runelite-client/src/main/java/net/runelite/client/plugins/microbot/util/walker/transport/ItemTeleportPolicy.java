@@ -33,6 +33,7 @@ public final class ItemTeleportPolicy
 		Map.entry("Kharedst's memoirs", Set.of(21760)),
 		Map.entry("Morytania legs", Set.of(13112, 13113, 13114, 13115)),
 		Map.entry("Pharaoh's sceptre", Set.of(26948, 26950)),
+		Map.entry("Quetzal whistle", Set.of(29271, 29273, 29275)),
 		Map.entry("Rada's blessing", Set.of(22941, 22943, 22945, 22947)),
 		Map.entry("Stony basalt", Set.of(22601)),
 		Map.entry("Teleport to House tablet", Set.of(8013)),
@@ -110,6 +111,20 @@ public final class ItemTeleportPolicy
 		Map.entry("Pharaoh's sceptre: Jaleustrophos", "Jaleustrophos"),
 		Map.entry("Pharaoh's sceptre: Jalsavrah", "Jalsavrah"),
 		Map.entry("Pharaoh's sceptre: Jaltevas", "Jaltevas"),
+		Map.entry("Quetzal whistle: Aldarin", "Signal"),
+		Map.entry("Quetzal whistle: Civitas illa Fortis", "Signal"),
+		Map.entry("Quetzal whistle: Hunter Guild", "Signal"),
+		Map.entry("Quetzal whistle: Quetzacalli Gorge", "Signal"),
+		Map.entry("Quetzal whistle: Sunset Coast", "Signal"),
+		Map.entry("Quetzal whistle: The Teomat", "Signal"),
+		Map.entry("Quetzal whistle: Fortis Colosseum", "Signal"),
+		Map.entry("Quetzal whistle: Outer Fortis", "Signal"),
+		Map.entry("Quetzal whistle: Colossal Wyrm Remains", "Signal"),
+		Map.entry("Quetzal whistle: Cam Torum Entrance", "Signal"),
+		Map.entry("Quetzal whistle: Salvager Overlook", "Signal"),
+		Map.entry("Quetzal whistle: Tal Teklan", "Signal"),
+		Map.entry("Quetzal whistle: Kastori", "Signal"),
+		Map.entry("Quetzal whistle: Auburnvale", "Signal"),
 		Map.entry("Rada's blessing: Kourend Woodland", "Kourend Woodland"),
 		Map.entry("Rada's blessing: Mount Karuulm", "Mount Karuulm"),
 		Map.entry("Stony basalt: Troll Stronghold", "Troll Stronghold"),
@@ -247,6 +262,28 @@ public final class ItemTeleportPolicy
 		"Burning amulet: Chaos Temple", new WorldPoint(3234, 3634, 0),
 		"Burning amulet: Bandit Camp", new WorldPoint(3038, 3651, 0),
 		"Burning amulet: Lava Maze", new WorldPoint(3028, 3842, 0));
+	private static final Map<String, WorldPoint> QUETZAL_WHISTLE_DESTINATIONS = Map.ofEntries(
+		Map.entry("Aldarin", new WorldPoint(1389, 2901, 0)),
+		Map.entry("Civitas illa Fortis", new WorldPoint(1697, 3140, 0)),
+		Map.entry("Hunter Guild", new WorldPoint(1585, 3053, 0)),
+		Map.entry("Quetzacalli Gorge", new WorldPoint(1510, 3221, 0)),
+		Map.entry("Sunset Coast", new WorldPoint(1548, 2995, 0)),
+		Map.entry("The Teomat", new WorldPoint(1437, 3171, 0)),
+		Map.entry("Fortis Colosseum", new WorldPoint(1779, 3111, 0)),
+		Map.entry("Outer Fortis", new WorldPoint(1700, 3037, 0)),
+		Map.entry("Colossal Wyrm Remains", new WorldPoint(1670, 2933, 0)),
+		Map.entry("Cam Torum Entrance", new WorldPoint(1446, 3108, 0)),
+		Map.entry("Salvager Overlook", new WorldPoint(1613, 3300, 0)),
+		Map.entry("Tal Teklan", new WorldPoint(1226, 3091, 0)),
+		Map.entry("Kastori", new WorldPoint(1344, 3022, 0)),
+		Map.entry("Auburnvale", new WorldPoint(1411, 3361, 0)));
+	private static final Map<String, Integer> QUETZAL_WHISTLE_UNLOCK_VARBITS = Map.of(
+		"Fortis Colosseum", 9958,
+		"Outer Fortis", 9957,
+		"Colossal Wyrm Remains", 9956,
+		"Cam Torum Entrance", 9955,
+		"Salvager Overlook", 11379,
+		"Kastori", 17757);
 	private static final Set<Set<Integer>> BURNING_AMULET_ITEMS = Set.of(
 		Set.of(21166), Set.of(21169), Set.of(21171), Set.of(21173), Set.of(21175));
 
@@ -315,6 +352,10 @@ public final class ItemTeleportPolicy
 		{
 			return false;
 		}
+		if (isQuetzalWhistle(transport) && !isExactQuetzalWhistle(transport))
+		{
+			return false;
+		}
 		if ("Stony basalt: Troll Stronghold".equals(transport.getDisplayInfo())
 			&& !transport.getDestination().equals(new WorldPoint(2845, 3694, 0))
 			&& !transport.getDestination().equals(new WorldPoint(2837, 3695, 0)))
@@ -323,6 +364,45 @@ public final class ItemTeleportPolicy
 		}
 		return transport.getItemIdRequirements().stream()
 			.allMatch(group -> !group.isEmpty() && ids.containsAll(group));
+	}
+
+	public static boolean isQuetzalWhistle(Transport transport)
+	{
+		return transport != null && transport.getDisplayInfo() != null
+			&& transport.getDisplayInfo().startsWith("Quetzal whistle:");
+	}
+
+	public static String quetzalWhistleDestination(Transport transport)
+	{
+		return !isQuetzalWhistle(transport) ? ""
+			: transport.getDisplayInfo().substring("Quetzal whistle:".length()).trim();
+	}
+
+	private static boolean isExactQuetzalWhistle(Transport transport)
+	{
+		String destination = quetzalWhistleDestination(transport);
+		if (transport.getOrigin() != null || !transport.isMembers() || !transport.isConsumable()
+			|| transport.getDuration() != 4 || transport.getMaxWildernessLevel() != 19
+			|| transport.getCurrencyAmount() != 0
+			|| !transport.getItemIdRequirements().equals(Set.of(Set.of(29271), Set.of(29273), Set.of(29275)))
+			|| !transport.getQuests().equals(Map.of(Quest.CHILDREN_OF_THE_SUN, QuestState.FINISHED))
+			|| !transport.getVarplayers().isEmpty()
+			|| java.util.Arrays.stream(transport.getSkillLevels()).anyMatch(level -> level != 0)
+			|| !Objects.equals(QUETZAL_WHISTLE_DESTINATIONS.get(destination),
+				transport.getDestination()))
+		{
+			return false;
+		}
+		Integer unlock = QUETZAL_WHISTLE_UNLOCK_VARBITS.get(destination);
+		return transport.getVarbits().size() == (unlock == null ? 1 : 2)
+			&& hasEqualVarbit(transport, 19681, 0)
+			&& (unlock == null || hasEqualVarbit(transport, unlock, 1));
+	}
+
+	private static boolean hasEqualVarbit(Transport transport, int id, int value)
+	{
+		return transport.getVarbits().stream().anyMatch(gate -> gate.getVarbitId() == id
+			&& gate.getValue() == value && gate.getOperator() == TransportVarbit.Operator.EQUAL);
 	}
 
 	public static boolean isBurningAmulet(Transport transport)
@@ -533,6 +613,7 @@ public final class ItemTeleportPolicy
 		switch (family)
 		{
 			case "Master Scroll Book":
+			case "Quetzal whistle":
 			case "Calcified moth":
 			case "Mokhaiotl waystone":
 			case "Teleport crystal":

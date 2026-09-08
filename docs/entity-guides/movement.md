@@ -2004,3 +2004,16 @@ The Golem portal, eastern Sophanem rocks and Trollweiss piste tunnel are example
 directed origin/destination and object identity, require the matching completed quest, and retain
 NavigationEngine ownership until the remote landing. Quest helpers can model the richer in-progress
 flows independently without teaching the walker to solve the quests.
+
+## 109. A whistle map is not the NPC Quetzal map or a saved direct teleport
+
+Quetzal whistle `Signal` opens interface 949, while Renu travel uses a separate interface. The
+player setting at varbit 19681 can also redirect Signal straight to Hunter Guild, so map routes must
+require the verified map-mode value and must never change that setting. Search only the whistle-map
+roots, select the exact directed destination, reject hidden or struck-through entries, and retain
+the item-teleport edge until its landing.
+
+Whistle IDs identify capacity tiers, not remaining charges. Treat the whistle as one reusable
+banked container even though each flight consumes a stored charge; item possession alone is not
+proof of a usable charge, and an absent map after Signal must use bounded engine recovery rather
+than a generic item-action or legacy fallback.

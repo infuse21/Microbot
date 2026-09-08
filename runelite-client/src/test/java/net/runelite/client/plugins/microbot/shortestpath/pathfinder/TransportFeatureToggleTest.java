@@ -109,6 +109,7 @@ public class TransportFeatureToggleTest
 		assertShadowRows("Bridge", "useAgilityShortcuts", Set.of(3522), 8);
 		assertShadowRows("Climbing rocks", "useAgilityShortcuts", Set.of(11948, 11949), 14);
 		assertShadowRows("Rocky handholds", "useAgilityShortcuts", Set.of(19846, 19847, 26405), 6);
+		assertShadowRows("Tunnel", "useAgilityShortcuts", Set.of(30174), 2);
 	}
 
 	@Test

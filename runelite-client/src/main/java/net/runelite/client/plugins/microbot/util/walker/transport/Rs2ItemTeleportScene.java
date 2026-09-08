@@ -20,6 +20,7 @@ import net.runelite.client.plugins.microbot.util.walker.obstacle.PlannedEdge;
 import net.runelite.client.plugins.microbot.util.walker.transport.model.ItemTeleport;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -29,6 +30,7 @@ public final class Rs2ItemTeleportScene implements ItemTeleportScene
 	private static final String BOOK_SELECT_PREFIX = "book-select:";
 	private static final String BOOK_CONFIRM_PREFIX = "book-confirm:";
 	private static final String WILDERNESS_CONFIRM_PREFIX = "wilderness-confirm:";
+	private static final String QUETZAL_WHISTLE_DESTINATION_PREFIX = "whistle-destination:";
 	private static final String REVENANT_CONFIRM = "Yes, teleport me now";
 	private static final String BURNING_AMULET_CONFIRM = "Okay, teleport to level";
 
@@ -58,6 +60,19 @@ public final class Rs2ItemTeleportScene implements ItemTeleportScene
 			return null;
 		}
 		Set<Transport> transports = TransportEdgeMatcher.find(Rs2PathApi.getTransports(), edge.from(), edge.to());
+		Transport whistle = transports.stream().filter(ItemTeleportPolicy::isEligible)
+			.filter(ItemTeleportPolicy::isQuetzalWhistle).findFirst().orElse(null);
+		if (whistle != null && quetzalWhistleMapVisible())
+		{
+			String destinationName = ItemTeleportPolicy.quetzalWhistleDestination(whistle);
+			Widget destination = quetzalWhistleDestinationWidget(destinationName);
+			if (destination == null || isLocked(destination))
+			{
+				return null;
+			}
+			return new ItemTeleport(firstItemId(whistle), destinationName,
+				QUETZAL_WHISTLE_DESTINATION_PREFIX + destinationName);
+		}
 		if (pendingAction != null && pendingAction.startsWith("item-use:")
 			&& transports.stream().anyMatch(ItemTeleportPolicy::isBurningAmulet)
 			&& Rs2Dialogue.hasDialogueOption(BURNING_AMULET_CONFIRM, false))
@@ -188,6 +203,13 @@ public final class Rs2ItemTeleportScene implements ItemTeleportScene
 
 	public boolean dispatch(RouteInteraction interaction)
 	{
+		if (interaction.getAction().startsWith(QUETZAL_WHISTLE_DESTINATION_PREFIX))
+		{
+			String destinationName = interaction.getAction().substring(
+				QUETZAL_WHISTLE_DESTINATION_PREFIX.length());
+			Widget destination = quetzalWhistleDestinationWidget(destinationName);
+			return destination != null && !isLocked(destination) && Rs2Widget.clickWidget(destination);
+		}
 		if (interaction.getAction().equals(BOOK_CONFIRM_PREFIX + REVENANT_CONFIRM))
 		{
 			return Rs2Dialogue.clickOption(REVENANT_CONFIRM, true);
@@ -234,5 +256,47 @@ public final class Rs2ItemTeleportScene implements ItemTeleportScene
 	private static boolean visible(Widget widget)
 	{
 		return widget != null && !widget.isHidden();
+	}
+
+	private static boolean quetzalWhistleMapVisible()
+	{
+		return visible(Rs2Widget.getWidget(InterfaceID.QuetzalwhistleMenu.UNIVERSE));
+	}
+
+	private static Widget quetzalWhistleDestinationWidget(String destinationName)
+	{
+		for (int rootId : new int[] {
+			InterfaceID.QuetzalwhistleMenu.ICONS,
+			InterfaceID.QuetzalwhistleMenu.MAP,
+			InterfaceID.QuetzalwhistleMenu.SCROLL,
+			InterfaceID.QuetzalwhistleMenu.CONTENTS})
+		{
+			Widget root = Rs2Widget.getWidget(rootId);
+			if (!visible(root))
+			{
+				continue;
+			}
+			Widget destination = Rs2Widget.findWidget(destinationName, List.of(root), true);
+			if (destination != null)
+			{
+				return destination;
+			}
+		}
+		return null;
+	}
+
+	private static boolean isLocked(Widget widget)
+	{
+		return Microbot.getClientThread().runOnClientThreadOptional(() ->
+		{
+			String text = widget.getText();
+			return widget.isHidden() || text != null && text.toLowerCase().contains("<str>");
+		}).orElse(true);
+	}
+
+	private static int firstItemId(Transport transport)
+	{
+		return transport.getItemIdRequirements().stream().flatMap(Set::stream)
+			.findFirst().orElse(-1);
 	}
 }
