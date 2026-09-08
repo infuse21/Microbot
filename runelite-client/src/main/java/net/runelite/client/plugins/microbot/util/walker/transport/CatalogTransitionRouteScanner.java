@@ -80,6 +80,12 @@ public final class CatalogTransitionRouteScanner
 	private static boolean hasLanded(RouteInteraction pending, WorldPoint player)
 	{
 		WorldPoint destination = pending.getCrossingTo();
+		if (pending.getObjectId() == ShantayPassPolicy.MAIN_GATE_ID
+			|| pending.getObjectId() == ShantayPassPolicy.UNKAH_GATE_ID)
+		{
+			return ShantayPassPolicy.hasCrossed(pending.getObjectId(),
+				pending.getCrossingFrom(), destination, player);
+		}
 		if (CatalogTransitionPolicy.isTarnsJumpObject(pending.getObjectId())
 			|| CatalogTransitionPolicy.isIsafdarCrossingObject(pending.getObjectId())
 			|| CatalogTransitionPolicy.isFremennikSurfaceBridgeObject(pending.getObjectId())

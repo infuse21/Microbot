@@ -208,6 +208,22 @@ public class CatalogTransitionRouteScannerTest
 	}
 
 	@Test
+	public void shantayGatesRequireTheDirectedBoundaryNotDiagonalProgress()
+	{
+		WorldPoint from = new WorldPoint(3303, 3117, 0);
+		WorldPoint to = new WorldPoint(3304, 3115, 0);
+		RouteInteraction pending = new RouteInteraction(1, 0, from, to, from,
+			RouteInteraction.Kind.CATALOG_TRANSITION, RouteInteraction.Status.AVAILABLE,
+			ShantayPassPolicy.GO_THROUGH_ACTION, true, ShantayPassPolicy.MAIN_GATE_ID,
+			from, to);
+		CatalogTransitionRouteScanner scanner = new CatalogTransitionRouteScanner();
+		assertEquals(RouteInteraction.Status.UNAVAILABLE,
+			scanner.observePending(pending, new WorldPoint(3305, 3116, 0), edge -> null, 13).getStatus());
+		assertEquals(RouteInteraction.Status.CLEARED,
+			scanner.observePending(pending, new WorldPoint(3302, 3115, 0), edge -> null, 13).getStatus());
+	}
+
+	@Test
 	public void everyEligibleShortCatalogRowRejectsItsOriginAndAcceptsItsLanding()
 	{
 		CatalogTransitionRouteScanner scanner = new CatalogTransitionRouteScanner();

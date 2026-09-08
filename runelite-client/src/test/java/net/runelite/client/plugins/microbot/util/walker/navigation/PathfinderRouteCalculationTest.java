@@ -75,6 +75,20 @@ public class PathfinderRouteCalculationTest
 	}
 
 	@Test
+	public void everyShantayPassGateRowIsEngineOwned()
+	{
+		java.util.List<Transport> rows = Transport.loadAllFromResources().values().stream()
+			.flatMap(java.util.Collection::stream)
+			.filter(row -> row.getObjectId() == 4031 || row.getObjectId() == 41326)
+			.filter(row -> "Shantay pass".equals(row.getName()))
+			.collect(java.util.stream.Collectors.toList());
+		assertEquals(14, rows.size());
+		assertTrue(rows.stream().allMatch(row ->
+			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(row))
+				== RouteEdge.Kind.CATALOG_TRANSITION));
+	}
+
+	@Test
 	public void auditedItemBatchPublishesOneHundredThreeRowsAndDefersTwentyFour()
 	{
 		int candidates = 0;
@@ -111,7 +125,7 @@ public class PathfinderRouteCalculationTest
 		}
 		assertEquals(127, candidates);
 		assertEquals(103, migrated);
-		assertEquals(1161, legacy);
+		assertEquals(1147, legacy);
 	}
 
 	private static SplitFlagMap collisionMap;
@@ -591,7 +605,7 @@ public class PathfinderRouteCalculationTest
 		assertEquals(50, stiles.stream().filter(candidate ->
 			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(candidate))
 				== RouteEdge.Kind.CATALOG_TRANSITION).count());
-		assertEquals(725, ordinary.stream().filter(candidate ->
+		assertEquals(711, ordinary.stream().filter(candidate ->
 			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(candidate))
 				== RouteEdge.Kind.TRANSPORT).count());
 		java.util.Set<Integer> directManifestIds = new java.util.HashSet<>(java.util.Arrays.asList(

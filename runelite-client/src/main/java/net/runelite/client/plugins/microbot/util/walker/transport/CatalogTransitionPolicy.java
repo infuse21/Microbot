@@ -430,6 +430,10 @@ public final class CatalogTransitionPolicy
 
 	public static boolean isEligible(Transport transport)
 	{
+		if (ShantayPassPolicy.isEligible(transport))
+		{
+			return true;
+		}
 		if (EnergyBarrierPolicy.isEligible(transport))
 		{
 			return true;

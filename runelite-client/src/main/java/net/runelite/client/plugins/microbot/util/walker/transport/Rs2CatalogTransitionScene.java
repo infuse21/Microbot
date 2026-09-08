@@ -1,5 +1,7 @@
 package net.runelite.client.plugins.microbot.util.walker.transport;
 
+import net.runelite.api.ItemID;
+import net.runelite.api.NPCComposition;
 import net.runelite.api.ObjectComposition;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.widgets.ComponentID;
@@ -7,6 +9,8 @@ import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.globval.enums.InterfaceTab;
 import net.runelite.client.plugins.microbot.api.tileobject.models.Rs2TileObjectModel;
+import net.runelite.client.plugins.microbot.api.npc.models.Rs2NpcModel;
+import net.runelite.client.plugins.microbot.shortestpath.PurchasableItemCatalog;
 import net.runelite.client.plugins.microbot.shortestpath.Transport;
 import net.runelite.client.plugins.microbot.shortestpath.TransportEdgeMatcher;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.policy.TransportRequirementPolicy;
@@ -68,6 +72,14 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 
 	private static CatalogTransition find(Transport transport, String pendingAction)
 	{
+		if (ShantayPassPolicy.isEligible(transport))
+		{
+			CatalogTransition transition = shantayTransition(transport, pendingAction);
+			if (transition == null || ShantayPassPolicy.BUY_PASS_ACTION.equals(transition.getAction()))
+			{
+				return transition;
+			}
+		}
 		if (ZanarisEntrancePolicy.isEligible(transport))
 		{
 			String action = zanarisAction(transport, pendingAction);
@@ -92,7 +104,8 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 		boolean tarnsJump = CatalogTransitionPolicy.isTarnsJump(transport);
 		List<Rs2TileObjectModel> candidates = pohPortal
 			? Microbot.getRs2TileObjectCache().query().withId(transport.getObjectId()).toList()
-			: Microbot.getRs2TileObjectCache().query().within(transport.getOrigin(), floorboardJump ? 5 : 2).toList();
+			: Microbot.getRs2TileObjectCache().query().within(transport.getOrigin(),
+				floorboardJump ? 5 : ShantayPassPolicy.isEligible(transport) ? 3 : 2).toList();
 		Rs2TileObjectModel direct = candidates.stream()
 			.filter(candidate -> !(floorboardJump || tarnsJump || CatalogTransitionPolicy.isShortAgilityCrossing(transport)
 				|| CatalogTransitionPolicy.isIsafdarCrossing(transport)
@@ -165,6 +178,23 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 		if (transport == null)
 		{
 			return DispatchResult.REJECTED;
+		}
+		if (ShantayPassPolicy.isEligible(transport))
+		{
+			CatalogTransition expected = find(transport, action);
+			if (expected == null || expected.getCatalogObjectId() != catalogObjectId
+				|| !expected.getAction().equalsIgnoreCase(action))
+			{
+				return DispatchResult.REJECTED;
+			}
+			if (ShantayPassPolicy.BUY_PASS_ACTION.equalsIgnoreCase(action))
+			{
+				Rs2NpcModel vendor = shantayVendor(transport);
+				return vendor != null && vendor.click(action)
+					? DispatchResult.ISSUED : DispatchResult.REJECTED;
+			}
+			return expected.getObject() != null && expected.getObject().click(action)
+				? DispatchResult.ISSUED : DispatchResult.REJECTED;
 		}
 		if (ZanarisEntrancePolicy.isEligible(transport))
 		{
@@ -254,6 +284,75 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 			.filter(candidate -> !CatalogTransitionPolicy.ATTACH_ROPE_ACTION.equalsIgnoreCase(action)
 				|| requiresRopePreparation(candidate, action))
 			.findFirst().orElse(null);
+	}
+
+	private static CatalogTransition shantayTransition(Transport transport, String pendingAction)
+	{
+		boolean passCarried = Rs2Inventory.hasItem(ShantayPassPolicy.PASS_ITEM_ID);
+		boolean eliteDiary = TransportRequirementPolicy.freeShantayEntry(transport);
+		boolean gateAlreadyIssued = ShantayPassPolicy.GO_THROUGH_ACTION.equalsIgnoreCase(pendingAction);
+		boolean needsVendor = !passCarried && !eliteDiary
+			&& !ShantayPassPolicy.isFreeReturn(transport) && !gateAlreadyIssued;
+		PurchasableItemCatalog.PurchasableItem purchasable = needsVendor
+			? PurchasableItemCatalog.forTransport(transport) : null;
+		Rs2NpcModel vendor = purchasable == null ? null : shantayVendor(purchasable);
+		ShantayPassPolicy.Stage stage = ShantayPassPolicy.nextStage(transport,
+			passCarried,
+			Rs2Inventory.itemQuantity(ItemID.COINS),
+			eliteDiary,
+			vendor != null, pendingAction);
+		if (stage == ShantayPassPolicy.Stage.UNAVAILABLE)
+		{
+			return null;
+		}
+		if (stage == ShantayPassPolicy.Stage.BUY_PASS)
+		{
+			return new CatalogTransition(null, purchasable.vendorLocation, transport.getObjectId(),
+				ShantayPassPolicy.BUY_PASS_ACTION, transport.getAction(),
+				transport.getOrigin(), transport.getDestination());
+		}
+		return new CatalogTransition(null, transport.getOrigin(), transport.getObjectId(),
+			ShantayPassPolicy.GO_THROUGH_ACTION, transport.getAction(),
+			transport.getOrigin(), transport.getDestination());
+	}
+
+	private static Rs2NpcModel shantayVendor(Transport transport)
+	{
+		PurchasableItemCatalog.PurchasableItem purchasable =
+			PurchasableItemCatalog.forTransport(transport);
+		return purchasable == null ? null : shantayVendor(purchasable);
+	}
+
+	private static Rs2NpcModel shantayVendor(PurchasableItemCatalog.PurchasableItem purchasable)
+	{
+		return Microbot.getClientThread().runOnClientThreadOptional(() ->
+			Microbot.getRs2NpcCache().query().withId(purchasable.vendorNpcId)
+				.within(purchasable.vendorLocation, purchasable.radius).toList().stream()
+				.filter(npc -> hasAction(npc, purchasable.vendorAction))
+				.min(Comparator.comparingInt(npc ->
+					npc.getWorldLocation().distanceTo2D(purchasable.vendorLocation)))
+				.orElse(null)).orElse(null);
+	}
+
+	private static boolean hasAction(Rs2NpcModel npc, String action)
+	{
+		NPCComposition composition = npc.getNpc().getTransformedComposition();
+		if (composition == null)
+		{
+			composition = npc.getNpc().getComposition();
+		}
+		if (composition == null || composition.getActions() == null)
+		{
+			return false;
+		}
+		for (String candidate : composition.getActions())
+		{
+			if (candidate != null && candidate.equalsIgnoreCase(action))
+			{
+				return true;
+			}
+		}
+		return false;
 	}
 
 	static CatalogTransition visibilityRingPreparation(Transport transport, boolean equipped,

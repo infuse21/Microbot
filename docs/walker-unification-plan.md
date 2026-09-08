@@ -21,6 +21,26 @@ headless batches, outstanding branches of representative live passes, and contra
 implementation. As of 2026-09-06 the user requests headless-first progress; deferred physical tests
 remain open rather than blocking each batch or being silently marked complete.
 
+## Shantay pass gates - 2026-09-08
+
+All 14 packaged `Go-through;Shantay pass` rows now use the catalogue/NavigationEngine interaction
+lifecycle: six consumable-ticket entries, the main gate's two intentional 5-coin alternatives, and
+six free return crossings. The exact directed manifest covers the main pass object 4031 and Unkah
+object 41326. The engine rechecks the carried pass at dispatch, retains the pending gate after the
+ticket is consumed, and clears it only after crossing the route's directed axis boundary.
+
+At the main pass only, a missing ticket with at least five coins advances through the catalogued
+Shantay NPC 4642's exact `Buy-pass` action before `Go-through`; this is non-blocking and requires the
+live NPC/action to be present. Unkah has no verified local vendor record, so coin-only purchase is
+not invented there: a ticket must be carried or withdrawn, unless the Desert Elite exemption makes
+entry free. OSRS Wiki MCP verification confirms the main gate's five-coin purchase and Desert Elite
+free-entry rules, and identifies the two Unkah passes without identifying an equivalent Unkah
+ticket vendor. The broad walker regression passed **812** tests with zero failures, errors or skips;
+compile, both Checkstyle tasks and the whitespace check also pass. This lowers the current classifier
+floor to **1,147 legacy entries**, including **711** ordinary `TRANSPORT` entries. Physical
+main-gate purchase/ticket/free-return and representative Unkah crossings remain in the live backlog,
+so this slice is headless-complete rather than live-complete and Phase 6 remains open.
+
 ## Max-cape duplicate route cleanup - 2026-09-08
 
 One byte-for-byte duplicate `Max cape: Black chinchompa` row was removed. The remaining route data
