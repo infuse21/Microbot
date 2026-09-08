@@ -125,7 +125,7 @@ public class PathfinderRouteCalculationTest
 		}
 		assertEquals(127, candidates);
 		assertEquals(103, migrated);
-		assertEquals(1082, legacy);
+		assertEquals(1081, legacy);
 	}
 
 	private static SplitFlagMap collisionMap;

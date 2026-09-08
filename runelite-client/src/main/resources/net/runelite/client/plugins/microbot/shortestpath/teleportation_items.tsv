@@ -1,7 +1,7 @@
 # Destination	Skills	Item IDs	Quests	Varbits	Varplayers	isMembers	Consumable	Wilderness level	Duration	Display info
-# Ardougne Cloaks (2-4's farm teleport is limited to 3,5, or infinite times - can this be validated?)										
+# Ardougne Farm is limited on cloaks 2/3; only unlimited cloak 4 variants are routable.
 2606 3221 0		13121;13122;13123;13124;20760				Y	F	19	4	Ardougne cloak: Monastery
-2664 3374 0		13122;13123;13124;20760				Y	T	19	4	Ardougne cloak: Farm
+2664 3374 0		13124;20760				Y	F	19	4	Ardougne cloak: Farm
 # Karamja Gloves (Gem Mine underground)
 2840 9387 0		11140;13103				Y	F	19	4	Karamja gloves: Gem Mine
 # Karamja Gloves (Duradel underground)

@@ -22,7 +22,7 @@ public class OtherItemTeleportPolicyTest
 	public void wholeAuditedProtocolBatchIsOwned()
 	{
 		Map<String, Integer> expected = Map.ofEntries(
-			Map.entry("Ardougne cloak", 1),
+			Map.entry("Ardougne cloak", 2),
 			Map.entry("Book of the dead", 5),
 			Map.entry("Drakan's medallion", 2),
 			Map.entry("Enchanted lyre", 4),
@@ -48,7 +48,6 @@ public class OtherItemTeleportPolicyTest
 				{
 					if (row.getType() == TransportType.TELEPORTATION_ITEM
 						&& row.getDisplayInfo().startsWith(family.getKey() + ":")
-						&& !row.getDisplayInfo().equals("Ardougne cloak: Farm")
 						&& !row.getDisplayInfo().equals("Drakan's medallion: Slepe")
 						&& !row.getDisplayInfo().equals("Pharaoh's sceptre: Jaltevas"))
 					{
@@ -60,7 +59,7 @@ public class OtherItemTeleportPolicyTest
 			assertEquals(family.getKey(), family.getValue().intValue(), rows);
 			count += rows;
 		}
-		assertEquals(44, count);
+		assertEquals(45, count);
 	}
 
 	@Test
@@ -76,6 +75,23 @@ public class OtherItemTeleportPolicyTest
 		assertEquals("Yanille", ItemTeleportPolicy.inventoryAction(row("Watchtower tablet: Yanille", 8012)));
 		assertNull(ItemTeleportPolicy.equipmentAction(row("Teleport crystal: Lletya", 6099)));
 		assertNull(ItemTeleportPolicy.equipmentAction(row("Varrock tablet: Grand exchange", 8007)));
+	}
+
+	@Test
+	public void ardougneFarmUsesOnlyUnlimitedCapeVariants()
+	{
+		Transport farm = Transport.loadAllFromResources().values().stream()
+			.flatMap(Set::stream)
+			.filter(row -> "Ardougne cloak: Farm".equals(row.getDisplayInfo()))
+			.findFirst().orElseThrow(AssertionError::new);
+		assertEquals(new WorldPoint(2664, 3374, 0), farm.getDestination());
+		assertEquals(Set.of(Set.of(13124), Set.of(20760)), farm.getItemIdRequirements());
+		assertFalse(farm.isConsumable());
+		assertTrue(ItemTeleportPolicy.isEligible(farm));
+		assertEquals("Farm Teleport", ItemTeleportPolicy.inventoryAction(farm));
+		assertEquals("Ardougne Farm", ItemTeleportPolicy.equipmentAction(farm));
+		assertFalse(ItemTeleportPolicy.isEligible(row("Ardougne cloak: Farm", 13122)));
+		assertFalse(ItemTeleportPolicy.isEligible(row("Ardougne cloak: Farm", 13123)));
 	}
 
 	@Test

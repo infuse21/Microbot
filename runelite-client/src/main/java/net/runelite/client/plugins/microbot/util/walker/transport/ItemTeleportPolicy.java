@@ -71,6 +71,7 @@ public final class ItemTeleportPolicy
 		Map.entry("Mokhaiotl waystone: Channel", "Channel"),
 		Map.entry("Mythical cape: Teleport", "Teleport"),
 		Map.entry("Ardougne cloak: Monastery", "Monastery Teleport"),
+		Map.entry("Ardougne cloak: Farm", "Farm Teleport"),
 		Map.entry("Book of the dead: A Dark Disposition", "A Dark Disposition"),
 		Map.entry("Book of the dead: History and Hearsay", "History and Hearsay"),
 		Map.entry("Book of the dead: Jewellery of Jubilation", "Jewellery of Jubilation"),
@@ -276,6 +277,11 @@ public final class ItemTeleportPolicy
 		{
 			return false;
 		}
+		if ("Ardougne cloak: Farm".equals(transport.getDisplayInfo())
+			&& !isUnlimitedArdougneFarm(transport))
+		{
+			return false;
+		}
 		if ("Stony basalt: Troll Stronghold".equals(transport.getDisplayInfo())
 			&& !transport.getDestination().equals(new WorldPoint(2845, 3694, 0))
 			&& !transport.getDestination().equals(new WorldPoint(2837, 3695, 0)))
@@ -328,6 +334,20 @@ public final class ItemTeleportPolicy
 			&& transport.getDuration() == 4 && transport.getMaxWildernessLevel() == 19
 			&& transport.getCurrencyAmount() == 0
 			&& transport.getItemIdRequirements().equals(Set.of(Set.of(22114), Set.of(24855)))
+			&& transport.getQuests().isEmpty() && transport.getVarbits().isEmpty()
+			&& transport.getVarplayers().isEmpty()
+			&& java.util.Arrays.stream(transport.getSkillLevels()).allMatch(level -> level == 0);
+	}
+
+	private static boolean isUnlimitedArdougneFarm(Transport transport)
+	{
+		return transport != null && transport.getType() == TransportType.TELEPORTATION_ITEM
+			&& transport.getOrigin() == null
+			&& Objects.equals(transport.getDestination(), new WorldPoint(2664, 3374, 0))
+			&& transport.isMembers() && !transport.isConsumable()
+			&& transport.getDuration() == 4 && transport.getMaxWildernessLevel() == 19
+			&& transport.getCurrencyAmount() == 0
+			&& transport.getItemIdRequirements().equals(Set.of(Set.of(13124), Set.of(20760)))
 			&& transport.getQuests().isEmpty() && transport.getVarbits().isEmpty()
 			&& transport.getVarplayers().isEmpty()
 			&& java.util.Arrays.stream(transport.getSkillLevels()).allMatch(level -> level == 0);
@@ -407,7 +427,8 @@ public final class ItemTeleportPolicy
 			case "Watchtower tablet":
 				return null;
 			case "Ardougne cloak":
-				return "Kandarin Monastery";
+				return "Ardougne cloak: Farm".equals(transport.getDisplayInfo())
+					? "Ardougne Farm" : "Kandarin Monastery";
 			case "Morytania legs":
 				return "Morytania legs: Ecto Teleport".equals(transport.getDisplayInfo())
 					? "Ectofuntus Pit" : "Burgh de Rott";

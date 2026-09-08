@@ -21,6 +21,15 @@ additive totals; source rows, generated edges and duplicated approaches must not
 
 ## Latest work versus earlier headless batches
 
+### Unlimited Ardougne Farm cape teleport - 2026-09-08
+
+- **Headless:** the exact Farm row now accepts only unlimited item IDs 13124/20760, with inventory
+  `Farm Teleport`, worn `Ardougne Farm`, reusable banking and directed landing ownership. Wiki MCP
+  confirms both variants provide unlimited farm-patch teleports.
+- **Live pending:** test inventory, worn and bank-only forms; verify one reusable withdrawal,
+  exact farm landing and no legacy handoff. Limited cloaks 2/3 remain deliberately unavailable
+  until their daily-use state can be observed reliably.
+
 ### Abyss guaranteed passages - 2026-09-08
 
 - **Headless:** all 12 exact object-26250 Passage configurations are engine-owned with a frozen
@@ -380,8 +389,8 @@ Do not label these as "just waiting for live testing":
   318 random-obelisk rows including 48 unsafe self-pad artifacts; 12 grapple rows; 14 remaining
   agility rows. The 53 post-quest multi-code rows are headless-complete above, and the 12 redundant
   random Guthix rows were removed.
-- 43 item rows after the Max duplicate cleanup: 24 jewellery/cape exceptions (Max, Black chinchompa
-  Hunter cape, Camulet); 14 whistles; moth; Ardougne Farm, Chronicle,
+- 42 item rows after the unlimited Ardougne Farm cutover: 24 jewellery/cape exceptions (Max,
+  Black chinchompa Hunter cape, Camulet); 14 whistles; moth; Chronicle,
   Slepe and Jaltevas. Some need data/charge fixes rather than a new executor.
 - The ten alternate spell overrides are headless-complete above; representative live acceptance is
   still pending.
@@ -396,8 +405,8 @@ The production classifier, not this prose list, is authoritative for the remaini
 Pre-Zanaris checkpoint: 1,466 legacy edges, including 990 ordinary TRANSPORT edges; after the
 headless Zanaris cutover: 1,465 and 989; after Waterfall internal doors: 1,463 and 987;
 after Draynor unlocked crossings: 1,445 and 969 respectively; after Yanille pick-lock:
-1,443 and 967 respectively. The current post-Passage classifier is 1,082 total: 699 ordinary
-TRANSPORT, 10 AGILITY_SHORTCUT, 12 GRAPPLE_SHORTCUT, 43 TELEPORTATION_ITEM and 318
+1,443 and 967 respectively. The current post-Ardougne classifier is 1,081 total: 699 ordinary
+TRANSPORT, 10 AGILITY_SHORTCUT, 12 GRAPPLE_SHORTCUT, 42 TELEPORTATION_ITEM and 318
 WILDERNESS_OBELISK rows, with no ordinary FAIRY_RING row remaining. Classifier counts
 are not percentages of live acceptance or estimates of implementation effort.
 

@@ -21,6 +21,24 @@ headless batches, outstanding branches of representative live passes, and contra
 implementation. As of 2026-09-06 the user requests headless-first progress; deferred physical tests
 remain open rather than blocking each batch or being silently marked complete.
 
+## Unlimited Ardougne Farm cape teleport - 2026-09-08
+
+The `Ardougne cloak: Farm` row now uses the engine-owned reusable item-teleport lifecycle, narrowed
+to Ardougne cloak 4 (13124) and Ardougne max cape (20760). OSRS Wiki MCP verification confirms that
+both inherit unlimited teleports to the Ardougne farming patch and expose `Farm Teleport` in the
+inventory and `Ardougne Farm` when worn. Cloaks 2 and 3 are removed from this route because their
+three/five daily limits are not represented by a reliable availability predicate.
+
+The resource now correctly marks the two retained variants non-consumable, so repeated selected
+edges require one reusable cape rather than one withdrawal per use. Exact destination, metadata,
+item alternatives and both action surfaces are frozen; the normal item-teleport scanner retains
+NavigationEngine ownership until the directed farm landing. Focused item-action, banking, scanner
+and classifier tests pass. The classifier floor is now **1,081 legacy entries**, including **42**
+legacy `TELEPORTATION_ITEM` entries. The integrated walker regression passed **818** tests with zero
+failures, errors or skips; compile, both Checkstyle tasks and the whitespace check pass. Physical
+inventory/worn and bank-only acceptance is deferred, so this is headless-complete and Phase 6
+remains open.
+
 ## Abyss guaranteed passages - 2026-09-08
 
 All 12 exact `Go-through;Passage;26250` outer-Abyss configurations now use the catalogue/
