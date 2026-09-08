@@ -108,6 +108,21 @@ public final class CatalogTransitionPolicy
 		"3104,9320,1->3104,9318,1|11005|passthrough|magic barrier",
 		"3105,9318,1->3105,9320,1|11005|passthrough|magic barrier",
 		"3105,9320,1->3105,9318,1|11005|passthrough|magic barrier");
+	private static final Set<String> COMPLETED_QUEST_TUNNEL_ROUTES = Set.of(
+		"3233,2887,0->3233,9313,0|6481|enter|tunnel",
+		"2510,10287,1->2514,10291,0|15188|enter|tunnel",
+		"2514,10291,0->2510,10287,1|15189|enter|tunnel",
+		"3219,9618,0->3221,9618,0|6898|squeezethrough|hole",
+		"3221,9618,0->3219,9618,0|6899|squeezethrough|hole",
+		"3224,9604,0->3224,9600,0|6912|squeezethrough|hole",
+		"3224,9600,0->3224,9604,0|6912|squeezethrough|hole");
+	private static final Map<Integer, Quest> COMPLETED_QUEST_TUNNEL_QUESTS = Map.of(
+		6481, Quest.DESERT_TREASURE_I,
+		15188, Quest.ROYAL_TROUBLE,
+		15189, Quest.ROYAL_TROUBLE,
+		6898, Quest.THE_LOST_TRIBE,
+		6899, Quest.THE_LOST_TRIBE,
+		6912, Quest.THE_LOST_TRIBE);
 	private static final Set<String> SWAN_SONG_HOLE_ROUTES = Set.of(
 		"2344,3650,0->2344,3655,0|12656|enter|hole",
 		"2344,3655,0->2344,3650,0|12656|enter|hole");
@@ -509,6 +524,16 @@ public final class CatalogTransitionPolicy
 		"1631,4023,0->1633,4023,0|29326|jump|gap",
 		"1629,4023,0->1631,4023,0|29326|jump|gap",
 		"1627,4023,0->1629,4023,0|29326|jump|gap");
+	private static final Set<String> POST_QUEST_ICE_TROLL_CAVE_ROUTES = Set.of(
+		"2317,3893,0->2420,10279,1|21585|open|cave",
+		"2318,3894,0->2420,10279,1|21585|open|cave",
+		"2316,3893,0->2420,10279,1|21585|open|cave",
+		"2315,3894,0->2420,10279,1|21585|open|cave");
+	private static final Set<String> POST_QUEST_MYREQUE_DOOR_ROUTES = Set.of(
+		"3500,9811,0->3509,3449,0|5056|open|wooden doors",
+		"3501,9811,0->3509,3449,0|5057|open|wooden doors",
+		"3509,3449,0->3500,9811,0|5061|open|wooden doors",
+		"3510,3449,0->3500,9811,0|5060|open|wooden doors");
 	private static final Set<String> LITHKREN_BROKEN_DOOR_ROUTES = Set.of(
 		"3551,10481,0->1568,5061,0|32117|enter|broken grandiose doors",
 		"3550,10481,0->1568,5061,0|32117|enter|broken grandiose doors",
@@ -710,7 +735,8 @@ public final class CatalogTransitionPolicy
 			|| isLithkrenBrokenDoor(transport) || isDirectOutwardExit(transport)
 			|| isCamdozaalRoute(transport) || isUnlockedPassage(transport)
 			|| isHeroesRockSlide(transport) || isStrongholdSlayerTunnel(transport)
-			|| isWeissHole(transport))
+			|| isWeissHole(transport) || isPostQuestIceTrollCave(transport)
+			|| isPostQuestMyrequeDoor(transport))
 		{
 			return true;
 		}
@@ -826,6 +852,7 @@ public final class CatalogTransitionPolicy
 			|| isRunecraftingExitPortal(transport)
 			|| isEnakhraSecretEntrance(transport)
 			|| isEnakhraMagicBarrier(transport)
+			|| isCompletedQuestTunnel(transport)
 			|| isSwanSongHole(transport)
 			|| isMolchLizardTempleTransition(transport)
 			|| isMeiyerditchFloor(transport)
@@ -1099,6 +1126,30 @@ public final class CatalogTransitionPolicy
 		return objectId == 29326;
 	}
 
+	static boolean isPostQuestIceTrollCave(Transport transport)
+	{
+		return isExactCompletedQuestRoute(transport, Quest.THE_FREMENNIK_ISLES, 1)
+			&& POST_QUEST_ICE_TROLL_CAVE_ROUTES.contains(routeKey(transport,
+				normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
+	}
+
+	static boolean isPostQuestMyrequeDoor(Transport transport)
+	{
+		return isExactCompletedQuestRoute(transport, Quest.IN_SEARCH_OF_THE_MYREQUE, 1)
+			&& POST_QUEST_MYREQUE_DOOR_ROUTES.contains(routeKey(transport,
+				normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
+	}
+
+	static boolean isPostQuestIceTrollCaveObject(int objectId)
+	{
+		return objectId == 21585;
+	}
+
+	static boolean isPostQuestMyrequeDoorObject(int objectId)
+	{
+		return Set.of(5056, 5057, 5060, 5061).contains(objectId);
+	}
+
 	static boolean isLithkrenBrokenDoor(Transport transport)
 	{
 		if (transport == null || transport.getType() != TransportType.TRANSPORT
@@ -1254,6 +1305,18 @@ public final class CatalogTransitionPolicy
 			&& transport.getVarbits().isEmpty() && transport.getVarplayers().isEmpty();
 	}
 
+	private static boolean isExactCompletedQuestRoute(Transport transport, Quest quest, int duration)
+	{
+		return transport != null && transport.getType() == TransportType.TRANSPORT
+			&& transport.getOrigin() != null && transport.getDestination() != null
+			&& transport.isMembers() && !transport.isConsumable()
+			&& transport.getCurrencyAmount() == 0 && transport.getItemIdRequirements().isEmpty()
+			&& transport.getQuests().equals(Map.of(quest, QuestState.FINISHED))
+			&& transport.getVarbits().isEmpty() && transport.getVarplayers().isEmpty()
+			&& java.util.Arrays.stream(transport.getSkillLevels()).allMatch(level -> level == 0)
+			&& transport.getDuration() == duration;
+	}
+
 	static boolean isFremennikSurfaceBridge(Transport transport)
 	{
 		if (transport == null || transport.getType() != TransportType.TRANSPORT
@@ -1397,6 +1460,24 @@ public final class CatalogTransitionPolicy
 			&& transport.getVarbits().isEmpty() && transport.getVarplayers().isEmpty()
 			&& java.util.Arrays.stream(transport.getSkillLevels()).allMatch(level -> level == 0)
 			&& ENAKHRA_MAGIC_BARRIER_ROUTES.contains(routeKey(transport,
+				normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
+	}
+
+	static boolean isCompletedQuestTunnel(Transport transport)
+	{
+		if (transport == null || transport.getType() != TransportType.TRANSPORT
+			|| transport.getOrigin() == null || transport.getDestination() == null
+			|| !transport.isMembers() || transport.isConsumable()
+			|| !transport.getItemIdRequirements().isEmpty() || transport.getCurrencyAmount() != 0
+			|| !transport.getVarbits().isEmpty() || !transport.getVarplayers().isEmpty()
+			|| java.util.Arrays.stream(transport.getSkillLevels()).anyMatch(level -> level != 0))
+		{
+			return false;
+		}
+		Quest quest = COMPLETED_QUEST_TUNNEL_QUESTS.get(transport.getObjectId());
+		return quest != null
+			&& transport.getQuests().equals(Map.of(quest, QuestState.FINISHED))
+			&& COMPLETED_QUEST_TUNNEL_ROUTES.contains(routeKey(transport,
 				normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
 	}
 

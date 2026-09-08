@@ -768,6 +768,62 @@ public class CatalogTransitionPolicyTest
 	}
 
 	@Test
+	public void acceptsOnlyTheSevenCompletedQuestTunnels()
+	{
+		Map<Integer, Quest> questsByObject = Map.of(
+			6481, Quest.DESERT_TREASURE_I,
+			15188, Quest.ROYAL_TROUBLE,
+			15189, Quest.ROYAL_TROUBLE,
+			6898, Quest.THE_LOST_TRIBE,
+			6899, Quest.THE_LOST_TRIBE,
+			6912, Quest.THE_LOST_TRIBE);
+		java.util.List<Transport> rows = Transport.loadAllFromResources().values().stream()
+			.flatMap(java.util.Collection::stream)
+			.filter(row -> questsByObject.containsKey(row.getObjectId()))
+			.collect(java.util.stream.Collectors.toList());
+		assertEquals(7, rows.size());
+		assertTrue(rows.stream().allMatch(row -> row.isMembers()
+			&& row.getDuration() == 1 && !row.isConsumable()
+			&& row.getItemIdRequirements().isEmpty() && row.getCurrencyAmount() == 0
+			&& row.getQuests().equals(Map.of(questsByObject.get(row.getObjectId()),
+				QuestState.FINISHED))
+			&& row.getVarbits().isEmpty() && row.getVarplayers().isEmpty()
+			&& java.util.Arrays.stream(row.getSkillLevels()).allMatch(level -> level == 0)
+			&& CatalogTransitionPolicy.isCompletedQuestTunnel(row)
+			&& CatalogTransitionPolicy.isEligible(row)));
+
+		WorldPoint surface = new WorldPoint(3233, 2887, 0);
+		WorldPoint pyramid = new WorldPoint(3233, 9313, 0);
+		Transport exact = new Transport(surface, pyramid, "test", TransportType.TRANSPORT,
+			true, "Enter", "Tunnel", 6481);
+		exact.getQuests().put(Quest.DESERT_TREASURE_I, QuestState.FINISHED);
+		assertTrue(CatalogTransitionPolicy.isCompletedQuestTunnel(exact));
+
+		Transport unfinished = new Transport(surface, pyramid, "test", TransportType.TRANSPORT,
+			true, "Enter", "Tunnel", 6481);
+		unfinished.getQuests().put(Quest.DESERT_TREASURE_I, QuestState.IN_PROGRESS);
+		assertFalse(CatalogTransitionPolicy.isCompletedQuestTunnel(unfinished));
+		Transport nonMember = new Transport(surface, pyramid, "test", TransportType.TRANSPORT,
+			false, "Enter", "Tunnel", 6481);
+		nonMember.getQuests().put(Quest.DESERT_TREASURE_I, QuestState.FINISHED);
+		assertFalse(CatalogTransitionPolicy.isCompletedQuestTunnel(nonMember));
+
+		for (Transport malformed : java.util.List.of(
+			new Transport(surface, new WorldPoint(3233, 9314, 0), "test", TransportType.TRANSPORT,
+				true, "Enter", "Tunnel", 6481),
+			new Transport(surface, pyramid, "test", TransportType.TRANSPORT,
+				true, "Climb-down", "Tunnel", 6481),
+			new Transport(surface, pyramid, "test", TransportType.TRANSPORT,
+				true, "Enter", "Cave", 6481),
+			new Transport(surface, pyramid, "test", TransportType.TRANSPORT,
+				true, "Enter", "Tunnel", 6482)))
+		{
+			malformed.getQuests().put(Quest.DESERT_TREASURE_I, QuestState.FINISHED);
+			assertFalse(CatalogTransitionPolicy.isCompletedQuestTunnel(malformed));
+		}
+	}
+
+	@Test
 	public void acceptsOnlyTheExactEnakhrasTempleSandPileExitContract()
 	{
 		WorldPoint temple = new WorldPoint(3124, 9328, 1);

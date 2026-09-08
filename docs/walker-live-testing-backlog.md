@@ -21,6 +21,26 @@ additive totals; source rows, generated edges and duplicated approaches must not
 
 ## Latest work versus earlier headless batches
 
+### Unsafe incomplete shortcut cleanup - 2026-09-08
+
+- **Headless:** OSRS Wiki MCP evidence and source-shape tests cover the runtime removal of ten
+  Ghosts Ahoy rock jumps, eight Darkmeyer wall rows, eight Royal Trouble plank rows and six
+  Regicide stick rows. Their source entries omit required skills/unlocks/items or damage and
+  failure recovery, so they cannot safely participate in routing.
+- **Not live-pending:** these 32 rows are unsupported protocols rather than migrated coverage.
+  Restore them only after the required setup, gating, interaction staging and recovery semantics
+  are implemented and headlessly verified.
+
+### Post-quest tunnels/caves and stale entrance cleanup - 2026-09-08
+
+- **Headless:** seven completed-quest tunnels, four western Ice Troll Cave entrances and four
+  completed-Myreque wooden doors are exact engine-owned members transitions. Three invalid eastern
+  Ice Troll entrances, two ungated Shade Catacombs doors and 14 obsolete Brimhaven payment/state
+  rows are runtime-disabled with source evidence.
+- **Live pending:** traverse each migrated quest family once after completion and verify exact
+  landing with no legacy handoff. Modern Brimhaven payment/permanent access and shade-key use are
+  pending implementation, not live-only tests; removed stale rows are not migrated coverage.
+
 ### Wintertodt gaps, Enakhra barriers, and ambiguous Kharazi cleanup - 2026-09-08
 
 - **Headless:** six level-60 Wintertodt pillar gaps and six completed-Enakhra magic barriers are

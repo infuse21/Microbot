@@ -21,6 +21,37 @@ headless batches, outstanding branches of representative live passes, and contra
 implementation. As of 2026-09-06 the user requests headless-first progress; deferred physical tests
 remain open rather than blocking each batch or being silently marked complete.
 
+## Unsafe incomplete shortcut cleanup - 2026-09-08
+
+Thirty-two catalogue rows are now retained only as commented source evidence and no longer enter
+the runtime graph. OSRS Wiki MCP checks established that ten Ghosts Ahoy rock jumps require 25
+Agility, at least 5% run energy and failure/damage recovery; eight Darkmeyer wall rows omit the
+63-Agility, Sins of the Father access and permanent two-long-rope setup; eight Royal Trouble
+stepping-stone rows omit selecting and using a plank on the rocks; and six Regicide stick rows can
+fail and deal damage. These are explicit unsupported protocols, not migrated coverage or live-only
+deferrals, and may return only with the missing requirements, staging and recovery modelled.
+
+MCP-backed source-shape and zero-runtime-load tests cover each removed group. The classifier floor
+is now **366 legacy entries**: 343 ordinary `TRANSPORT` and 23 `TELEPORTATION_ITEM` entries.
+
+## Post-quest tunnels/caves and stale entrance cleanup - 2026-09-08
+
+Nineteen exact post-quest boundaries now use catalogue/NavigationEngine ownership. Seven tunnel
+rows cover the Ancient Pyramid rear (`Desert Treasure I=FINISHED`), the Miscellania dungeon pair
+(`Royal Trouble=FINISHED`), and four Lumbridge cave holes (`The Lost Tribe=FINISHED`). Four western
+Ice Troll Cave approaches require `The Fremennik Isles=FINISHED`, and four Myreque wooden-door
+routes require `In Search of the Myreque=FINISHED`. Every row is members-only and completes only at
+its directed landing.
+
+Fifteen invalid or incomplete entrance rows are retained as commented evidence but removed from
+the runtime graph: three eastern Ice Troll entrances contradict the documented post-quest western
+access, two Shade Catacombs doors omit the required shade-key contract, and 14 obsolete Brimhaven
+Dungeon rows use superseded object IDs while conflating the 875-coin payment, temporary opening and
+permanent-access states. The latter needs a dedicated current-object payment protocol rather than
+legacy data reuse. MCP-backed source-shape, policy, classifier and exact-landing tests pass. The
+classifier floor is now **398 legacy entries**: 375 ordinary `TRANSPORT` and 23
+`TELEPORTATION_ITEM` entries.
+
 ## Wintertodt gaps, Enakhra barriers, and ambiguous Kharazi cleanup - 2026-09-08
 
 All six Wintertodt pillar-gap routes now use exact catalogue/NavigationEngine ownership with 60

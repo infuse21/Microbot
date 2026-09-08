@@ -1574,17 +1574,16 @@
 2775 3234 1	2776 3235 0	Climb-down;Ship's ladder;9745									
 2808 3162 0	2808 3162 1	Climb-up;Ladder;16683								3	
 2808 3162 1	2808 3162 0	Climb-down;Ladder;16679								3	
-# Main Entrance - ID 20877
-# With coin requirement (875 coins for entry)
-2744 3154 0	2713 9564 0	Enter;Dungeon entrance;20877			875 Coins
-2744 3153 0	2713 9564 0	Enter;Dungeon entrance;20877			875 Coins
-2745 3154 0	2713 9564 0	Enter;Dungeon entrance;20877			875 Coins
-2743 3154 0	2713 9564 0	Enter;Dungeon entrance;20877			875 Coins
-# Permanent access (after paying 1.5m one-time fee)
-2744 3154 0	2713 9564 0	Enter;Dungeon entrance;20877
-2744 3153 0	2713 9564 0	Enter;Dungeon entrance;20877
-2745 3154 0	2713 9564 0	Enter;Dungeon entrance;20877
-2743 3154 0	2713 9564 0	Enter;Dungeon entrance;20877
+# DEFERRED: stale Brimhaven entrance object; current object 34713 requires
+# separate handling for 875-coin payment, temporary state and permanent access.
+# 2744 3154 0	2713 9564 0	Enter;Dungeon entrance;20877			875 Coins
+# 2744 3153 0	2713 9564 0	Enter;Dungeon entrance;20877			875 Coins
+# 2745 3154 0	2713 9564 0	Enter;Dungeon entrance;20877			875 Coins
+# 2743 3154 0	2713 9564 0	Enter;Dungeon entrance;20877			875 Coins
+# 2744 3154 0	2713 9564 0	Enter;Dungeon entrance;20877
+# 2744 3153 0	2713 9564 0	Enter;Dungeon entrance;20877
+# 2745 3154 0	2713 9564 0	Enter;Dungeon entrance;20877
+# 2743 3154 0	2713 9564 0	Enter;Dungeon entrance;20877
 # Exit from inside
 2713 9564 0	2744 3153 0	Leave;Exit;20878
 # Vines (axe IDs: bronze, iron, steel, black, mithril, adamant, rune, dragon, 3rd age, infernal, crystal)
@@ -2179,20 +2178,21 @@
 3611 3323 1	3611 3327 0	Climb-down;Staircase;39492									
 3599 3317 0	3603 3317 1	Climb-up;Staircase;39491									
 3603 3317 1	3599 3317 0	Climb-down;Staircase;39492									
-3667 3375 0	3670 3375 0	Climb;Wall;39542									
-3670 3375 0	3667 3375 0	Climb;Wall;39542									
-3670 3375 0	3673 3375 0	Climb;Wall;39541									
-3673 3375 0	3670 3375 0	Climb;Wall;39541									
-3672 3376 0	3670 3375 0	Climb;Wall;39541									
-3672 3374 0	3670 3375 0	Climb;Wall;39541									
+# Disabled: permanent two-long-rope Darkmeyer wall setup is not encoded.
+# 3667 3375 0	3670 3375 0	Climb;Wall;39542
+# 3670 3375 0	3667 3375 0	Climb;Wall;39542
+# 3670 3375 0	3673 3375 0	Climb;Wall;39541
+# 3673 3375 0	3670 3375 0	Climb;Wall;39541
+# 3672 3376 0	3670 3375 0	Climb;Wall;39541
+# 3672 3374 0	3670 3375 0	Climb;Wall;39541
 											
 # The Hollows											
 3480 9837 0	3480 9836 0	Search;Wall;5052									
 3480 9836 0	3480 9837 0	Search;Wall;5052									
-3500 9811 0	3509 3449 0	Open;Wooden doors;5056									
-3509 3449 0	3500 9811 0	Open;Wooden doors;5061									
-3501 9811 0	3509 3449 0	Open;Wooden doors;5057									
-3510 3449 0	3500 9811 0	Open;Wooden doors;5060									
+3500 9811 0	3509 3449 0	Open;Wooden doors;5056				In Search of the Myreque=FINISHED			Y	1
+3509 3449 0	3500 9811 0	Open;Wooden doors;5061				In Search of the Myreque=FINISHED			Y	1
+3501 9811 0	3509 3449 0	Open;Wooden doors;5057				In Search of the Myreque=FINISHED			Y	1
+3510 3449 0	3500 9811 0	Open;Wooden doors;5060				In Search of the Myreque=FINISHED			Y	1
 3481 9824 0	3466 9820 0	Enter;Cave entrance;5046									
 3466 9820 0	3481 9824 0	Enter;Cave entrance;5046									
 3460 9813 0	3447 9822 0	Enter;Cave entrance;16308									
@@ -2260,8 +2260,8 @@
 3809 9801 1	3809 9797 2	Climb-up;Stairs;37835									
 											
 # Ectofunctus											
-3672 3376 0	3670 3375 0	Climb;Wall;39541									
-3672 3374 0	3670 3375 0	Climb;Wall;39541									
+# 3672 3376 0	3670 3375 0	Climb;Wall;39541
+# 3672 3374 0	3670 3375 0	Climb;Wall;39541
 3666 3517 0	3666 3522 1	Climb-up;Staircase;16646									
 3666 3522 1	3666 3517 0	Climb-down;Staircase;16647									
 3667 3517 0	3667 3522 1	Climb-up;Staircase;16646									
@@ -2311,16 +2311,20 @@
 3612 3543 0	3614 3543 1	Climb-up;Ship's ladder;16111									
 3605 3545 1	3605 3548 0	Cross;Gangplank;16651								3	
 3605 3548 0	3605 3545 1	Cross;Gangplank;16652								3	
-3604 3550 0	3602 3550 0	Jump-To;Rock;16115									
-3602 3550 0	3604 3550 0	Jump-To;Rock;16115									
-3599 3552 0	3597 3552 0	Jump-To;Rock;16115									
-3597 3552 0	3599 3552 0	Jump-To;Rock;16115									
-3595 3554 0	3595 3556 0	Jump-To;Rock;16115									
-3595 3556 0	3595 3554 0	Jump-To;Rock;16115									
-3597 3559 0	3597 3561 0	Jump-To;Rock;16115									
-3597 3561 0	3597 3559 0	Jump-To;Rock;16115									
-3599 3564 0	3601 3564 0	Jump-To;Rock;16115									
-3601 3564 0	3599 3564 0	Jump-To;Rock;16115									
+# DEFERRED: OSRS Wiki Rock (wrecked ghost ship) identifies this as a members
+# Ghosts Ahoy quest path requiring 25 Agility; no item requirement is listed.
+# Each jump drains 5% run energy and failures cross but deal damage and award no XP;
+# route-wide dynamic energy and failure handling is not owned by the walker yet.
+# 3604 3550 0	3602 3550 0	Jump-To;Rock;16115
+# 3602 3550 0	3604 3550 0	Jump-To;Rock;16115
+# 3599 3552 0	3597 3552 0	Jump-To;Rock;16115
+# 3597 3552 0	3599 3552 0	Jump-To;Rock;16115
+# 3595 3554 0	3595 3556 0	Jump-To;Rock;16115
+# 3595 3556 0	3595 3554 0	Jump-To;Rock;16115
+# 3597 3559 0	3597 3561 0	Jump-To;Rock;16115
+# 3597 3561 0	3597 3559 0	Jump-To;Rock;16115
+# 3599 3564 0	3601 3564 0	Jump-To;Rock;16115
+# 3601 3564 0	3599 3564 0	Jump-To;Rock;16115
 											
 # Fenkenstrain's Castle											
 3559 3550 0	3559 3554 1	Climb-up;Staircase;5206									
@@ -3436,7 +3440,7 @@
 2845 4963 2	2909 4965 3	Climb-up;Ladder;6503								2	
 2909 4963 3	2846 4964 2	Climb-down;Ladder;6498								2	
 2844 4964 2	2909 4965 3	Climb-up;Ladder;6503								2	
-3233 2887 0	3233 9313 0	Enter;Tunnel;6481									
+3233 2887 0	3233 9313 0	Enter;Tunnel;6481				Desert Treasure I=FINISHED			Y	1
 3233 9323 0	3233 9325 0	Open;Doorway;6555									
 3233 9325 0	3233 9323 0	Open;Doorway;6555									
 3234 9323 0	3234 9325 0	Open;Doorway;6553									
@@ -3653,8 +3657,9 @@
 3502 3425 0	3502 3432 0	Cross-bridge;Tree;5003									
 3503 3431 0	3502 3425 0	Cross-bridge;Tree;5003									
 3501 3426 0	3502 3432 0	Cross-bridge;Tree;5003									
-3485 3322 0	3493 9725 0	Open;Wooden doors;4132								1	
-3484 3322 0	3493 9725 0	Open;Wooden doors;4133								1	
+# DEFERRED: Shade Catacombs entry requires a shade key; these rows omit that item gate.
+# 3485 3322 0	3493 9725 0	Open;Wooden doors;4132
+# 3484 3322 0	3493 9725 0	Open;Wooden doors;4133
 3493 9726 0	3485 3322 0	Open;Solid bronze door;17900								1	
 # Burgh de Rott											
 3484 3244 0	3484 3243 0	Open;Gate;12817									
@@ -4089,18 +4094,19 @@
 2507 10288 0	2509 10288 1	Use-Lift;Platform;15239									
 2509 10288 1	2507 10288 0	Use-Lift;Lift Platform;15242									
 2508 10289 0	2509 10288 1	Use-Lift;Platform;15239									
-2510 10287 1	2514 10291 0	Enter;Tunnel;15188									
-2514 10291 0	2510 10287 1	Enter;Tunnel;15189									
+2510 10287 1	2514 10291 0	Enter;Tunnel;15188				Royal Trouble=FINISHED			Y	1
+2514 10291 0	2510 10287 1	Enter;Tunnel;15189				Royal Trouble=FINISHED			Y	1
 2539 10299 0	2543 10299 0	Swing-on;Ropeswing;15252									
 2540 10296 0	2536 10296 0	Swing-on;Ropeswing;15216									
-2549 10288 0	2547 10288 0	Use;Plank -> Rocks;15213									
-2547 10288 0	2549 10288 0	Use;Plank -> Rocks;15213									
-2546 10287 0	2544 10287 0	Use;Plank -> Rocks;15213									
-2544 10287 0	2546 10287 0	Use;Plank -> Rocks;15213									
-2543 10287 0	2541 10287 0	Use;Plank -> Rocks;15213									
-2541 10287 0	2543 10287 0	Use;Plank -> Rocks;15213									
-2540 10286 0	2538 10286 0	Use;Plank -> Rocks;15213									
-2538 10286 0	2540 10286 0	Use;Plank -> Rocks;15213									
+# DEFERRED: Royal Trouble stepping stones require a plank item-on-rocks protocol.
+# 2549 10288 0	2547 10288 0	Use;Plank -> Rocks;15213
+# 2547 10288 0	2549 10288 0	Use;Plank -> Rocks;15213
+# 2546 10287 0	2544 10287 0	Use;Plank -> Rocks;15213
+# 2544 10287 0	2546 10287 0	Use;Plank -> Rocks;15213
+# 2543 10287 0	2541 10287 0	Use;Plank -> Rocks;15213
+# 2541 10287 0	2543 10287 0	Use;Plank -> Rocks;15213
+# 2540 10286 0	2538 10286 0	Use;Plank -> Rocks;15213
+# 2538 10286 0	2540 10286 0	Use;Plank -> Rocks;15213
 2585 10259 0	2585 10262 0	Squeeze-through;Crevice;15194									
 2585 10262 0	2585 10259 0	Squeeze-through;Crevice;15195									
 2618 10266 0	2620 3864 0	Climb-up;Exit;15193							Y
@@ -4193,15 +4199,16 @@
 2397 3814 0	2405 10188 0	Climb-down;Staircase;21455								1	
 2396 3813 0	2405 10188 0	Climb-down;Staircase;21455								1	
 2396 3812 0	2405 10188 0	Climb-down;Staircase;21455								1	
-2317 3893 0	2420 10279 1	Open;Cave;21585									
+2317 3893 0	2420 10279 1	Open;Cave;21585				The Fremennik Isles=FINISHED			Y	1
 2421 10278 1	2319 3892 0	Climb-up;Stone ladder;21592									
-2318 3894 0	2420 10279 1	Open;Cave;21585									
+2318 3894 0	2420 10279 1	Open;Cave;21585				The Fremennik Isles=FINISHED			Y	1
 2420 10279 1	2319 3892 0	Climb-up;Stone ladder;21592									
-2316 3893 0	2420 10279 1	Open;Cave;21585									
-2315 3894 0	2420 10279 1	Open;Cave;21585									
-2400 3889 0	2394 10300 1	Open;Cave;21584				The Fremennik Isles
-2401 3888 0	2394 10300 1	Open;Cave;21584				The Fremennik Isles
-2403 3889 0	2394 10300 1	Open;Cave;21584				The Fremennik Isles
+2316 3893 0	2420 10279 1	Open;Cave;21585				The Fremennik Isles=FINISHED			Y	1
+2315 3894 0	2420 10279 1	Open;Cave;21585				The Fremennik Isles=FINISHED			Y	1
+# DEFERRED: post-quest Ice Troll Caves access is western-entrance only.
+# 2400 3889 0	2394 10300 1	Open;Cave;21584
+# 2401 3888 0	2394 10300 1	Open;Cave;21584
+# 2403 3889 0	2394 10300 1	Open;Cave;21584
 2398 10258 1	2393 10258 1	Walk-across;Rope bridge;21318									
 2393 10258 1	2398 10258 1	Walk-across;Rope bridge;21319									
 2385 10259 1	2385 10264 1	Walk-across;Rope bridge;21317									
@@ -4716,10 +4723,10 @@
 2736 3580 0	2736 3580 1	Climb-up;Staircase;25682									
 											
 # Lumbridge basement / cavern											
-3219 9618 0	3221 9618 0	Squeeze-through;Hole;6898				The Lost Tribe
-3221 9618 0	3219 9618 0	Squeeze-through;Hole;6899				The Lost Tribe
-3224 9604 0	3224 9600 0	Squeeze-through;Hole;6912									
-3224 9600 0	3224 9604 0	Squeeze-through;Hole;6912									
+3219 9618 0	3221 9618 0	Squeeze-through;Hole;6898				The Lost Tribe=FINISHED			Y	1
+3221 9618 0	3219 9618 0	Squeeze-through;Hole;6899				The Lost Tribe=FINISHED			Y	1
+3224 9604 0	3224 9600 0	Squeeze-through;Hole;6912				The Lost Tribe=FINISHED			Y	1
+3224 9600 0	3224 9604 0	Squeeze-through;Hole;6912				The Lost Tribe=FINISHED			Y	1
 3226 9542 0	3219 9532 2	Enter;Tunnel;6659									
 3219 9532 2	3226 9542 0	Enter;Tunnel;6658									
 3317 9603 0	2748 5374 0	Open;Door;6919				Death to the Dorgeshuun					
@@ -4940,8 +4947,9 @@
 2188 3165 0	2188 3162 0	Enter;Dense forest;3999									
 2188 3168 0	2188 3165 0	Enter;Dense forest;3939									
 2188 3171 0	2188 3168 0	Enter;Dense forest;3998									
-2199 3169 0	2202 3169 0	Pass;Sticks;3922									
-2202 3169 0	2199 3169 0	Pass;Sticks;3922									
+# DEFERRED: Regicide sticks can damage and fail; requirements and recovery semantics are absent.
+# 2199 3169 0	2202 3169 0	Pass;Sticks;3922
+# 2202 3169 0	2199 3169 0	Pass;Sticks;3922
 2217 3169 0	2217 3166 0	Enter;Dense forest;3939									
 2217 3166 0	2217 3163 0	Enter;Dense forest;3938									
 2217 3163 0	2217 3160 0	Enter;Dense forest;3939									
@@ -4960,8 +4968,8 @@
 2240 3149 0	2237 3149 0	Enter;Dense forest;3939									
 2274 3172 0	2274 3176 0	Jump;Leaves;3925									
 2274 3176 0	2274 3172 0	Jump;Leaves;3925									
-2234 3181 0	2238 3181 0	Pass;Sticks;3922									
-2238 3181 0	2234 3181 0	Pass;Sticks;3922									
+# 2234 3181 0	2238 3181 0	Pass;Sticks;3922
+# 2238 3181 0	2234 3181 0	Pass;Sticks;3922
 2238 3219 0	2235 3219 0	Enter;Dense forest;3939									
 2235 3219 0	2232 3219 0	Enter;Dense forest;3937									
 2232 3219 0	2229 3219 0	Enter;Dense forest;3939									
@@ -4998,8 +5006,8 @@
 2290 3239 0	2290 3232 0	Cross;Log balance;3933	45 Agility			Regicide=IN_PROGRESS
 2294 3242 0	2294 3245 0	Step-over;Tripwire;3921									
 2294 3245 0	2294 3242 0	Step-over;Tripwire;3921									
-2295 3215 0	2295 3217 0	Pass;Sticks;3922									
-2295 3217 0	2295 3215 0	Pass;Sticks;3922									
+# 2295 3215 0	2295 3217 0	Pass;Sticks;3922
+# 2295 3217 0	2295 3215 0	Pass;Sticks;3922
 2279 3221 0	2279 3225 0	Enter;Dense forest;3938									
 2279 3225 0	2279 3228 0	Enter;Dense forest;3937									
 2279 3228 0	2279 3231 0	Enter;Dense forest;3939									
@@ -5596,12 +5604,12 @@
 1361 3309 0	1486 3232 0	Follow;Mountain Guide;14529					17226=1			5	
 3280 3412 0	1700 3141 0	Travel;Primio;12888				Children of the Sun				6	Civitas illa Fortis
 1703 3140 0	3280 3412 0	Travel;Primio;12889				Children of the Sun				6	Varrock
-2744 3152 0	2713 9564 0	Enter;Dungeon entrance;20876			875 Coins					2	
-2744 3152 0	2713 9564 0	Enter;Dungeon entrance;20876					5628=1			2	
-2745 3152 0	2713 9564 0	Enter;Dungeon entrance;20876			875 Coins					2	
-2745 3152 0	2713 9564 0	Enter;Dungeon entrance;20876					5628=1			2	
-2746 3152 0	2713 9564 0	Enter;Dungeon entrance;20876			875 Coins					2	
-2746 3152 0	2713 9564 0	Enter;Dungeon entrance;20876					5628=1			2	
+# 2744 3152 0	2713 9564 0	Enter;Dungeon entrance;20876			875 Coins					2
+# 2744 3152 0	2713 9564 0	Enter;Dungeon entrance;20876					5628=1			2
+# 2745 3152 0	2713 9564 0	Enter;Dungeon entrance;20876			875 Coins					2
+# 2745 3152 0	2713 9564 0	Enter;Dungeon entrance;20876					5628=1			2
+# 2746 3152 0	2713 9564 0	Enter;Dungeon entrance;20876			875 Coins					2
+# 2746 3152 0	2713 9564 0	Enter;Dungeon entrance;20876					5628=1			2
 2713 9564 0	2745 3152 0	Leave;exit;20878								2	
 2835 2987 0	2835 2987 1	Climb-up;Ladder;16684								2	
 2835 2987 1	2835 2987 0	Climb-down;Ladder;16679								2	
