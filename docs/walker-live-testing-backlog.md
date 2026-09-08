@@ -21,6 +21,15 @@ additive totals; source rows, generated edges and duplicated approaches must not
 
 ## Latest work versus earlier headless batches
 
+### Ferox, Wilderness Slayer and Isle of Souls opening exits - 2026-09-08
+
+- **Headless:** all 11 exact members-only `Exit;Opening` rows are engine-owned: three Ferox
+  Enclave dungeon rows, seven Wilderness Slayer Cave rows and one Isle of Souls Dungeon row. Nine
+  missing members flags were corrected, and exact directed keys retain each remote surface landing.
+- **Live pending:** exit each dungeon family once and verify one exact interaction, the expected
+  surface landing, recovery from combat/external movement where applicable, and no legacy handoff.
+  Use an intentionally minimal loadout for the Wilderness Slayer Cave test.
+
 ### Karamja Volcano entrance and return transitions - 2026-09-08
 
 - **Headless:** all eight exact surface `Climb-down;Rocks;11441` rows and all four dungeon

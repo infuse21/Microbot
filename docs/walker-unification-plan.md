@@ -21,6 +21,22 @@ headless batches, outstanding branches of representative live passes, and contra
 implementation. As of 2026-09-06 the user requests headless-first progress; deferred physical tests
 remain open rather than blocking each batch or being silently marked complete.
 
+## Ferox, Wilderness Slayer and Isle of Souls opening exits - 2026-09-08
+
+All 11 exact `Exit;Opening` rows now use catalogue/NavigationEngine ownership: three Ferox Enclave
+dungeon approaches to object 39648, seven Wilderness Slayer Cave approaches to objects 40389/
+40391, and one Isle of Souls Dungeon approach to object 40737. OSRS Wiki MCP identifies all three
+dungeons as members content and the cache names tie each object ID to its named exit. Nine rows
+whose members flag was absent are corrected; no item, currency, skill, quest or state requirement
+is invented.
+
+The exact directed keys keep these long-distance exits separate from unrelated objects named
+Opening, and only the selected surface landing acknowledges each interaction. Focused policy,
+scanner, route-publication and classifier tests pass. The classifier floor is now **1,031 legacy
+entries**: 665 ordinary `TRANSPORT`, 10 `AGILITY_SHORTCUT`, 38 `TELEPORTATION_ITEM` and 318
+`WILDERNESS_OBELISK` entries. Representative Ferox, Wilderness Slayer and Isle of Souls exits—
+including combat/external-movement recovery—remain live-deferred, so Phase 6 remains open.
+
 ## Karamja Volcano entrance and return transitions - 2026-09-08
 
 All 12 exact Karamja Volcano surface/dungeon transitions now use catalogue/NavigationEngine

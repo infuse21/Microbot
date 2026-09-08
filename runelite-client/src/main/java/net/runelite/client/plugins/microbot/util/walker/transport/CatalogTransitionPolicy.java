@@ -354,6 +354,18 @@ public final class CatalogTransitionPolicy
 		"2856,9568,0->2856,3167,0|18969|climb|climbing rope",
 		"2856,9570,0->2856,3167,0|18969|climb|climbing rope",
 		"2857,9569,0->2856,3167,0|18969|climb|climbing rope");
+	private static final Set<String> OPENING_EXIT_ROUTES = Set.of(
+		"3164,10044,0->3152,3644,0|39648|exit|opening",
+		"3164,10043,0->3152,3644,0|39648|exit|opening",
+		"3164,10042,0->3152,3644,0|39648|exit|opening",
+		"3385,10052,0->3259,3663,0|40389|exit|opening",
+		"3406,10145,0->3293,3749,0|40391|exit|opening",
+		"2167,9308,0->2310,2919,0|40737|exit|opening",
+		"3384,10052,0->3259,3663,0|40389|exit|opening",
+		"3386,10052,0->3259,3663,0|40389|exit|opening",
+		"3405,10145,0->3294,3749,0|40391|exit|opening",
+		"3406,10145,0->3294,3749,0|40391|exit|opening",
+		"3407,10145,0->3294,3749,0|40391|exit|opening");
 	private static final Set<Integer> MOR_UL_REK_CAPE_IDS = Set.of(6570, 13329, 24134, 24223);
 	private static final Set<Set<Integer>> MOR_UL_REK_CAPES = Set.of(MOR_UL_REK_CAPE_IDS);
 	private static final int GUARDIANS_OF_THE_RIFT_BARRIER_ID = 43700;
@@ -643,6 +655,7 @@ public final class CatalogTransitionPolicy
 			|| isGuardiansOfTheRiftBarrier(transport, action, name)
 			|| isMorUlRekHotVentDoor(transport)
 			|| isKaramjaVolcanoTransition(transport)
+			|| isOpeningExitTransition(transport)
 			|| "pass".equals(action) && "barrier".equals(name)
 				&& transport.getObjectId() == 32153
 			|| "enter".equals(action) && "dense forest".equals(name)
@@ -710,6 +723,22 @@ public final class CatalogTransitionPolicy
 			return false;
 		}
 		return KARAMJA_VOLCANO_ROUTES.contains(routeKey(transport,
+			normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
+	}
+
+	static boolean isOpeningExitTransition(Transport transport)
+	{
+		if (transport == null || transport.getType() != TransportType.TRANSPORT
+			|| transport.getOrigin() == null || transport.getDestination() == null
+			|| transport.isConsumable() || transport.getCurrencyAmount() != 0
+			|| transport.isQuestLocked() || !transport.getVarbits().isEmpty()
+			|| !transport.getVarplayers().isEmpty() || !transport.isMembers()
+			|| !transport.getItemIdRequirements().isEmpty()
+			|| java.util.Arrays.stream(transport.getSkillLevels()).anyMatch(level -> level != 0))
+		{
+			return false;
+		}
+		return OPENING_EXIT_ROUTES.contains(routeKey(transport,
 			normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
 	}
 

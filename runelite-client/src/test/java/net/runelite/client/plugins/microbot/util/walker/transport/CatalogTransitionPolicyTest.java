@@ -156,6 +156,28 @@ public class CatalogTransitionPolicyTest
 	}
 
 	@Test
+	public void acceptsAllExactMembersOnlyOpeningExitRows()
+	{
+		Set<Integer> objectIds = Set.of(39648, 40389, 40391, 40737);
+		java.util.List<Transport> rows = Transport.loadAllFromResources().values().stream()
+			.flatMap(java.util.Collection::stream)
+			.filter(row -> objectIds.contains(row.getObjectId()))
+			.filter(row -> "Exit".equals(row.getAction()) && "Opening".equals(row.getName()))
+			.collect(java.util.stream.Collectors.toList());
+		assertEquals(11, rows.size());
+		assertTrue(rows.stream().allMatch(CatalogTransitionPolicy::isOpeningExitTransition));
+		assertTrue(rows.stream().allMatch(CatalogTransitionPolicy::isEligible));
+		assertTrue(rows.stream().allMatch(row -> row.isMembers() && !row.isConsumable()
+			&& row.getItemIdRequirements().isEmpty() && row.getCurrencyAmount() == 0
+			&& !row.isQuestLocked() && row.getVarbits().isEmpty() && row.getVarplayers().isEmpty()));
+
+		Transport exit = rows.get(0);
+		Transport freeWorldCopy = new Transport(exit.getOrigin(), exit.getDestination(),
+			exit.getDisplayInfo(), exit.getType(), false, exit.getAction(), exit.getName(), exit.getObjectId());
+		assertFalse(CatalogTransitionPolicy.isOpeningExitTransition(freeWorldCopy));
+	}
+
+	@Test
 	public void acceptsOnlyExactItemFreeOrdinaryDirectContracts()
 	{
 		assertTrue(CatalogTransitionPolicy.isEligible(transport(SURFACE,

@@ -380,10 +380,10 @@
 3142 3625 1	3142 3625 2	Climb-up;Ladder;14745								2	
 3142 3625 2	3142 3625 1	Climb-down;Ladder;14746								2	
 3152 3644 0	3164 10043 0	Walk-down;Stairs;39647								1	
-3164 10044 0	3152 3644 0	Exit;Opening;39648								1	
+3164 10044 0	3152 3644 0	Exit;Opening;39648							Y	1
 3152 3643 0	3164 10043 0	Walk-down;Stairs;39647								1	
-3164 10043 0	3152 3644 0	Exit;Opening;39648								1	
-3164 10042 0	3152 3644 0	Exit;Opening;39648								1	
+3164 10043 0	3152 3644 0	Exit;Opening;39648							Y	1
+3164 10042 0	3152 3644 0	Exit;Opening;39648							Y	1
 3154 3635 0	3155 3635 0	Pass-Through;Barrier;39653								6	
 3155 3635 0	3154 3635 0	Pass-Through;Barrier;39653								6	
 3154 3634 0	3155 3634 0	Pass-Through;Barrier;39652								6	
@@ -5285,7 +5285,7 @@
 
 # Isle of Souls
 2310 2919 0	2167 9308 0	Enter;Cave;40736
-2167 9308 0	2310 2919 0	Exit;Opening;40737
+2167 9308 0	2310 2919 0	Exit;Opening;40737							Y
 2763 2951 0	2763 2951 1	Climb-up;Ladder;16683
 2763 2952 1	2763 2951 0	Climb-down;Ladder;16679
 # woodcutting guild
@@ -5446,11 +5446,11 @@
 3339 3523 0	3339 3520 0	Cross;Wilderness Ditch;23271								4	
 3340 3520 0	3340 3523 0	Cross;Wilderness Ditch;23271								4	
 3340 3523 0	3340 3520 0	Cross;Wilderness Ditch;23271								4	
-3384 10052 0	3259 3663 0	Exit;Opening;40389								2	
-3386 10052 0	3259 3663 0	Exit;Opening;40389								2	
-3405 10145 0	3294 3749 0	Exit;Opening;40391								2	
-3406 10145 0	3294 3749 0	Exit;Opening;40391								2	
-3407 10145 0	3294 3749 0	Exit;Opening;40391								2	
+3384 10052 0	3259 3663 0	Exit;Opening;40389							Y	2
+3386 10052 0	3259 3663 0	Exit;Opening;40389							Y	2
+3405 10145 0	3294 3749 0	Exit;Opening;40391							Y	2
+3406 10145 0	3294 3749 0	Exit;Opening;40391							Y	2
+3407 10145 0	3294 3749 0	Exit;Opening;40391							Y	2
 3067 3739 0	3187 10127 0	Jump-down;Crevice;40386								2	
 3068 3739 0	3187 10127 0	Jump-down;Crevice;40386								2	
 3217 10058 0	3102 3655 0	Climb-up;Stairs;31558								2	

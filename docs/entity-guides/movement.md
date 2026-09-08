@@ -1939,3 +1939,16 @@ Preserve the requirements of the boundary actually being crossed. The public vol
 no item, skill, quest, currency or members gate; the Dragon Slayer restriction belongs deeper on
 the Crandor route and must not be inferred from the wider dungeon. Keep NavigationEngine ownership
 through the plane change and acknowledge only the selected surface or dungeon landing.
+
+## 104. Correct access metadata before migrating a direct dungeon exit
+
+A direct exit can have trivial interaction mechanics while still belonging to members-only
+content. Verify both facts independently: cache object names establish that an ID is the expected
+exit, while location documentation establishes the world/access gate. Do not preserve a missing
+members flag merely because the legacy walker previously filtered or executed the row elsewhere.
+
+Ferox Enclave Dungeon, the Wilderness Slayer Cave and the Isle of Souls Dungeon all expose direct
+`Exit;Opening` objects, but their exits lead to different remote surface coordinates and risk
+profiles. Freeze every directed route, retain the members requirement, and acknowledge only the
+chosen landing. The Wilderness location changes live-testing precautions; it does not justify a
+different ownership lifecycle or a fabricated item requirement.
