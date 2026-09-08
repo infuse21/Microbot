@@ -25,16 +25,14 @@ public class FremennikBridgeTransportTest
 	}
 
 	@Test
-	public void surfaceCrossingsAreOwnedButBossCaveRemainsDeferred()
+	public void allRemainingSurfaceCrossingsAreOwned()
 	{
 		List<Transport> rows = rows();
-		assertEquals(15, rows.size());
-		assertEquals(10, rows.stream().filter(row -> row.getObjectId() <= 21315).count());
+		assertEquals(10, rows.size());
 		for (Transport row : rows)
 		{
-			assertEquals(row.getObjectId() <= 21315 ? RouteEdge.Kind.CATALOG_TRANSITION : RouteEdge.Kind.TRANSPORT,
+			assertEquals(RouteEdge.Kind.CATALOG_TRANSITION,
 				PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(row)));
-			if (row.getObjectId() > 21315) continue;
 			assertEquals("Walk-across", row.getAction());
 			Transport foreign = new Transport(new WorldPoint(100, 100, 0), row.getDestination(),
 				"", row.getType(), true, row.getAction(), row.getName(), row.getObjectId());
@@ -47,7 +45,6 @@ public class FremennikBridgeTransportTest
 	{
 		for (Transport row : rows())
 		{
-			if (row.getObjectId() > 21315) continue;
 			boolean shortcut = row.getObjectId() >= 21314;
 			assertEquals(shortcut ? 40 : 0, row.getSkillLevels()[Skill.AGILITY.ordinal()]);
 			if (shortcut)
@@ -64,7 +61,6 @@ public class FremennikBridgeTransportTest
 		CatalogTransitionRouteScanner scanner = new CatalogTransitionRouteScanner();
 		for (Transport row : rows())
 		{
-			if (row.getObjectId() > 21315) continue;
 			WorldPoint from = row.getOrigin();
 			WorldPoint to = row.getDestination();
 			RouteInteraction pending = new RouteInteraction(1, 0, from, to, from,

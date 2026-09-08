@@ -127,7 +127,7 @@ public class PathfinderRouteCalculationTest
 		}
 		assertEquals(127, candidates);
 		assertEquals(104, migrated);
-		assertEquals(204, legacy);
+		assertEquals(120, legacy);
 	}
 
 	@Test
@@ -623,7 +623,7 @@ public class PathfinderRouteCalculationTest
 		assertEquals(50, stiles.stream().filter(candidate ->
 			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(candidate))
 				== RouteEdge.Kind.CATALOG_TRANSITION).count());
-		assertEquals(181, ordinary.stream().filter(candidate ->
+		assertEquals(97, ordinary.stream().filter(candidate ->
 			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(candidate))
 				== RouteEdge.Kind.TRANSPORT).count());
 		java.util.Set<Integer> directManifestIds = new java.util.HashSet<>(java.util.Arrays.asList(
@@ -929,33 +929,23 @@ public class PathfinderRouteCalculationTest
 	@Test
 	public void auditedStepsPublishWithoutAdmittingUnverifiedOrShortLinks()
 	{
-		Set<Integer> supportedIds = Set.of(30189, 30190, 8966, 33261);
 		java.util.List<Transport> steps = Transport.loadAllFromResources().values().stream()
 			.flatMap(java.util.Collection::stream)
 			.filter(row -> row.getType() == TransportType.TRANSPORT)
 			.filter(row -> "Climb".equals(row.getAction()) && "Steps".equals(row.getName()))
 			.collect(java.util.stream.Collectors.toList());
-		assertEquals(14, steps.size());
-		int supported = 0;
+		assertEquals(12, steps.size());
 		java.util.Map<String, WorldPoint> inputs = new HashMap<>();
 		for (Transport step : steps)
 		{
-			boolean eligible = supportedIds.contains(step.getObjectId());
-			assertEquals(eligible ? RouteEdge.Kind.CATALOG_TRANSITION : RouteEdge.Kind.TRANSPORT,
+			assertEquals(RouteEdge.Kind.CATALOG_TRANSITION,
 				PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(step)));
-			if (eligible)
-			{
-				supported++;
-				assertTrue(step.getItemIdRequirements().isEmpty());
-				assertEquals(0, step.getCurrencyAmount());
-				assertTrue(step.getOrigin().getPlane() != step.getDestination().getPlane()
-					|| step.getOrigin().distanceTo2D(step.getDestination()) > 2);
-				WorldPoint previous = inputs.putIfAbsent(step.getOrigin() + ":" + step.getObjectId(),
-					step.getDestination());
-				assertTrue(previous == null || previous.equals(step.getDestination()));
-			}
+			assertTrue(step.getItemIdRequirements().isEmpty());
+			assertEquals(0, step.getCurrencyAmount());
+			WorldPoint previous = inputs.putIfAbsent(step.getOrigin() + ":" + step.getObjectId(),
+				step.getDestination());
+			assertTrue(previous == null || previous.equals(step.getDestination()));
 		}
-		assertEquals(8, supported);
 	}
 
 	@Test

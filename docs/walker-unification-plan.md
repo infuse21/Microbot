@@ -21,6 +21,25 @@ headless batches, outstanding branches of representative live passes, and contra
 implementation. As of 2026-09-06 the user requests headless-first progress; deferred physical tests
 remain open rather than blocking each batch or being silently marked complete.
 
+## Steps, access routes and audited shortcut cleanup - 2026-09-08
+
+The latest combined audit reduces the production classifier from 181 to **97** remaining ordinary
+`TRANSPORT` entries; the 23 deferred `TELEPORTATION_ITEM` entries are unchanged, for **120 total**.
+Exact NavigationEngine catalogue ownership now covers the audited Steps, Shayzien handholds,
+Jiggig and Grimstone/Grim Tales obstacles; Brimhaven, Miscellania and Troll Stronghold shortcuts;
+Another Slice station doorways, Quetzacalli gates, Draynor bookcases, Troll exits and Ardougne
+pick-lock doors; plus Mountain Camp rockslides, Crabclaw sand exits, the Myreque low fence and
+Guardians of the Rift rubble. The one-tile low-fence row is deliberately admitted before the
+generic scene-distance guard while still requiring its exact directed route and landing.
+
+OSRS Wiki MCP evidence pins the Mountain Daughter, Royal Trouble, Troll Stronghold, Zogre Flesh
+Eaters, Another Slice of H.A.M., Temple of the Eye and agility requirements used by these rows.
+Rows whose safe protocol is still absent remain source-disabled, including task-only Wyvern steps,
+blocking Jiggig barricades, setup-dependent bridges/ropes, quest-time trapdoors/prison doors,
+failure-prone Lighthouse and Karamja shortcuts, and shadow duplicates already represented by the
+agility catalogue. Focused policy, source-shape, config-toggle, exact-landing and classifier tests
+cover this headless batch; none of these physical traversals is newly live-accepted.
+
 ## Audited boundary, boss-exit and unsafe-access cleanup - 2026-09-08
 
 Twenty-five exact ordinary transitions now use NavigationEngine catalogue ownership: four Mort

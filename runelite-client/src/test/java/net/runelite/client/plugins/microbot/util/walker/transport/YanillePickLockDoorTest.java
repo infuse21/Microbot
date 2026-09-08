@@ -63,7 +63,7 @@ public class YanillePickLockDoorTest
 			.filter(candidate -> "Pick-lock".equals(candidate.getAction()) && candidate.getObjectId() != 11728)
 			.collect(Collectors.toList());
 		assertEquals(2, ardougne.size());
-		ardougne.forEach(candidate -> assertFalse(AdjacentTransportPolicy.isEligible(candidate)));
+		ardougne.forEach(candidate -> assertTrue(AdjacentTransportPolicy.isEligible(candidate)));
 	}
 
 	@Test

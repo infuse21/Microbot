@@ -1597,6 +1597,9 @@ public class PathfinderConfig {
 				&& "Walk-across".equalsIgnoreCase(transport.getAction())) {
 				type = TransportType.AGILITY_SHORTCUT;
 		} else if (type == TransportType.TRANSPORT
+				&& CatalogTransitionPolicy.isAuditedShortcutTraversal(transport)) {
+			type = TransportType.AGILITY_SHORTCUT;
+		} else if (type == TransportType.TRANSPORT
 				&& ((MEIYERDITCH_FLOORBOARD_IDS.contains(transport.getObjectId())
 						&& "Floorboards".equalsIgnoreCase(transport.getName())
 						&& "Jump-to".equalsIgnoreCase(transport.getAction()))

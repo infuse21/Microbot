@@ -160,6 +160,39 @@ public final class CatalogTransitionPolicy
 	private static final Set<String> CRASH_SITE_OPENING_ROUTES = Set.of(
 		"2435,3519,0->1987,5568,0|28807|passthrough|opening",
 		"1987,5568,0->2435,3519,0|28807|passthrough|opening");
+	private static final Set<String> AUDITED_STEPS_AND_CLIMB_ROUTES = Set.of(
+		"2903,9813,1->2906,9813,0|30190|climb|steps",
+		"2906,9813,0->2903,9813,1|30189|climb|steps",
+		"2883,9825,0->2880,9825,1|30189|climb|steps",
+		"2880,9825,1->2883,9825,0|30190|climb|steps",
+		"2442,10146,0->2523,3740,0|8966|climb|steps",
+		"2468,10403,0->2471,10403,0|37417|climb|steps",
+		"2471,10403,0->2468,10403,0|37417|climb|steps",
+		"2845,10351,0->2869,3941,0|33261|climb|steps",
+		"2844,10351,0->2869,3941,0|33261|climb|steps",
+		"2846,10351,0->2869,3941,0|33261|climb|steps",
+		"2703,9991,0->2703,9989,0|29993|climb|steps",
+		"2703,9989,0->2703,9991,0|29993|climb|steps",
+		"1475,3687,0->1470,3687,0|27362|climb|handholds",
+		"1470,3687,0->1475,3687,0|42009|climb|handholds",
+		"1460,3690,0->1456,3690,0|27362|climb|handholds",
+		"1456,3690,0->1460,3690,0|42009|climb|handholds",
+		"2455,3049,0->2457,3049,0|6881|climbover|crushed barricade",
+		"2457,3049,0->2455,3049,0|6881|climbover|crushed barricade",
+		"2455,3048,0->2457,3048,0|6882|climbover|crushed barricade",
+		"2902,10454,0->2902,10456,0|60120|climb|uneven stone ledges",
+		"2902,10456,0->2902,10454,0|60120|climb|uneven stone ledges",
+		"2970,3462,0->2972,3462,0|24749|climbover|crumbling wall",
+		"2972,3462,0->2970,3462,0|24749|climbover|crumbling wall");
+	private static final Set<String> AUDITED_MISC_BOUNDARY_ROUTES = Set.of(
+		"2761,3657,0->2761,3660,0|5847|climbover|rockslide",
+		"2761,3660,0->2761,3657,0|5847|climbover|rockslide",
+		"1646,9848,0->1643,3450,0|31691|climb|sand pile",
+		"1647,9848,0->1643,3450,0|31691|climb|sand pile",
+		"3474,3221,0->3473,3221,0|12776|jumpover|low fence",
+		"3473,3221,0->3475,3221,0|12776|jumpover|low fence",
+		"3633,9503,0->3637,9503,0|43724|climb|rubble",
+		"3637,9503,0->3633,9503,0|43726|climb|rubble");
 	private static final Set<String> SWAN_SONG_HOLE_ROUTES = Set.of(
 		"2344,3650,0->2344,3655,0|12656|enter|hole",
 		"2344,3655,0->2344,3650,0|12656|enter|hole");
@@ -246,6 +279,17 @@ public final class CatalogTransitionPolicy
 		"2343,3820,0->2343,3829,0|21308|walkacross|rope bridge",
 		"2317,3823,0->2317,3832,0|21306|walkacross|rope bridge",
 		"2317,3832,0->2317,3823,0|21307|walkacross|rope bridge");
+	private static final Set<String> AUDITED_SHORTCUT_ROUTES = Set.of(
+		"2698,9500,0->2698,9492,0|21727|squeezethrough|pipe",
+		"2698,9492,0->2698,9500,0|21727|squeezethrough|pipe",
+		"2709,3209,0->2704,3209,0|23568|swingon|ropeswing",
+		"2705,3205,0->2709,3205,0|23569|swingon|ropeswing",
+		"2505,10280,0->2505,10283,0|15186|squeezethrough|crevice",
+		"2505,10283,0->2505,10280,0|15187|squeezethrough|crevice",
+		"2585,10259,0->2585,10262,0|15194|squeezethrough|crevice",
+		"2585,10262,0->2585,10259,0|15195|squeezethrough|crevice",
+		"2899,3713,0->2904,3720,0|26382|crawlthrough|little crack",
+		"2904,3720,0->2899,3713,0|26382|crawlthrough|little crack");
 	private static final Set<String> ISAFDAR_CROSSINGS = Set.of(
 		"2215,3156,0->2215,3153,0|3921|stepover|tripwire",
 		"2220,3155,0->2220,3152,0|3921|stepover|tripwire",
@@ -627,6 +671,20 @@ public final class CatalogTransitionPolicy
 		"3232,10351,0->3233,3950,0|26763|use|crevice",
 		"3243,10351,0->3242,3948,0|26763|use|crevice",
 		"3233,10332,0->3233,3938,0|26763|use|crevice");
+	private static final Set<String> AUDITED_ACCESS_AND_EXIT_ROUTES = Set.of(
+		"2941,10179,0->2438,5535,0|23287|enter|doorway",
+		"2435,5535,0->2941,10179,0|23286|enter|doorway",
+		"2488,5536,0->2696,5277,1|23285|enter|doorway",
+		"2696,5277,1->2488,5536,0|23052|enter|doorway",
+		"1520,3247,0->1513,3243,0|55322|passthrough|gate",
+		"1517,3250,0->1513,3243,0|55322|passthrough|gate",
+		"1511,3244,0->1518,3248,0|55323|passthrough|gate",
+		"1514,3241,0->1518,3248,0|55323|passthrough|gate",
+		"2823,10050,0->2827,3646,0|3761|open|exit",
+		"2824,10050,0->2827,3646,0|3761|open|exit",
+		"2825,10050,0->2827,3646,0|3761|open|exit",
+		"2837,10090,2->2840,3690,0|3774|leave|exit",
+		"2837,10089,2->2840,3690,0|3773|leave|exit");
 	private static final Set<String> CAMDOZAAL_ROUTES = Set.of(
 		"2998,3494,0->2952,5762,0|41357|enter|ruins entrance",
 		"2952,5762,0->2998,3494,0|41446|exit|ruins exit");
@@ -840,6 +898,10 @@ public final class CatalogTransitionPolicy
 		}
 		if (isShortAgilityCrossing(transport) || isMeiyerditchCourseTraversal(transport)
 			|| isMeiyerditchPreparedFloor(transport) || isMeiyerditchPostQuestAccess(transport)) return true;
+		if (isAuditedMiscBoundary(transport))
+		{
+			return true;
+		}
 		boolean changesScene = transport.getOrigin().getPlane() != transport.getDestination().getPlane()
 			|| transport.getOrigin().distanceTo2D(transport.getDestination()) > 1;
 		if (!changesScene)
@@ -952,7 +1014,10 @@ public final class CatalogTransitionPolicy
 			|| isHauntedMineStairsOrLift(transport)
 			|| isMortMyreTreeBridge(transport)
 			|| isCrashSiteOpening(transport)
+			|| isAuditedStepsAndClimbObstacle(transport)
+			|| isAuditedMiscBoundary(transport)
 			|| isAuditedBossExit(transport)
+			|| isAuditedAccessAndExit(transport)
 			|| isSwanSongHole(transport)
 			|| isMolchLizardTempleTransition(transport)
 			|| isMeiyerditchFloor(transport)
@@ -964,6 +1029,7 @@ public final class CatalogTransitionPolicy
 			|| isTarnsJump(transport)
 			|| isIsafdarCrossing(transport)
 			|| isFremennikSurfaceBridge(transport)
+			|| isAuditedShortcutTraversal(transport)
 			|| isAuditedAgilityTraversal(transport)
 			|| AUDITED_DIRECT_ROUTE_KEYS.contains(routeKey(transport, action, name))
 			|| NEYPOTZLI_ENTRANCE_ROUTE_KEYS.contains(routeKey(transport, action, name))
@@ -1298,6 +1364,32 @@ public final class CatalogTransitionPolicy
 		return objectId == 21772 || objectId == 26763;
 	}
 
+	static boolean isAuditedAccessAndExit(Transport transport)
+	{
+		if (transport == null || transport.getType() != TransportType.TRANSPORT
+			|| transport.getOrigin() == null || transport.getDestination() == null
+			|| !transport.isMembers() || transport.isConsumable()
+			|| transport.getCurrencyAmount() != 0 || !transport.getItemIdRequirements().isEmpty()
+			|| !transport.getVarbits().isEmpty() || !transport.getVarplayers().isEmpty()
+			|| java.util.Arrays.stream(transport.getSkillLevels()).anyMatch(level -> level != 0)
+			|| transport.getDuration() != 1)
+		{
+			return false;
+		}
+		boolean station = Set.of(23052, 23285, 23286, 23287).contains(transport.getObjectId());
+		Map<Quest, QuestState> quests = station
+			? Map.of(Quest.ANOTHER_SLICE_OF_HAM, QuestState.FINISHED) : Map.of();
+		return transport.getQuests().equals(quests)
+			&& AUDITED_ACCESS_AND_EXIT_ROUTES.contains(routeKey(transport,
+				normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
+	}
+
+	static boolean isAuditedAccessAndExitObject(int objectId)
+	{
+		return Set.of(23052, 23285, 23286, 23287, 55322, 55323, 3761, 3773, 3774)
+			.contains(objectId);
+	}
+
 	static boolean isCamdozaalRoute(Transport transport)
 	{
 		if (transport == null || transport.getType() != TransportType.TRANSPORT
@@ -1492,6 +1584,47 @@ public final class CatalogTransitionPolicy
 		return objectId >= 21306 && objectId <= 21315;
 	}
 
+	public static boolean isAuditedShortcutTraversal(Transport transport)
+	{
+		if (transport == null || transport.getType() != TransportType.TRANSPORT
+			|| transport.getOrigin() == null || transport.getDestination() == null
+			|| !transport.isMembers() || transport.isConsumable()
+			|| transport.getCurrencyAmount() != 0 || transport.getDuration() != 1
+			|| !transport.getItemIdRequirements().isEmpty()
+			|| !transport.getVarbits().isEmpty() || !transport.getVarplayers().isEmpty()
+			|| !AUDITED_SHORTCUT_ROUTES.contains(routeKey(transport,
+				normalizeDirectAction(transport.getAction()), normalize(transport.getName()))))
+		{
+			return false;
+		}
+		int objectId = transport.getObjectId();
+		if (objectId == 15186 || objectId == 15187 || objectId == 15194 || objectId == 15195)
+		{
+			return hasOnlySkill(transport, net.runelite.api.Skill.AGILITY, 40)
+				&& transport.getQuests().equals(Map.of(Quest.ROYAL_TROUBLE, QuestState.FINISHED));
+		}
+		if (objectId == 26382)
+		{
+			return hasOnlySkill(transport, net.runelite.api.Skill.AGILITY, 60)
+				&& transport.getQuests().equals(Map.of(Quest.TROLL_STRONGHOLD,
+					QuestState.IN_PROGRESS));
+		}
+		if (!transport.getQuests().isEmpty())
+		{
+			return false;
+		}
+		int agility = objectId == 23568 || objectId == 23569 ? 10
+			: transport.getOrigin().equals(new WorldPoint(2698, 9500, 0)) ? 34 : 0;
+		return hasOnlySkill(transport, net.runelite.api.Skill.AGILITY, agility);
+	}
+
+	static boolean isAuditedShortcutTraversalObject(int objectId)
+	{
+		return objectId == 15186 || objectId == 15187 || objectId == 15194
+			|| objectId == 15195 || objectId == 21727 || objectId == 23568
+			|| objectId == 23569 || objectId == 26382;
+	}
+
 	static boolean isIsafdarCrossing(Transport transport)
 	{
 		if (transport == null || transport.getType() != TransportType.TRANSPORT
@@ -1674,6 +1807,123 @@ public final class CatalogTransitionPolicy
 			&& java.util.Arrays.stream(transport.getSkillLevels()).allMatch(level -> level == 0)
 			&& CRASH_SITE_OPENING_ROUTES.contains(routeKey(transport,
 				normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
+	}
+
+	static boolean isAuditedStepsAndClimbObstacle(Transport transport)
+	{
+		if (transport == null || transport.getType() != TransportType.TRANSPORT
+			|| transport.getOrigin() == null || transport.getDestination() == null
+			|| !transport.isMembers() || transport.isConsumable()
+			|| !transport.getItemIdRequirements().isEmpty() || transport.getCurrencyAmount() != 0
+			|| !transport.getVarplayers().isEmpty()
+			|| !AUDITED_STEPS_AND_CLIMB_ROUTES.contains(routeKey(transport,
+				normalizeDirectAction(transport.getAction()), normalize(transport.getName()))))
+		{
+			return false;
+		}
+
+		int objectId = transport.getObjectId();
+		if (objectId == 37417
+			&& !transport.getQuests().equals(Map.of(Quest.THE_FREMENNIK_EXILES, QuestState.FINISHED)))
+		{
+			return false;
+		}
+		if (objectId == 33261
+			&& !transport.getQuests().equals(Map.of(Quest.MAKING_FRIENDS_WITH_MY_ARM, QuestState.IN_PROGRESS)))
+		{
+			return false;
+		}
+		if ((objectId == 6881 || objectId == 6882)
+			&& !transport.getQuests().equals(Map.of(Quest.ZOGRE_FLESH_EATERS, QuestState.IN_PROGRESS)))
+		{
+			return false;
+		}
+		if (objectId == 24749
+			&& !transport.getQuests().equals(Map.of(Quest.GRIM_TALES, QuestState.IN_PROGRESS)))
+		{
+			return false;
+		}
+		if (!Set.of(37417, 33261, 6881, 6882, 24749).contains(objectId)
+			&& !transport.getQuests().isEmpty())
+		{
+			return false;
+		}
+
+		if (objectId == 6881 || objectId == 6882)
+		{
+			if (!hasExactVarbit(transport, 496, 1))
+			{
+				return false;
+			}
+		}
+		else if (!transport.getVarbits().isEmpty())
+		{
+			return false;
+		}
+
+		if (objectId == 60120)
+		{
+			return hasOnlySkill(transport, net.runelite.api.Skill.AGILITY, 83)
+				&& transport.getDuration() == 1;
+		}
+		if (objectId == 24749 && transport.getOrigin().getX() == 2972)
+		{
+			return hasOnlySkill(transport, net.runelite.api.Skill.THIEVING, 58)
+				&& transport.getDuration() == 2;
+		}
+		int duration = objectId == 27362 || objectId == 42009 ? 6
+			: objectId == 6881 || objectId == 6882 || objectId == 24749 ? 2 : 1;
+		return java.util.Arrays.stream(transport.getSkillLevels()).allMatch(level -> level == 0)
+			&& transport.getDuration() == duration;
+	}
+
+	static boolean isAuditedMiscBoundary(Transport transport)
+	{
+		if (transport == null || transport.getType() != TransportType.TRANSPORT
+			|| transport.getOrigin() == null || transport.getDestination() == null
+			|| transport.isConsumable() || transport.getCurrencyAmount() != 0
+			|| !transport.getItemIdRequirements().isEmpty() || !transport.getVarplayers().isEmpty()
+			|| !AUDITED_MISC_BOUNDARY_ROUTES.contains(routeKey(transport,
+				normalizeDirectAction(transport.getAction()), normalize(transport.getName()))))
+		{
+			return false;
+		}
+		switch (transport.getObjectId())
+		{
+			case 5847:
+				return transport.isMembers() && transport.getDuration() == 1
+					&& transport.getQuests().equals(Map.of(Quest.MOUNTAIN_DAUGHTER, QuestState.IN_PROGRESS))
+					&& transport.getVarbits().isEmpty()
+					&& java.util.Arrays.stream(transport.getSkillLevels()).allMatch(level -> level == 0);
+			case 12776:
+				return transport.isMembers() && transport.getDuration() == 5
+					&& transport.getQuests().equals(Map.of(Quest.IN_AID_OF_THE_MYREQUE, QuestState.FINISHED))
+					&& transport.getVarbits().isEmpty()
+					&& hasOnlySkill(transport, net.runelite.api.Skill.AGILITY, 25);
+			case 31691:
+				if (!transport.isMembers() || transport.getDuration() != 2 || !transport.getQuests().isEmpty()
+					|| java.util.Arrays.stream(transport.getSkillLevels()).anyMatch(level -> level != 0)
+					|| transport.getVarbits().size() != 1)
+				{
+					return false;
+				}
+				TransportVarbit gate = transport.getVarbits().iterator().next();
+				return gate.getVarbitId() == 6027 && gate.getValue() == 6
+					&& gate.getOperator() == TransportVarbit.Operator.GREATER_THAN;
+			case 43724:
+			case 43726:
+				return !transport.isMembers() && transport.getDuration() == 5
+					&& transport.getQuests().equals(Map.of(Quest.TEMPLE_OF_THE_EYE, QuestState.FINISHED))
+					&& transport.getVarbits().isEmpty()
+					&& hasOnlySkill(transport, net.runelite.api.Skill.AGILITY, 56);
+			default:
+				return false;
+		}
+	}
+
+	static boolean isAuditedMiscBoundaryObject(int objectId)
+	{
+		return Set.of(5847, 12776, 31691, 43724, 43726).contains(objectId);
 	}
 
 	static boolean isSwanSongHole(Transport transport)

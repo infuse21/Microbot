@@ -38,6 +38,14 @@ public final class AdjacentTransportPolicy
 		"3102,9764,0->3102,9762,0|142|1792=0;1793=1",
 		"3099,9755,0->3101,9755,0|141|1790=1;1791=1;1793=1",
 		"3101,9755,0->3099,9755,0|141|1790=1;1791=1;1793=1");
+	private static final Set<String> DRAYNOR_BOOKCASE_ROUTES = Set.of(
+		"3098,3359,0->3096,3359,0|156",
+		"3098,3358,0->3096,3358,0|155",
+		"3097,3360,0->3096,3359,0|156",
+		"3097,3357,0->3096,3358,0|155");
+	private static final Set<String> EAST_ARDOUGNE_PICKLOCK_ROUTES = Set.of(
+		"2674,3304,0->2674,3303,0|11720",
+		"2674,3305,0->2674,3306,0|11719");
 	private static final int SHORT_PORTAL_DISTANCE = 2;
 	private static final int FEROX_BARRIER = 39652;
 	private static final int FEROX_BARRIER_MIRRORED = 39653;
@@ -83,7 +91,11 @@ public final class AdjacentTransportPolicy
 		}
 		String action = transport.getAction().toLowerCase(Locale.ROOT);
 		if (isEdgevilleOddWall(transport)) return true;
-		if ("pick-lock".equals(action)) return isYanillePickLockDoor(transport);
+		if (isDraynorBookcase(transport)) return true;
+		if ("pick-lock".equals(action))
+		{
+			return isYanillePickLockDoor(transport) || isEastArdougnePickLockDoor(transport);
+		}
 		if (isWideGate(transport)) return true;
 		boolean directRocks = type == TransportType.TRANSPORT
 			&& "climb".equals(action) && "rocks".equals(normalize(transport.getName()))
@@ -167,6 +179,47 @@ public final class AdjacentTransportPolicy
 	static boolean hasRequiredYanillePickLockItemsAndLevel(Transport transport, int thieving, boolean lockpick)
 	{
 		return isYanillePickLockDoor(transport) && thieving >= 82 && lockpick;
+	}
+
+	static boolean isEastArdougnePickLockDoor(Transport transport)
+	{
+		if (transport == null || transport.getOrigin() == null || transport.getDestination() == null
+			|| transport.getType() != TransportType.TRANSPORT || !transport.isMembers()
+			|| !"pick-lock".equals(normalize(transport.getAction()))
+			|| !"door".equals(normalize(transport.getName())) || transport.isConsumable()
+			|| transport.getCurrencyAmount() != 0 || transport.getDuration() != 2
+			|| !transport.getItemIdRequirements().isEmpty() || !transport.getQuests().isEmpty()
+			|| !transport.getVarbits().isEmpty() || !transport.getVarplayers().isEmpty())
+		{
+			return false;
+		}
+		int required = transport.getObjectId() == 11720 ? 16 : 0;
+		return transport.getSkillLevels()[net.runelite.api.Skill.THIEVING.ordinal()] == required
+			&& java.util.stream.IntStream.range(0, transport.getSkillLevels().length)
+				.filter(index -> index != net.runelite.api.Skill.THIEVING.ordinal())
+				.allMatch(index -> transport.getSkillLevels()[index] == 0)
+			&& EAST_ARDOUGNE_PICKLOCK_ROUTES.contains(pointKey(transport.getOrigin()) + "->"
+				+ pointKey(transport.getDestination()) + "|" + transport.getObjectId());
+	}
+
+	static boolean hasRequiredEastArdougneThieving(Transport transport, int thieving)
+	{
+		return isEastArdougnePickLockDoor(transport)
+			&& thieving >= transport.getSkillLevels()[net.runelite.api.Skill.THIEVING.ordinal()];
+	}
+
+	static boolean isDraynorBookcase(Transport transport)
+	{
+		return transport != null && transport.getOrigin() != null && transport.getDestination() != null
+			&& transport.getType() == TransportType.TRANSPORT && !transport.isMembers()
+			&& !transport.isConsumable() && transport.getCurrencyAmount() == 0
+			&& transport.getDuration() == 3 && "search".equals(normalize(transport.getAction()))
+			&& "bookcase".equals(normalize(transport.getName()))
+			&& transport.getItemIdRequirements().isEmpty() && transport.getQuests().isEmpty()
+			&& transport.getVarbits().isEmpty() && transport.getVarplayers().isEmpty()
+			&& java.util.Arrays.stream(transport.getSkillLevels()).allMatch(level -> level == 0)
+			&& DRAYNOR_BOOKCASE_ROUTES.contains(pointKey(transport.getOrigin()) + "->"
+				+ pointKey(transport.getDestination()) + "|" + transport.getObjectId());
 	}
 
 	static boolean isDraynorBasementDoor(Transport transport)
@@ -262,7 +315,8 @@ public final class AdjacentTransportPolicy
 		String normalized = action.toLowerCase(Locale.ROOT);
 		return normalized.equals("open") || normalized.equals("pass")
 			|| normalized.equals("walk-through") || normalized.equals("go-through")
-			|| normalized.equals("slash") || normalized.equals("pick-lock");
+			|| normalized.equals("slash") || normalized.equals("pick-lock")
+			|| normalized.equals("search");
 	}
 
 	private static boolean isBlank(String value)

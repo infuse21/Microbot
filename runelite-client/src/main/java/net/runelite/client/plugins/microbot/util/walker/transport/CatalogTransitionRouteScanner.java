@@ -87,12 +87,15 @@ public final class CatalogTransitionRouteScanner
 				pending.getCrossingFrom(), destination, player);
 		}
 		if (CatalogTransitionPolicy.isTarnsJumpObject(pending.getObjectId())
+			|| CatalogTransitionPolicy.isAuditedMiscBoundaryObject(pending.getObjectId())
 			|| CatalogTransitionPolicy.isAuditedBossExitObject(pending.getObjectId())
+			|| CatalogTransitionPolicy.isAuditedAccessAndExitObject(pending.getObjectId())
 			|| CatalogTransitionPolicy.isAuditedAccessDoorObject(pending.getObjectId())
 			|| CatalogTransitionPolicy.isSlayerTowerChainObject(pending.getObjectId())
 			|| CatalogTransitionPolicy.isRootOrMudObject(pending.getObjectId())
 			|| CatalogTransitionPolicy.isIsafdarCrossingObject(pending.getObjectId())
 			|| CatalogTransitionPolicy.isFremennikSurfaceBridgeObject(pending.getObjectId())
+			|| CatalogTransitionPolicy.isAuditedShortcutTraversalObject(pending.getObjectId())
 			|| CatalogTransitionPolicy.isAuditedAgilityTraversalObject(pending.getObjectId())
 			|| CatalogTransitionPolicy.isWintertodtGapObject(pending.getObjectId())
 			|| CatalogTransitionPolicy.isWeissPostQuestDirectObject(pending.getObjectId())

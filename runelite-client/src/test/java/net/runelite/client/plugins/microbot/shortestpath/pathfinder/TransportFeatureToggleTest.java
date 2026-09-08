@@ -104,6 +104,16 @@ public class TransportFeatureToggleTest
 	}
 
 	@Test
+	public void auditedOrdinaryShortcutsRespectAgilityToggle() throws Exception
+	{
+		assertShadowRows("Pipe", "useAgilityShortcuts", Set.of(21727), 2);
+		assertShadowRows("Ropeswing", "useAgilityShortcuts", Set.of(23568, 23569), 2);
+		assertShadowRows("Crevice", "useAgilityShortcuts",
+			Set.of(15186, 15187, 15194, 15195), 4);
+		assertShadowRows("Little crack", "useAgilityShortcuts", Set.of(26382), 2);
+	}
+
+	@Test
 	public void auditedOrdinaryAgilityTraversalsRespectToggle() throws Exception
 	{
 		assertShadowRows("Bridge", "useAgilityShortcuts", Set.of(3522), 8);

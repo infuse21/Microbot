@@ -21,6 +21,16 @@ additive totals; source rows, generated edges and duplicated approaches must not
 
 ## Latest work versus earlier headless batches
 
+### Steps, access routes and audited shortcut cleanup - 2026-09-08
+
+- **Headless:** exact Steps/climb obstacles, access doors/exits, quest gates and four Wiki-audited
+  boundary families now remain NavigationEngine-owned until their directed landing is observed.
+  The production classifier floor is 97 ordinary plus 23 item rows, 120 total.
+- **Not live-pending:** unsafe task-only, failure-prone, setup-dependent, quest-time and duplicate
+  shadow rows were removed from the runtime graph. They need explicit protocols before restoration.
+- **Live pending:** representative crossings for each distinct migrated protocol, including the
+  one-tile Myreque fence, quest-gated crevices/gates and exact-ID Draynor bookcase transformation.
+
 ### Audited boundary, boss-exit and unsafe-access cleanup - 2026-09-08
 
 - **Headless:** 25 exact tree/root/mud/fence/opening/odd-wall and outward boss-exit transitions are
@@ -614,7 +624,7 @@ The production classifier, not this prose list, is authoritative for the remaini
 Pre-Zanaris checkpoint: 1,466 legacy edges, including 990 ordinary TRANSPORT edges; after the
 headless Zanaris cutover: 1,465 and 989; after Waterfall internal doors: 1,463 and 987;
 after Draynor unlocked crossings: 1,445 and 969 respectively; after Yanille pick-lock:
-1,443 and 967 respectively. The current classifier is 502 total: 479 ordinary TRANSPORT and 23
+1,443 and 967 respectively. The current classifier is 120 total: 97 ordinary TRANSPORT and 23
 TELEPORTATION_ITEM rows, with
 no ordinary FAIRY_RING or GRAPPLE_SHORTCUT row remaining. Classifier counts
 are not percentages of live acceptance or estimates of implementation effort.
