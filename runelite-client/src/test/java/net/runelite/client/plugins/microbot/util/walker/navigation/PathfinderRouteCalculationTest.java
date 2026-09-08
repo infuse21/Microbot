@@ -126,7 +126,7 @@ public class PathfinderRouteCalculationTest
 		}
 		assertEquals(127, candidates);
 		assertEquals(103, migrated);
-		assertEquals(1058, legacy);
+		assertEquals(1056, legacy);
 	}
 
 	@Test

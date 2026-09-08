@@ -21,6 +21,24 @@ headless batches, outstanding branches of representative live passes, and contra
 implementation. As of 2026-09-06 the user requests headless-first progress; deferred physical tests
 remain open rather than blocking each batch or being silently marked complete.
 
+## Calcified moth and Slepe medallion teleports - 2026-09-08
+
+The Calcified moth and `Drakan's medallion: Slepe` rows now use the exact item-teleport/
+NavigationEngine lifecycle. OSRS Wiki MCP verification confirms that item 29090 is a stackable,
+single-use `Crush` teleport to Cam Torum with a level-20 Wilderness ceiling. The existing catalog
+gate remains conservatively at completed Perilous Moons even though the Wiki documents an earlier
+partial-quest permission point; this avoids publishing the edge before the exact quest-stage value
+is represented.
+
+The Slepe destination uses reusable medallion 22400 with exact `Slepe` inventory/equipment actions.
+The cache identifies varbit 12416 as `slepe_teleport_unlocked`, matching the Wiki requirement to use
+a Slepey tablet on the medallion, so the row now requires `12416=1`. Banking therefore sums one moth
+per route use but only one medallion across repeated Slepe edges. Focused item-policy, banking,
+route-publication and classifier tests pass. The classifier floor is now **1,056 legacy entries**:
+688 ordinary `TRANSPORT`, 10 `AGILITY_SHORTCUT`, 40 `TELEPORTATION_ITEM` and 318
+`WILDERNESS_OBELISK` entries. Inventory/equipped/banked Slepe use and banked moth consumption remain
+live-deferred, so Phase 6 remains open.
+
 ## Mor Ul Rek hot-vent doors - 2026-09-08
 
 All 11 exact Inner Mor Ul Rek `Pass;Hot vent door;30266` rows now use catalogue/

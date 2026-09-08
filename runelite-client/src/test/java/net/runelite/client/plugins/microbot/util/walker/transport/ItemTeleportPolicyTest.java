@@ -69,7 +69,7 @@ public class ItemTeleportPolicyTest
 				}
 			}
 		}
-		assertEquals(175, eligible);
+		assertEquals(177, eligible);
 	}
 
 	@Test

@@ -225,6 +225,17 @@ public class BankedTransportItemPlanningTest {
         }
     }
 
+	@Test
+	public void repeatedSlepeTeleportsNeedOneReusableMedallion()
+	{
+		Transport slepe = teleport("Drakan's medallion: Slepe");
+		Map<Integer, Integer> requirements =
+			Rs2WalkerBankingPlanner.getMissingTransportItemIdsWithQuantities(List.of(slepe, slepe));
+
+		assertFalse(slepe.isConsumable());
+		assertEquals(Map.of(22400, 1), requirements);
+	}
+
     @Test
     public void calcifiedMothsAreNotPlannedAboveLevelTwentyWilderness() {
         assertEquals(20, teleport("Calcified moth: Crush").getMaxWildernessLevel());

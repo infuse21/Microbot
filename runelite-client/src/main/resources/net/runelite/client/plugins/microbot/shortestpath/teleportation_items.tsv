@@ -309,8 +309,8 @@
 1680 3746 0		25818	The Ascent of Arceuus	7857=1;6035>1		Y	T	19	4	Book of the dead: A Dark Disposition
 3649 3230 0		22400				Y	F	19	4	Drakan's medallion: Ver Sinhaza
 3592 3337 0		22400	Sins of the Father			Y	F	19	4	Drakan's medallion: Darkmeyer
-# todo: this only works if you've used a Slepey tablet on the medallion										
-3808 9700 0		22400				Y	F	19	4	Drakan's medallion: Slepe
+# 12416 = slepe_teleport_unlocked (set by using a Slepey tablet on the medallion)
+3808 9700 0		22400		12416=1		Y	F	19	4	Drakan's medallion: Slepe
 #mythical cape (instead of using the item name we use the action teleport, we use the itemids to verifiy the item)										
 2457 2850 0		22114;24855				Y	F	19	4	Mythical cape: Teleport
 # Stony Basalt - 4493 is DIARY_FREMENNIK_HARD										

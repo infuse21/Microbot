@@ -22,6 +22,7 @@ public final class ItemTeleportPolicy
 		Map.entry("Mythical cape", Set.of(22114, 24855)),
 		Map.entry("Ardougne cloak", Set.of(13121, 13122, 13123, 13124, 20760)),
 		Map.entry("Book of the dead", Set.of(25818)),
+		Map.entry("Calcified moth", Set.of(29090)),
 		Map.entry("Drakan's medallion", Set.of(22400)),
 		Map.entry("Enchanted lyre", Set.of(3691, 6125, 6126, 6127, 13079)),
 		Map.entry("Enchanted lyre(i)", Set.of(23458)),
@@ -77,7 +78,9 @@ public final class ItemTeleportPolicy
 		Map.entry("Book of the dead: Jewellery of Jubilation", "Jewellery of Jubilation"),
 		Map.entry("Book of the dead: Lunch by the Lancalliums", "Lunch by the Lancalliums"),
 		Map.entry("Book of the dead: The Fisher's Flute", "The Fisher's Flute"),
+		Map.entry("Calcified moth: Crush", "Crush"),
 		Map.entry("Drakan's medallion: Darkmeyer", "Darkmeyer"),
+		Map.entry("Drakan's medallion: Slepe", "Slepe"),
 		Map.entry("Drakan's medallion: Ver Sinhaza", "Ver Sinhaza"),
 		Map.entry("Enchanted lyre: Jatizso", "Jatiszo"),
 		Map.entry("Enchanted lyre: Neitiznot", "Neitiznot"),
@@ -282,6 +285,16 @@ public final class ItemTeleportPolicy
 		{
 			return false;
 		}
+		if ("Calcified moth: Crush".equals(transport.getDisplayInfo())
+			&& !isCalcifiedMoth(transport))
+		{
+			return false;
+		}
+		if ("Drakan's medallion: Slepe".equals(transport.getDisplayInfo())
+			&& !isSlepeMedallion(transport))
+		{
+			return false;
+		}
 		if ("Stony basalt: Troll Stronghold".equals(transport.getDisplayInfo())
 			&& !transport.getDestination().equals(new WorldPoint(2845, 3694, 0))
 			&& !transport.getDestination().equals(new WorldPoint(2837, 3695, 0)))
@@ -353,6 +366,40 @@ public final class ItemTeleportPolicy
 			&& java.util.Arrays.stream(transport.getSkillLevels()).allMatch(level -> level == 0);
 	}
 
+	private static boolean isCalcifiedMoth(Transport transport)
+	{
+		return transport != null && transport.getType() == TransportType.TELEPORTATION_ITEM
+			&& transport.getOrigin() == null
+			&& Objects.equals(transport.getDestination(), new WorldPoint(1439, 9564, 0))
+			&& transport.isMembers() && transport.isConsumable()
+			&& transport.getDuration() == 4 && transport.getMaxWildernessLevel() == 20
+			&& transport.getCurrencyAmount() == 0
+			&& transport.getItemIdRequirements().equals(Set.of(Set.of(29090)))
+			&& transport.getQuests().equals(Map.of(Quest.PERILOUS_MOONS, QuestState.FINISHED))
+			&& transport.getVarbits().isEmpty() && transport.getVarplayers().isEmpty()
+			&& java.util.Arrays.stream(transport.getSkillLevels()).allMatch(level -> level == 0);
+	}
+
+	private static boolean isSlepeMedallion(Transport transport)
+	{
+		if (transport == null || transport.getType() != TransportType.TELEPORTATION_ITEM
+			|| transport.getOrigin() != null
+			|| !Objects.equals(transport.getDestination(), new WorldPoint(3808, 9700, 0))
+			|| !transport.isMembers() || transport.isConsumable()
+			|| transport.getDuration() != 4 || transport.getMaxWildernessLevel() != 19
+			|| transport.getCurrencyAmount() != 0
+			|| !transport.getItemIdRequirements().equals(Set.of(Set.of(22400)))
+			|| !transport.getQuests().isEmpty() || !transport.getVarplayers().isEmpty()
+			|| java.util.Arrays.stream(transport.getSkillLevels()).anyMatch(level -> level != 0)
+			|| transport.getVarbits().size() != 1)
+		{
+			return false;
+		}
+		TransportVarbit unlock = transport.getVarbits().iterator().next();
+		return unlock.getVarbitId() == 12416 && unlock.getValue() == 1
+			&& unlock.getOperator() == TransportVarbit.Operator.EQUAL;
+	}
+
 	private static boolean isPohOutsideTablet(Transport transport)
 	{
 		if (!transport.isMembers() || !transport.isConsumable()
@@ -417,6 +464,7 @@ public final class ItemTeleportPolicy
 		switch (family)
 		{
 			case "Master Scroll Book":
+			case "Calcified moth":
 			case "Mokhaiotl waystone":
 			case "Teleport crystal":
 			case "Eternal teleport crystal":

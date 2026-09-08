@@ -24,7 +24,7 @@ public class OtherItemTeleportPolicyTest
 		Map<String, Integer> expected = Map.ofEntries(
 			Map.entry("Ardougne cloak", 2),
 			Map.entry("Book of the dead", 5),
-			Map.entry("Drakan's medallion", 2),
+			Map.entry("Drakan's medallion", 3),
 			Map.entry("Enchanted lyre", 4),
 			Map.entry("Enchanted lyre(i)", 4),
 			Map.entry("Eternal teleport crystal", 2),
@@ -48,7 +48,6 @@ public class OtherItemTeleportPolicyTest
 				{
 					if (row.getType() == TransportType.TELEPORTATION_ITEM
 						&& row.getDisplayInfo().startsWith(family.getKey() + ":")
-						&& !row.getDisplayInfo().equals("Drakan's medallion: Slepe")
 						&& !row.getDisplayInfo().equals("Pharaoh's sceptre: Jaltevas"))
 					{
 						assertTrue(row.getDisplayInfo(), ItemTeleportPolicy.isEligible(row));
@@ -59,7 +58,7 @@ public class OtherItemTeleportPolicyTest
 			assertEquals(family.getKey(), family.getValue().intValue(), rows);
 			count += rows;
 		}
-		assertEquals(45, count);
+		assertEquals(46, count);
 	}
 
 	@Test
@@ -143,6 +142,27 @@ public class OtherItemTeleportPolicyTest
 	}
 
 	@Test
+	public void calcifiedMothAndSlepeUseExactAuditedContracts()
+	{
+		Transport moth = find("Calcified moth: Crush");
+		assertEquals(new WorldPoint(1439, 9564, 0), moth.getDestination());
+		assertTrue(moth.isConsumable());
+		assertEquals(Map.of(Quest.PERILOUS_MOONS, QuestState.FINISHED), moth.getQuests());
+		assertTrue(ItemTeleportPolicy.isEligible(moth));
+		assertEquals("Crush", ItemTeleportPolicy.inventoryAction(moth));
+		assertNull(ItemTeleportPolicy.equipmentAction(moth));
+
+		Transport slepe = find("Drakan's medallion: Slepe");
+		assertEquals(new WorldPoint(3808, 9700, 0), slepe.getDestination());
+		assertFalse(slepe.isConsumable());
+		assertEquals(1, slepe.getVarbits().size());
+		assertEquals(12416, slepe.getVarbits().iterator().next().getVarbitId());
+		assertTrue(ItemTeleportPolicy.isEligible(slepe));
+		assertEquals("Slepe", ItemTeleportPolicy.inventoryAction(slepe));
+		assertEquals("Slepe", ItemTeleportPolicy.equipmentAction(slepe));
+	}
+
+	@Test
 	public void mokhaiotlWaystoneUsesOnlyItsUsableQuestGatedConsumableVariant()
 	{
 		int rows = 0;
@@ -174,5 +194,13 @@ public class OtherItemTeleportPolicyTest
 	{
 		return new Transport(new WorldPoint(3000, 3000, 0), display, TransportType.TELEPORTATION_ITEM,
 			true, 20, Collections.singleton(Collections.singleton(id)));
+	}
+
+	private static Transport find(String display)
+	{
+		return Transport.loadAllFromResources().values().stream()
+			.flatMap(Set::stream)
+			.filter(row -> display.equals(row.getDisplayInfo()))
+			.findFirst().orElseThrow(AssertionError::new);
 	}
 }
