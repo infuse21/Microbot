@@ -118,6 +118,38 @@ public class ItemTeleportRouteScannerTest
 	}
 
 	@Test
+	public void burningAmuletAdvancesOnceToScopedWarningAndWaitsForDirectedLanding()
+	{
+		ItemTeleportRouteScanner scanner = new ItemTeleportRouteScanner();
+		RoutePlan plan = plan(RouteEdge.Kind.ITEM_TELEPORT);
+		RouteInteraction use = scanner.scan(plan, 0, 1,
+			edge -> new ItemTeleport(21166, "Lava Maze", false, true));
+		NavigationEngine engine = new NavigationEngine();
+		engine.start(new NavigationRequest(1, Collections.singleton(TO), 0,
+			NavigationRouteOptions.defaults(), "burning-amulet-test"));
+		NavigationDecision useDecision = engine.observe(observation(1, FROM, plan, use));
+		assertEquals(NavigationDecision.Type.INTERACT, useDecision.getType());
+		engine.recordCommandResult(useDecision, true, 1);
+		RouteInteraction confirm = scanner.observePending(use, FROM,
+			edge -> new ItemTeleport(21166, "Okay, teleport to level",
+				"wilderness-confirm:Okay, teleport to level"));
+
+		assertEquals("wilderness-confirm:Okay, teleport to level", confirm.getAction());
+		NavigationDecision confirmDecision = engine.observe(observation(2, FROM, plan, confirm));
+		assertEquals(NavigationDecision.Type.INTERACT, confirmDecision.getType());
+		engine.recordCommandResult(confirmDecision, true, 2);
+		RouteInteraction waiting = scanner.observePending(confirm, FROM, edge -> null);
+		assertEquals(RouteInteraction.Status.AVAILABLE, waiting.getStatus());
+		assertEquals(confirm.getAction(), waiting.getAction());
+		assertEquals(NavigationDecision.Type.WAIT,
+			engine.observe(observation(3, FROM, plan, waiting)).getType());
+		RouteInteraction landed = scanner.observePending(waiting, TO, edge -> null);
+		assertEquals(RouteInteraction.Status.CLEARED, landed.getStatus());
+		assertEquals("interaction-edge-crossed",
+			engine.observe(observation(4, TO, plan, landed)).getReason());
+	}
+
+	@Test
 	public void offCentreLandingFinishesTheExactTargetWithoutAnotherTeleport()
 	{
 		ItemTeleportRouteScanner scanner = new ItemTeleportRouteScanner();

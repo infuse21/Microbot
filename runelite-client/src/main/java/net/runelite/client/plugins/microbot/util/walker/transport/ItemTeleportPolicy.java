@@ -1,5 +1,7 @@
 package net.runelite.client.plugins.microbot.util.walker.transport;
 
+import net.runelite.api.Quest;
+import net.runelite.api.QuestState;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.client.plugins.microbot.shortestpath.Transport;
@@ -7,13 +9,17 @@ import net.runelite.client.plugins.microbot.shortestpath.TransportType;
 import net.runelite.client.plugins.microbot.shortestpath.TransportVarbit;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 /** Exact audited inventory/submenu contracts; no generic activation or dialogue fallback. */
 public final class ItemTeleportPolicy
 {
 	private static final Map<String, Set<Integer>> ITEMS = Map.ofEntries(
+		Map.entry("Burning amulet", Set.of(21166, 21169, 21171, 21173, 21175)),
 		Map.entry("Master Scroll Book", Set.of(21389)),
+		Map.entry("Mokhaiotl waystone", Set.of(31099)),
+		Map.entry("Mythical cape", Set.of(22114, 24855)),
 		Map.entry("Ardougne cloak", Set.of(13121, 13122, 13123, 13124, 20760)),
 		Map.entry("Book of the dead", Set.of(25818)),
 		Map.entry("Drakan's medallion", Set.of(22400)),
@@ -59,6 +65,11 @@ public final class ItemTeleportPolicy
 		Map.entry("Strength cape", Set.of(9750, 9751)),
 		Map.entry("Xeric's talisman", Set.of(13393)));
 	private static final Map<String, String> ACTIONS = Map.ofEntries(
+		Map.entry("Burning amulet: Chaos Temple", "Chaos Temple"),
+		Map.entry("Burning amulet: Bandit Camp", "Bandit Camp"),
+		Map.entry("Burning amulet: Lava Maze", "Lava Maze"),
+		Map.entry("Mokhaiotl waystone: Channel", "Channel"),
+		Map.entry("Mythical cape: Teleport", "Teleport"),
 		Map.entry("Ardougne cloak: Monastery", "Monastery Teleport"),
 		Map.entry("Book of the dead: A Dark Disposition", "A Dark Disposition"),
 		Map.entry("Book of the dead: History and Hearsay", "History and Hearsay"),
@@ -223,6 +234,12 @@ public final class ItemTeleportPolicy
 		6, new WorldPoint(2545, 3097, 0),
 		7, new WorldPoint(3239, 6077, 0),
 		8, new WorldPoint(1740, 3517, 0));
+	private static final Map<String, WorldPoint> BURNING_AMULET_DESTINATIONS = Map.of(
+		"Burning amulet: Chaos Temple", new WorldPoint(3234, 3634, 0),
+		"Burning amulet: Bandit Camp", new WorldPoint(3038, 3651, 0),
+		"Burning amulet: Lava Maze", new WorldPoint(3028, 3842, 0));
+	private static final Set<Set<Integer>> BURNING_AMULET_ITEMS = Set.of(
+		Set.of(21166), Set.of(21169), Set.of(21171), Set.of(21173), Set.of(21175));
 
 	private ItemTeleportPolicy()
 	{
@@ -244,6 +261,21 @@ public final class ItemTeleportPolicy
 		{
 			return false;
 		}
+		if (transport.getDisplayInfo().startsWith("Burning amulet:")
+			&& !isBurningAmulet(transport))
+		{
+			return false;
+		}
+		if ("Mokhaiotl waystone: Channel".equals(transport.getDisplayInfo())
+			&& !isMokhaiotlWaystone(transport))
+		{
+			return false;
+		}
+		if ("Mythical cape: Teleport".equals(transport.getDisplayInfo())
+			&& !isMythicalCape(transport))
+		{
+			return false;
+		}
 		if ("Stony basalt: Troll Stronghold".equals(transport.getDisplayInfo())
 			&& !transport.getDestination().equals(new WorldPoint(2845, 3694, 0))
 			&& !transport.getDestination().equals(new WorldPoint(2837, 3695, 0)))
@@ -252,6 +284,53 @@ public final class ItemTeleportPolicy
 		}
 		return transport.getItemIdRequirements().stream()
 			.allMatch(group -> !group.isEmpty() && ids.containsAll(group));
+	}
+
+	public static boolean isBurningAmulet(Transport transport)
+	{
+		if (transport == null || transport.getType() != TransportType.TELEPORTATION_ITEM
+			|| transport.getOrigin() != null || !transport.isMembers() || !transport.isConsumable()
+			|| transport.getDuration() != 4 || transport.getMaxWildernessLevel() != 19
+			|| transport.getCurrencyAmount() != 0 || !transport.getQuests().isEmpty()
+			|| !transport.getVarbits().isEmpty() || !transport.getVarplayers().isEmpty()
+			|| java.util.Arrays.stream(transport.getSkillLevels()).anyMatch(level -> level != 0)
+			|| !BURNING_AMULET_ITEMS.equals(transport.getItemIdRequirements()))
+		{
+			return false;
+		}
+		return BURNING_AMULET_DESTINATIONS.containsKey(transport.getDisplayInfo())
+			&& Objects.equals(transport.getDestination(),
+			BURNING_AMULET_DESTINATIONS.get(transport.getDisplayInfo()));
+	}
+
+	private static boolean isMokhaiotlWaystone(Transport transport)
+	{
+		return transport != null && transport.getType() == TransportType.TELEPORTATION_ITEM
+			&& transport.getOrigin() == null
+			&& Objects.equals(transport.getDestination(), new WorldPoint(1311, 9497, 0))
+			&& "Mokhaiotl waystone: Channel".equals(transport.getDisplayInfo())
+			&& transport.isMembers() && transport.isConsumable()
+			&& transport.getDuration() == 4 && transport.getMaxWildernessLevel() == 29
+			&& transport.getCurrencyAmount() == 0
+			&& transport.getItemIdRequirements().equals(Set.of(Set.of(31099)))
+			&& transport.getQuests().equals(Map.of(Quest.THE_FINAL_DAWN, QuestState.FINISHED))
+			&& transport.getVarbits().isEmpty() && transport.getVarplayers().isEmpty()
+			&& java.util.Arrays.stream(transport.getSkillLevels()).allMatch(level -> level == 0);
+	}
+
+	private static boolean isMythicalCape(Transport transport)
+	{
+		return transport != null && transport.getType() == TransportType.TELEPORTATION_ITEM
+			&& transport.getOrigin() == null
+			&& Objects.equals(transport.getDestination(), new WorldPoint(2457, 2850, 0))
+			&& "Mythical cape: Teleport".equals(transport.getDisplayInfo())
+			&& transport.isMembers() && !transport.isConsumable()
+			&& transport.getDuration() == 4 && transport.getMaxWildernessLevel() == 19
+			&& transport.getCurrencyAmount() == 0
+			&& transport.getItemIdRequirements().equals(Set.of(Set.of(22114), Set.of(24855)))
+			&& transport.getQuests().isEmpty() && transport.getVarbits().isEmpty()
+			&& transport.getVarplayers().isEmpty()
+			&& java.util.Arrays.stream(transport.getSkillLevels()).allMatch(level -> level == 0);
 	}
 
 	private static boolean isPohOutsideTablet(Transport transport)
@@ -318,6 +397,7 @@ public final class ItemTeleportPolicy
 		switch (family)
 		{
 			case "Master Scroll Book":
+			case "Mokhaiotl waystone":
 			case "Teleport crystal":
 			case "Eternal teleport crystal":
 			case "Icy basalt":

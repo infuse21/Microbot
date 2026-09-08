@@ -62,7 +62,7 @@ public final class ItemTeleportRouteScanner
 	private static boolean isTerminalAction(String action)
 	{
 		return action.startsWith("item-use:") || action.startsWith("book-select:")
-			|| action.startsWith("book-confirm:");
+			|| action.startsWith("book-confirm:") || action.startsWith("wilderness-confirm:");
 	}
 
 	private static RouteInteraction interaction(long generation, RouteEdge edge, ItemTeleport item)

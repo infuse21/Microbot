@@ -4,6 +4,32 @@ Latest classifier audit: 2026-09-08; older sections below retain their dated sna
 This is the execution backlog for
 [walker unification](walker-unification-plan.md), not a new ownership policy.
 
+## September 8 Max-cape duplicate cleanup
+
+One exact duplicate Black-chinchompa row is removed, leaving 21 unique Max-cape contracts. No Max
+menu is migrated by this cleanup. Baseline is **1,161 legacy / 43 item legacy**.
+
+## September 8 Mythical cape correction
+
+The inert POH trophy ID 21913 is removed from the route requirement. Usable capes 22114/24855 now
+publish the exact inventory/worn `Teleport` action through the reusable item lifecycle. Baseline is
+**1,162 legacy / 44 item legacy**; mounted-POH behavior and physical acceptance remain outside this
+cutover.
+
+## September 8 Mokhaiotl waystone follow-up
+
+The exact item-31099 `Channel` row now uses the normal consumable item-teleport lifecycle with its
+completed-Final-Dawn and Wilderness metadata frozen. Inert neighboring IDs remain excluded. The
+current baseline is **1,163 legacy**, including **45 item-teleport rows**; physical use is deferred.
+
+## September 8 Burning amulet follow-up
+
+All three exact Burning amulet destinations now advance from the inventory/worn destination action
+to one scoped Wilderness-warning confirmation, then remain NavigationEngine-owned until the directed
+landing. No broad `Yes` handler is used. The current baseline is **1,164 legacy**, including **46
+item-teleport rows**. Banking conservatively requests one charged amulet per selected route use;
+physical Wilderness acceptance remains deferred.
+
 ## September 8 alternate-spell follow-up
 
 The last ten spell rows—eight House `Outside`, Varrock GE and Watchtower Yanille—now reuse the simple

@@ -21,6 +21,54 @@ headless batches, outstanding branches of representative live passes, and contra
 implementation. As of 2026-09-06 the user requests headless-first progress; deferred physical tests
 remain open rather than blocking each batch or being silently marked complete.
 
+## Max-cape duplicate route cleanup - 2026-09-08
+
+One byte-for-byte duplicate `Max cape: Black chinchompa` row was removed. The remaining route data
+still contains the same destination and item alternatives, so no reachability or executor behavior
+changes; Max-cape menu ownership remains deferred. A fail-first resource regression observed 22
+rows, and now pins 21 unique directed contracts. This lowers the loaded catalogue and classifier
+floor by one to **1,161 legacy entries**, including **43** legacy item-teleport rows. Integrated
+validation passed **561** banking, transport, navigation, seasonal, feature-gate, POH, cost and
+collision tests with zero failures/errors/skips; compile, both Checkstyle tasks and the whitespace
+check also pass.
+
+## Mythical cape usable-item correction and cutover - 2026-09-08
+
+The Mythical cape route now requires only usable capes 22114 or 24855; inert POH trophy item 21913
+was removed from the resource requirement. Both retained variants expose exact inventory and worn
+`Teleport` actions and now use the normal reusable item-teleport lifecycle to `(2457,2850,0)`.
+Policy, action-fixture, banking and classifier regressions pass. This lowers the classifier floor to
+**1,162 legacy entries**, including **44** item-teleport rows. Physical inventory/worn acceptance is
+deferred; mounted POH cape support is not added or implied.
+
+## Mokhaiotl waystone - 2026-09-08
+
+The single `Mokhaiotl waystone: Channel` row now reuses the engine-owned consumable-item lifecycle.
+The exact contract requires item 31099, completed Final Dawn, members, consumable status, duration
+four, Wilderness ceiling 29, destination `(1311,9497,0)` and no additional skill/var/fare state.
+Only the direct inventory action `Channel` is accepted; inert neighboring display variants and an
+equipment action remain excluded. The fail-first policy and classifier checks reproduced legacy
+ownership, then the focused item/scanner suite passed. The classifier floor is now **1,163 legacy
+entries**, with **45** item-teleport rows still legacy-owned. Physical use remains deferred.
+
+## Burning amulet Wilderness teleports - 2026-09-08
+
+The three Burning amulet destinations—Chaos Temple, Bandit Camp and Lava Maze—now use the
+engine-owned item-teleport lifecycle. Eligibility freezes the exact destination, all five charged
+item IDs, members/consumable metadata, duration four, Wilderness ceiling 19 and absence of other
+requirements. Both inventory subactions and worn actions use the exact destination label; no
+generic `Rub`, jewellery-family or warning rule is enabled.
+
+After the destination input, the same pending edge advances only when its scoped dialogue contains
+`Okay, teleport to level`. The engine issues that affirmative once and retains ownership through a
+charged-ID change or final item disappearance until the directed Wilderness landing is observed.
+An unrelated `Yes` dialogue is never a fallback. The fail-first test reproduced the absent strict
+contract; 75 focused policy, scanner and classifier tests then passed. The classifier floor is now
+**1,164 legacy entries**, with **46** item-teleport rows still legacy-owned. Repeated-edge banking
+remains deliberately conservative at one charged amulet per use until charge capacity is modelled.
+Physical warning/landing acceptance is deferred and must use an intentionally minimal Wilderness
+loadout; this headless cutover is not a safety claim.
+
 ## Alternate-destination teleport spells - 2026-09-08
 
 All ten remaining `TELEPORTATION_SPELL` rows now use the engine-owned simple-teleport lifecycle:

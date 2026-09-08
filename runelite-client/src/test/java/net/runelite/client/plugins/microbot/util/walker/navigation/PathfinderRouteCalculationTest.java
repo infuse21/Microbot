@@ -75,7 +75,7 @@ public class PathfinderRouteCalculationTest
 	}
 
 	@Test
-	public void auditedItemBatchPublishesNinetyNineRowsAndDefersTwentyNine()
+	public void auditedItemBatchPublishesOneHundredThreeRowsAndDefersTwentyFour()
 	{
 		int candidates = 0;
 		int migrated = 0;
@@ -100,8 +100,7 @@ public class PathfinderRouteCalculationTest
 					continue;
 				}
 				candidates++;
-				boolean deferred = family.equals("max cape") || family.equals("mythical cape")
-					|| family.equals("camulet") || family.equals("burning amulet")
+				boolean deferred = family.equals("max cape") || family.equals("camulet")
 					|| row.getDisplayInfo().equals("Hunter cape: Black chinchompa");
 				assertEquals(deferred ? RouteEdge.Kind.TRANSPORT : RouteEdge.Kind.ITEM_TELEPORT, kind);
 				if (!deferred)
@@ -110,9 +109,9 @@ public class PathfinderRouteCalculationTest
 				}
 			}
 		}
-		assertEquals(128, candidates);
-		assertEquals(99, migrated);
-		assertEquals(1167, legacy);
+		assertEquals(127, candidates);
+		assertEquals(103, migrated);
+		assertEquals(1161, legacy);
 	}
 
 	private static SplitFlagMap collisionMap;

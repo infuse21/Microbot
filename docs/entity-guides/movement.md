@@ -1901,3 +1901,28 @@ all resource requirements that make that option valid. The current allowlist cov
 Varrock `Grand Exchange` and Watchtower `Yanille`; it does not make future colon-labelled spells
 engine-owned. Banking may normalize the label to the base spell for rune aggregation, but execution
 must still issue the exact alternate input and wait for the declared landing.
+
+## 100. Scope dangerous confirmations to one immutable pending transport
+
+A Wilderness warning is not permission to add a global `Yes` or `Okay` dialogue loop. Admit the
+exact transport contract first, issue its exact destination action, and only then observe the
+warning phrase owned by that pending edge. The Burning amulet contract accepts the unique
+`Okay, teleport to level` prefix for its three audited destinations and never answers unrelated
+dialogue. Confirmation, item charge change, animation or item disappearance are intermediate
+evidence; only the directed remote landing clears the interaction.
+
+## 101. Item names do not make inert variants executable
+
+An item-requirement family may contain visually related quest or display variants that have no
+usable action. Freeze the exact usable IDs and verify their captured actions before publishing the
+route. The Mokhaiotl waystone contract accepts only item 31099 with `Channel`, its completed-quest
+gate and exact destination; neighboring inert IDs remain unavailable. Consumable disappearance
+after dispatch is expected intermediate state, while only the directed landing acknowledges travel.
+
+## 102. Remove inert requirement alternatives before enabling banked execution
+
+An item ID listed beside usable alternatives can make the pathfinder and bank coordinator select an
+object that cannot perform the promised action. Validate every alternative against its captured
+inventory/equipment actions before cutover. The Mythical cape route accepts wearable capes 22114
+and 24855 only; POH trophy 21913 is inert and cannot satisfy the route. This is an item-contract
+correction, not support for mounted-house teleports.

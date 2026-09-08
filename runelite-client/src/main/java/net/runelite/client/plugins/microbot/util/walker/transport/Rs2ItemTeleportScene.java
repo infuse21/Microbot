@@ -28,7 +28,9 @@ public final class Rs2ItemTeleportScene implements ItemTeleportScene
 {
 	private static final String BOOK_SELECT_PREFIX = "book-select:";
 	private static final String BOOK_CONFIRM_PREFIX = "book-confirm:";
+	private static final String WILDERNESS_CONFIRM_PREFIX = "wilderness-confirm:";
 	private static final String REVENANT_CONFIRM = "Yes, teleport me now";
+	private static final String BURNING_AMULET_CONFIRM = "Okay, teleport to level";
 
 	@Override
 	public ItemTeleport find(PlannedEdge edge)
@@ -56,6 +58,17 @@ public final class Rs2ItemTeleportScene implements ItemTeleportScene
 			return null;
 		}
 		Set<Transport> transports = TransportEdgeMatcher.find(Rs2PathApi.getTransports(), edge.from(), edge.to());
+		if (pendingAction != null && pendingAction.startsWith("item-use:")
+			&& transports.stream().anyMatch(ItemTeleportPolicy::isBurningAmulet)
+			&& Rs2Dialogue.hasDialogueOption(BURNING_AMULET_CONFIRM, false))
+		{
+			return new ItemTeleport(21166, BURNING_AMULET_CONFIRM,
+				WILDERNESS_CONFIRM_PREFIX + BURNING_AMULET_CONFIRM);
+		}
+		if (pendingAction != null && pendingAction.startsWith(WILDERNESS_CONFIRM_PREFIX))
+		{
+			return null;
+		}
 		return Microbot.getClientThread().runOnClientThreadOptional(() ->
 		{
 			for (Transport transport : transports)
@@ -178,6 +191,10 @@ public final class Rs2ItemTeleportScene implements ItemTeleportScene
 		if (interaction.getAction().equals(BOOK_CONFIRM_PREFIX + REVENANT_CONFIRM))
 		{
 			return Rs2Dialogue.clickOption(REVENANT_CONFIRM, true);
+		}
+		if (interaction.getAction().equals(WILDERNESS_CONFIRM_PREFIX + BURNING_AMULET_CONFIRM))
+		{
+			return Rs2Dialogue.clickOption(BURNING_AMULET_CONFIRM, false);
 		}
 		ItemTeleport item = find(new PlannedEdge(interaction.getFrom(), interaction.getTo()));
 		if (item == null || item.getItemId() != interaction.getObjectId()

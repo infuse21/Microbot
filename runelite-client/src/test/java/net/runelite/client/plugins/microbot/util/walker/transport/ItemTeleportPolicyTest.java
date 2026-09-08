@@ -69,7 +69,36 @@ public class ItemTeleportPolicyTest
 				}
 			}
 		}
-		assertEquals(169, eligible);
+		assertEquals(174, eligible);
+	}
+
+	@Test
+	public void burningAmuletRowsUseOnlyTheExactAuditedWildernessContract()
+	{
+		Map<String, WorldPoint> expected = Map.of(
+			"Burning amulet: Chaos Temple", new WorldPoint(3234, 3634, 0),
+			"Burning amulet: Bandit Camp", new WorldPoint(3038, 3651, 0),
+			"Burning amulet: Lava Maze", new WorldPoint(3028, 3842, 0));
+		int rows = 0;
+		for (Set<Transport> group : Transport.loadAllFromResources().values())
+		{
+			for (Transport row : group)
+			{
+				if (row.getDisplayInfo() == null || !row.getDisplayInfo().startsWith("Burning amulet:"))
+				{
+					continue;
+				}
+				rows++;
+				assertEquals(expected.get(row.getDisplayInfo()), row.getDestination());
+				assertTrue(ItemTeleportPolicy.isBurningAmulet(row));
+				assertTrue(ItemTeleportPolicy.isEligible(row));
+				assertEquals(row.getDisplayInfo().split(": ", 2)[1],
+					ItemTeleportPolicy.inventoryAction(row));
+				assertEquals(ItemTeleportPolicy.inventoryAction(row),
+					ItemTeleportPolicy.equipmentAction(row));
+			}
+		}
+		assertEquals(3, rows);
 	}
 
 	@Test
@@ -110,6 +139,41 @@ public class ItemTeleportPolicyTest
 		Transport missingItems = row("Games necklace: Burthorpe", 3853);
 		missingItems.getItemIdRequirements().clear();
 		assertFalse(ItemTeleportPolicy.isEligible(missingItems));
+	}
+
+	@Test
+	public void mythicalCapeExcludesTheInertPohTrophyVariant()
+	{
+		int rows = 0;
+		for (Set<Transport> group : Transport.loadAllFromResources().values())
+		{
+			for (Transport row : group)
+			{
+				if (!"Mythical cape: Teleport".equals(row.getDisplayInfo()))
+				{
+					continue;
+				}
+				rows++;
+				assertEquals(Set.of(Set.of(22114), Set.of(24855)), row.getItemIdRequirements());
+				assertTrue(ItemTeleportPolicy.isEligible(row));
+				assertEquals("Teleport", ItemTeleportPolicy.inventoryAction(row));
+				assertEquals("Teleport", ItemTeleportPolicy.equipmentAction(row));
+			}
+		}
+		assertEquals(1, rows);
+		assertFalse(ItemTeleportPolicy.isEligible(row("Mythical cape: Teleport", 21913)));
+	}
+
+	@Test
+	public void maxCapeCatalogContainsNoDuplicateDirectedRows()
+	{
+		java.util.List<Transport> rows = Transport.loadAllFromResources().values().stream()
+			.flatMap(Set::stream)
+			.filter(row -> row.getDisplayInfo() != null && row.getDisplayInfo().startsWith("Max cape:"))
+			.collect(java.util.stream.Collectors.toList());
+		assertEquals(21, rows.size());
+		assertEquals(rows.size(), rows.stream().map(row -> row.getDestination() + "|"
+			+ row.getDisplayInfo() + "|" + row.getItemIdRequirements()).distinct().count());
 	}
 
 	@Test

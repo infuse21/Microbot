@@ -126,6 +126,34 @@ public class OtherItemTeleportPolicyTest
 		assertFalse(ItemTeleportPolicy.isEligible(row("Enchanted lyre: Rellekka", 3690)));
 	}
 
+	@Test
+	public void mokhaiotlWaystoneUsesOnlyItsUsableQuestGatedConsumableVariant()
+	{
+		int rows = 0;
+		for (Set<Transport> group : Transport.loadAllFromResources().values())
+		{
+			for (Transport row : group)
+			{
+				if (!"Mokhaiotl waystone: Channel".equals(row.getDisplayInfo()))
+				{
+					continue;
+				}
+				rows++;
+				assertEquals(new WorldPoint(1311, 9497, 0), row.getDestination());
+				assertEquals(Set.of(Set.of(31099)), row.getItemIdRequirements());
+				assertEquals(Map.of(Quest.THE_FINAL_DAWN, QuestState.FINISHED), row.getQuests());
+				assertTrue(row.isMembers());
+				assertTrue(row.isConsumable());
+				assertEquals(29, row.getMaxWildernessLevel());
+				assertEquals(4, row.getDuration());
+				assertTrue(ItemTeleportPolicy.isEligible(row));
+				assertEquals("Channel", ItemTeleportPolicy.inventoryAction(row));
+				assertNull(ItemTeleportPolicy.equipmentAction(row));
+			}
+		}
+		assertEquals(1, rows);
+	}
+
 	private static Transport row(String display, int id)
 	{
 		return new Transport(new WorldPoint(3000, 3000, 0), display, TransportType.TELEPORTATION_ITEM,

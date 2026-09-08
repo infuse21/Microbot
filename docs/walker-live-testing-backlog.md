@@ -21,6 +21,39 @@ additive totals; source rows, generated edges and duplicated approaches must not
 
 ## Latest work versus earlier headless batches
 
+### Max-cape duplicate cleanup - 2026-09-08
+
+- **Headless:** one exact duplicate Black-chinchompa route was removed; 21 unique Max-cape rows
+  remain legacy-owned. Reachability is unchanged and no menu behavior is claimed.
+- **Pending implementation:** variant-specific inventory/equipment nested menus, POH portal submenu,
+  exact label aliases and Wilderness confirmation still need a dedicated Max-cape protocol.
+
+### Mythical cape - 2026-09-08
+
+- **Headless:** usable cape IDs 22114/24855 now use exact inventory and worn `Teleport` actions.
+  Inert POH trophy ID 21913 was removed from the banking requirement and remains non-executable.
+- **Live pending:** test one inventory and one worn cape, verify exact guild landing, reusable item
+  retention and no legacy handoff. This does not cover a mounted cape inside a POH.
+
+### Mokhaiotl waystone - 2026-09-08
+
+- **Headless:** the sole usable item-31099 `Channel` row is engine-owned only with completed Final
+  Dawn and its exact consumable/member/Wilderness/destination contract. Inert 31101+ display items
+  and equipment actions are rejected; repeated banking still consumes one real waystone per use.
+- **Live pending:** use one waystone from inventory on an eligible account, confirm one `Channel`
+  input, exact underground landing, item consumption and no legacy handoff.
+
+### Burning amulet Wilderness teleports - 2026-09-08
+
+- **Headless:** Chaos Temple, Bandit Camp and Lava Maze are exact engine-owned item teleports. The
+  captured definitions prove all five charged variants expose the exact inventory subactions and
+  worn actions. The pending edge owns the scoped `Okay, teleport to level` warning and clears only
+  at its directed landing; final-charge disappearance cannot acknowledge success.
+- **Live pending:** with a deliberately minimal risk-free loadout, test one inventory and one worn
+  use, including a final-charge transition if practical. Capture the actual warning text, one
+  destination input, one affirmative input, exact landing and no legacy marker. Do not treat the
+  headless result as permission to carry valuable gear into the Wilderness.
+
 ### Alternate-destination teleport spells - 2026-09-08
 
 - **Headless:** all ten exact alternate rows are engine-owned: eight House `Outside`, Varrock GE and
@@ -324,8 +357,8 @@ Do not label these as "just waiting for live testing":
   destination/instance flows. The level-48 test house is empty; only physical Home/Enter passed.
 - 53 multi-code/POH fairy-ring rows; 318 random-obelisk rows including 48 unsafe self-pad artifacts;
   12 grapple rows; 14 remaining agility rows. The 12 redundant random Guthix rows were removed.
-- 49 item rows after the POH Outside-tablet cutover: 29 jewellery/cape exceptions (Max, Burning, Black
-  chinchompa Hunter cape, Camulet, Mythical); 14 whistles; moth/waystone; Ardougne Farm, Chronicle,
+- 43 item rows after the Max duplicate cleanup: 24 jewellery/cape exceptions (Max, Black chinchompa
+  Hunter cape, Camulet); 14 whistles; moth; Ardougne Farm, Chronicle,
   Slepe and Jaltevas. Some need data/charge fixes rather than a new executor.
 - The ten alternate spell overrides are headless-complete above; representative live acceptance is
   still pending.
