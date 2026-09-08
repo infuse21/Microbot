@@ -21,6 +21,38 @@ headless batches, outstanding branches of representative live passes, and contra
 implementation. As of 2026-09-06 the user requests headless-first progress; deferred physical tests
 remain open rather than blocking each batch or being silently marked complete.
 
+## Weiss post-quest routes, guide NPCs and stale portal duplicates - 2026-09-08
+
+Seven completed-Making Friends with My Arm Weiss routes now use exact catalogue/NavigationEngine
+ownership: two fallen-tree, two little-boulder and three cleared-cave approaches. Four unsafe Weiss
+ledge/rope rows remain only as source evidence because their 68 Agility, setup, damage and fallback
+stages are absent. Ten deterministic guide routes now use the direct NPC lifecycle: six post-Death
+to the Dorgeshuun Dartog/Mistag/Kazgar destinations, two quest-gated Elkoy crossings and two
+unlock-gated Auburn Mountain Guide crossings. Their members, NPC-form, quest and variable gates are
+frozen by exact tests.
+
+Five duplicate Runecrafting portal rows are source-disabled because the Wiki/cache contract exposes
+`Use`, while those rows encoded `Enter`; canonical `Use` exits remain available. This batch removes
+23 more legacy classifications while adding 17 exact engine-owned routes; three corrected Dorgesh
+rows collapse onto their canonical post-quest contracts rather than contributing separate legacy
+edges. The classifier floor is now **327 legacy entries**: 304 ordinary `TRANSPORT` and 23
+`TELEPORTATION_ITEM` entries.
+
+## Unsafe access gates and Weiss rockslides - 2026-09-08
+
+Sixteen incomplete catalogue rows are now source-only. Five God Wars Dungeon boulder rows omitted
+the members/60 Strength gate, five Cerberus winch rows omitted 91 Slayer plus an active hellhound
+or Cerberus task, and six Weiss rockslides omitted their asymmetric 68 Agility ascent requirement
+and failed-climb damage/recovery. OSRS Wiki and cache MCP checks pin the exact object identities and
+requirements; exact source-shape tests prove none of these unsafe rows loads at runtime.
+
+The remaining 23 `TELEPORTATION_ITEM` rows were separately audited: 20 Max cape, two Camulet and
+one Hunter cape Black-chinchompa row. They remain deferred because grouped worn/inventory menus,
+setting-dependent Max-cape Home behavior, shared five-per-day Hunter counters, Camulet charges and
+the Wilderness confirmation are not all encoded. No item row was promoted on incomplete evidence.
+The classifier floor is now **350 legacy entries**: 327 ordinary `TRANSPORT` and 23
+`TELEPORTATION_ITEM` entries.
+
 ## Unsafe incomplete shortcut cleanup - 2026-09-08
 
 Thirty-two catalogue rows are now retained only as commented source evidence and no longer enter

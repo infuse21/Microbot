@@ -1197,14 +1197,15 @@
 2873 9847 0	1310 1237 0	Crawl;Cave;26569									
 1309 1237 0	2873 9848 0	Crawl;Cave;26564									
 2873 9846 0	1310 1237 0	Crawl;Cave;26567									
-1292 1253 0	1240 1226 0	Turn;Iron Winch;23104									
-1291 1253 0	1240 1226 0	Turn;Iron Winch;23104									
+# DEFERRED: Cerberus winches require 91 Slayer and an active hellhound/Cerberus task; these rows encode neither gate.
+# 1292 1253 0	1240 1226 0	Turn;Iron Winch;23104
+# 1291 1253 0	1240 1226 0	Turn;Iron Winch;23104
 1240 1226 0	1291 1253 0	Exit;Portcullis;21772									
-1309 1269 0	1304 1290 0	Turn;Iron Winch;23104									
+# 1309 1269 0	1304 1290 0	Turn;Iron Winch;23104
 1304 1290 0	1309 1269 0	Exit;Portcullis;21772									
 1368 1226 0	1328 1253 0	Exit;Portcullis;21772									
-1328 1253 0	1368 1226 0	Turn;Iron Winch;23104									
-1329 1253 0	1368 1226 0	Turn;Iron Winch;23104									
+# 1328 1253 0	1368 1226 0	Turn;Iron Winch;23104
+# 1329 1253 0	1368 1226 0	Turn;Iron Winch;23104
 2903 9813 1	2906 9813 0	Climb;Steps;30190									
 2906 9813 0	2903 9813 1	Climb;Steps;30189									
 2883 9825 0	2880 9825 1	Climb;Steps;30189									
@@ -4239,26 +4240,28 @@
 2638 10424 0	2639 10424 0	Open;Door;21167									
 2639 10424 0	2638 10424 0	Open;Door;21167									
 											
-# Weiss											
-2852 3966 0	2852 3964 0	Climb;Rockslide;33184									
-2852 3964 0	2852 3966 0	Climb;Rockslide;33184									
-2852 3964 0	2855 3964 0	Climb;Rockslide;33185									
-2855 3964 0	2852 3964 0	Climb;Rockslide;33185									
-2855 3964 0	2853 3961 0	Climb;Rope;33328									
-2853 3961 0	2855 3964 0	Climb;Roped tree;33327									
-2853 3961 0	2857 3961 0	Cross;Ledge;33190									
-2857 3961 0	2853 3961 0	Cross;Ledge;33190									
-2859 3962 0	2859 3960 0	Climb;Rockslide;33191									
-2859 3960 0	2859 3962 0	Climb;Rockslide;33191									
-2857 3957 0	2857 3954 0	Pass;Fallen Tree;33192									
-2857 3954 0	2857 3957 0	Pass;Fallen Tree;33192									
-2852 3936 0	2850 3936 0	Cross;Little boulder;33312									
-2850 3936 0	2852 3936 0	Cross;Little boulder;33312									
-2858 3968 0	2854 3941 0	Enter;Cave Entrance;33329									
+# Weiss
+# Unsupported: Weiss upward rockslides require 68 Agility and can fail for up to 15 damage; the rows omit directional gates and failure recovery.
+# 2852 3966 0	2852 3964 0	Climb;Rockslide;33184
+# 2852 3964 0	2852 3966 0	Climb;Rockslide;33184
+# 2852 3964 0	2855 3964 0	Climb;Rockslide;33185
+# 2855 3964 0	2852 3964 0	Climb;Rockslide;33185
+# Unsupported: Weiss ascent rope and ledge require 68 Agility and can fail to earlier stages; the rows omit directional gates and recovery.
+# 2855 3964 0	2853 3961 0	Climb;Rope;33328
+# 2853 3961 0	2855 3964 0	Climb;Roped tree;33327
+# 2853 3961 0	2857 3961 0	Cross;Ledge;33190
+# 2857 3961 0	2853 3961 0	Cross;Ledge;33190
+# 2859 3962 0	2859 3960 0	Climb;Rockslide;33191
+# 2859 3960 0	2859 3962 0	Climb;Rockslide;33191
+2857 3957 0	2857 3954 0	Pass;Fallen Tree;33192				Making Friends with My Arm=FINISHED			yes
+2857 3954 0	2857 3957 0	Pass;Fallen Tree;33192				Making Friends with My Arm=FINISHED			yes
+2852 3936 0	2850 3936 0	Cross;Little boulder;33312				Making Friends with My Arm=FINISHED			yes
+2850 3936 0	2852 3936 0	Cross;Little boulder;33312				Making Friends with My Arm=FINISHED			yes
+2858 3968 0	2854 3941 0	Enter;Cave Entrance;33329				Making Friends with My Arm=FINISHED			yes
 2855 3941 0	2859 3968 0	Descend;Hole;33227				Making Friends with My Arm=FINISHED			yes
-2859 3968 0	2854 3941 0	Enter;Cave Entrance;33329									
+2859 3968 0	2854 3941 0	Enter;Cave Entrance;33329				Making Friends with My Arm=FINISHED			yes
 2854 3941 0	2859 3968 0	Descend;Hole;33227				Making Friends with My Arm=FINISHED			yes
-2860 3968 0	2854 3941 0	Enter;Cave Entrance;33329									
+2860 3968 0	2854 3941 0	Enter;Cave Entrance;33329				Making Friends with My Arm=FINISHED			yes
 2853 3941 0	2859 3968 0	Descend;Hole;33227				Making Friends with My Arm=FINISHED			yes
 2856 3941 0	2859 3968 0	Descend;Hole;33227				Making Friends with My Arm=FINISHED			yes
 2852 3941 0	2859 3968 0	Descend;Hole;33227				Making Friends with My Arm=FINISHED			yes
@@ -4495,11 +4498,12 @@
 2867 3718 0	2874 3720 0	Enter;Cave Entrance;6440									
 2874 3719 0	2867 3719 0	Enter;Cave Exit;6447									
 2868 3721 0	2874 3720 0	Enter;Cave Entrance;6440									
-2899 3715 0	2898 3719 0	Move;Boulder;26415									
-2898 3719 0	2898 3715 0	Move;Boulder;26415									
-2898 3715 0	2898 3719 0	Move;Boulder;26415									
-2899 3719 0	2898 3715 0	Move;Boulder;26415									
-2900 3719 0	2898 3715 0	Move;Boulder;26415									
+# DEFERRED: God Wars Dungeon boulder requires 60 Strength and members access; these rows encode neither gate.
+# 2899 3715 0	2898 3719 0	Move;Boulder;26415
+# 2898 3719 0	2898 3715 0	Move;Boulder;26415
+# 2898 3715 0	2898 3719 0	Move;Boulder;26415
+# 2899 3719 0	2898 3715 0	Move;Boulder;26415
+# 2900 3719 0	2898 3715 0	Move;Boulder;26415
 2899 3713 0	2904 3720 0	Crawl-through;Little crack;26382									
 2904 3720 0	2899 3713 0	Crawl-through;Little crack;26382									
 2916 3748 0	2882 5311 2	Climb-down;Hole;26419					3966=1
@@ -5385,8 +5389,8 @@
 2515 10008 0	2515 10005 0	Climb;Iron ladder;4383									
 2516 10002 0	2516 10003 0	Open;Strange wall;4384									
 2513 10003 0	2513 10002 0	Open;Strange wall;4384									
-2504 3191 0	2515 3159 0	Follow;Elkoy;4968						111>0		5	
-2515 3159 0	2504 3191 0	Follow;Elkoy;4968						111>0		5	
+2504 3191 0	2515 3159 0	Follow;Elkoy;4968						111>0	Y	5
+2515 3159 0	2504 3191 0	Follow;Elkoy;4968						111>0	Y	5
 1509 3595 0	1509 3593 1	Climb-up;Ladder;42207									
 1509 3593 1	1509 3590 0	Climb-down;Ladder;42208									
 1496 3571 0	1496 3571 1	Climb-up;Ladder;42207									
@@ -5600,8 +5604,8 @@
 1272 3475 0	1275 3559 0	Travel;Mountain Guide;7600					5421=1			7	2: Mount Quidamortem.
 1259 3430 0	1271 3436 0	Pass-through;Cave;57219								4	
 1271 3436 0	1259 3430 0	Pass-through;Cave;57220								4	
-1486 3232 0	1361 3309 0	Follow;Mountain Guide;14529					17226=1			5	
-1361 3309 0	1486 3232 0	Follow;Mountain Guide;14529					17226=1			5	
+1486 3232 0	1361 3309 0	Follow;Mountain Guide;14529					17226=1		Y	5
+1361 3309 0	1486 3232 0	Follow;Mountain Guide;14529					17226=1		Y	5
 3280 3412 0	1700 3141 0	Travel;Primio;12888				Children of the Sun				6	Civitas illa Fortis
 1703 3140 0	3280 3412 0	Travel;Primio;12889				Children of the Sun				6	Varrock
 # 2744 3152 0	2713 9564 0	Enter;Dungeon entrance;20876			875 Coins					2
@@ -5924,17 +5928,18 @@
 2275 4847 3	3060 3585 0	Use;Portal;34757								1	
 2273 4855 3	3066 3591 0	Use;Portal;34757								1	
 3049 4839 0	2464 4826 0	Exit-through;Law rift;25382				Troll Stronghold					
-2464 4818 0	2858 3378 0	Enter;Portal;34755								1	
+# Disabled: Runecrafting exit portals expose Use, not Enter; retain the canonical action only.
+# 2464 4818 0	2858 3378 0	Enter;Portal;34755								1
 3050 4837 0	2209 4834 0	Exit-through;Death rift;25382				Mourning's End Part II					
-2208 4830 0	1860 4639 0	Enter;Portal;34758								1	
+# 2208 4830 0	1860 4639 0	Enter;Portal;34758								1
 3051 4833 0	2714 4838 0	Exit-through;Water rift;25382									
 3050 4829 0	1816 3856 0	Exit-through;Soul rift;25382									
 3047 4825 0	2846 4836 0	Exit-through;Air rift;25382									
-2842 4828 0	2983 3288 0	Enter;Portal;34748								1	
+# 2842 4828 0	2983 3288 0	Enter;Portal;34748								1
 3044 4822 0	2784 4843 0	Exit-through;Mind rift;25382									
-2792 4827 0	2980 3511 0	Enter;Portal;34749								1	
+# 2792 4827 0	2980 3511 0	Enter;Portal;34749								1
 3039 4821 0	2520 4848 0	Exit-through;Body rift;25382									
-2521 4834 0	3050 3442 0	Enter;Portal;34753								1	
+# 2521 4834 0	3050 3442 0	Enter;Portal;34753								1
 3031 4825 0	2660 4843 0	Exit-through;Earth rift;25382									
 3029 4830 0	2587 4836 0	Exit-through;Fire rift;25382									
 2575 4849 0	3310 3252 0	Use;Portal;34752								1	
@@ -5985,12 +5990,12 @@
 2773 10003 0	2775 10003 0	Jump-over;Strange floor;16544	43 Agility							10	
 2770 10002 0	2768 10002 0	Jump-over;Strange floor;16544	43 Agility							10	
 2768 10002 0	2770 10002 0	Jump-over;Strange floor;16544	43 Agility							10	
-3230 9609 0	3313 9613 0	Mines;Kazgar;7301				The Lost Tribe				8	Mines
-3230 9609 0	3245 9648 0	Watermill;Kazgar;7301				Death to the Dorgeshuun				8	Watermill
-3317 9612 0	3232 9610 0	Cellar;Mistag;7299				The Lost Tribe				8	Cellar
-3317 9612 0	3245 9648 0	Watermill;Mistag;7299				Death to the Dorgeshuun				8	Watermill
-3246 9646 0	3313 9613 0	Mines;Dartog;7301				Death to the Dorgeshuun				8	Mines
-3246 9646 0	3232 9610 0	Cellar;Dartog;997				Death to the Dorgeshuun				8	Cellar
+3230 9609 0	3313 9613 0	Mines;Kazgar;7301				Death to the Dorgeshuun			Y	8	Mines
+3230 9609 0	3245 9648 0	Watermill;Kazgar;7301				Death to the Dorgeshuun			Y	8	Watermill
+3317 9612 0	3232 9610 0	Cellar;Mistag;7299				Death to the Dorgeshuun			Y	8	Cellar
+3317 9612 0	3245 9648 0	Watermill;Mistag;7299				Death to the Dorgeshuun			Y	8	Watermill
+3246 9646 0	3313 9613 0	Mines;Dartog;997				Death to the Dorgeshuun			Y	8	Mines
+3246 9646 0	3232 9610 0	Cellar;Dartog;997				Death to the Dorgeshuun			Y	8	Cellar
 2709 3498 0	2716 9888 0	Climb-down;Staircase;3415								1	
 2716 9888 0	2709 3497 0	Climb-up;Staircase;3416								1	
 2370 3621 0	2371 3620 0	Climb-over;Stile;19222								5	

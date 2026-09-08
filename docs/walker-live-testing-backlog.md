@@ -21,6 +21,28 @@ additive totals; source rows, generated edges and duplicated approaches must not
 
 ## Latest work versus earlier headless batches
 
+### Weiss post-quest routes, guide NPCs and stale portal duplicates - 2026-09-08
+
+- **Headless:** seven safe post-quest Weiss routes and ten deterministic Dorgesh/Elkoy/Auburn guide
+  routes are exact engine-owned transitions. Five wrong-action Runecrafting portal duplicates and
+  four unsafe Weiss ledge/rope rows are source-disabled; canonical Runecrafting `Use` exits remain.
+- **Live pending:** traverse one cleared Weiss cave plus one fallen-tree/little-boulder route, each
+  Dorgesh guide destination family, Elkoy in both directions and the Auburn guide in both directions.
+  Verify the final landing is acknowledged once with no legacy handoff.
+- **Not live-pending:** wrong-action portal duplicates and unsafe Weiss rows are not migrated
+  coverage. Current classifier floor: 304 ordinary plus 23 item rows, 327 total.
+
+### Unsafe access gates, Weiss rockslides and remaining item audit - 2026-09-08
+
+- **Headless:** five God Wars boulder, five Cerberus winch and six Weiss rockslide rows are
+  runtime-disabled with Wiki/cache MCP evidence and exact zero-load tests. Their source contracts
+  omitted mandatory skills/tasks or asymmetric failure and damage recovery.
+- **Implementation pending:** the 23 remaining item rows are 20 Max cape, two Camulet and one
+  Hunter cape Black-chinchompa route. Capture and implement their grouped menus, settings, charges,
+  shared daily counter and scoped Wilderness confirmation before live testing them.
+- **Not live-pending:** the 16 disabled ordinary rows are unsupported protocols, not migrated
+  coverage. Current classifier floor: 327 ordinary plus 23 item rows, 350 total.
+
 ### Unsafe incomplete shortcut cleanup - 2026-09-08
 
 - **Headless:** OSRS Wiki MCP evidence and source-shape tests cover the runtime removal of ten

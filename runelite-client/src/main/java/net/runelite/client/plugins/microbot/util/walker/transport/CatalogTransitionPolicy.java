@@ -570,6 +570,14 @@ public final class CatalogTransitionPolicy
 		"2853,3941,0->2859,3968,0|33227|descend|hole",
 		"2856,3941,0->2859,3968,0|33227|descend|hole",
 		"2852,3941,0->2859,3968,0|33227|descend|hole");
+	private static final Set<String> WEISS_POST_QUEST_DIRECT_ROUTES = Set.of(
+		"2857,3957,0->2857,3954,0|33192|pass|fallen tree",
+		"2857,3954,0->2857,3957,0|33192|pass|fallen tree",
+		"2852,3936,0->2850,3936,0|33312|cross|little boulder",
+		"2850,3936,0->2852,3936,0|33312|cross|little boulder",
+		"2858,3968,0->2854,3941,0|33329|enter|cave entrance",
+		"2859,3968,0->2854,3941,0|33329|enter|cave entrance",
+		"2860,3968,0->2854,3941,0|33329|enter|cave entrance");
 	private static final Set<Integer> ROCK_SLIDE_PICKAXE_IDS = Set.of(
 		1265, 1267, 1269, 12297, 1273, 1271, 1275, 11920, 23680, 23276, 13243, 20014);
 	private static final Set<String> UNLOCKED_PASSAGE_ROUTES = Set.of(
@@ -735,7 +743,8 @@ public final class CatalogTransitionPolicy
 			|| isLithkrenBrokenDoor(transport) || isDirectOutwardExit(transport)
 			|| isCamdozaalRoute(transport) || isUnlockedPassage(transport)
 			|| isHeroesRockSlide(transport) || isStrongholdSlayerTunnel(transport)
-			|| isWeissHole(transport) || isPostQuestIceTrollCave(transport)
+			|| isWeissHole(transport) || isWeissPostQuestDirect(transport)
+			|| isPostQuestIceTrollCave(transport)
 			|| isPostQuestMyrequeDoor(transport))
 		{
 			return true;
@@ -743,6 +752,10 @@ public final class CatalogTransitionPolicy
 		if (isEquippedGrappleShortcut(transport) || isBarehandGrappleShortcut(transport))
 		{
 			return true;
+		}
+		if (isWeissPostQuestDirectObject(transport.getObjectId()))
+		{
+			return false;
 		}
 		if (!transport.getItemIdRequirements().isEmpty())
 		{
@@ -1248,6 +1261,18 @@ public final class CatalogTransitionPolicy
 		}
 		return WEISS_HOLE_ROUTES.contains(routeKey(transport,
 			normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
+	}
+
+	static boolean isWeissPostQuestDirect(Transport transport)
+	{
+		return isExactCompletedQuestRoute(transport, Quest.MAKING_FRIENDS_WITH_MY_ARM, 0)
+			&& WEISS_POST_QUEST_DIRECT_ROUTES.contains(routeKey(transport,
+				normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
+	}
+
+	static boolean isWeissPostQuestDirectObject(int objectId)
+	{
+		return Set.of(33192, 33312, 33329).contains(objectId);
 	}
 
 	private static boolean hasOnlySkill(Transport transport, net.runelite.api.Skill skill, int level)

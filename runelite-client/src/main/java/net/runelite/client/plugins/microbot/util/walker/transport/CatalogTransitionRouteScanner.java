@@ -91,6 +91,7 @@ public final class CatalogTransitionRouteScanner
 			|| CatalogTransitionPolicy.isFremennikSurfaceBridgeObject(pending.getObjectId())
 			|| CatalogTransitionPolicy.isAuditedAgilityTraversalObject(pending.getObjectId())
 			|| CatalogTransitionPolicy.isWintertodtGapObject(pending.getObjectId())
+			|| CatalogTransitionPolicy.isWeissPostQuestDirectObject(pending.getObjectId())
 			|| CatalogTransitionPolicy.isPostQuestIceTrollCaveObject(pending.getObjectId())
 			|| CatalogTransitionPolicy.isPostQuestMyrequeDoorObject(pending.getObjectId())
 			|| CatalogTransitionPolicy.isMeiyerditchFloorObject(pending.getObjectId())
