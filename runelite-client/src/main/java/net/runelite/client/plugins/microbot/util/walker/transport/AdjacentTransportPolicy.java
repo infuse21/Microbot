@@ -46,6 +46,9 @@ public final class AdjacentTransportPolicy
 	private static final Set<String> EAST_ARDOUGNE_PICKLOCK_ROUTES = Set.of(
 		"2674,3304,0->2674,3303,0|11720",
 		"2674,3305,0->2674,3306,0|11719");
+	private static final Set<String> HAUNTED_MINE_CART_ROUTES = Set.of(
+		"3446,3236,0->3444,3236,0|4918",
+		"3444,3236,0->3446,3236,0|4918");
 	private static final int SHORT_PORTAL_DISTANCE = 2;
 	private static final int FEROX_BARRIER = 39652;
 	private static final int FEROX_BARRIER_MIRRORED = 39653;
@@ -92,6 +95,7 @@ public final class AdjacentTransportPolicy
 		String action = transport.getAction().toLowerCase(Locale.ROOT);
 		if (isEdgevilleOddWall(transport)) return true;
 		if (isDraynorBookcase(transport)) return true;
+		if (transport.getObjectId() == 4918) return isHauntedMineCart(transport);
 		if ("pick-lock".equals(action))
 		{
 			return isYanillePickLockDoor(transport) || isEastArdougnePickLockDoor(transport);
@@ -206,6 +210,31 @@ public final class AdjacentTransportPolicy
 	{
 		return isEastArdougnePickLockDoor(transport)
 			&& thieving >= transport.getSkillLevels()[net.runelite.api.Skill.THIEVING.ordinal()];
+	}
+
+	static boolean isHauntedMineCart(Transport transport)
+	{
+		return transport != null && transport.getOrigin() != null && transport.getDestination() != null
+			&& transport.getType() == TransportType.TRANSPORT && transport.isMembers()
+			&& !transport.isConsumable() && transport.getCurrencyAmount() == 0
+			&& transport.getDuration() == 1 && transport.getObjectId() == 4918
+			&& "climb-over".equals(normalize(transport.getAction()))
+			&& "mine cart".equals(normalize(transport.getName()))
+			&& transport.getItemIdRequirements().isEmpty()
+			&& transport.getQuests().equals(java.util.Map.of(
+				net.runelite.api.Quest.PRIEST_IN_PERIL, net.runelite.api.QuestState.FINISHED))
+			&& transport.getVarbits().isEmpty() && transport.getVarplayers().isEmpty()
+			&& transport.getSkillLevels()[net.runelite.api.Skill.AGILITY.ordinal()] == 15
+			&& java.util.stream.IntStream.range(0, transport.getSkillLevels().length)
+				.filter(index -> index != net.runelite.api.Skill.AGILITY.ordinal())
+				.allMatch(index -> transport.getSkillLevels()[index] == 0)
+			&& HAUNTED_MINE_CART_ROUTES.contains(pointKey(transport.getOrigin()) + "->"
+				+ pointKey(transport.getDestination()) + "|" + transport.getObjectId());
+	}
+
+	static boolean hasRequiredHauntedMineCartAgility(Transport transport, int agility)
+	{
+		return isHauntedMineCart(transport) && agility >= 15;
 	}
 
 	static boolean isDraynorBookcase(Transport transport)

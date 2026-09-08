@@ -1599,6 +1599,9 @@ public class PathfinderConfig {
 		} else if (type == TransportType.TRANSPORT
 				&& CatalogTransitionPolicy.isAuditedShortcutTraversal(transport)) {
 			type = TransportType.AGILITY_SHORTCUT;
+		} else if (type == TransportType.TRANSPORT && transport.getObjectId() == 38574
+				&& CatalogTransitionPolicy.isAuditedMiscAccess(transport)) {
+			type = TransportType.AGILITY_SHORTCUT;
 		} else if (type == TransportType.TRANSPORT
 				&& ((MEIYERDITCH_FLOORBOARD_IDS.contains(transport.getObjectId())
 						&& "Floorboards".equalsIgnoreCase(transport.getName())

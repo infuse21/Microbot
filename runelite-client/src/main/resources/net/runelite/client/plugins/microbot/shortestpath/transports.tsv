@@ -656,10 +656,11 @@
 2683 3266 0	2683 3263 1	Cross;Gangplank;2085								1
 
 # Witchaven Dungeon											
-2697 3283 0	2696 9683 0	Climb-down;Old ruin entrance;18270
+2697 3283 0	2696 9683 0	Climb-down;Old ruin entrance;18270							Y	1
 2696 9683 0	2697 3283 0	Climb-up;Exit;18354							Y
-2700 9688 0	2323 5104 0	Enter;Wall opening;19124								2
-2323 5104 0	2700 9688 0	Enter;Passage;18412								2
+# Unsupported: Slug Menace wall opening requires a quest-time false-wall transform not encoded by these rows.
+# 2700 9688 0	2323 5104 0	Enter;Wall opening;19124								2
+# 2323 5104 0	2700 9688 0	Enter;Passage;18412								2
 											
 # West Ardougne											
 2559 3300 0	2556 3300 0	Open;Ardougne Wall Door;8739				Biohazard
@@ -967,7 +968,7 @@
 3144 3446 2	3144 3449 1	Climb-down;Staircase;2610								2	
 											
 # Stronghold of Security											
-3081 3421 0	1859 5243 0	Climb-down;Entrance;20790									
+3081 3421 0	1859 5243 0	Climb-down;Entrance;20790								1
 1859 5243 0	3081 3421 0	Climb-up;Ladder;20784									
 1860 5244 0	3081 3421 0	Climb-up;Ladder;20784									
 1858 5244 0	3081 3421 0	Climb-up;Ladder;20784									
@@ -975,7 +976,6 @@
 1914 5226 0	3081 3421 0	Climb-up;Ladder;20784									
 1912 5226 0	3081 3421 0	Climb-up;Ladder;20784									
 1913 5227 0	3081 3421 0	Climb-up;Ladder;20784									
-3081 3421 0	1859 5243 0	Climb-down;Entrance;20790									
 1859 5243 0	3081 3421 0	Climb-up;Ladder;20784									
 1860 5244 0	3081 3421 0	Climb-up;Ladder;20784									
 1858 5244 0	3081 3421 0	Climb-up;Ladder;20784									
@@ -1154,7 +1154,7 @@
 3026 3247 1	3025 3248 0	Climb-down;Staircase;9584									
 3025 3248 0	3026 3247 1	Climb-up;Staircase;9582									
 3025 3249 0	3026 3247 1	Climb-up;Staircase;9582									
-3018 3231 0	2962 9650 0	Climb-down;Manhole;10321									
+3018 3231 0	2962 9650 0	Climb-down;Manhole;10321				Ratcatchers=IN_PROGRESS	1404>104		Y	1
 2962 9650 0	3018 3233 0	Climb-up;Ladder;10309									
 											
 # Wizard Tower											
@@ -1385,8 +1385,9 @@
 2510 3494 0	2512 3481 0	Board;Log raft;1987									
 2511 3477 0	2527 3413 0	Swim;River;10283									
 2510 3493 0	2512 3481 0	Board;Log raft;1987									
-2511 3463 0	2527 3413 0	Get in;Barrel;2022									
-2512 3466 0	2527 3413 0	Climb;Dead Tree;2020									
+2511 3463 0	2527 3413 0	Get in;Barrel;2022							Y	1
+# DEFERRED: climbing the Waterfall dead tree always washes the player downstream and deals up to 9 damage.
+# 2512 3466 0	2527 3413 0	Climb;Dead Tree;2020
 2512 3476 0	2527 3413 0	Swim to;Rock;1996									
 2511 3463 0	2575 9861 0	Open;Door;2010				Waterfall Quest
 2575 9861 0	2511 3463 0	Open;Door;2000									
@@ -1423,7 +1424,8 @@
 3550 10468 0	3550 10473 0	Climb;Staircase;32113									
 3550 10473 0	3550 10468 0	Climb;Staircase;32113									
 3551 10481 0	1568 5061 0	Enter;Broken Grandiose Doors;32117				Dragon Slayer II=FINISHED			yes
-1570 5061 0	3549 10481 0	Climb-up;Goo covered vine;23703									
+# Unsupported: this Lithkren row reuses a Stronghold goo-vine ID and duplicates the adjacent grandiose-door route.
+# 1570 5061 0	3549 10481 0	Climb-up;Goo covered vine;23703
 3550 10481 0	1568 5061 0	Enter;Broken Grandiose Doors;32117				Dragon Slayer II=FINISHED			yes
 1569 5061 0	3549 10481 0	Enter;Broken Grandiose Doors;32132				Dragon Slayer II=FINISHED			yes
 3549 10481 0	1568 5061 0	Enter;Broken Grandiose Doors;32117				Dragon Slayer II=FINISHED			yes
@@ -1604,8 +1606,9 @@
 2693 9482 0	2695 9482 0	Chop-down;Vines;21735		1351;1349;1353;1361;1355;1357;1359;6739;20011;13241;23673;25066;28222
 2695 9482 0	2693 9482 0	Chop-down;Vines;21735		1351;1349;1353;1361;1355;1357;1359;6739;20011;13241;23673;25066;28222
 # 87 Agility Vine Shortcut
-2673 9583 0	2670 9583 2	Climb;Vine;26880
-2670 9583 2	2673 9583 0	Climb;Vine;26882
+# Disabled shadows: agility_shortcuts.tsv owns the live vine crossings with 87 Agility and exact landing 2674,9583,0.
+# 2673 9583 0	2670 9583 2	Climb;Vine;26880
+# 2670 9583 2	2673 9583 0	Climb;Vine;26882
 # Stairs
 2649 9591 0	2643 9595 2	Walk-up;Stairs;21722
 2643 9595 2	2649 9591 0	Walk-down;Stairs;21724
@@ -1629,8 +1632,9 @@
 # 2655 9573 0	2655 9566 0	Squeeze-through;Pipe;21728
 # 2655 9566 0	2655 9573 0	Squeeze-through;Pipe;21728
 # Crevice
-2684 9436 0	2697 9436 0	Enter;Crevice;30198
-2697 9436 0	2684 9436 0	Enter;Crevice;30198
+# Unsupported: this passage enters Brimhaven Dungeon's Slayer-only metal-dragon area, but the rows encode no active-task gate.
+# 2684 9436 0	2697 9436 0	Enter;Crevice;30198
+# 2697 9436 0	2684 9436 0	Enter;Crevice;30198
 # Brimhaven Dungeon - CKR Fairy Ring Alternate Entrance
 # Unsupported: Brimhaven's southern entrance requires a one-time 5,000-trading-stick Banisoch unlock absent from these rows.
 # 2761 3062 0	2734 9478 0	Climb;Rope;66
@@ -1980,13 +1984,14 @@
 1987 5568 0	2435 3519 0	Pass-through;Opening;28807				Monkey Madness II=FINISHED			Y	1
 											
 # Tolna's Rift											
-3309 3452 0	3297 9824 0	Enter;Rift;13968									
+# Unsupported: Tolna's rift needs quest progress, one-time rope setup, and a click-sensitive instance-entry cutscene.
+# 3309 3452 0	3297 9824 0	Enter;Rift;13968
 3297 9824 0	3312 3450 0	Climb-up;Rope;13999									
 3298 9823 0	3312 3450 0	Climb-up;Rope;13999									
 3296 9823 0	3312 3450 0	Climb-up;Rope;13999									
 3297 9822 0	3312 3450 0	Climb-up;Rope;13999									
-2484 3463 1	2486 3465 2	Climb-up;Tree;2447									
-2485 3465 2	2484 3463 1	Climb-down;Tree;28800									
+2484 3463 1	2486 3465 2	Climb-up;Tree;2447	25 Agility			The Grand Tree=IN_PROGRESS			Y	1
+2485 3465 2	2484 3463 1	Climb-down;Tree;28800	25 Agility			The Grand Tree=IN_PROGRESS			Y	1
 											
 # Land's End											
 1504 3396 1	1504 3399 0	Cross;Gangplank;29724								3	
@@ -1997,7 +2002,8 @@
 1496 3403 0	1493 3403 1	Cross;Gangplank;50065									
 											
 # Shayzien											
-1483 3549 0	1483 9951 3	Enter;Crypt Entrance;32403									
+# Unsupported: the Dragon Slayer II crypt warns without a light source; this row has neither a light-source requirement nor warning-dialogue handling.
+# 1483 3549 0	1483 9951 3	Enter;Crypt Entrance;32403
 1483 9951 3	1483 3549 0	Climb-up;Ladder;32401									
 1561 3596 0	1561 3592 1	Climb;Stairs;27201									
 1561 3592 1	1561 3596 0	Climb;Stairs;27202									
@@ -2168,13 +2174,13 @@
 3619 3317 1	3621 3317 0	Climb-down;Ladder;17975									
 											
 # Darkmeyer											
-3627 3328 0	3627 3332 0	Enter;Cracked wall;39170									
-3627 3332 0	3627 3328 0	Enter;Cracked wall;39170									
+3627 3328 0	3627 3332 0	Enter;Cracked wall;39170				Sins of the Father=IN_PROGRESS			Y	1
+3627 3332 0	3627 3328 0	Enter;Cracked wall;39170				Sins of the Father=IN_PROGRESS			Y	1
 3696 9764 2	3633 3339 0	Climb-up;Staircase;39093									
 3633 3339 0	3696 9764 2	Climb-down;Staircase;39092									
 3697 9764 2	3633 3339 0	Climb-up;Staircase;39093									
 3633 3340 0	3696 9764 2	Climb-down;Staircase;39092									
-3654 3384 0	2400 5969 0	Enter;Mausoleum Door;38574									
+3654 3384 0	2400 5969 0	Enter;Mausoleum Door;38574	52 Agility			Sins of the Father=FINISHED			Y	1
 2400 5969 0	3654 3384 0	Climb-up;Stairs;38601									
 2399 5969 0	3654 3384 0	Climb-up;Stairs;38601									
 2401 5969 0	3654 3384 0	Climb-up;Stairs;38601									
@@ -3416,7 +3422,7 @@
 3283 2770 3	3283 2772 1	Climb-down;Ladder;20357								2	
 3279 2772 1	3279 2770 3	Climb-up;Ladder;20356								2	
 3279 2770 3	3279 2772 1	Climb-down;Ladder;20357								2	
-3320 2796 0	3321 2858 0	Climb-through;Hole;6620									
+3320 2796 0	3321 2858 0	Climb-through;Hole;6620				Icthlarin's Little Helper=IN_PROGRESS			Y	1
 3322 2858 0	3319 2796 0	Enter;Rock;6621				Icthlarin's Little Helper=FINISHED			yes
 3322 2859 0	3319 2796 0	Enter;Rock;6621				Icthlarin's Little Helper=FINISHED			yes
 3323 2860 0	3319 2796 0	Enter;Rock;6621				Icthlarin's Little Helper=FINISHED			yes
@@ -3494,9 +3500,10 @@
 3483 9509 2	3226 3108 0	Climb-up;Rope;3829									
 # Unsupported: the Dorgesh-Kaan tunnel requires completed access and safe light-source state; otherwise the destination inflicts insect damage.
 # 3514 9521 2	2711 5206 0	Enter;Tunnel;23596
-2711 5206 0	3514 9521 2	Enter;Blocked tunnel;22656									
+# Unsupported: closed Dorgesh tunnel variants require permanent clearing state; open variants are 22658/22659.
+# 2711 5206 0	3514 9521 2	Enter;Blocked tunnel;22656
 # 3514 9520 2	2711 5206 0	Enter;Tunnel;23596
-2711 5207 0	3514 9520 2	Enter;Blocked tunnel;22657									
+# 2711 5207 0	3514 9520 2	Enter;Blocked tunnel;22657
 3508 9498 2	3508 9493 0	Climb-down;Tunnel entrance;23609		954			11705=0					T
 3508 9498 2	3508 9493 0	Climb-down;Tunnel entrance;23609					11705>0
 3508 9493 0	3508 9497 2	Climb-up;Rope;3832									
@@ -3625,7 +3632,8 @@
 3816 9462 0	3814 3061 0	Climb-up;Staircase;5269								1	
 											
 # Harmony Island											
-3794 2844 0	3785 9254 0	Climb-down;Statue;22355									
+# DEFERRED: Harmony's quest-stage statue needs Pull then equipped underwater breathing gear; pre-quest use has another landing.
+# 3794 2844 0	3785 9254 0	Climb-down;Statue;22355
 3785 9254 0	3796 2843 0	Climb;Ladder;22371								2	
 # Unsupported: Harmony Island door state depends on quest gas, instance and object transforms not represented by varbit 3393 alone.
 # 3804 2844 0	3806 2844 0	Open;Door;22119					3393>4			1
@@ -3695,8 +3703,8 @@
 3582 3263 0	3582 3264 0	Climb-over;Broken fence;18411				In Aid of the Myreque
 											
 # Haunted Mine											
-3446 3236 0	3444 3236 0	Climb-over;Mine cart;4918									
-3444 3236 0	3446 3236 0	Climb-over;Mine cart;4918									
+3446 3236 0	3444 3236 0	Climb-over;Mine cart;4918	15 Agility			Priest in Peril=FINISHED			Y	1
+3444 3236 0	3446 3236 0	Climb-over;Mine cart;4918	15 Agility			Priest in Peril=FINISHED			Y	1
 3441 3232 0	3436 9637 0	Crawl-down;Cart tunnel;4913				Priest in Peril=FINISHED			Y	1
 3436 9637 0	3441 3232 0	Crawl-through;Cart tunnel;4920				Priest in Peril=FINISHED			Y	1
 3435 9635 0	2800 4429 0	Crawl-through;Cart tunnel;29332				Haunted Mine=FINISHED			Y	1
@@ -4050,10 +4058,11 @@
 3104 9331 2	3105 9332 1	Climb-down;Ladder;11042								2	
 3104 9333 2	3105 9332 1	Climb-down;Ladder;11042								2	
 3103 9332 2	3105 9332 1	Climb-down;Ladder;11042								2	
-3105 9308 2	3105 9306 2	Climb-over;Pile of rubble;33342									
-3105 9306 2	3105 9308 2	Climb-over;Pile of rubble;33342									
-3104 9308 2	3104 9306 2	Climb-over;Pile of bones;18342									
-3104 9306 2	3104 9308 2	Climb-over;Pile of bones;18342									
+# Unsupported: Enakhra temple rubble and bone piles are quest-created puzzle states absent from these rows.
+# 3105 9308 2	3105 9306 2	Climb-over;Pile of rubble;33342
+# 3105 9306 2	3105 9308 2	Climb-over;Pile of rubble;33342
+# 3104 9308 2	3104 9306 2	Climb-over;Pile of bones;18342
+# 3104 9306 2	3104 9308 2	Climb-over;Pile of bones;18342
 3105 9301 2	3105 9299 1	Climb-down;Stone Ladder;11044									
 3105 9299 1	3105 9301 2	Climb-up;Stone Ladder;11043									
 3104 9301 2	3104 9299 1	Climb-down;Stone Ladder;11044									
@@ -4181,10 +4190,11 @@
 2505 3850 2	2504 3849 3	Climb-up;Staircase;16676								1	
 											
 # Ungael											
-2266 4039 0	2264 4039 0	Climb-over;Ice chunks;29868									
-2264 4039 0	2266 4039 0	Climb-over;Ice chunks;29868									
-2263 4040 0	2263 4048 0	Climb-up;Ice chunks;29870									
-2263 4048 0	2263 4040 0	Climb-down;Ice chunks;29869									
+# Obsolete: these Ungael shortcut IDs are null objects; the live Vorkath ice chunks use 31990/31822 and have quest-fight safety semantics.
+# 2266 4039 0	2264 4039 0	Climb-over;Ice chunks;29868
+# 2264 4039 0	2266 4039 0	Climb-over;Ice chunks;29868
+# 2263 4040 0	2263 4048 0	Climb-up;Ice chunks;29870
+# 2263 4048 0	2263 4040 0	Climb-down;Ice chunks;29869
 2247 4078 0	2259 10482 0	Enter;Cave;31999									
 2259 10482 0	2247 4078 0	Enter;Cave Entrance;32047									
 											
@@ -4287,8 +4297,8 @@
 2845 10351 0	2869 3941 0	Climb;Steps;33261				Making Friends with My Arm=IN_PROGRESS			Y	1
 2844 10351 0	2869 3941 0	Climb;Steps;33261				Making Friends with My Arm=IN_PROGRESS			Y	1
 2846 10351 0	2869 3941 0	Climb;Steps;33261				Making Friends with My Arm=IN_PROGRESS			Y	1
-2855 10334 0	2845 3960 0	Enter;Smelly hole;33262									
-2856 10335 0	2845 3960 0	Enter;Smelly hole;33262									
+2855 10334 0	2845 3960 0	Enter;Smelly hole;33262				Making Friends with My Arm=IN_PROGRESS			Y	1
+2856 10335 0	2845 3960 0	Enter;Smelly hole;33262				Making Friends with My Arm=IN_PROGRESS			Y	1
 											
 # Hunter Area											
 2716 3798 0	2716 3802 1	Ascend;Steps;19690									
@@ -4414,10 +4424,11 @@
 2880 3593 0	2880 3596 0	Climb;Rocks;3723									
 2881 3596 0	2881 3593 0	Climb;Rocks;3722									
 2881 3593 0	2881 3596 0	Climb;Rocks;3723									
-2857 3611 0	2857 3613 0	Climb;Rocks;3748	15 Agility	3105
-2857 3613 0	2857 3611 0	Climb;Rocks;3748	15 Agility
-2856 3611 0	2856 3613 0	Climb;Rocks;3748	15 Agility	3105
-2856 3613 0	2856 3611 0	Climb;Rocks;3748	15 Agility
+# DEFERRED: these uphill Troll rocks require climbing boots to be worn; generic Catalog transitions do not equip them.
+# 2857 3611 0	2857 3613 0	Climb;Rocks;3748	15 Agility	3105
+2857 3613 0	2857 3611 0	Climb;Rocks;3748	15 Agility			Troll Stronghold=IN_PROGRESS			Y	1
+# 2856 3611 0	2856 3613 0	Climb;Rocks;3748	15 Agility	3105
+2856 3613 0	2856 3611 0	Climb;Rocks;3748	15 Agility			Troll Stronghold=IN_PROGRESS			Y	1
 2858 3627 0	2861 3627 0	Climb;Rocks;3790	15 Agility			Troll Stronghold
 2861 3627 0	2858 3627 0	Climb;Rocks;3791	15 Agility			Troll Stronghold
 2858 3626 0	2861 3626 0	Climb;Rocks;3790	15 Agility			Troll Stronghold
@@ -4446,12 +4457,12 @@
 2909 3654 0	2907 10035 0	Enter;Cave Entrance;3757									
 2906 10035 0	2908 3654 0	Exit;Cave Exit;3758									
 2907 3654 0	2907 10035 0	Enter;Cave Entrance;3757									
-2834 3627 0	2834 3629 0	Climb;Rocks;3748									
-2834 3629 0	2834 3627 0	Climb;Rocks;3748									
-2833 3627 0	2833 3629 0	Climb;Rocks;3748									
-2833 3629 0	2833 3627 0	Climb;Rocks;3748									
-2822 3635 0	2820 3635 0	Climb;Rocks;3748									
-2820 3635 0	2822 3635 0	Climb;Rocks;3748									
+2834 3627 0	2834 3629 0	Climb;Rocks;3748	15 Agility			Troll Stronghold=IN_PROGRESS			Y	1
+2834 3629 0	2834 3627 0	Climb;Rocks;3748	15 Agility			Troll Stronghold=IN_PROGRESS			Y	1
+2833 3627 0	2833 3629 0	Climb;Rocks;3748	15 Agility			Troll Stronghold=IN_PROGRESS			Y	1
+2833 3629 0	2833 3627 0	Climb;Rocks;3748	15 Agility			Troll Stronghold=IN_PROGRESS			Y	1
+2822 3635 0	2820 3635 0	Climb;Rocks;3748	15 Agility			Troll Stronghold=IN_PROGRESS			Y	1
+2820 3635 0	2822 3635 0	Climb;Rocks;3748	15 Agility			Troll Stronghold=IN_PROGRESS			Y	1
 # Unsupported: Troll Stronghold entrance access changes during its quest, but these source rows carry no quest-state contract.
 # 2827 3646 0	2823 10050 0	Open;Secret Door;3762
 2823 10050 0	2827 3646 0	Open;Exit;3761							Y	1
@@ -4475,10 +4486,10 @@
 2830 3677 0	2831 10076 2	Climb-down;Troll ladder;18833									
 2832 3677 0	2831 10076 2	Climb-down;Troll ladder;18833									
 2831 3678 0	2831 10076 2	Climb-down;Troll ladder;18833									
-2840 3690 0	2837 10090 2	Enter;Stronghold;3771									
+2840 3690 0	2837 10090 2	Enter;Stronghold;3771				Troll Stronghold=FINISHED			Y	1
 2837 10090 2	2840 3690 0	Leave;Exit;3774							Y	1
 2837 10089 2	2840 3690 0	Leave;Exit;3773							Y	1
-2837 10091 2	2840 3690 0	Use;Exit;3772									
+2837 10091 2	2840 3690 0	Use;Exit;3772							Y	1
 2845 10109 2	2841 10108 1	Climb-down;Stone Staircase;3789									
 2841 10108 1	2845 10108 2	Climb-up;Stone Staircase;3788									
 2845 10108 2	2841 10108 1	Climb-down;Stone Staircase;3789									
@@ -4544,16 +4555,17 @@
 2921 3748 0	2882 5311 2	Climb-down;Hole;26419					3966=1
 2921 3747 0	2882 5311 2	Climb-down;Hole;26419					3966=1
 2921 3746 0	2882 5311 2	Climb-down;Hole;26419					3966=1
-2912 5300 2	2914 5300 1	Climb-down;Rock;26561									
+# Unsupported: Saradomin encampment descents need 70 unboostable Agility and permanent first-use rope state.
+# 2912 5300 2	2914 5300 1	Climb-down;Rock;26561
 2914 5300 1	2912 5299 2	Climb-up;Rope;26371					3967=1
-2920 5276 1	2920 5274 0	Climb-down;Rock;26562									
+# 2920 5276 1	2920 5274 0	Climb-down;Rock;26562
 2920 5274 0	2919 5276 1	Climb-up;Rope;26375					3968=1
 2919 5274 0	2919 5276 1	Climb-up;Rope;26375					3968=1
 2915 5300 1	2912 5299 2	Climb-up;Rope;26371					3967=1
-2909 3686 0	2911 3686 0	Climb;Rocks;3748									
-2911 3686 0	2909 3686 0	Climb;Rocks;3748									
-2909 3687 0	2911 3687 0	Climb;Rocks;3748									
-2911 3687 0	2909 3687 0	Climb;Rocks;3748									
+2909 3686 0	2911 3686 0	Climb;Rocks;3748	15 Agility			Troll Stronghold=IN_PROGRESS			Y	1
+2911 3686 0	2909 3686 0	Climb;Rocks;3748	15 Agility			Troll Stronghold=IN_PROGRESS			Y	1
+2909 3687 0	2911 3687 0	Climb;Rocks;3748	15 Agility			Troll Stronghold=IN_PROGRESS			Y	1
+2911 3687 0	2909 3687 0	Climb;Rocks;3748	15 Agility			Troll Stronghold=IN_PROGRESS			Y	1
 2943 3769 0	2950 3767 0	Climb;Rocky handholds;26405	60 Agility			Troll Stronghold=IN_PROGRESS
 2943 3769 0	2950 3767 0	Climb;Rocky handholds;26405	60 Agility			Troll Stronghold=IN_PROGRESS
 2943 3767 0	2950 3767 0	Climb;Rocky handholds;26405	60 Agility			Troll Stronghold=IN_PROGRESS
@@ -4767,17 +4779,18 @@
 3285 3492 1	3285 3496 0	Climb-down;Staircase;11799									
 											
 # Dungeon Zogre flesh eaters											
-2477 9437 2	2485 3045 0	Climb-up;Stairs;6842									
+# Unsupported: Jiggig stairs are available during and after Zogre, while duplicate rows disagree on landing cost.
+# 2477 9437 2	2485 3045 0	Climb-up;Stairs;6842
 # DEFERRED: object 6878 is the still-blocking Jiggig barricade; the Ogre guard must crush it through quest dialogue first.
 # 2457 3048 0	2455 3048 0	Climb-over;Crushed barricade;6878
-2442 9417 0	2446 9417 2	Climb-over;Stairs;6842									
+# 2442 9417 0	2446 9417 2	Climb-over;Stairs;6842
 											
 # Shayzien Encampent											
 1482 3633 0	1482 3633 1	Climb-up;Ladder;42207									
 1482 3633 1	1482 3633 0	Climb-down;Ladder;42208									
 											
 # Chasm of Fire											
-1435 3671 0	1435 10077 3	Enter;Chasm;30236									
+1435 3671 0	1435 10077 3	Enter;Chasm;30236							Y	1
 1435 10077 3	1435 3671 0	Climb-up;Rope;30234									
 1437 10093 3	1437 10093 2	Enter;Lift;30258									
 1438 10093 3	1438 10093 2	Enter;Lift;30258									
@@ -4798,7 +4811,8 @@
 											
 # dungeon shayzien mountain camp											
 1169 9973 0	1171 9946 0	Pass;Magic gate;31967									
-9363 1050 0	1214 3557 0	Climb;Rope;32507									
+# Malformed: the origin axes are reversed/out of world bounds and cache object 32507 is a Shayzien quest magic gate, not a climbable rope.
+# 9363 1050 0	1214 3557 0	Climb;Rope;32507
 											
 # dragon slayer 2											
 2458 2860 0	2458 2862 0	Pass;Magical Barrier;31616				Dragon Slayer II
@@ -4912,8 +4926,8 @@
 3615 9470 0	3104 9573 0	Enter;Portal;43692									
 											
 # Necropolis											
-3347 2759 0	3349 2759 0	Climb-over;Rubble;44003								4	
-3349 2759 0	3347 2759 0	Climb-over;Rubble;44003								4	
+3347 2759 0	3349 2759 0	Climb-over;Rubble;44003				Beneath Cursed Sands=IN_PROGRESS			Y	4
+3349 2759 0	3347 2759 0	Climb-over;Rubble;44003				Beneath Cursed Sands=IN_PROGRESS			Y	4
 											
 # Villa entry aldarin											
 1425 2933 0	1427 2933 0	Pass-through;Entryway;54707								4	
@@ -5292,7 +5306,7 @@
 2727 9775 0	2723 3375 0	Climb-up;Staircase;16664
 
 # MYTH GUILD
-2457 2849 0	1936 9009 1	Enter;Mythic Statue;31626
+2457 2849 0	1936 9009 1	Enter;Mythic Statue;31626				Dragon Slayer II=FINISHED			Y	1
 1936 9009 1	2457 2849 0	Climb-up;Ladder;32205
 1939 8968 1	2445 2818 0	Enter;Cave;31807
 2445 2818 0	1939 8968 1	Enter;Cave entrance;31606
@@ -5760,7 +5774,7 @@
 2455 3048 0	2457 3048 0	Climb-over;Crushed barricade;6882				Zogre Flesh Eaters=IN_PROGRESS	496=1		Y	2
 2485 3045 0	2477 9437 2	Climb-down;Stairs;6841					487>10			7	
 2486 3045 0	2477 9437 2	Climb-down;Stairs;6841					487>10			7	
-2477 9438 2	2485 3045 0	Climb-up;Stairs;6842								7	
+# 2477 9438 2	2485 3045 0	Climb-up;Stairs;6842								7
 2762 2943 0	2762 2941 0	Chop-down;Jungle Bush;2892		975 6313 6315 6317				139>49		2	
 2762 2940 0	2762 2942 0	Chop-down;Jungle Bush;2892		975 6313 6315 6317				139>49		2	
 2762 2938 0	2762 2936 0	Chop-down;Jungle Bush;2892		975 6313 6315 6317				139>49		2	
@@ -5893,7 +5907,7 @@
 2804 10187 0	2822 3745 0	Enter;Tunnel;5011				Troll Romance=FINISHED			yes	1
 2803 10187 0	2822 3745 0	Enter;Tunnel;5011				Troll Romance=FINISHED			yes	1
 2802 10187 0	2822 3745 0	Enter;Tunnel;5011				Troll Romance=FINISHED			yes	1
-2772 10232 0	2778 3869 0	Enter;Crevasse;5025								1	
+2772 10232 0	2778 3869 0	Enter;Crevasse;5025				Troll Romance=FINISHED			Y	1
 2778 3869 0	2772 10232 0	Enter;Tunnel;5009				Troll Romance=FINISHED			yes	1
 2778 3870 0	2772 10232 0	Enter;Tunnel;5009				Troll Romance=FINISHED			yes	1
 2779 3871 0	2772 10232 0	Enter;Tunnel;5009				Troll Romance=FINISHED			yes	1
@@ -5915,7 +5929,8 @@
 2654 4495 0	2393 3466 0	Operate;Teleportation Device;4869								6	
 2896 2727 0	2393 3465 0	Travel;Waydar;1446								4	
 2762 2989 0	2760 9389 0	Search;Well stacked rocks;2234								15	
-2764 9376 0	2765 2976 0	Climb;Climbing rocks;2236								15	
+# DEFERRED: Tomb of Bervirius climbing rocks can fail for 1-10 damage and need an HP-aware retry policy.
+# 2764 9376 0	2765 2976 0	Climb;Climbing rocks;2236
 2840 3516 0	2836 3517 0	Mine;Rock slide;2634	50 Mining	1265 1267 1269 12297 1273 1271 1275 11920 23680 23276 13243 20014		Heroes' Quest=FINISHED			yes	10
 2839 3516 0	2836 3517 0	Mine;Rock slide;2634	50 Mining	1265 1267 1269 12297 1273 1271 1275 11920 23680 23276 13243 20014		Heroes' Quest=FINISHED			yes	10
 2837 3517 0	2840 3516 0	Mine;Rock slide;2634	50 Mining	1265 1267 1269 12297 1273 1271 1275 11920 23680 23276 13243 20014		Heroes' Quest=FINISHED			yes	10
@@ -5933,7 +5948,8 @@
 3055 9555 0	3055 9562 0	Enter;Ice Cavern;10595								1	
 3057 9555 0	3057 9562 0	Enter;Ice Cavern;10595								1	
 3106 3559 0	3035 4852 0	Teleport;Mage of Zamorak;2581				Enter the Abyss					
-3039 4805 0	3039 4800 0	Enter;Passage;27054									
+# Unsupported: this one-way Abyssal Nexus passage lacks its boss-area access and warning contract.
+# 3039 4805 0	3039 4800 0	Enter;Passage;27054
 3039 4854 0	3039 4844 0	Go-through;Passage;26250									
 3029 4850 0	3033 4843 0	Go-through;Passage;26250									
 3021 4843 0	3039 4844 0	Go-through;Passage;26250									
@@ -5957,13 +5973,15 @@
 2281 4837 0	3056 3594 0	Use;Portal;34757								1	
 2275 4847 3	3060 3585 0	Use;Portal;34757								1	
 2273 4855 3	3066 3591 0	Use;Portal;34757								1	
-3049 4839 0	2464 4826 0	Exit-through;Law rift;25382				Troll Stronghold					
+# Unsupported: the law rift also enforces Entrana's prohibited-equipment gate, which this row cannot model.
+# 3049 4839 0	2464 4826 0	Exit-through;Law rift;25382				Troll Stronghold
 # Disabled: Runecrafting exit portals expose Use, not Enter; retain the canonical action only.
 # 2464 4818 0	2858 3378 0	Enter;Portal;34755								1
 3050 4837 0	2209 4834 0	Exit-through;Death rift;25382				Mourning's End Part II					
 # 2208 4830 0	1860 4639 0	Enter;Portal;34758								1
 3051 4833 0	2714 4838 0	Exit-through;Water rift;25382									
-3050 4829 0	1816 3856 0	Exit-through;Soul rift;25382									
+# Unsupported: the soul rift is locked until a permanent dark-essence unlock not encoded by this row.
+# 3050 4829 0	1816 3856 0	Exit-through;Soul rift;25382
 3047 4825 0	2846 4836 0	Exit-through;Air rift;25382									
 # 2842 4828 0	2983 3288 0	Enter;Portal;34748								1
 3044 4822 0	2784 4843 0	Exit-through;Mind rift;25382									

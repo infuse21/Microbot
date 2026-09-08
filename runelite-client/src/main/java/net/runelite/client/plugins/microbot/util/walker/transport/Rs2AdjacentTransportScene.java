@@ -30,7 +30,7 @@ public final class Rs2AdjacentTransportScene implements AdjacentTransportScene
 	public boolean isEnabled(PlannedEdge edge, int catalogObjectId)
 	{
 		if ((catalogObjectId < 137 || catalogObjectId > 145)
-			&& catalogObjectId != 11728 && catalogObjectId != 11720
+			&& catalogObjectId != 4918 && catalogObjectId != 11728 && catalogObjectId != 11720
 			&& catalogObjectId != 11719) return true;
 		return Microbot.getClientThread().runOnClientThreadOptional(() ->
 			TransportEdgeMatcher.find(Rs2PathApi.getTransports(), edge.from(), edge.to()).stream()
@@ -52,6 +52,11 @@ public final class Rs2AdjacentTransportScene implements AdjacentTransportScene
 			return AdjacentTransportPolicy.hasRequiredEastArdougneThieving(transport,
 				Microbot.getClient().getBoostedSkillLevel(net.runelite.api.Skill.THIEVING));
 		}
+		if (AdjacentTransportPolicy.isHauntedMineCart(transport))
+		{
+			return AdjacentTransportPolicy.hasRequiredHauntedMineCartAgility(transport,
+				Microbot.getClient().getBoostedSkillLevel(net.runelite.api.Skill.AGILITY));
+		}
 		return AdjacentTransportPolicy.hasRequiredDraynorLevers(transport, Microbot::getVarbitValue);
 	}
 
@@ -66,7 +71,8 @@ public final class Rs2AdjacentTransportScene implements AdjacentTransportScene
 			}
 			if ((AdjacentTransportPolicy.isDraynorBasementDoor(transport)
 				|| AdjacentTransportPolicy.isYanillePickLockDoor(transport)
-				|| AdjacentTransportPolicy.isEastArdougnePickLockDoor(transport))
+				|| AdjacentTransportPolicy.isEastArdougnePickLockDoor(transport)
+				|| AdjacentTransportPolicy.isHauntedMineCart(transport))
 				&& !requirementsMet(transport))
 			{
 				continue;
@@ -75,7 +81,8 @@ public final class Rs2AdjacentTransportScene implements AdjacentTransportScene
 				.filter(candidate -> !(AdjacentTransportPolicy.isDraynorBasementDoor(transport)
 					|| AdjacentTransportPolicy.isDraynorBookcase(transport)
 					|| AdjacentTransportPolicy.isYanillePickLockDoor(transport)
-					|| AdjacentTransportPolicy.isEastArdougnePickLockDoor(transport))
+					|| AdjacentTransportPolicy.isEastArdougnePickLockDoor(transport)
+					|| AdjacentTransportPolicy.isHauntedMineCart(transport))
 					|| candidate.getId() == transport.getObjectId())
 				.filter(candidate -> candidate.getWorldLocation() != null
 					&& candidate.getWorldLocation().getPlane() == transport.getOrigin().getPlane()

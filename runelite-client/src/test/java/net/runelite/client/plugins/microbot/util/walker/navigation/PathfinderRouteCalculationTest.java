@@ -127,7 +127,7 @@ public class PathfinderRouteCalculationTest
 		}
 		assertEquals(127, candidates);
 		assertEquals(104, migrated);
-		assertEquals(120, legacy);
+		assertEquals(65, legacy);
 	}
 
 	@Test
@@ -623,7 +623,7 @@ public class PathfinderRouteCalculationTest
 		assertEquals(50, stiles.stream().filter(candidate ->
 			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(candidate))
 				== RouteEdge.Kind.CATALOG_TRANSITION).count());
-		assertEquals(97, ordinary.stream().filter(candidate ->
+		assertEquals(42, ordinary.stream().filter(candidate ->
 			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(candidate))
 				== RouteEdge.Kind.TRANSPORT).count());
 		java.util.Set<Integer> directManifestIds = new java.util.HashSet<>(java.util.Arrays.asList(
@@ -1320,7 +1320,7 @@ public class PathfinderRouteCalculationTest
 	}
 
 	@Test
-	public void itemFreeOrdinaryClimbRocksPublishAndBootGatedRowsStayLocked()
+	public void itemFreeOrdinaryClimbRocksPublishAndUnsafeBootRowsStayDisabled()
 	{
 		java.util.List<Transport> rocks = Transport.loadAllFromResources().values()
 			.stream().flatMap(java.util.Collection::stream)
@@ -1329,7 +1329,7 @@ public class PathfinderRouteCalculationTest
 			.filter(candidate -> "Rocks".equals(candidate.getName()))
 			.collect(java.util.stream.Collectors.toList());
 
-		assertEquals(55, rocks.size());
+		assertEquals(53, rocks.size());
 		assertEquals(4, rocks.stream().filter(candidate ->
 			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(candidate))
 				== RouteEdge.Kind.ADJACENT_TRANSPORT).count());
@@ -1339,10 +1339,7 @@ public class PathfinderRouteCalculationTest
 		java.util.List<Transport> locked = rocks.stream().filter(candidate ->
 			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(candidate))
 				== RouteEdge.Kind.TRANSPORT).collect(java.util.stream.Collectors.toList());
-		assertEquals(2, locked.size());
-		assertTrue(locked.stream().allMatch(candidate ->
-			candidate.getItemIdRequirements().stream()
-				.anyMatch(group -> group.contains(3105))));
+		assertEquals(0, locked.size());
 	}
 
 	@Test

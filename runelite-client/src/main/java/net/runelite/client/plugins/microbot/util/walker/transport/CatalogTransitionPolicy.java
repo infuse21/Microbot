@@ -184,6 +184,15 @@ public final class CatalogTransitionPolicy
 		"2902,10456,0->2902,10454,0|60120|climb|uneven stone ledges",
 		"2970,3462,0->2972,3462,0|24749|climbover|crumbling wall",
 		"2972,3462,0->2970,3462,0|24749|climbover|crumbling wall");
+	private static final Set<String> AUDITED_MISC_DIRECT_ROUTES = Set.of(
+		"2511,3463,0->2527,3413,0|2022|getin|barrel",
+		"3081,3421,0->1859,5243,0|20790|climbdown|entrance",
+		"3236,3458,0->3237,9858,0|881|open|manhole",
+		"3236,3458,0->3237,9858,0|882|climbdown|manhole",
+		"3018,3231,0->2962,9650,0|10321|climbdown|manhole",
+		"2697,3283,0->2696,9683,0|18270|climbdown|old ruin entrance",
+		"2484,3463,1->2486,3465,2|2447|climbup|tree",
+		"2485,3465,2->2484,3463,1|28800|climbdown|tree");
 	private static final Set<String> AUDITED_MISC_BOUNDARY_ROUTES = Set.of(
 		"2761,3657,0->2761,3660,0|5847|climbover|rockslide",
 		"2761,3660,0->2761,3657,0|5847|climbover|rockslide",
@@ -290,6 +299,16 @@ public final class CatalogTransitionPolicy
 		"2585,10262,0->2585,10259,0|15195|squeezethrough|crevice",
 		"2899,3713,0->2904,3720,0|26382|crawlthrough|little crack",
 		"2904,3720,0->2899,3713,0|26382|crawlthrough|little crack");
+	private static final Set<String> AUDITED_MISC_ACCESS_ROUTES = Set.of(
+		"3347,2759,0->3349,2759,0|44003|climbover|rubble",
+		"3349,2759,0->3347,2759,0|44003|climbover|rubble",
+		"1435,3671,0->1435,10077,3|30236|enter|chasm",
+		"3654,3384,0->2400,5969,0|38574|enter|mausoleum door",
+		"2457,2849,0->1936,9009,1|31626|enter|mythic statue",
+		"3627,3328,0->3627,3332,0|39170|enter|cracked wall",
+		"3627,3332,0->3627,3328,0|39170|enter|cracked wall",
+		"2855,10334,0->2845,3960,0|33262|enter|smelly hole",
+		"2856,10335,0->2845,3960,0|33262|enter|smelly hole");
 	private static final Set<String> ISAFDAR_CROSSINGS = Set.of(
 		"2215,3156,0->2215,3153,0|3921|stepover|tripwire",
 		"2220,3155,0->2220,3152,0|3921|stepover|tripwire",
@@ -685,6 +704,11 @@ public final class CatalogTransitionPolicy
 		"2825,10050,0->2827,3646,0|3761|open|exit",
 		"2837,10090,2->2840,3690,0|3774|leave|exit",
 		"2837,10089,2->2840,3690,0|3773|leave|exit");
+	private static final Set<String> AUDITED_UNUSUAL_ACCESS_ROUTES = Set.of(
+		"3320,2796,0->3321,2858,0|6620|climbthrough|hole",
+		"2772,10232,0->2778,3869,0|5025|enter|crevasse",
+		"2840,3690,0->2837,10090,2|3771|enter|stronghold",
+		"2837,10091,2->2840,3690,0|3772|use|exit");
 	private static final Set<String> CAMDOZAAL_ROUTES = Set.of(
 		"2998,3494,0->2952,5762,0|41357|enter|ruins entrance",
 		"2952,5762,0->2998,3494,0|41446|exit|ruins exit");
@@ -1015,9 +1039,11 @@ public final class CatalogTransitionPolicy
 			|| isMortMyreTreeBridge(transport)
 			|| isCrashSiteOpening(transport)
 			|| isAuditedStepsAndClimbObstacle(transport)
+			|| isAuditedMiscDirectRoute(transport)
 			|| isAuditedMiscBoundary(transport)
 			|| isAuditedBossExit(transport)
 			|| isAuditedAccessAndExit(transport)
+			|| isAuditedUnusualAccess(transport)
 			|| isSwanSongHole(transport)
 			|| isMolchLizardTempleTransition(transport)
 			|| isMeiyerditchFloor(transport)
@@ -1030,6 +1056,7 @@ public final class CatalogTransitionPolicy
 			|| isIsafdarCrossing(transport)
 			|| isFremennikSurfaceBridge(transport)
 			|| isAuditedShortcutTraversal(transport)
+			|| isAuditedMiscAccess(transport)
 			|| isAuditedAgilityTraversal(transport)
 			|| AUDITED_DIRECT_ROUTE_KEYS.contains(routeKey(transport, action, name))
 			|| NEYPOTZLI_ENTRANCE_ROUTE_KEYS.contains(routeKey(transport, action, name))
@@ -1390,6 +1417,43 @@ public final class CatalogTransitionPolicy
 			.contains(objectId);
 	}
 
+	static boolean isAuditedUnusualAccess(Transport transport)
+	{
+		if (transport == null || transport.getType() != TransportType.TRANSPORT
+			|| transport.getOrigin() == null || transport.getDestination() == null
+			|| !transport.isMembers() || transport.isConsumable()
+			|| transport.getCurrencyAmount() != 0 || transport.getDuration() != 1
+			|| !transport.getItemIdRequirements().isEmpty()
+			|| !transport.getVarbits().isEmpty() || !transport.getVarplayers().isEmpty()
+			|| java.util.Arrays.stream(transport.getSkillLevels()).anyMatch(level -> level != 0)
+			|| !AUDITED_UNUSUAL_ACCESS_ROUTES.contains(routeKey(transport,
+				normalizeDirectAction(transport.getAction()), normalize(transport.getName()))))
+		{
+			return false;
+		}
+		Map<Quest, QuestState> quests;
+		switch (transport.getObjectId())
+		{
+			case 6620:
+				quests = Map.of(Quest.ICTHLARINS_LITTLE_HELPER, QuestState.IN_PROGRESS);
+				break;
+			case 5025:
+				quests = Map.of(Quest.TROLL_ROMANCE, QuestState.FINISHED);
+				break;
+			case 3771:
+				quests = Map.of(Quest.TROLL_STRONGHOLD, QuestState.FINISHED);
+				break;
+			default:
+				quests = Map.of();
+		}
+		return transport.getQuests().equals(quests);
+	}
+
+	static boolean isAuditedUnusualAccessObject(int objectId)
+	{
+		return objectId == 6620 || objectId == 5025 || objectId == 3771 || objectId == 3772;
+	}
+
 	static boolean isCamdozaalRoute(Transport transport)
 	{
 		if (transport == null || transport.getType() != TransportType.TRANSPORT
@@ -1623,6 +1687,66 @@ public final class CatalogTransitionPolicy
 		return objectId == 15186 || objectId == 15187 || objectId == 15194
 			|| objectId == 15195 || objectId == 21727 || objectId == 23568
 			|| objectId == 23569 || objectId == 26382;
+	}
+
+	public static boolean isAuditedMiscAccess(Transport transport)
+	{
+		if (transport == null || transport.getType() != TransportType.TRANSPORT
+			|| transport.getOrigin() == null || transport.getDestination() == null
+			|| !transport.isMembers() || transport.isConsumable()
+			|| transport.getCurrencyAmount() != 0 || !transport.getItemIdRequirements().isEmpty()
+			|| !transport.getVarbits().isEmpty() || !transport.getVarplayers().isEmpty()
+			|| !AUDITED_MISC_ACCESS_ROUTES.contains(routeKey(transport,
+				normalizeDirectAction(transport.getAction()), normalize(transport.getName()))))
+		{
+			return false;
+		}
+
+		int objectId = transport.getObjectId();
+		if (objectId == 44003)
+		{
+			return transport.getDuration() == 4
+				&& hasOnlySkill(transport, net.runelite.api.Skill.AGILITY, 0)
+				&& transport.getQuests().equals(Map.of(Quest.BENEATH_CURSED_SANDS,
+					QuestState.IN_PROGRESS));
+		}
+		if (objectId == 38574)
+		{
+			return transport.getDuration() == 1
+				&& hasOnlySkill(transport, net.runelite.api.Skill.AGILITY, 52)
+				&& transport.getQuests().equals(Map.of(Quest.SINS_OF_THE_FATHER,
+					QuestState.FINISHED));
+		}
+		if (objectId == 31626)
+		{
+			return transport.getDuration() == 1
+				&& hasOnlySkill(transport, net.runelite.api.Skill.AGILITY, 0)
+				&& transport.getQuests().equals(Map.of(Quest.DRAGON_SLAYER_II,
+					QuestState.FINISHED));
+		}
+		if (objectId == 39170)
+		{
+			return transport.getDuration() == 1
+				&& hasOnlySkill(transport, net.runelite.api.Skill.AGILITY, 0)
+				&& transport.getQuests().equals(Map.of(Quest.SINS_OF_THE_FATHER,
+					QuestState.IN_PROGRESS));
+		}
+		if (objectId == 33262)
+		{
+			return transport.getDuration() == 1
+				&& hasOnlySkill(transport, net.runelite.api.Skill.AGILITY, 0)
+				&& transport.getQuests().equals(Map.of(Quest.MAKING_FRIENDS_WITH_MY_ARM,
+					QuestState.IN_PROGRESS));
+		}
+		return objectId == 30236 && transport.getDuration() == 1
+			&& hasOnlySkill(transport, net.runelite.api.Skill.AGILITY, 0)
+			&& transport.getQuests().isEmpty();
+	}
+
+	static boolean isAuditedMiscAccessObject(int objectId)
+	{
+		return objectId == 30236 || objectId == 31626 || objectId == 33262
+			|| objectId == 38574 || objectId == 39170 || objectId == 44003;
 	}
 
 	static boolean isIsafdarCrossing(Transport transport)
@@ -1875,6 +1999,71 @@ public final class CatalogTransitionPolicy
 			: objectId == 6881 || objectId == 6882 || objectId == 24749 ? 2 : 1;
 		return java.util.Arrays.stream(transport.getSkillLevels()).allMatch(level -> level == 0)
 			&& transport.getDuration() == duration;
+	}
+
+	static boolean isAuditedMiscDirectRoute(Transport transport)
+	{
+		if (transport == null || transport.getType() != TransportType.TRANSPORT
+			|| transport.getOrigin() == null || transport.getDestination() == null
+			|| transport.isConsumable() || !transport.getItemIdRequirements().isEmpty()
+			|| transport.getCurrencyAmount() != 0 || !transport.getVarplayers().isEmpty()
+			|| !AUDITED_MISC_DIRECT_ROUTES.contains(routeKey(transport,
+				normalizeDirectAction(transport.getAction()), normalize(transport.getName()))))
+		{
+			return false;
+		}
+
+		int objectId = transport.getObjectId();
+		boolean members = Set.of(2022, 10321, 18270, 2447, 28800).contains(objectId);
+		if (transport.isMembers() != members)
+		{
+			return false;
+		}
+		if (objectId == 10321)
+		{
+			if (!transport.getQuests().equals(Map.of(Quest.RATCATCHERS, QuestState.IN_PROGRESS))
+				|| !hasExactGreaterThanVarbit(transport, 1404, 104))
+			{
+				return false;
+			}
+		}
+		else if (objectId == 2447 || objectId == 28800)
+		{
+			if (!transport.getQuests().equals(Map.of(Quest.THE_GRAND_TREE, QuestState.IN_PROGRESS))
+				|| !transport.getVarbits().isEmpty())
+			{
+				return false;
+			}
+		}
+		else if (!transport.getQuests().isEmpty() || !transport.getVarbits().isEmpty())
+		{
+			return false;
+		}
+
+		if (objectId == 2447 || objectId == 28800)
+		{
+			return hasOnlySkill(transport, net.runelite.api.Skill.AGILITY, 25)
+				&& transport.getDuration() == 1;
+		}
+		int duration = objectId == 881 || objectId == 882 ? 2 : 1;
+		return java.util.Arrays.stream(transport.getSkillLevels()).allMatch(level -> level == 0)
+			&& transport.getDuration() == duration;
+	}
+
+	private static boolean hasExactGreaterThanVarbit(Transport transport, int id, int value)
+	{
+		if (transport.getVarbits().size() != 1)
+		{
+			return false;
+		}
+		TransportVarbit requirement = transport.getVarbits().iterator().next();
+		return requirement.getVarbitId() == id && requirement.getValue() == value
+			&& requirement.getOperator() == TransportVarbit.Operator.GREATER_THAN;
+	}
+
+	static boolean isAuditedMiscDirectObject(int objectId)
+	{
+		return Set.of(881, 882, 2022, 2447, 10321, 18270, 20790, 28800).contains(objectId);
 	}
 
 	static boolean isAuditedMiscBoundary(Transport transport)

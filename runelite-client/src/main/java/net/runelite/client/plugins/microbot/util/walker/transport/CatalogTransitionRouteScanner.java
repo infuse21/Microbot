@@ -55,7 +55,8 @@ public final class CatalogTransitionRouteScanner
 		}
 		CatalogTransition transition = scene.observe(
 			new PlannedEdge(pending.getFrom(), pending.getTo()), pending.getAction());
-		if (transition == null || transition.getCatalogObjectId() != pending.getObjectId())
+		if (transition == null || transition.getCatalogObjectId() != pending.getObjectId()
+			&& !(pending.getObjectId() == 881 && transition.getCatalogObjectId() == 882))
 		{
 			return pending.withStatus(RouteInteraction.Status.UNAVAILABLE, false);
 		}
@@ -90,13 +91,16 @@ public final class CatalogTransitionRouteScanner
 			|| CatalogTransitionPolicy.isAuditedMiscBoundaryObject(pending.getObjectId())
 			|| CatalogTransitionPolicy.isAuditedBossExitObject(pending.getObjectId())
 			|| CatalogTransitionPolicy.isAuditedAccessAndExitObject(pending.getObjectId())
+			|| CatalogTransitionPolicy.isAuditedUnusualAccessObject(pending.getObjectId())
 			|| CatalogTransitionPolicy.isAuditedAccessDoorObject(pending.getObjectId())
 			|| CatalogTransitionPolicy.isSlayerTowerChainObject(pending.getObjectId())
 			|| CatalogTransitionPolicy.isRootOrMudObject(pending.getObjectId())
 			|| CatalogTransitionPolicy.isIsafdarCrossingObject(pending.getObjectId())
 			|| CatalogTransitionPolicy.isFremennikSurfaceBridgeObject(pending.getObjectId())
 			|| CatalogTransitionPolicy.isAuditedShortcutTraversalObject(pending.getObjectId())
+			|| CatalogTransitionPolicy.isAuditedMiscAccessObject(pending.getObjectId())
 			|| CatalogTransitionPolicy.isAuditedAgilityTraversalObject(pending.getObjectId())
+			|| CatalogTransitionPolicy.isAuditedMiscDirectObject(pending.getObjectId())
 			|| CatalogTransitionPolicy.isWintertodtGapObject(pending.getObjectId())
 			|| CatalogTransitionPolicy.isWeissPostQuestDirectObject(pending.getObjectId())
 			|| CatalogTransitionPolicy.isPostQuestIceTrollCaveObject(pending.getObjectId())

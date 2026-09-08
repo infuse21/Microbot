@@ -21,6 +21,25 @@ headless batches, outstanding branches of representative live passes, and contra
 implementation. As of 2026-09-06 the user requests headless-first progress; deferred physical tests
 remain open rather than blocking each batch or being silently marked complete.
 
+## Final unusual-access and direct-route audit - 2026-09-08
+
+The latest combined audit reduces the production classifier from 120 to **65** remaining entries:
+42 ordinary `TRANSPORT` rows and the unchanged 23 deferred `TELEPORTATION_ITEM` rows. Eight exact
+miscellaneous direct routes now use catalogue/NavigationEngine ownership, including the staged
+Draynor manhole, Rat Pits and Witchaven access, the Grand Tree/Glough trees and the Stronghold
+entrance. Six unusual-access routes now use the same lifecycle for the Lovakengj mine cart,
+Sophanem hole, Trollweiss crevasse and Stronghold entrance/exit; nine more exact access routes cover
+Beneath Cursed Sands rubble, the Chasm of Fire, Darkmeyer walls, the Myths' Guild statue and the
+Weiss smelly hole.
+
+Fifty-five unsafe, obsolete or incompletely gated rows were removed from the runtime graph rather
+than exposed speculatively. These include always-failing or damaging climbs, equipment-preparation
+rows not yet modelled, obsolete God Wars and Dorgesh-Kaan objects, active-task-only passages,
+quest-time puzzle objects, duplicate vines, and rifts whose permanent unlock or equipment
+restrictions are absent from their source contracts. OSRS Wiki/cache MCP evidence and focused
+exact-policy, source-shape, landing, toggle and classifier tests cover the batch; **91 focused tests
+pass**. No newly migrated physical traversal is claimed live-complete.
+
 ## Steps, access routes and audited shortcut cleanup - 2026-09-08
 
 The latest combined audit reduces the production classifier from 181 to **97** remaining ordinary
