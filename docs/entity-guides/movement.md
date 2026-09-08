@@ -1978,3 +1978,16 @@ location's members status independently—Crandor remains free-to-play while Lum
 Ravine, Giant Mole and God Wars are members content—and retain NavigationEngine ownership until
 the selected remote surface landing. Reverse entrances stay separate until their setup lifecycle is
 explicitly modelled.
+
+## 107. Item alternatives may expose actions on different surfaces
+
+A reusable teleport requirement can describe the same logical item before and after equipping while
+the two item IDs expose different usable actions. Validate each alternative against the surface on
+which it can actually exist instead of requiring every ID to provide both inventory and equipment
+actions. For the Max cape Crafting Guild route, inventory cape 13280 exposes `Crafting Guild` below
+`Teleports`, while worn cape 13342 exposes direct equipment action `Crafting Guild`.
+
+Keep the route contract exact: freeze the destination and the allowed ID alternatives, check the
+inventory and equipment actions independently, and retain one non-consumable banking requirement
+across repeated uses. Do not broaden the policy to other Max cape destinations whose grouped menus,
+configuration-dependent targets or daily limits have not been represented.

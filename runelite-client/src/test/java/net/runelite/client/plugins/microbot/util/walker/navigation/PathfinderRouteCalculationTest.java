@@ -90,7 +90,7 @@ public class PathfinderRouteCalculationTest
 	}
 
 	@Test
-	public void auditedItemBatchPublishesOneHundredThreeRowsAndDefersTwentyFour()
+	public void auditedItemBatchPublishesOneHundredFourRowsAndDefersTwentyThree()
 	{
 		int candidates = 0;
 		int migrated = 0;
@@ -115,7 +115,8 @@ public class PathfinderRouteCalculationTest
 					continue;
 				}
 				candidates++;
-				boolean deferred = family.equals("max cape") || family.equals("camulet")
+				boolean deferred = (family.equals("max cape")
+					&& !row.getDisplayInfo().equals("Max cape: Crafting Guild")) || family.equals("camulet")
 					|| row.getDisplayInfo().equals("Hunter cape: Black chinchompa");
 				assertEquals(deferred ? RouteEdge.Kind.TRANSPORT : RouteEdge.Kind.ITEM_TELEPORT, kind);
 				if (!deferred)
@@ -125,8 +126,8 @@ public class PathfinderRouteCalculationTest
 			}
 		}
 		assertEquals(127, candidates);
-		assertEquals(103, migrated);
-		assertEquals(1009, legacy);
+		assertEquals(104, migrated);
+		assertEquals(1008, legacy);
 	}
 
 	@Test

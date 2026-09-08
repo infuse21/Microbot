@@ -21,6 +21,23 @@ headless batches, outstanding branches of representative live passes, and contra
 implementation. As of 2026-09-06 the user requests headless-first progress; deferred physical tests
 remain open rather than blocking each batch or being silently marked complete.
 
+## Crafting Guild Max cape teleport - 2026-09-08
+
+The one exact `Max cape: Crafting Guild` row now uses the item-teleport/NavigationEngine lifecycle.
+OSRS Wiki MCP and item-action cache verification identify inventory Max cape 13280's `Crafting
+Guild` submenu action and the worn Max cape 13342's direct `Crafting Guild` action. The remaining
+20 Max cape rows stay legacy-owned because Home is setting-dependent, several destinations require
+grouped equipment menus, and the Feldip Hills and Black chinchompa teleports have daily limits not
+represented by a reliable availability predicate.
+
+The route remains non-consumable, so bank planning requests one reusable cape across repeated
+edges. Exact destination `(2931,3286,0)`, both valid item forms, metadata and action surfaces are
+frozen; only the directed Crafting Guild landing acknowledges completion. Focused item-policy,
+scanner, banking, route-publication and classifier tests pass. The classifier floor is now **1,008
+legacy entries**: 643 ordinary `TRANSPORT`, 10 `AGILITY_SHORTCUT`, 37 `TELEPORTATION_ITEM` and 318
+`WILDERNESS_OBELISK` entries. Inventory, worn and bank-only acceptance remain live-deferred, so
+Phase 6 remains open.
+
 ## Outward rope-exit transitions - 2026-09-08
 
 Fifteen exact outward rope exits now use catalogue/NavigationEngine ownership: three Lumbridge

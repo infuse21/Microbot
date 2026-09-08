@@ -237,6 +237,19 @@ public class BankedTransportItemPlanningTest {
 	}
 
 	@Test
+	public void repeatedCraftingGuildMaxCapeTeleportsNeedOneReusableCape()
+	{
+		Transport maxCape = teleport("Max cape: Crafting Guild");
+		Map<Integer, Integer> requirements =
+			Rs2WalkerBankingPlanner.getMissingTransportItemIdsWithQuantities(
+				List.of(maxCape, maxCape));
+
+		assertFalse(maxCape.isConsumable());
+		assertEquals(1, requirements.values().stream().mapToInt(Integer::intValue).sum());
+		assertTrue(Set.of(13280, 13342).containsAll(requirements.keySet()));
+	}
+
+	@Test
 	public void repeatedChronicleTeleportsNeedOneChargedContainer()
 	{
 		Transport chronicle = teleport("Chronicle: Teleport");

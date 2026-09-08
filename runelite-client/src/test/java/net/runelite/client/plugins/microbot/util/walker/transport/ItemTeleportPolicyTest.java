@@ -52,6 +52,21 @@ public class ItemTeleportPolicyTest
 						Definition definition = definitions.get(id);
 						assertNotNull(definition);
 						String message = row.getDisplayInfo() + " item=" + id;
+						if ("Max cape: Crafting Guild".equals(row.getDisplayInfo()))
+						{
+							if (id == 13280)
+							{
+								assertTrue(message, Rs2ItemTeleportScene.hasExactAction(definition.actions,
+									definition.actions, definition.subops, "Crafting Guild"));
+							}
+							else
+							{
+								assertEquals(13342, id);
+								assertTrue(message, Rs2ItemTeleportScene.hasExactAction(definition.equipment,
+									definition.actions, definition.subops, "Crafting Guild"));
+							}
+							continue;
+						}
 						assertTrue(message, Rs2ItemTeleportScene.hasExactAction(definition.actions,
 							definition.actions, definition.subops, ItemTeleportPolicy.inventoryAction(row)));
 						String equipmentAction = ItemTeleportPolicy.equipmentAction(row);
@@ -69,7 +84,7 @@ public class ItemTeleportPolicyTest
 				}
 			}
 		}
-		assertEquals(179, eligible);
+		assertEquals(180, eligible);
 	}
 
 	@Test
@@ -174,6 +189,31 @@ public class ItemTeleportPolicyTest
 		assertEquals(21, rows.size());
 		assertEquals(rows.size(), rows.stream().map(row -> row.getDestination() + "|"
 			+ row.getDisplayInfo() + "|" + row.getItemIdRequirements()).distinct().count());
+	}
+
+	@Test
+	public void craftingGuildMaxCapeUsesTheOneExactUngroupedDestinationAction()
+	{
+		java.util.List<Transport> rows = Transport.loadAllFromResources().values().stream()
+			.flatMap(Set::stream)
+			.filter(row -> "Max cape: Crafting Guild".equals(row.getDisplayInfo()))
+			.collect(java.util.stream.Collectors.toList());
+		assertEquals(1, rows.size());
+		Transport row = rows.get(0);
+		assertEquals(new WorldPoint(2931, 3286, 0), row.getDestination());
+		assertEquals(Set.of(Set.of(13280), Set.of(13342)), row.getItemIdRequirements());
+		assertTrue(ItemTeleportPolicy.isEligible(row));
+		assertEquals("Crafting Guild", ItemTeleportPolicy.inventoryAction(row));
+		assertEquals("Crafting Guild", ItemTeleportPolicy.equipmentAction(row));
+
+		long otherMaxRowsOwned = Transport.loadAllFromResources().values().stream()
+			.flatMap(Set::stream)
+			.filter(candidate -> candidate.getDisplayInfo() != null
+				&& candidate.getDisplayInfo().startsWith("Max cape:")
+				&& !"Max cape: Crafting Guild".equals(candidate.getDisplayInfo()))
+			.filter(ItemTeleportPolicy::isEligible)
+			.count();
+		assertEquals(0, otherMaxRowsOwned);
 	}
 
 	@Test

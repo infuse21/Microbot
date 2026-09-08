@@ -479,8 +479,8 @@ Do not label these as "just waiting for live testing":
   318 random-obelisk rows including 48 unsafe self-pad artifacts; 10 remaining agility rows.
   All grapple rows and 53 post-quest multi-code rows are
   headless-complete above, and the 12 redundant random Guthix rows were removed.
-- 38 item rows after the Chronicle/Jaltevas cutover: 24 jewellery/cape exceptions (Max,
-  Black chinchompa Hunter cape, Camulet) and 14 whistles. Some need data/charge fixes rather
+- 37 item rows after the Crafting Guild Max cape cutover: 23 jewellery/cape exceptions (20 other
+  Max destinations, Black chinchompa Hunter cape and two Camulet rows) and 14 whistles. Some need data/charge fixes rather
   than a new executor.
 - The ten alternate spell overrides are headless-complete above; representative live acceptance is
   still pending.
@@ -495,8 +495,8 @@ The production classifier, not this prose list, is authoritative for the remaini
 Pre-Zanaris checkpoint: 1,466 legacy edges, including 990 ordinary TRANSPORT edges; after the
 headless Zanaris cutover: 1,465 and 989; after Waterfall internal doors: 1,463 and 987;
 after Draynor unlocked crossings: 1,445 and 969 respectively; after Yanille pick-lock:
-1,443 and 967 respectively. The current post-Chronicle/Jaltevas classifier is 1,054 total: 688
-ordinary TRANSPORT, 10 AGILITY_SHORTCUT, 38 TELEPORTATION_ITEM and 318 WILDERNESS_OBELISK rows, with
+1,443 and 967 respectively. The current classifier is 1,008 total: 643 ordinary TRANSPORT, 10
+AGILITY_SHORTCUT, 37 TELEPORTATION_ITEM and 318 WILDERNESS_OBELISK rows, with
 no ordinary FAIRY_RING or GRAPPLE_SHORTCUT row remaining. Classifier counts
 are not percentages of live acceptance or estimates of implementation effort.
 

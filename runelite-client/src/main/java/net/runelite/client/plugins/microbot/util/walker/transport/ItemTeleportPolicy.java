@@ -54,6 +54,7 @@ public final class ItemTeleportPolicy
 		Map.entry("Giantsoul Amulet", Set.of(30638)),
 		Map.entry("Hunter cape", Set.of(9948, 9949)),
 		Map.entry("Music cape", Set.of(13221, 13222)),
+		Map.entry("Max cape", Set.of(13280, 13342)),
 		Map.entry("Necklace of passage", Set.of(21146, 21149, 21151, 21153, 21155)),
 		Map.entry("Pendant of ates", Set.of(29893)),
 		Map.entry("Quest point cape", Set.of(9813, 13068)),
@@ -104,6 +105,7 @@ public final class ItemTeleportPolicy
 		Map.entry("Kharedst's memoirs: The Fisher's Flute", "The Fisher's Flute"),
 		Map.entry("Morytania legs: Burgh Teleport", "Burgh Teleport"),
 		Map.entry("Morytania legs: Ecto Teleport", "Ecto Teleport"),
+		Map.entry("Max cape: Crafting Guild", "Crafting Guild"),
 		Map.entry("Pharaoh's sceptre: Jaldraocht", "Jaldraocht"),
 		Map.entry("Pharaoh's sceptre: Jaleustrophos", "Jaleustrophos"),
 		Map.entry("Pharaoh's sceptre: Jalsavrah", "Jalsavrah"),
@@ -283,6 +285,11 @@ public final class ItemTeleportPolicy
 		{
 			return false;
 		}
+		if ("Max cape: Crafting Guild".equals(transport.getDisplayInfo())
+			&& !isCraftingGuildMaxCape(transport))
+		{
+			return false;
+		}
 		if ("Ardougne cloak: Farm".equals(transport.getDisplayInfo())
 			&& !isUnlimitedArdougneFarm(transport))
 		{
@@ -360,6 +367,21 @@ public final class ItemTeleportPolicy
 			&& transport.getDuration() == 4 && transport.getMaxWildernessLevel() == 19
 			&& transport.getCurrencyAmount() == 0
 			&& transport.getItemIdRequirements().equals(Set.of(Set.of(22114), Set.of(24855)))
+			&& transport.getQuests().isEmpty() && transport.getVarbits().isEmpty()
+			&& transport.getVarplayers().isEmpty()
+			&& java.util.Arrays.stream(transport.getSkillLevels()).allMatch(level -> level == 0);
+	}
+
+	private static boolean isCraftingGuildMaxCape(Transport transport)
+	{
+		return transport != null && transport.getType() == TransportType.TELEPORTATION_ITEM
+			&& transport.getOrigin() == null
+			&& Objects.equals(transport.getDestination(), new WorldPoint(2931, 3286, 0))
+			&& "Max cape: Crafting Guild".equals(transport.getDisplayInfo())
+			&& transport.isMembers() && !transport.isConsumable()
+			&& transport.getDuration() == 4 && transport.getMaxWildernessLevel() == 19
+			&& transport.getCurrencyAmount() == 0
+			&& transport.getItemIdRequirements().equals(Set.of(Set.of(13280), Set.of(13342)))
 			&& transport.getQuests().isEmpty() && transport.getVarbits().isEmpty()
 			&& transport.getVarplayers().isEmpty()
 			&& java.util.Arrays.stream(transport.getSkillLevels()).allMatch(level -> level == 0);
