@@ -366,6 +366,14 @@ public final class CatalogTransitionPolicy
 		"3405,10145,0->3294,3749,0|40391|exit|opening",
 		"3406,10145,0->3294,3749,0|40391|exit|opening",
 		"3407,10145,0->3294,3749,0|40391|exit|opening");
+	private static final Set<String> CLIMB_UP_EXIT_ROUTES = Set.of(
+		"2696,9683,0->2697,3283,0|18354|climbup|exit",
+		"3595,10291,0->3680,3854,0|30844|climbup|exit",
+		"3596,10291,0->3680,3854,0|30844|climbup|exit",
+		"2618,10266,0->2620,3864,0|15193|climbup|exit",
+		"2619,10265,0->2620,3864,0|15193|climbup|exit",
+		"2618,10264,0->2620,3864,0|15193|climbup|exit",
+		"2617,10265,0->2620,3864,0|15193|climbup|exit");
 	private static final Set<Integer> MOR_UL_REK_CAPE_IDS = Set.of(6570, 13329, 24134, 24223);
 	private static final Set<Set<Integer>> MOR_UL_REK_CAPES = Set.of(MOR_UL_REK_CAPE_IDS);
 	private static final int GUARDIANS_OF_THE_RIFT_BARRIER_ID = 43700;
@@ -656,6 +664,7 @@ public final class CatalogTransitionPolicy
 			|| isMorUlRekHotVentDoor(transport)
 			|| isKaramjaVolcanoTransition(transport)
 			|| isOpeningExitTransition(transport)
+			|| isClimbUpExitTransition(transport)
 			|| "pass".equals(action) && "barrier".equals(name)
 				&& transport.getObjectId() == 32153
 			|| "enter".equals(action) && "dense forest".equals(name)
@@ -739,6 +748,22 @@ public final class CatalogTransitionPolicy
 			return false;
 		}
 		return OPENING_EXIT_ROUTES.contains(routeKey(transport,
+			normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
+	}
+
+	static boolean isClimbUpExitTransition(Transport transport)
+	{
+		if (transport == null || transport.getType() != TransportType.TRANSPORT
+			|| transport.getOrigin() == null || transport.getDestination() == null
+			|| transport.isConsumable() || transport.getCurrencyAmount() != 0
+			|| transport.isQuestLocked() || !transport.getVarbits().isEmpty()
+			|| !transport.getVarplayers().isEmpty() || !transport.isMembers()
+			|| !transport.getItemIdRequirements().isEmpty()
+			|| java.util.Arrays.stream(transport.getSkillLevels()).anyMatch(level -> level != 0))
+		{
+			return false;
+		}
+		return CLIMB_UP_EXIT_ROUTES.contains(routeKey(transport,
 			normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
 	}
 

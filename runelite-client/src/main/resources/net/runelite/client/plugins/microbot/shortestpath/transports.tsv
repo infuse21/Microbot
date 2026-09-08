@@ -656,7 +656,7 @@
 
 # Witchaven Dungeon											
 2697 3283 0	2696 9683 0	Climb-down;Old ruin entrance;18270
-2696 9683 0	2697 3283 0	Climb-up;Exit;18354
+2696 9683 0	2697 3283 0	Climb-up;Exit;18354							Y
 2700 9688 0	2323 5104 0	Enter;Wall opening;19124								2
 2323 5104 0	2700 9688 0	Enter;Passage;18412								2
 											
@@ -1487,9 +1487,9 @@
 3561 4003 0	3556 4004 1	Climb-up;Stairs;32081									
 											
 # Fossil Island											
-3595 10291 0	3680 3854 0	Climb-up;Exit;30844									
+3595 10291 0	3680 3854 0	Climb-up;Exit;30844							Y
 3680 3854 0	3595 10291 0	Enter;Broken Grandiose Doors;32132									
-3596 10291 0	3680 3854 0	Climb-up;Exit;30844									
+3596 10291 0	3680 3854 0	Climb-up;Exit;30844							Y
 3603 10291 0	3607 10290 0	Climb;Stairs;31485									
 3607 10290 0	3603 10290 0	Climb;Stairs;31485									
 3603 10290 0	3607 10290 0	Climb;Stairs;31485									
@@ -4100,12 +4100,12 @@
 2538 10286 0	2540 10286 0	Use;Plank -> Rocks;15213									
 2585 10259 0	2585 10262 0	Squeeze-through;Crevice;15194									
 2585 10262 0	2585 10259 0	Squeeze-through;Crevice;15195									
-2618 10266 0	2620 3864 0	Climb-up;Exit;15193									
+2618 10266 0	2620 3864 0	Climb-up;Exit;15193							Y
 2620 3864 0	2619 10265 0	Climb-down;Hole;15203					2141>119
-2619 10265 0	2620 3864 0	Climb-up;Exit;15193									
+2619 10265 0	2620 3864 0	Climb-up;Exit;15193							Y
 2619 3865 0	2619 10265 0	Climb-down;Hole;15203					2141>119
-2618 10264 0	2620 3864 0	Climb-up;Exit;15193									
-2617 10265 0	2620 3864 0	Climb-up;Exit;15193									
+2618 10264 0	2620 3864 0	Climb-up;Exit;15193							Y
+2617 10265 0	2620 3864 0	Climb-up;Exit;15193							Y
 2621 3865 0	2619 10265 0	Climb-down;Hole;15203					2141>119
 2614 3866 0	2615 3867 1	Climb-up;Staircase;16671								1	
 2615 3867 1	2614 3866 0	Climb-down;Staircase;16673								1	

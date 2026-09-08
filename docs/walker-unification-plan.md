@@ -21,6 +21,22 @@ headless batches, outstanding branches of representative live passes, and contra
 implementation. As of 2026-09-06 the user requests headless-first progress; deferred physical tests
 remain open rather than blocking each batch or being silently marked complete.
 
+## Witchaven, Wyvern Cave and Miscellania climb-up exits - 2026-09-08
+
+All seven exact `Climb-up;Exit` rows now use catalogue/NavigationEngine ownership: one Witchaven
+Dungeon exit on object 18354, two Fossil Island Wyvern Cave exits on object 30844, and four
+Miscellania and Etceteria dungeon exits on object 15193. OSRS Wiki MCP confirms all three dungeons
+are members-only, and cache names bind the three IDs to their specific exit families. The seven
+missing members flags are corrected.
+
+No entrance-only quest, task or varbit requirement is copied onto these outward routes: a player
+already inside must remain able to leave. Exact directed keys prevent the same verbs from enabling
+unrelated exits, and only the selected remote surface landing acknowledges completion. Focused
+policy, scanner, route-publication and classifier tests pass. The classifier floor is now **1,024
+legacy entries**: 658 ordinary `TRANSPORT`, 10 `AGILITY_SHORTCUT`, 38 `TELEPORTATION_ITEM` and
+318 `WILDERNESS_OBELISK` entries. Representative crossings and interruption recovery remain live-
+deferred, so Phase 6 remains open.
+
 ## Ferox, Wilderness Slayer and Isle of Souls opening exits - 2026-09-08
 
 All 11 exact `Exit;Opening` rows now use catalogue/NavigationEngine ownership: three Ferox Enclave

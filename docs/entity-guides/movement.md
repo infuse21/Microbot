@@ -1952,3 +1952,16 @@ Ferox Enclave Dungeon, the Wilderness Slayer Cave and the Isle of Souls Dungeon 
 profiles. Freeze every directed route, retain the members requirement, and acknowledge only the
 chosen landing. The Wilderness location changes live-testing precautions; it does not justify a
 different ownership lifecycle or a fabricated item requirement.
+
+## 105. Do not copy an entrance gate onto an outward escape
+
+Quest progress, an active Slayer task or a persistent unlock may govern entry to a dungeon without
+governing its exit. For an outward-only route, preserve requirements encoded on that exact row and
+avoid inferring entrance requirements from the surrounding location; otherwise a player who is
+already inside can become trapped by the planner. Membership remains a world-level access property
+and should still be corrected when authoritative location data proves it.
+
+Witchaven Dungeon, the Fossil Island Wyvern Cave and the Miscellania/Etceteria dungeon each use
+direct `Climb-up;Exit` objects with remote surface landings. Freeze each route and object identity,
+then keep NavigationEngine ownership until its selected landing. This supports escape traversal; it
+does not grant the corresponding inward quest, task or unlock protocol.

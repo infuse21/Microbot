@@ -21,6 +21,15 @@ additive totals; source rows, generated edges and duplicated approaches must not
 
 ## Latest work versus earlier headless batches
 
+### Witchaven, Wyvern Cave and Miscellania climb-up exits - 2026-09-08
+
+- **Headless:** all seven exact members-only `Climb-up;Exit` rows are engine-owned: one Witchaven
+  Dungeon row, two Fossil Island Wyvern Cave rows and four Miscellania/Etceteria dungeon rows.
+  Entrance-only quest, task and unlock gates are deliberately not imposed on players leaving.
+- **Live pending:** exit each dungeon family once and verify one exact interaction, the expected
+  remote surface landing, interruption recovery and no legacy handoff. The Witchaven dungeon can
+  contain aggressive monsters; use an intentionally minimal loadout.
+
 ### Ferox, Wilderness Slayer and Isle of Souls opening exits - 2026-09-08
 
 - **Headless:** all 11 exact members-only `Exit;Opening` rows are engine-owned: three Ferox
