@@ -33,8 +33,7 @@ public class RemainingTransportClassificationTest
 		expected.put(TransportType.TRANSPORT, 593);
 		expected.put(TransportType.AGILITY_SHORTCUT, 10);
 		expected.put(TransportType.TELEPORTATION_ITEM, 37);
-		expected.put(TransportType.WILDERNESS_OBELISK, 318);
 		assertEquals(expected, byType);
-		assertEquals(958, byType.values().stream().mapToInt(Integer::intValue).sum());
+		assertEquals(640, byType.values().stream().mapToInt(Integer::intValue).sum());
 	}
 }

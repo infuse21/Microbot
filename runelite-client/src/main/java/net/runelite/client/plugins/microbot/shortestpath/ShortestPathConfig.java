@@ -327,7 +327,7 @@ public interface ShortestPathConfig extends Config {
             section = sectionSettings
     )
     default boolean useWildernessObelisks() {
-        return true;
+        return false;
     }
 
     @ConfigItem(

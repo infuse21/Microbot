@@ -21,6 +21,19 @@ headless batches, outstanding branches of representative live passes, and contra
 implementation. As of 2026-09-06 the user requests headless-first progress; deferred physical tests
 remain open rather than blocking each batch or being silently marked complete.
 
+## Random Wilderness obelisk catalogue disabled - 2026-09-08
+
+The 318 generated `WILDERNESS_OBELISK` edges are no longer loaded into the runtime graph and the
+configuration defaults off. The retained source resource expands 54 pad inputs into 270 remote
+permutations plus 48 unsafe same-pad artifacts, but ordinary activation chooses a random remote pad;
+therefore those rows do not describe deterministic directed routes that NavigationEngine can own.
+Persisted opt-in settings cannot re-enable the removed runtime edges.
+
+The correct future contract is a separate hard-Wilderness-diary protocol that selects a destination
+before activation and verifies the observed landing. This audit is an unsupported-family removal,
+not migrated or live-complete obelisk coverage. The classifier floor is now **640 legacy entries**:
+593 ordinary `TRANSPORT`, 10 `AGILITY_SHORTCUT`, and 37 `TELEPORTATION_ITEM` entries.
+
 ## Golem, Sophanem and Trollweiss quest-gated entrances - 2026-09-08
 
 Fifty exact members-only entrances now use catalogue/NavigationEngine ownership: 12 Golem portal

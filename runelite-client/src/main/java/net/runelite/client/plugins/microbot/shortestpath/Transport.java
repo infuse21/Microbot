@@ -604,7 +604,8 @@ public class Transport {
         addTransports(transports, "teleportation_levers.tsv", TransportType.TELEPORTATION_LEVER);
         addTransports(transports, "teleportation_portals.tsv", TransportType.TELEPORTATION_PORTAL);
         addTransports(transports, "teleportation_spells.tsv", TransportType.TELEPORTATION_SPELL);
-        addTransports(transports, "wilderness_obelisks.tsv", TransportType.WILDERNESS_OBELISK);
+        // Random obelisks do not encode a selectable destination contract.
+        // Keep the resource as audit evidence, but do not publish fabricated directed edges.
         addTransports(transports, "magic_carpets.tsv", TransportType.MAGIC_CARPET);
         addTransports(transports, "hot_air_balloons.tsv", TransportType.HOT_AIR_BALLOON, 7);
         addTransports(transports, "magic_mushtrees.tsv", TransportType.MAGIC_MUSHTREE, 5);

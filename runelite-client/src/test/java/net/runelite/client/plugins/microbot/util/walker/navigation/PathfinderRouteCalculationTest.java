@@ -127,7 +127,7 @@ public class PathfinderRouteCalculationTest
 		}
 		assertEquals(127, candidates);
 		assertEquals(104, migrated);
-		assertEquals(958, legacy);
+		assertEquals(640, legacy);
 	}
 
 	@Test
@@ -1571,11 +1571,20 @@ public class PathfinderRouteCalculationTest
 	}
 
 	@Test
-	public void randomWildernessObeliskCatalogRemainsLegacyLocked()
+	public void randomWildernessObeliskResourceIsAuditedButNotLoaded() throws Exception
 	{
-		java.util.List<Transport> obelisks = Transport.loadAllFromResources().values()
+		assertTrue(Transport.loadAllFromResources().values().stream()
+			.flatMap(java.util.Collection::stream)
+			.noneMatch(candidate -> candidate.getType() == TransportType.WILDERNESS_OBELISK));
+
+		java.util.Map<WorldPoint, Set<Transport>> resourceRows = new HashMap<>();
+		java.lang.reflect.Method loader = Transport.class.getDeclaredMethod("addTransports",
+			java.util.Map.class, String.class, TransportType.class);
+		loader.setAccessible(true);
+		loader.invoke(null, resourceRows, "wilderness_obelisks.tsv",
+			TransportType.WILDERNESS_OBELISK);
+		java.util.List<Transport> obelisks = resourceRows.values()
 			.stream().flatMap(java.util.Collection::stream)
-			.filter(candidate -> candidate.getType() == TransportType.WILDERNESS_OBELISK)
 			.collect(java.util.stream.Collectors.toList());
 		java.util.List<Transport> remoteObelisks = obelisks.stream()
 			.filter(candidate -> candidate.getOrigin().distanceTo2D(

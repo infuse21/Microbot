@@ -36,6 +36,12 @@ public class TransportFeatureToggleTest
 	}
 
 	@Test
+	public void unsupportedRandomWildernessObelisksDefaultOff()
+	{
+		assertFalse(new ShortestPathConfig() { }.useWildernessObelisks());
+	}
+
+	@Test
 	public void dedicatedTransportFamiliesRespectBothToggleStates() throws Exception
 	{
 		Map<TransportType, String> toggles = Map.ofEntries(
