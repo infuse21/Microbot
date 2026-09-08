@@ -16,6 +16,16 @@ import java.util.Set;
 public final class CatalogTransitionPolicy
 {
 	private static final Set<String> AUDITED_AGILITY_TRAVERSALS = Set.of(
+		"3604,3550,0->3602,3550,0|16115|jumpto|rock",
+		"3602,3550,0->3604,3550,0|16115|jumpto|rock",
+		"3599,3552,0->3597,3552,0|16115|jumpto|rock",
+		"3597,3552,0->3599,3552,0|16115|jumpto|rock",
+		"3595,3554,0->3595,3556,0|16115|jumpto|rock",
+		"3595,3556,0->3595,3554,0|16115|jumpto|rock",
+		"3597,3559,0->3597,3561,0|16115|jumpto|rock",
+		"3597,3561,0->3597,3559,0|16115|jumpto|rock",
+		"3599,3564,0->3601,3564,0|16115|jumpto|rock",
+		"3601,3564,0->3599,3564,0|16115|jumpto|rock",
 		"3440,3331,0->3441,3329,0|3522|jump|bridge",
 		"3441,3329,0->3440,3331,0|3522|jump|bridge",
 		"3441,3331,0->3441,3329,0|3522|jump|bridge",
@@ -868,6 +878,7 @@ public final class CatalogTransitionPolicy
 		"2921,3747,0->2882,5311,2|26419|climbdown|hole",
 		"2921,3746,0->2882,5311,2|26419|climbdown|hole");
 	static final int ROPE_ITEM_ID = 954;
+	static final int PLANK_ITEM_ID = 960;
 	static final String ATTACH_ROPE_ACTION = "Use rope";
 	private static final Set<String> KALPHITE_ROPE_DESCENT_ROUTE_KEYS = Set.of(
 		"3226,3108,0->3483,9510,2|3827|climbdown|tunnel entrance",
@@ -933,6 +944,35 @@ public final class CatalogTransitionPolicy
 	private static final Set<String> SARADOMIN_ROPE_DESCENT_ROUTES = Set.of(
 		"2912,5300,2->2914,5300,1|26561|climbdown|rock",
 		"2920,5276,1->2920,5274,0|26562|climbdown|rock");
+	private static final Set<String> ICE_PATH_GATE_ROUTES = Set.of(
+		"2837,3736,0->2839,3739,0|5044|gothrough|ice gate",
+		"2837,3739,0->2839,3739,0|5043|gothrough|ice gate",
+		"2837,3738,0->2839,3739,0|5044|gothrough|ice gate",
+		"2837,3737,0->2839,3739,0|5044|gothrough|ice gate",
+		"2837,3740,0->2839,3739,0|5043|gothrough|ice gate",
+		"2839,3739,0->2837,3739,0|5043|gothrough|ice gate",
+		"2839,3737,0->2837,3739,0|5044|gothrough|ice gate",
+		"2839,3738,0->2837,3739,0|5044|gothrough|ice gate",
+		"2839,3736,0->2837,3739,0|5044|gothrough|ice gate",
+		"2839,3740,0->2837,3739,0|5043|gothrough|ice gate",
+		"2839,3741,0->2837,3739,0|5043|gothrough|ice gate");
+	private static final Set<String> ROYAL_TROUBLE_PLANK_ROUTES = Set.of(
+		"2549,10288,0->2547,10288,0|15213|use|plank -> rocks",
+		"2547,10288,0->2549,10288,0|15213|use|plank -> rocks",
+		"2546,10287,0->2544,10287,0|15213|use|plank -> rocks",
+		"2544,10287,0->2546,10287,0|15213|use|plank -> rocks",
+		"2543,10287,0->2541,10287,0|15213|use|plank -> rocks",
+		"2541,10287,0->2543,10287,0|15213|use|plank -> rocks",
+		"2540,10286,0->2538,10286,0|15213|use|plank -> rocks",
+		"2538,10286,0->2540,10286,0|15213|use|plank -> rocks");
+	private static final Set<String> ROYAL_TROUBLE_ROPESWING_ROUTES = Set.of(
+		"2539,10299,0->2543,10299,0|15252|swingon|ropeswing",
+		"2540,10296,0->2536,10296,0|15216|swingon|ropeswing");
+	private static final Set<String> FAILURE_RETRY_SHORTCUT_ROUTES = Set.of(
+		"2598,3608,0->2596,3608,0|4616|cross|broken bridge",
+		"2596,3608,0->2598,3608,0|4615|cross|broken bridge",
+		"2910,3049,0->2906,3049,0|23644|cross|a wooden log",
+		"2906,3049,0->2910,3049,0|23644|cross|a wooden log");
 
 	private CatalogTransitionPolicy()
 	{
@@ -961,6 +1001,7 @@ public final class CatalogTransitionPolicy
 		}
 		if (isShadowDungeonLadder(transport) || ZanarisEntrancePolicy.isEligible(transport)
 			|| isWaterfallThroneDoor(transport) || isMorUlRekHotVentDoor(transport)
+			|| EquippedSafetyTransitionPolicy.isEligible(transport)
 			|| isCrandorHole(transport) || isShiloBrokenCart(transport)
 			|| isStrongholdEscape(transport) || isWintertodtDoor(transport)
 			|| isWintertodtGap(transport)
@@ -971,7 +1012,9 @@ public final class CatalogTransitionPolicy
 			|| isPostQuestIceTrollCave(transport)
 			|| isPostQuestMyrequeDoor(transport)
 			|| isHauntedMineStairsOrLift(transport) || isGuardedProtocolRoute(transport)
-			|| isGodWarsBoulder(transport) || isSaradominRopeDescent(transport))
+			|| isGodWarsBoulder(transport) || isSaradominRopeDescent(transport)
+			|| isIcePathGate(transport) || isRoyalTroublePlankCrossing(transport)
+			|| isRoyalTroubleRopeswing(transport) || isFailureRetryShortcut(transport))
 		{
 			return true;
 		}
@@ -1860,6 +1903,11 @@ public final class CatalogTransitionPolicy
 		if (!AUDITED_AGILITY_TRAVERSALS.contains(routeKey(transport,
 			normalizeDirectAction(transport.getAction()), normalize(transport.getName())))) return false;
 		int level = transport.getSkillLevels()[net.runelite.api.Skill.AGILITY.ordinal()];
+		if (transport.getObjectId() == 16115)
+		{
+			return transport.isMembers() && transport.getDuration() == 0
+				&& level == 25 && transport.getQuests().isEmpty();
+		}
 		if (transport.getObjectId() == 26405)
 		{
 			return level == 60
@@ -1873,8 +1921,103 @@ public final class CatalogTransitionPolicy
 
 	static boolean isAuditedAgilityTraversalObject(int objectId)
 	{
-		return objectId == 3522 || objectId == 11948 || objectId == 11949
+		return objectId == 16115 || objectId == 3522 || objectId == 11948 || objectId == 11949
 			|| objectId == 19846 || objectId == 19847 || objectId == 26405;
+	}
+
+	static boolean isIcePathGate(Transport transport)
+	{
+		if (transport == null || transport.getType() != TransportType.TRANSPORT
+			|| transport.getOrigin() == null || transport.getDestination() == null
+			|| !transport.isMembers() || transport.isConsumable() || transport.getDuration() != 0
+			|| transport.getCurrencyAmount() != 0 || !transport.getItemIdRequirements().isEmpty()
+			|| !transport.getVarplayers().isEmpty() || !hasNoSkillRequirements(transport)
+			|| !ICE_PATH_GATE_ROUTES.contains(routeKey(transport,
+				normalizeDirectAction(transport.getAction()), normalize(transport.getName()))))
+		{
+			return false;
+		}
+		boolean entering = transport.getOrigin().getX() == 2837;
+		return entering
+			? transport.getQuests().equals(Map.of(Quest.DESERT_TREASURE_I, QuestState.IN_PROGRESS))
+				&& hasOnlyVarbit(transport, 382, 1, TransportVarbit.Operator.GREATER_THAN)
+			: transport.getQuests().isEmpty() && transport.getVarbits().isEmpty();
+	}
+
+	static boolean isIcePathGateObject(int objectId)
+	{
+		return objectId == 5043 || objectId == 5044;
+	}
+
+	static boolean isRoyalTroublePlankCrossing(Transport transport)
+	{
+		return transport != null && transport.getType() == TransportType.TRANSPORT
+			&& transport.getOrigin() != null && transport.getDestination() != null
+			&& transport.isMembers() && !transport.isConsumable() && transport.getDuration() == 0
+			&& transport.getCurrencyAmount() == 0
+			&& transport.getItemIdRequirements().equals(Set.of(Set.of(PLANK_ITEM_ID)))
+			&& transport.getQuests().equals(Map.of(Quest.ROYAL_TROUBLE, QuestState.FINISHED))
+			&& transport.getVarbits().isEmpty() && transport.getVarplayers().isEmpty()
+			&& hasNoSkillRequirements(transport)
+			&& ROYAL_TROUBLE_PLANK_ROUTES.contains(routeKey(transport,
+				normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
+	}
+
+	static boolean isRoyalTroublePlankObject(int objectId)
+	{
+		return objectId == 15213;
+	}
+
+	static boolean isRoyalTroubleRopeswing(Transport transport)
+	{
+		return transport != null && transport.getType() == TransportType.TRANSPORT
+			&& transport.getOrigin() != null && transport.getDestination() != null
+			&& transport.isMembers() && !transport.isConsumable() && transport.getDuration() == 0
+			&& transport.getCurrencyAmount() == 0 && transport.getItemIdRequirements().isEmpty()
+			&& transport.getQuests().equals(Map.of(Quest.ROYAL_TROUBLE, QuestState.FINISHED))
+			&& hasOnlyVarbit(transport, 2147, 1, TransportVarbit.Operator.EQUAL)
+			&& transport.getVarplayers().isEmpty()
+			&& hasOnlySkillRequirement(transport, net.runelite.api.Skill.AGILITY, 40)
+			&& ROYAL_TROUBLE_ROPESWING_ROUTES.contains(routeKey(transport,
+				normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
+	}
+
+	static boolean isRoyalTroubleRopeswingObject(int objectId)
+	{
+		return objectId == 15216 || objectId == 15252;
+	}
+
+	static boolean isFailureRetryShortcut(Transport transport)
+	{
+		if (transport == null || transport.getType() != TransportType.TRANSPORT
+			|| transport.getOrigin() == null || transport.getDestination() == null
+			|| !transport.isMembers() || transport.isConsumable()
+			|| transport.getCurrencyAmount() != 0 || !transport.getItemIdRequirements().isEmpty()
+			|| !transport.getQuests().isEmpty() || !transport.getVarbits().isEmpty()
+			|| !transport.getVarplayers().isEmpty()
+			|| !hasOnlySkillRequirement(transport, net.runelite.api.Skill.AGILITY, 1)
+			|| !FAILURE_RETRY_SHORTCUT_ROUTES.contains(routeKey(transport,
+				normalizeDirectAction(transport.getAction()), normalize(transport.getName()))))
+		{
+			return false;
+		}
+		return transport.getDuration() == (transport.getObjectId() == 23644 ? 5 : 2);
+	}
+
+	static boolean isFailureRetryShortcutObject(int objectId)
+	{
+		return objectId == 4615 || objectId == 4616 || objectId == 23644;
+	}
+
+	static boolean isGhostShipRockJump(Transport transport)
+	{
+		return transport != null && transport.getObjectId() == 16115
+			&& isAuditedAgilityTraversal(transport);
+	}
+
+	static boolean hasGhostShipRunEnergy(int rawRunEnergy)
+	{
+		return rawRunEnergy >= 500;
 	}
 
 	static boolean isFremennikSurfaceBridgeObject(int objectId)
@@ -2663,6 +2806,21 @@ public final class CatalogTransitionPolicy
 		for (int level : transport.getSkillLevels())
 		{
 			if (level != 0)
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+	private static boolean hasOnlySkillRequirement(Transport transport,
+		net.runelite.api.Skill skill, int requiredLevel)
+	{
+		int[] levels = transport.getSkillLevels();
+		for (int i = 0; i < levels.length; i++)
+		{
+			int expected = i == skill.ordinal() ? requiredLevel : 0;
+			if (levels[i] != expected)
 			{
 				return false;
 			}

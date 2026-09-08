@@ -67,7 +67,10 @@ public final class Rs2LiveScene implements LiveScene {
 			return null;
 		}
 		return Microbot.getClientThread().runOnClientThreadOptional(() ->
-				Rs2GameObject.findGameObjectByLocation(tile))
+				Rs2SceneLocation.sceneLocations(tile).stream()
+						.map(Rs2GameObject::findGameObjectByLocation)
+						.filter(java.util.Objects::nonNull)
+						.findFirst().orElse(null))
 				.orElse(null);
 	}
 
@@ -76,15 +79,12 @@ public final class Rs2LiveScene implements LiveScene {
 		if (tile == null) {
 			return null;
 		}
-		return Microbot.getClientThread().runOnClientThreadOptional(() -> {
-			TileObject object = Rs2GameObject.findGameObjectByLocation(tile);
-			if (object == null) {
-				return null;
-			}
-			int id = object.getId();
-			return id == ObjectID.MOTHERLODE_ROCKFALL_1 || id == ObjectID.MOTHERLODE_ROCKFALL_2
-					? object
-					: null;
-		}).orElse(null);
+		return Microbot.getClientThread().runOnClientThreadOptional(() ->
+			Rs2SceneLocation.sceneLocations(tile).stream()
+				.map(Rs2GameObject::findGameObjectByLocation)
+				.filter(java.util.Objects::nonNull)
+				.filter(object -> object.getId() == ObjectID.MOTHERLODE_ROCKFALL_1
+					|| object.getId() == ObjectID.MOTHERLODE_ROCKFALL_2)
+				.findFirst().orElse(null)).orElse(null);
 	}
 }

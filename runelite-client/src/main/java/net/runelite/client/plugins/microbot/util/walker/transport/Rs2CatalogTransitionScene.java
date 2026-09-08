@@ -21,17 +21,20 @@ import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.tabs.Rs2Tab;
 import net.runelite.client.plugins.microbot.util.walker.Rs2PathApi;
 import net.runelite.client.plugins.microbot.util.walker.obstacle.PlannedEdge;
+import net.runelite.client.plugins.microbot.util.walker.obstacle.Rs2SceneLocation;
 import net.runelite.client.plugins.microbot.util.walker.transport.model.CatalogTransition;
 
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.stream.Collectors;
 
 /** Cache-backed live resolver for direct catalog scene transitions. */
 public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 {
 	private static final int DEFAULT_OBJECT_SEARCH_RADIUS = 2;
 	private static final int AGILITY_OBJECT_SEARCH_RADIUS = 5;
+	static final String WAIT_FOR_RUN_ENERGY = "Wait for 5% run energy";
 
 	public enum DispatchResult
 	{
@@ -92,6 +95,19 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 		{
 			return null;
 		}
+		if (EquippedSafetyTransitionPolicy.isEligible(transport))
+		{
+			CatalogTransition preparation = Microbot.getClientThread().runOnClientThreadOptional(() ->
+				equipmentPreparation(transport)).orElse(null);
+			if (preparation != null)
+			{
+				return preparation;
+			}
+			if (!safetyEquipmentWorn(transport))
+			{
+				return null;
+			}
+		}
 		if (ShantayPassPolicy.isEligible(transport))
 		{
 			CatalogTransition transition = shantayTransition(transport, pendingAction);
@@ -119,13 +135,40 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 				return preparation;
 			}
 		}
+		return findSceneTransition(transport);
+	}
+
+	private static CatalogTransition findSceneTransition(Transport transport)
+	{
+		try
+		{
+			return Microbot.getClientThread().runOnClientThreadOptional(() ->
+				findSceneTransitionOnClientThread(transport)).orElse(null);
+		}
+		catch (RuntimeException ex)
+		{
+			if (Thread.currentThread().isInterrupted()
+				|| Rs2SceneLocation.clientThreadUnavailable(ex))
+			{
+				return null;
+			}
+			throw ex;
+		}
+	}
+
+	private static CatalogTransition findSceneTransitionOnClientThread(Transport transport)
+	{
+		if (CatalogTransitionPolicy.isGhostShipRockJump(transport)
+			&& !CatalogTransitionPolicy.hasGhostShipRunEnergy(Microbot.getClient().getEnergy()))
+		{
+			return new CatalogTransition(null, transport.getOrigin(), transport.getObjectId(),
+				WAIT_FOR_RUN_ENERGY, transport.getAction(), transport.getOrigin(),
+				transport.getDestination());
+		}
 		boolean pohPortal = CatalogTransitionPolicy.isPohPortal(transport);
 		boolean floorboardJump = CatalogTransitionPolicy.isFloorboardJump(transport);
 		boolean tarnsJump = CatalogTransitionPolicy.isTarnsJump(transport);
-		List<Rs2TileObjectModel> candidates = pohPortal
-			? Microbot.getRs2TileObjectCache().query().withId(transport.getObjectId()).toList()
-			: Microbot.getRs2TileObjectCache().query().within(transport.getOrigin(),
-				objectSearchRadius(transport)).toList();
+		List<Rs2TileObjectModel> candidates = sceneCandidates(transport, pohPortal);
 		Rs2TileObjectModel direct = candidates.stream()
 			.filter(candidate -> !(floorboardJump || tarnsJump || CatalogTransitionPolicy.isShortAgilityCrossing(transport)
 				|| CatalogTransitionPolicy.isIsafdarCrossing(transport)
@@ -150,16 +193,23 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 				|| ZanarisEntrancePolicy.isEligible(transport)
 				|| CatalogTransitionPolicy.isWaterfallThroneDoor(transport))
 				|| candidate.getId() == transport.getObjectId())
-			.filter(candidate -> candidate.getWorldLocation().getPlane()
+			.filter(candidate -> Rs2SceneLocation.templateLocation(candidate) != null)
+			.filter(candidate -> Rs2SceneLocation.templateLocation(candidate).getPlane()
 				== transport.getOrigin().getPlane())
 			.filter(candidate -> candidate.getId() == transport.getObjectId()
-				|| matchesCatalogIdentity(candidate, transport))
+				|| permitsCatalogIdentityFallback(transport)
+					&& matchesCatalogIdentity(candidate, transport))
 			.min(Comparator.comparingInt(candidate ->
 				(candidate.getId() == transport.getObjectId() ? 0 : 100)
-					+ candidate.getWorldLocation().distanceTo2D(transport.getOrigin())))
+					+ Rs2SceneLocation.templateLocation(candidate)
+						.distanceTo2D(transport.getOrigin())))
 			.orElse(null);
 		if (direct != null)
 		{
+			if (CatalogTransitionPolicy.isRoyalTroublePlankCrossing(transport))
+			{
+				return transition(direct, transport, "Use", false);
+			}
 			if (CatalogTransitionPolicy.isSaradominRopeSetup(transport)
 				|| CatalogTransitionPolicy.isGuardedProtocolRoute(transport)
 					&& transport.getObjectId() == 6382)
@@ -188,14 +238,40 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 		Rs2TileObjectModel closed = candidates.stream()
 			.filter(candidate -> isClosedEntrance(candidate, transport.getOrigin()))
 			.min(Comparator.comparingInt(candidate ->
-				candidate.getWorldLocation().distanceTo2D(transport.getOrigin())))
+				Rs2SceneLocation.templateLocation(candidate).distanceTo2D(transport.getOrigin())))
 			.orElse(null);
 		return closed == null ? null : transition(closed, transport, "Open", false);
 	}
 
+	private static List<Rs2TileObjectModel> sceneCandidates(Transport transport, boolean pohPortal)
+	{
+		if (pohPortal)
+		{
+			return Microbot.getRs2TileObjectCache().query().fromWorldView()
+				.withId(transport.getObjectId()).toList();
+		}
+		if (!Microbot.getClient().getTopLevelWorldView().isInstance())
+		{
+			return Microbot.getRs2TileObjectCache().query().within(transport.getOrigin(),
+				objectSearchRadius(transport)).toList();
+		}
+		int radius = objectSearchRadius(transport);
+		return Microbot.getRs2TileObjectCache().query().fromWorldView().toList().stream()
+			.filter(candidate -> Rs2SceneLocation.templateLocation(candidate) != null)
+			.filter(candidate -> Rs2SceneLocation.templateLocation(candidate).getPlane()
+				== transport.getOrigin().getPlane())
+			.filter(candidate -> Rs2SceneLocation.templateLocation(candidate)
+				.distanceTo2D(transport.getOrigin()) <= radius)
+			.collect(Collectors.toList());
+	}
+
 	static int objectSearchRadius(Transport transport)
 	{
-		if (transport != null && transport.getType() == TransportType.AGILITY_SHORTCUT)
+		if (CatalogTransitionPolicy.isIcePathGate(transport))
+		{
+			return 3;
+		}
+		if (isDraynorUnderwallTunnel(transport))
 		{
 			return AGILITY_OBJECT_SEARCH_RADIUS;
 		}
@@ -207,10 +283,22 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 			? 3 : DEFAULT_OBJECT_SEARCH_RADIUS;
 	}
 
+	static boolean permitsCatalogIdentityFallback(Transport transport)
+	{
+		return !isDraynorUnderwallTunnel(transport);
+	}
+
+	private static boolean isDraynorUnderwallTunnel(Transport transport)
+	{
+		return transport != null && transport.getType() == TransportType.AGILITY_SHORTCUT
+			&& (transport.getObjectId() == 19032 || transport.getObjectId() == 19036);
+	}
+
 	private static CatalogTransition transition(Rs2TileObjectModel object, Transport transport,
 		String action, boolean logicalOrigin)
 	{
-		WorldPoint objectTile = logicalOrigin ? transport.getOrigin() : object.getWorldLocation();
+		WorldPoint objectTile = logicalOrigin ? transport.getOrigin()
+			: Rs2SceneLocation.templateLocation(object);
 		return new CatalogTransition(object, objectTile, transport.getObjectId(),
 			action, transport.getAction(), transport.getOrigin(), transport.getDestination());
 	}
@@ -229,6 +317,13 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 		if (transport == null)
 		{
 			return DispatchResult.REJECTED;
+		}
+		if (CatalogTransitionPolicy.isGhostShipRockJump(transport)
+			&& WAIT_FOR_RUN_ENERGY.equals(action))
+		{
+			// This is a non-blocking preparation stage. A later observation replaces
+			// it with Jump-To as soon as the client reports enough run energy.
+			return DispatchResult.PREPARED;
 		}
 		if (ShantayPassPolicy.isEligible(transport))
 		{
@@ -283,6 +378,14 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 				return preparation;
 			}
 		}
+		if (EquippedSafetyTransitionPolicy.isEligible(transport))
+		{
+			DispatchResult preparation = dispatchSafetyEquipment(transport, action);
+			if (preparation != null)
+			{
+				return preparation;
+			}
+		}
 		if (EnergyBarrierPolicy.isEligible(transport)
 			&& !TransportRequirementPolicy.itemIdRequirements(transport).isEmpty()
 			&& !Rs2Equipment.isWearing(TransportRequirementPolicy.ghostspeakItemIds().stream()
@@ -301,9 +404,26 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 			{
 				return DispatchResult.REJECTED;
 			}
-			if (Rs2Inventory.getSelectedItemId() != CatalogTransitionPolicy.ROPE_ITEM_ID)
+			if (selectedInventoryItemId() != CatalogTransitionPolicy.ROPE_ITEM_ID)
 			{
 				return Rs2Inventory.use(CatalogTransitionPolicy.ROPE_ITEM_ID)
+					? DispatchResult.PREPARED : DispatchResult.REJECTED;
+			}
+			return transition.getObject().click("Use")
+				? DispatchResult.ISSUED : DispatchResult.REJECTED;
+		}
+		if (requiresPlankPreparation(transport, action))
+		{
+			CatalogTransition transition = find(transport);
+			if (transition == null || transition.getCatalogObjectId() != catalogObjectId
+				|| !transition.getAction().equalsIgnoreCase(action)
+				|| transition.getObject() == null)
+			{
+				return DispatchResult.REJECTED;
+			}
+			if (selectedInventoryItemId() != CatalogTransitionPolicy.PLANK_ITEM_ID)
+			{
+				return Rs2Inventory.use(CatalogTransitionPolicy.PLANK_ITEM_ID)
 					? DispatchResult.PREPARED : DispatchResult.REJECTED;
 			}
 			return transition.getObject().click("Use")
@@ -419,6 +539,42 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 			transport.getAction(), transport.getOrigin(), transport.getDestination());
 	}
 
+	static CatalogTransition safetyEquipmentPreparation(Transport transport, boolean equipped,
+		boolean inventoryVisible, int inventoryItemId)
+	{
+		if (!EquippedSafetyTransitionPolicy.isEligible(transport) || equipped)
+		{
+			return null;
+		}
+		if (inventoryItemId <= 0)
+		{
+			return null;
+		}
+		String action = inventoryVisible
+			? EquippedSafetyTransitionPolicy.equipAction(inventoryItemId)
+			: EquippedSafetyTransitionPolicy.OPEN_INVENTORY;
+		return new CatalogTransition(null, transport.getOrigin(), transport.getObjectId(), action,
+			transport.getAction(), transport.getOrigin(), transport.getDestination());
+	}
+
+	private static CatalogTransition equipmentPreparation(Transport transport)
+	{
+		java.util.Set<Integer> required =
+			EquippedSafetyTransitionPolicy.requiredEquipmentIds(transport);
+		int[] ids = required.stream().mapToInt(Integer::intValue).toArray();
+		int inventoryItemId = required.stream().filter(Rs2Inventory::hasItem)
+			.findFirst().orElse(-1);
+		return safetyEquipmentPreparation(transport, Rs2Equipment.isWearing(ids),
+			inventoryReady(), inventoryItemId);
+	}
+
+	private static boolean safetyEquipmentWorn(Transport transport)
+	{
+		int[] ids = EquippedSafetyTransitionPolicy.requiredEquipmentIds(transport).stream()
+			.mapToInt(Integer::intValue).toArray();
+		return ids.length > 0 && Rs2Equipment.isWearing(ids);
+	}
+
 	private static int[] staffIds(Transport transport)
 	{
 		return transport.getItemIdRequirements().stream().flatMap(java.util.Collection::stream)
@@ -488,6 +644,31 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 			? DispatchResult.ISSUED : DispatchResult.REJECTED;
 	}
 
+	private static DispatchResult dispatchSafetyEquipment(Transport transport, String action)
+	{
+		CatalogTransition expected = Microbot.getClientThread().runOnClientThreadOptional(() ->
+			equipmentPreparation(transport)).orElse(null);
+		if (expected == null)
+		{
+			return safetyEquipmentWorn(transport) ? null : DispatchResult.REJECTED;
+		}
+		if (!expected.getAction().equals(action))
+		{
+			return DispatchResult.REJECTED;
+		}
+		if (EquippedSafetyTransitionPolicy.OPEN_INVENTORY.equals(action))
+		{
+			return Microbot.getClientThread().runOnClientThreadOptional(() ->
+			{
+				Microbot.getClient().runScript(915, InterfaceTab.INVENTORY.getVarcIntIndex());
+				return DispatchResult.PREPARED;
+			}).orElse(DispatchResult.REJECTED);
+		}
+		int itemId = EquippedSafetyTransitionPolicy.equipmentItemId(action);
+		return itemId > 0 && Rs2Inventory.equip(itemId)
+			? DispatchResult.PREPARED : DispatchResult.REJECTED;
+	}
+
 	static boolean requiresRopePreparation(Transport transport, String action)
 	{
 		return CatalogTransitionPolicy.ATTACH_ROPE_ACTION.equalsIgnoreCase(action)
@@ -495,6 +676,18 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 				|| CatalogTransitionPolicy.isSaradominRopeSetup(transport)
 				|| CatalogTransitionPolicy.isGuardedProtocolRoute(transport)
 					&& transport.getObjectId() == 6382);
+	}
+
+	static boolean requiresPlankPreparation(Transport transport, String action)
+	{
+		return "Use".equalsIgnoreCase(action)
+			&& CatalogTransitionPolicy.isRoyalTroublePlankCrossing(transport);
+	}
+
+	private static int selectedInventoryItemId()
+	{
+		return Microbot.getClientThread().runOnClientThreadOptional(
+			Rs2Inventory::getSelectedItemId).orElse(-1);
 	}
 
 	private static String resolveLiveAction(Rs2TileObjectModel object, Transport transport)
@@ -528,8 +721,9 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 
 	private static boolean isClosedEntrance(Rs2TileObjectModel object, WorldPoint origin)
 	{
-		if (object.getWorldLocation().getPlane() != origin.getPlane()
-			|| object.getWorldLocation().distanceTo2D(origin) > 1)
+		WorldPoint location = Rs2SceneLocation.templateLocation(object);
+		if (location == null || location.getPlane() != origin.getPlane()
+			|| location.distanceTo2D(origin) > 1)
 		{
 			return false;
 		}

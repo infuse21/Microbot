@@ -23,7 +23,15 @@ public class Rs2CatalogTransitionSceneTest
 
 		assertEquals(8, rows.size());
 		assertTrue(rows.stream().allMatch(row ->
-			Rs2CatalogTransitionScene.objectSearchRadius(row) >= 5));
+			Rs2CatalogTransitionScene.objectSearchRadius(row) == 5));
+		assertTrue(rows.stream().noneMatch(
+			Rs2CatalogTransitionScene::permitsCatalogIdentityFallback));
+
+		Transport unrelated = new Transport(new WorldPoint(3200, 3200, 0),
+			new WorldPoint(3204, 3200, 0), "", TransportType.AGILITY_SHORTCUT,
+			true, "Climb-into", "Underwall tunnel", 16527);
+		assertEquals(2, Rs2CatalogTransitionScene.objectSearchRadius(unrelated));
+		assertTrue(Rs2CatalogTransitionScene.permitsCatalogIdentityFallback(unrelated));
 	}
 
 	@Test

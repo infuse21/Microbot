@@ -10,6 +10,7 @@ import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.walker.door.model.OrdinaryDoor;
 import net.runelite.client.plugins.microbot.util.walker.obstacle.PlannedEdge;
 import net.runelite.client.plugins.microbot.util.walker.obstacle.Rs2LiveScene;
+import net.runelite.client.plugins.microbot.util.walker.obstacle.Rs2SceneLocation;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -82,7 +83,7 @@ public final class Rs2DoorScene implements DoorScene
 	private static void addCandidate(List<Candidate> candidates, TileObject object, boolean wall)
 	{
 		Microbot.getClientThread().runOnClientThreadOptional(() -> {
-			WorldPoint location = normalizedLocation(object);
+			WorldPoint location = Rs2SceneLocation.templateLocation(object);
 			if (object == null || location == null
 				|| DoorInteractionOwnership.isStrongholdSecurityRegion(location)
 				|| Rs2DoorProbe.isCatalogTransportObject(object))
@@ -106,21 +107,6 @@ public final class Rs2DoorScene implements DoorScene
 				orientations[0], orientations[1]));
 			return true;
 		});
-	}
-
-	/** Keeps live object anchors in the template coordinate space used by instanced routes. */
-	private static WorldPoint normalizedLocation(TileObject object)
-	{
-		if (object == null || object.getWorldLocation() == null)
-		{
-			return null;
-		}
-		if (!Microbot.getClient().getTopLevelWorldView().isInstance())
-		{
-			return object.getWorldLocation();
-		}
-		return WorldPoint.fromLocalInstance(Microbot.getClient(), object.getLocalLocation(),
-			object.getWorldLocation().getPlane());
 	}
 
 	private static final class Candidate

@@ -4,6 +4,7 @@ import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.ItemID;
 import net.runelite.client.plugins.microbot.shortestpath.Transport;
 import net.runelite.client.plugins.microbot.shortestpath.TransportType;
+import net.runelite.client.plugins.microbot.shortestpath.pathfinder.policy.TransportRequirementPolicy;
 import net.runelite.client.plugins.microbot.util.magic.Runes;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -77,6 +78,32 @@ public class BankedTransportItemPlanningTest {
         }
     }
 
+    @Test
+    public void smokeDungeonFaceProtectionQualifiesForPlanningWithoutALightSource() {
+        List<Transport> wells = all.stream()
+                .filter(t -> t.getType() == TransportType.TRANSPORT)
+                .filter(t -> t.getObjectId() == 6279)
+                .collect(Collectors.toList());
+
+        assertEquals("the catalog should expose the four Smoke Dungeon well approaches", 4,
+                wells.size());
+        for (Transport well : wells) {
+            Set<Integer> requirements = TransportRequirementPolicy.itemIdRequirements(well).stream()
+                    .flatMap(Set::stream)
+                    .collect(Collectors.toSet());
+            assertTrue("a face mask must satisfy Smoke Dungeon protection",
+                    requirements.contains(ItemID.SLAYER_FACEMASK));
+            assertTrue("a gas mask must satisfy Smoke Dungeon protection",
+                    requirements.contains(ItemID.GASMASK));
+            assertTrue("Smoke Dungeon safety equipment must participate in bank planning",
+                    Rs2WalkerBankingPlanner.planningCoversPlainTransport(well));
+            assertTrue("route analysis and withdrawals must share the same eligibility gate",
+                    Rs2WalkerBankingPlanner.requiresBankPlanning(well));
+            assertFalse("Smoke Dungeon entry does not require a light source",
+                    requirements.contains(ItemID.LIT_CANDLE));
+        }
+    }
+
     private static Transport teleport(String displayInfo) {
         return all.stream()
                 .filter(t -> displayInfo.equals(t.getDisplayInfo()))
@@ -144,6 +171,24 @@ public class BankedTransportItemPlanningTest {
 		Map<Integer, Integer> requirements =
 				Rs2WalkerBankingPlanner.getMissingTransportItemIdsWithQuantities(setupRows);
 		assertEquals(2, requirements.getOrDefault(ItemID.ROPE, 0).intValue());
+	}
+
+	@Test
+	public void repeatedRoyalTroubleCrossingsWithdrawOneReusablePlank()
+	{
+		Transport crossing = all.stream()
+				.filter(t -> t.getType() == TransportType.TRANSPORT)
+				.filter(t -> t.getObjectId() == 15213)
+				.findFirst().orElseThrow(() ->
+						new AssertionError("Royal Trouble plank crossing missing"));
+
+		assertFalse(crossing.isConsumable());
+		assertTrue(Rs2WalkerBankingPlanner.requiresBankPlanning(crossing));
+		Map<Integer, Integer> requirements =
+				Rs2WalkerBankingPlanner.getMissingTransportItemIdsWithQuantities(
+						List.of(crossing, crossing, crossing));
+		assertEquals("the same plank is reused across every stepping-stone edge", 1,
+				requirements.getOrDefault(ItemID.WOODPLANK, 0).intValue());
 	}
 
 	@Test
@@ -430,7 +475,7 @@ public class BankedTransportItemPlanningTest {
     public void unrestrictedTransportsAreStillIgnored() {
         List<Transport> unrestricted = all.stream()
                 .filter(t -> t.getType() == TransportType.TRANSPORT)
-                .filter(t -> t.getItemIdRequirements() == null || t.getItemIdRequirements().isEmpty())
+                .filter(t -> TransportRequirementPolicy.itemIdRequirements(t).isEmpty())
                 .filter(t -> t.getCurrencyAmount() <= 0)
                 .filter(t -> !"Pay-toll(2-Ecto)".equals(t.getAction())
                         || !"Energy Barrier".equals(t.getName()))

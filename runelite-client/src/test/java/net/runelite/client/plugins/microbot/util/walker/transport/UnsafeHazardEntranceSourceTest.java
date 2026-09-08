@@ -20,7 +20,7 @@ public class UnsafeHazardEntranceSourceTest
 {
 	private static final String TRANSPORT_RESOURCE =
 		"/net/runelite/client/plugins/microbot/shortestpath/transports.tsv";
-	private static final Set<Integer> UNSUPPORTED_IDS = Set.of(5947, 6279, 24842);
+	private static final Set<Integer> UNSUPPORTED_IDS = Set.of(5947, 24842);
 
 	@Test
 	public void unsafeEntranceRowsAreNotLoaded()
@@ -31,7 +31,7 @@ public class UnsafeHazardEntranceSourceTest
 	}
 
 	@Test
-	public void allTwelveRowsRetainTheirExactSourceShape()
+	public void allEightUnsupportedRowsRetainTheirExactSourceShape()
 		throws IOException
 	{
 		Map<String, String> expected = Map.ofEntries(
@@ -39,14 +39,6 @@ public class UnsafeHazardEntranceSourceTest
 			entry("2899 3469 0>2901 9867 0:Enter;Manhole;24842", "|0"),
 			entry("2899 3470 0>2901 9867 0:Enter;Manhole;24842", "|0"),
 			entry("2899 3468 0>2901 9867 0:Enter;Manhole;24842", "|0"),
-			entry("3310 2961 0>3206 9379 0:Climb-down;Smokey well;6279",
-				"Desert Treasure I=IN_PROGRESS|0"),
-			entry("3309 2962 0>3206 9379 0:Climb-down;Smokey well;6279",
-				"Desert Treasure I=IN_PROGRESS|0"),
-			entry("3311 2962 0>3206 9379 0:Climb-down;Smokey well;6279",
-				"Desert Treasure I=IN_PROGRESS|0"),
-			entry("3310 2963 0>3206 9379 0:Climb-down;Smokey well;6279",
-				"Desert Treasure I=IN_PROGRESS|0"),
 			entry("3169 3171 0>3169 9571 0:Climb-down;Dark hole;5947", "|2"),
 			entry("3168 3172 0>3168 9572 0:Climb-down;Dark hole;5947", "|2"),
 			entry("3170 3172 0>3170 9572 0:Climb-down;Dark hole;5947", "|2"),

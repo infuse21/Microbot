@@ -88,6 +88,12 @@ public final class CatalogTransitionRouteScanner
 				pending.getCrossingFrom(), destination, player);
 		}
 		if (CatalogTransitionPolicy.isTarnsJumpObject(pending.getObjectId())
+			|| CatalogTransitionPolicy.isIcePathGateObject(pending.getObjectId())
+			|| CatalogTransitionPolicy.isRoyalTroublePlankObject(pending.getObjectId())
+			|| CatalogTransitionPolicy.isRoyalTroubleRopeswingObject(pending.getObjectId())
+			|| CatalogTransitionPolicy.isFailureRetryShortcutObject(pending.getObjectId())
+			|| EquippedSafetyTransitionPolicy.requiresExactLanding(pending.getObjectId(),
+				pending.getCrossingFrom(), destination)
 			|| CatalogTransitionPolicy.isAuditedMiscBoundaryObject(pending.getObjectId())
 			|| CatalogTransitionPolicy.isAuditedBossExitObject(pending.getObjectId())
 			|| CatalogTransitionPolicy.isAuditedAccessAndExitObject(pending.getObjectId())

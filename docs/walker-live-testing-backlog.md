@@ -1,6 +1,6 @@
 # Walker live-testing backlog
 
-Updated: 2026-09-08. Scope: the incremental NavigationEngine migration on `Fix-The-Walker`.
+Updated: 2026-09-09. Scope: the incremental NavigationEngine migration on `Fix-The-Walker`.
 This is the live-acceptance ledger; [walker-unification-plan.md](walker-unification-plan.md)
 retains detailed historical traces, and [walker-transport-batches.md](walker-transport-batches.md)
 tracks implementation batches. Later dated evidence supersedes earlier audit counts and deferrals.
@@ -21,15 +21,20 @@ additive totals; source rows, generated edges and duplicated approaches must not
 
 ## Latest work versus earlier headless batches
 
-### Active graph, instanced doors and large agility objects - 2026-09-08
+### Active graph, instance scene boundary and large agility objects - 2026-09-09
 
-- **Headless:** all 6,015 currently loaded transports now classify into an explicit
+- **Headless:** all 6,056 currently loaded transports now classify into an explicit
   NavigationEngine-owned family; no active edge remains generic `TRANSPORT`. This does not include
-  the 204 genuine disabled traversals that still need complete protocols.
+  the 163 genuine disabled traversals that still need complete protocols. Shared two-way instance
+  normalization now covers ordinary doors, catalog transitions, adjacent transports and exact
+  mineable/object probes; synthetic chunk mappings test live-to-template and template-to-live.
 - **Live pending:** in a rebuilt client, repeat a GOTR/instanced layout where a closed ordinary door
-  precedes stairs and verify the door is issued first. Repeat the Draynor underwall route through
+  precedes stairs and verify the door is issued first. Exercise one instanced catalog object and one
+  exact obstacle probe, confirming interaction tiles and arrival acknowledgements remain in template
+  space. Repeat the Draynor underwall route through
   object `19032` from a northern approach and verify `Climb-into`, directed landing and continued
-  walking without a legacy marker.
+  walking without a legacy marker. Cancel a catalog scan with Ctrl+X and verify it exits without a
+  client-thread timeout exception.
 - **Regression context:** the earlier underwall trace had agility enabled and routed to
   `(3065,3260,0)`, but its two-tile object search could not see the large object anchored three tiles
   away. The new five-tile allowance applies only to agility transitions and retains exact catalog
@@ -37,6 +42,25 @@ additive totals; source rows, generated edges and duplicated approaches must not
 - **Not complete:** the active classification boundary is not Phase 6 closure. Disabled equipment,
   safety, quest-state, payment, stochastic and staged interactions remain implementation work, and
   all previously listed representative live gates remain deferred unless explicitly accepted.
+
+- **New equipment batch:** four Smoke Dungeon well approaches, two Troll Stronghold uphill rocks
+  and four Trollweiss sled slopes are headless-complete with exact quest/skill/equipment contracts,
+  shared bank planning, staged equipment and directed landing. Live-test each only in a prepared
+  account state; the walker enters/crosses and does not solve the associated quests.
+- **New Ghosts Ahoy rock batch:** ten members-only ship-rock directions require 25 Agility, wait
+  nonblockingly for 5% run energy, dispatch the exact `Jump-To` object and accept only the exact
+  opposite tile. Live-test the full five-jump chain at sufficient energy, then one below-5% wait;
+  confirm a damaging failure still advances only after the opposite landing.
+- **New Ice Path gate batch:** five inward gate rows require Desert Treasure I progress and unlock
+  varbit `382>1`; six outward rows are unconditionally usable from inside. Live-test one direction
+  each and verify exact landing; the walker does not claim route-wide protection from extreme cold.
+- **New Royal Trouble plank batch:** eight post-quest stepping-stone directions require one
+  reusable bankable plank and stage `select plank -> Use on rocks` under NavigationEngine ownership.
+  Live-test the four-rock chain in both directions, including a banked-plank route, and verify a
+  click is never acknowledged before the exact opposite tile.
+- **New Royal Trouble ropeswings:** both post-quest directions require 40 Agility and permanent
+  installation varbit `2147=1`, and complete only at their exact directed landing. Live-test each
+  direction; first-time rope installation is quest-helper work and is not claimed by the walker.
 
 ### Steps, access routes and audited shortcut cleanup - 2026-09-08
 
@@ -570,7 +594,7 @@ is outstanding. Equipment-free crossings do not satisfy grapple-specific diary t
 | Dense forest, earlier batch | 46 Tirannwn crossings. | Representative directions, animation and landing with hazardous-route preparation. |
 | Ferox barriers, earlier batch | 16 adjacent entry-barrier rows. | Both barrier IDs/directions; do not confuse with accepted Wilderness Ditch warning tests. |
 | Lithkren vault barrier, earlier batch | 48 exact object-32153 rows. | Quest-access audit and representative physical crossing; original rows omit quest requirements, so classification alone does not validate access. |
-| Ordinary Climb/Rocks, earlier batch | 49 catalog + four adjacent rows. | Distinct rock protocols and skill/quest variants; two climbing-boot rows remain unsupported. |
+| Ordinary Climb/Rocks, earlier batch | 51 catalog + four adjacent rows; the two climbing-boot routes are now headless-complete with staged equipment. | Distinct rock protocols and skill/quest variants, including one banked climbing-boots pass. |
 | Quest-gated Golem/Sophanem/Trollweiss entrances, 2026-09-08 | 50 exact completed-quest rows are headless-complete. | Representative Golem portal, eastern Sophanem rock and distinct Troll Romance tunnel crossings; quest-time intermediate states remain unsupported. |
 | Post-quest Crandor/Shilo entrances, 2026-09-08 | 12 Crandor hole and ten Shilo broken-cart rows are headless-complete. | Representative completed-quest crossing; pre-quest boat/dialogue/setup states remain quest-helper work. |
 | Stronghold escapes/Wintertodt doors, 2026-09-08 | 14 Stronghold vine/chain rows and 16 direction-gated Wintertodt door rows are headless-complete. | Representative vertical exit and Firemaking-qualified inbound/outbound Wintertodt crossings. |
@@ -596,7 +620,7 @@ is outstanding. Equipment-free crossings do not satisfy grapple-specific diary t
 | Fossil rowboats | Camp/Digsite return pair; unlocked sea -> camp. | Unlocked camp -> north/sea and other directions; immediate Cancel/replan with genuinely locked menu (current account now unlocked). Earlier 57-second automatic recovery is not acceptance of the faster fix. |
 | Spirit trees | GE/Stronghold both ways, grey locked-menu recovery; corrected Brimhaven-disabled route reached Ardougne. | Planted-tree variants and absent-object stale opt-in automatic recovery; do not assume remote farming transmit state proves a planted tree. |
 | Fairy rings | Non-POH directed travel both ways with original-weapon restoration. | Full post-quest `AIR DLR DJQ AJS` hideout chain; distinct staff-free/account-locked configurations; POH/DIQ is a separate unsupported contract. |
-| Gliders/Quetzals | Stronghold chain/tree door and transformed captain; Quetzacalli/Civitas pair and locked Cam Torum filtering. | Other endpoint variants as regression coverage; whistle is not Renu travel and is unimplemented. |
+| Gliders/Quetzals | Stronghold chain/tree door and transformed captain; Quetzacalli/Civitas pair and locked Cam Torum filtering. | Other endpoint variants as regression coverage; the separate Quetzal-whistle destination map is headless-complete but still needs its own live pass. |
 | Agility/stiles | Falador crumbling wall and Taverley stile representatives; basalt causeway all ten edges both ways. | Other distinct protocols in the 248 scene-changing agility batch; post-fix random basalt failed-jump recovery (recorded failure reproduced headlessly, subsequent crossings did not fail). |
 | Core recovery/arrival | Ordinary recovery, manual displacement/input contention, exact caller-radius walk, non-consuming off-centre final approach. | 2026-09-05 moving-mouse/combat correction end-to-end; charged teleport -> exact final tile without repeat use; short-link origin/midpoint/overshoot regressions across representative physical boundaries. |
 
@@ -625,9 +649,10 @@ Do not label these as "just waiting for live testing":
   segments and malformed Mountain Camp/Observatory setup rows need separately verified replacements.
   All grapple rows and 53 post-quest multi-code rows are
   headless-complete above, and the 12 redundant random Guthix rows were removed.
-- 23 item rows after the Quetzal-whistle cutover: 23 jewellery/cape exceptions (20 other Max
-  destinations, Black chinchompa Hunter cape and two Camulet rows). Some need data/charge fixes
-  rather than a new executor.
+- The former item-classification remainder is now headless-owned, including the Quetzal-whistle
+  map, audited Max/Hunter cape destinations and both Camulet routes. Their distinct charge, daily
+  limit, map-mode and Wilderness-confirmation branches remain in the live queue; this does not
+  cover advanced POH facilities or banked elemental-staff equipment/restoration.
 - The ten alternate spell overrides are headless-complete above; representative live acceptance is
   still pending.
 - Ordinary specialised remainder: Draynor lever-solver ownership (unlocked door crossing is migrated),
@@ -637,14 +662,14 @@ Do not label these as "just waiting for live testing":
 - Banked elemental staff equipment/restoration; efficient per-jewellery-item charge capacity;
   Ghost Captain discount/permanent-free-unlock optimisation; quest solving and one-time unlocks.
 
-The production classifier, not this prose list, is authoritative for the remaining row count.
+The production classifier and exact disabled-source tests, not this prose list, are authoritative.
 Pre-Zanaris checkpoint: 1,466 legacy edges, including 990 ordinary TRANSPORT edges; after the
 headless Zanaris cutover: 1,465 and 989; after Waterfall internal doors: 1,463 and 987;
 after Draynor unlocked crossings: 1,445 and 969 respectively; after Yanille pick-lock:
-1,443 and 967 respectively. The current classifier is 120 total: 97 ordinary TRANSPORT and 23
-TELEPORTATION_ITEM rows, with
-no ordinary FAIRY_RING or GRAPPLE_SHORTCUT row remaining. Classifier counts
-are not percentages of live acceptance or estimates of implementation effort.
+1,443 and 967 respectively. Those are historical checkpoints. The current active graph has no
+generic legacy `TRANSPORT` classification: all 6,035 loaded rows have explicit engine ownership,
+while 184 genuine traversals remain source-disabled pending complete protocols. These counts are
+not percentages of live acceptance or estimates of implementation effort.
 
 ## Acceptance record to append for each future run
 

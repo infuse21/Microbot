@@ -388,11 +388,42 @@ public class CatalogTransitionPolicyTest
 	}
 
 	@Test
-	public void unsafeIcePathExtremeColdGatesAreNotLoaded()
+	public void acceptsOnlyTheElevenUnlockedIcePathGateApproaches()
 	{
-		assertTrue(Transport.loadAllFromResources().values().stream()
+		java.util.List<Transport> rows = Transport.loadAllFromResources().values().stream()
 			.flatMap(java.util.Collection::stream)
-			.noneMatch(row -> row.getObjectId() == 5043 || row.getObjectId() == 5044));
+			.filter(row -> row.getObjectId() == 5043 || row.getObjectId() == 5044)
+			.collect(java.util.stream.Collectors.toList());
+		assertEquals(11, rows.size());
+		assertEquals(5, rows.stream().filter(row -> row.getOrigin().getX() == 2837).count());
+		assertEquals(6, rows.stream().filter(row -> row.getOrigin().getX() == 2839).count());
+		assertTrue(rows.stream().allMatch(CatalogTransitionPolicy::isIcePathGate));
+		assertTrue(rows.stream().allMatch(CatalogTransitionPolicy::isEligible));
+		assertTrue(rows.stream().allMatch(row -> row.isMembers() && row.getDuration() == 0
+			&& row.getItemIdRequirements().isEmpty()));
+
+		Transport entry = rows.stream().filter(row -> row.getOrigin().getX() == 2837)
+			.findFirst().orElseThrow(AssertionError::new);
+		assertEquals(Map.of(Quest.DESERT_TREASURE_I, QuestState.IN_PROGRESS),
+			entry.getQuests());
+		assertEquals(1, entry.getVarbits().size());
+		entry.getVarbits().clear();
+		assertFalse(CatalogTransitionPolicy.isIcePathGate(entry));
+
+		Transport exit = rows.stream().filter(row -> row.getOrigin().getX() == 2839)
+			.findFirst().orElseThrow(AssertionError::new);
+		assertTrue(exit.getQuests().isEmpty());
+		assertTrue(exit.getVarbits().isEmpty());
+		exit.getQuests().put(Quest.DESERT_TREASURE_I, QuestState.IN_PROGRESS);
+		assertFalse(CatalogTransitionPolicy.isIcePathGate(exit));
+
+		Transport foreignRoute = new Transport(new WorldPoint(2837, 3735, 0),
+			new WorldPoint(2839, 3739, 0), "", TransportType.TRANSPORT, true,
+			"Go-through", "Ice gate", 5044);
+		foreignRoute.getQuests().put(Quest.DESERT_TREASURE_I, QuestState.IN_PROGRESS);
+		foreignRoute.getVarbits().add(new TransportVarbit(
+			382, 1, TransportVarbit.Operator.GREATER_THAN));
+		assertFalse(CatalogTransitionPolicy.isIcePathGate(foreignRoute));
 	}
 
 	@Test

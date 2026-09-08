@@ -64,17 +64,18 @@ public class AuditedMiscDirectRoutePolicyTest
 	{
 		List<Transport> all = allRows();
 		assertTrue(all.stream().noneMatch(row -> row.getObjectId() == 22355));
-		assertTrue(all.stream().noneMatch(row -> row.getObjectId() == 3748
-			&& !row.getItemIdRequirements().isEmpty()));
 
 		List<Transport> trollRocks = all.stream().filter(row -> row.getObjectId() == 3748)
 			.filter(row -> row.getName().equals("Rocks")).collect(Collectors.toList());
-		assertEquals(12, trollRocks.size());
+		assertEquals(14, trollRocks.size());
 		assertTrue(trollRocks.stream().allMatch(row -> row.isMembers()
 			&& row.getQuests().equals(Map.of(Quest.TROLL_STRONGHOLD, QuestState.IN_PROGRESS))
 			&& hasOnlySkill(row, Skill.AGILITY, 15)
-			&& row.getItemIdRequirements().isEmpty()
 			&& CatalogTransitionPolicy.isEligible(row)));
+		assertEquals(12, trollRocks.stream()
+			.filter(row -> row.getItemIdRequirements().isEmpty()).count());
+		assertEquals(2, trollRocks.stream()
+			.filter(EquippedSafetyTransitionPolicy::isEligible).count());
 	}
 
 	@Test

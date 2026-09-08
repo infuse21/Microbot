@@ -90,14 +90,7 @@ public final class Rs2ObstacleHandler {
             var point = path.get(rockIndex);
             if (point == null || (!inInstance && point.getRegionID() != MOTHERLODE_MINE_REGION)) continue;
 
-            TileObject object = null;
-            var tile = Rs2GameObject.getTiles(3).stream()
-                    .filter(x -> x.getWorldLocation().equals(point))
-                    .findFirst().orElse(null);
-
-            if (tile != null)
-                object = Rs2GameObject.getGameObject(point);
-
+            TileObject object = Rs2LiveScene.exactMineableAt(point);
             if (object == null) continue;
 
             if (object.getId() == ObjectID.MOTHERLODE_ROCKFALL_1 || object.getId() == ObjectID.MOTHERLODE_ROCKFALL_2) {
@@ -108,7 +101,7 @@ public final class Rs2ObstacleHandler {
                     return RockfallResult.NO_PICKAXE;
                 }
                 Rs2GameObject.interact(object, "mine");
-                return Global.sleepUntil(() -> Rs2GameObject.getGameObject(point) == null)
+                return Global.sleepUntil(() -> Rs2LiveScene.exactMineableAt(point) == null)
                         ? RockfallResult.MINED : RockfallResult.NOT_APPLICABLE;
             }
         }

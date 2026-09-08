@@ -1328,7 +1328,7 @@ public class PathfinderRouteCalculationTest
 	}
 
 	@Test
-	public void itemFreeOrdinaryClimbRocksPublishAndUnsafeBootRowsStayDisabled()
+	public void ordinaryAndEquipmentGatedClimbRocksAreEngineOwned()
 	{
 		java.util.List<Transport> rocks = Transport.loadAllFromResources().values()
 			.stream().flatMap(java.util.Collection::stream)
@@ -1337,13 +1337,16 @@ public class PathfinderRouteCalculationTest
 			.filter(candidate -> "Rocks".equals(candidate.getName()))
 			.collect(java.util.stream.Collectors.toList());
 
-		assertEquals(53, rocks.size());
+		assertEquals(55, rocks.size());
 		assertEquals(4, rocks.stream().filter(candidate ->
 			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(candidate))
 				== RouteEdge.Kind.ADJACENT_TRANSPORT).count());
-		assertEquals(49, rocks.stream().filter(candidate ->
+		assertEquals(51, rocks.stream().filter(candidate ->
 			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(candidate))
 				== RouteEdge.Kind.CATALOG_TRANSITION).count());
+		assertEquals(2, rocks.stream().filter(candidate -> candidate.getObjectId() == 3748)
+			.filter(candidate -> candidate.getOrigin().getY() == 3611)
+			.filter(candidate -> candidate.getDestination().getY() == 3613).count());
 		java.util.List<Transport> locked = rocks.stream().filter(candidate ->
 			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(candidate))
 				== RouteEdge.Kind.TRANSPORT).collect(java.util.stream.Collectors.toList());

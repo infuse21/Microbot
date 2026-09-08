@@ -6,6 +6,7 @@ import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.shortestpath.Transport;
 import net.runelite.client.plugins.microbot.shortestpath.TransportType;
+import net.runelite.client.plugins.microbot.shortestpath.TransportVarbit;
 import net.runelite.client.plugins.microbot.util.walker.navigation.RouteInteraction;
 import net.runelite.client.plugins.microbot.util.walker.transport.model.CatalogTransition;
 import org.junit.Test;
@@ -90,9 +91,46 @@ public class AuditedShortcutTransportTest
 	}
 
 	@Test
+	public void completedRoyalTroubleRopeswingsRequirePermanentInstallationAndExactLanding()
+	{
+		List<Transport> rows = ordinaryRows(Set.of(15216, 15252));
+		assertEquals(2, rows.size());
+		assertTrue(rows.stream().allMatch(CatalogTransitionPolicy::isRoyalTroubleRopeswing));
+		assertTrue(rows.stream().allMatch(CatalogTransitionPolicy::isEligible));
+		assertTrue(rows.stream().allMatch(row -> row.isMembers() && row.getDuration() == 0
+			&& row.getItemIdRequirements().isEmpty() && onlyAgility(row, 40)
+			&& row.getQuests().equals(Map.of(Quest.ROYAL_TROUBLE, QuestState.FINISHED))));
+		for (Transport row : rows)
+		{
+			assertEquals(1, row.getVarbits().size());
+			TransportVarbit requirement = row.getVarbits().iterator().next();
+			assertEquals(2147, requirement.getVarbitId());
+			assertEquals(1, requirement.getValue());
+			assertEquals(TransportVarbit.Operator.EQUAL, requirement.getOperator());
+			RouteInteraction pending = new RouteInteraction(1, 0, row.getOrigin(),
+				row.getDestination(), row.getOrigin(), RouteInteraction.Kind.CATALOG_TRANSITION,
+				RouteInteraction.Status.AVAILABLE, row.getAction(), true, row.getObjectId(),
+				row.getOrigin(), row.getDestination());
+			CatalogTransition stage = new CatalogTransition(null, row.getOrigin(),
+				row.getObjectId(), row.getAction(), row.getAction(), row.getOrigin(),
+				row.getDestination());
+			WorldPoint nearLanding = new WorldPoint(row.getDestination().getX(),
+				row.getDestination().getY() + 1, row.getDestination().getPlane());
+			CatalogTransitionRouteScanner scanner = new CatalogTransitionRouteScanner();
+			assertEquals(RouteInteraction.Status.AVAILABLE,
+				scanner.observePending(pending, nearLanding, edge -> stage, 13).getStatus());
+			assertEquals(RouteInteraction.Status.CLEARED,
+				scanner.observePending(pending, row.getDestination(), edge -> stage, 13).getStatus());
+		}
+
+		rows.get(0).getVarbits().clear();
+		assertFalse(CatalogTransitionPolicy.isRoyalTroubleRopeswing(rows.get(0)));
+	}
+
+	@Test
 	public void incompleteAndShadowRowsRemainOnlyAsSourceEvidence() throws IOException
 	{
-		Set<Integer> disabledIds = Set.of(15216, 15252, 21316, 21317, 21318, 21319,
+		Set<Integer> disabledIds = Set.of(21316, 21317, 21318, 21319,
 			21728, 53259);
 		assertEquals(0, ordinaryRows(disabledIds).size());
 
@@ -100,7 +138,7 @@ public class AuditedShortcutTransportTest
 			"/net/runelite/client/plugins/microbot/shortestpath/transports.tsv").readAllBytes(),
 			StandardCharsets.UTF_8);
 		assertTrue(source.contains("# 2655 9573 0\t2655 9566 0\tSqueeze-through;Pipe;21728"));
-		assertTrue(source.contains("# 2539 10299 0\t2543 10299 0\tSwing-on;Ropeswing;15252"));
+		assertFalse(source.contains("# 2539 10299 0\t2543 10299 0\tSwing-on;Ropeswing;15252"));
 		assertTrue(source.contains("# 2385 10264 1\t2385 10260 1\tWalk-across;Rope bridge;21316"));
 		assertTrue(source.contains("# 3434 10090 0\t3434 10095 0\tSqueeze-through;Crevice;53259"));
 	}

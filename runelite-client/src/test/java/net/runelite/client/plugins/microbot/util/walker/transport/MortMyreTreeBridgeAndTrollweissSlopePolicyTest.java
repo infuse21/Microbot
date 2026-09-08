@@ -42,9 +42,11 @@ public class MortMyreTreeBridgeAndTrollweissSlopePolicyTest
 	}
 
 	@Test
-	public void equippedSledSlopesAreNotLoadedUntilPreparationIsSupported()
+	public void equippedSledSlopesAreLoadedAfterPreparationIsSupported()
 	{
-		assertTrue(loadedRows(5015, "Slope").isEmpty());
+		List<Transport> slopes = loadedRows(5015, "Slope");
+		assertEquals(4, slopes.size());
+		assertTrue(slopes.stream().allMatch(EquippedSafetyTransitionPolicy::isEligible));
 	}
 
 	private static List<Transport> loadedRows(int objectId, String name)

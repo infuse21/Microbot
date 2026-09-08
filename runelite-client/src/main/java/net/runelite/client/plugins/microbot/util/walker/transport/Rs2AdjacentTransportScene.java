@@ -8,6 +8,7 @@ import net.runelite.client.plugins.microbot.shortestpath.TransportEdgeMatcher;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.walker.Rs2PathApi;
 import net.runelite.client.plugins.microbot.util.walker.obstacle.PlannedEdge;
+import net.runelite.client.plugins.microbot.util.walker.obstacle.Rs2SceneLocation;
 import net.runelite.client.plugins.microbot.util.walker.transport.model.AdjacentTransport;
 
 import java.util.Comparator;
@@ -22,8 +23,20 @@ public final class Rs2AdjacentTransportScene implements AdjacentTransportScene
 		{
 			return null;
 		}
-		return Microbot.getClientThread().runOnClientThreadOptional(() -> findOnClientThread(edge))
-			.orElse(null);
+		try
+		{
+			return Microbot.getClientThread().runOnClientThreadOptional(() -> findOnClientThread(edge))
+				.orElse(null);
+		}
+		catch (RuntimeException ex)
+		{
+			if (Thread.currentThread().isInterrupted()
+				|| Rs2SceneLocation.clientThreadUnavailable(ex))
+			{
+				return null;
+			}
+			throw ex;
+		}
 	}
 
 	@Override
@@ -84,18 +97,22 @@ public final class Rs2AdjacentTransportScene implements AdjacentTransportScene
 					|| AdjacentTransportPolicy.isEastArdougnePickLockDoor(transport)
 					|| AdjacentTransportPolicy.isHauntedMineCart(transport))
 					|| candidate.getId() == transport.getObjectId())
-				.filter(candidate -> candidate.getWorldLocation() != null
-					&& candidate.getWorldLocation().getPlane() == transport.getOrigin().getPlane()
-					&& candidate.getWorldLocation().distanceTo2D(transport.getOrigin()) <= 1)
+				.filter(candidate -> Rs2SceneLocation.templateLocation(candidate) != null
+					&& Rs2SceneLocation.templateLocation(candidate).getPlane()
+						== transport.getOrigin().getPlane()
+					&& Rs2SceneLocation.templateLocation(candidate)
+						.distanceTo2D(transport.getOrigin()) <= 1)
 				.filter(candidate -> candidate.getId() == transport.getObjectId()
 					|| matchesCatalogIdentity(candidate, transport))
 				.min(Comparator.comparingInt(candidate ->
 					(candidate.getId() == transport.getObjectId() ? 0 : 100)
-						+ candidate.getWorldLocation().distanceTo2D(transport.getOrigin())))
+						+ Rs2SceneLocation.templateLocation(candidate)
+							.distanceTo2D(transport.getOrigin())))
 				.orElse(null);
 			if (object != null)
 			{
-				return new AdjacentTransport(object, object.getWorldLocation(), transport.getObjectId(),
+				return new AdjacentTransport(object, Rs2SceneLocation.templateLocation(object),
+					transport.getObjectId(),
 					transport.getAction(), transport.getOrigin(), transport.getDestination());
 			}
 		}

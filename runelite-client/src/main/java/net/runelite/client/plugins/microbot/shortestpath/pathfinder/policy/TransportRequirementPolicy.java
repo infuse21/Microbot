@@ -6,6 +6,7 @@ import net.runelite.api.QuestState;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.shortestpath.Transport;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
+import net.runelite.client.plugins.microbot.util.walker.transport.EquippedSafetyTransitionPolicy;
 
 import java.util.Collections;
 import java.util.List;
@@ -91,6 +92,10 @@ public final class TransportRequirementPolicy {
     static Set<Set<Integer>> itemIdRequirements(Transport transport, QuestState ghostsAhoyState) {
         if (isEctoBarrier(transport) && ghostsAhoyState != QuestState.FINISHED) {
             return Set.of(GHOSTSPEAK_ITEMS);
+        }
+        Set<Integer> safetyEquipment = EquippedSafetyTransitionPolicy.requiredEquipmentIds(transport);
+        if (!safetyEquipment.isEmpty()) {
+            return Set.of(safetyEquipment);
         }
         return transport == null || transport.getItemIdRequirements() == null
                 ? Collections.emptySet() : transport.getItemIdRequirements();

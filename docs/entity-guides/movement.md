@@ -2017,3 +2017,42 @@ Whistle IDs identify capacity tiers, not remaining charges. Treat the whistle as
 banked container even though each flight consumes a stored charge; item possession alone is not
 proof of a usable charge, and an absent map after Signal must use bounded engine recovery rather
 than a generic item-action or legacy fallback.
+
+## 110. Convert instance objects at the scene boundary, not inside route ownership
+
+Routes and player locations use template coordinates, while cached objects in an instance can
+report their live scene-copy coordinates. Normalize a live object's anchor to its template point
+before comparing it with a route origin, and expand an exact template probe back to every matching
+live scene point before querying the cache. Keep published interaction and landing coordinates in
+template space so the navigation engine does not mix coordinate systems.
+
+**Why this matters:** In Guardians of the Rift, the route saw the stairs in template space but the
+closed door immediately before them existed only at its live instance coordinate, so the walker
+ignored the door and stalled at the stairs.
+
+**Pattern to follow:** Use the shared scene-location boundary for doors, catalogue transitions,
+adjacent transports and exact object/mineable probes. Do not special-case one instance or persist a
+live scene-copy coordinate as a route key.
+
+**Defensive check:** Use a synthetic instance chunk to test both live-to-template and
+template-to-live conversion, then verify a rebuilt client resolves the door before the next
+vertical transition.
+
+## 111. Snapshot catalogue candidates in one cancellable client-thread call
+
+Resolve the candidate set, template anchors, object compositions and live actions inside one
+client-thread callback. Do not stream candidate models on a worker while each predicate makes its
+own synchronous client-thread call. If cancellation interrupts the worker or the client-thread
+handoff times out, return no live transition and let the cancelled walk exit normally.
+
+**Why this matters:** Ctrl+X could interrupt a catalogue scan between per-object composition calls,
+leaving the worker blocked until `ClientThread.invoke` timed out and turning an ordinary stop into a
+walker exception.
+
+**Pattern to follow:** Capture one immutable scene result on the client thread, then publish it to
+the navigation loop. Never sleep on the client thread, and never suppress unrelated runtime
+exceptions as cancellation.
+
+**Defensive check:** Cover wrapped client-thread timeouts and interrupted cancellation headlessly,
+then press Ctrl+X during a rebuilt-client catalogue scan and verify no timeout exception or later
+interaction is emitted.

@@ -21,11 +21,11 @@ headless batches, outstanding branches of representative live passes, and contra
 implementation. As of 2026-09-06 the user requests headless-first progress; deferred physical tests
 remain open rather than blocking each batch or being silently marked complete.
 
-## Active-graph classification closure and resolver hardening - 2026-09-08
+## Active-graph classification closure and resolver hardening - 2026-09-09
 
-The current production resource set loads **6,015 transports** and has no active route edge left
+The current production resource set loads **6,056 transports** and has no active route edge left
 classified as the generic legacy `TRANSPORT` kind. This closes the active-graph classification
-boundary only: a source audit still identifies **204 genuine disabled traversals** whose quest,
+boundary only: a source audit still identifies **163 genuine disabled traversals** whose quest,
 equipment, safety, payment, failure or staged-interaction contracts remain implementation work.
 Phase 6 therefore remains open, and Phase 7 deletion has not started.
 
@@ -37,14 +37,47 @@ contracts; the latter expose separate consumable-rope setup and permanent-rope v
 protocol, residual exit and hazardous-transition batches retain their exact requirement and landing
 checks rather than broadening generic actions.
 
-Two live regressions are now headlessly covered. Ordinary door snapshots no longer disappear merely
-because the scene is instanced; object anchors are normalized to route template coordinates, so a
-door immediately before stairs remains the first interaction. Large agility objects use a bounded
+Two live regressions are now headlessly covered. A shared scene-coordinate boundary maps live
+instance objects into the template coordinate space used by the route, and maps exact route probes
+back into every matching live instance tile. Ordinary doors, catalog transitions, adjacent
+transports and exact mineable/object probes therefore no longer disappear merely because the scene
+is instanced; this includes the GOTR door-before-stairs failure. Large agility objects use a bounded
 five-tile catalog lookup while preserving exact ID/name/action matching; this fixes the Draynor
 underwall route that reached `(3065,3260,0)` but could not resolve object `19032` anchored at
-`(3067,3257,0)`. Both changes require rebuilt-client physical confirmation. The minimap walking hot
-path also uses one immutable widget-bounds snapshot instead of synchronously loading sprite data,
-and timed-out client-thread futures are no longer interrupted.
+`(3067,3257,0)`. Synthetic instance-chunk tests cover both conversion directions. These changes
+require rebuilt-client physical confirmation.
+
+Catalog candidate discovery and composition inspection now execute as one client-thread snapshot
+instead of issuing a blocking client-thread call for every fallback candidate. Ctrl+X or another
+client-thread timeout declines the pending interaction without converting ordinary cancellation
+into a walker exception. The minimap walking hot path also uses one immutable widget-bounds
+snapshot instead of synchronously loading sprite data, and timed-out client-thread futures are no
+longer interrupted.
+
+Ten previously disabled equipment transitions are restored with exact contracts: four Smoke
+Dungeon Smokey-well approaches require Desert Treasure I progress and a currently valid worn face
+protection item (no light-source requirement); two Troll Stronghold uphill rocks require 15 Agility
+and climbing boots; four Trollweiss slopes require a waxed sled and completed Troll Romance. The
+same alternatives feed route availability and bank planning, while NavigationEngine owns inventory
+preparation, equipment, object dispatch and exact directed landing. All ten remain live-deferred.
+
+Ten wrecked Ghosts Ahoy ship-rock jumps are also restored as members-only, 25-Agility catalogue
+transitions. Their live scene stage waits nonblockingly at the selected rock below 5% run energy,
+publishes `Jump-To` once the threshold is reached, and requires the exact opposite tile after either
+a normal or damaging attempt. The route does not claim to solve Ghosts Ahoy, and the full five-jump
+chain plus the low-energy wait remain live-deferred.
+
+Eleven Ice Path gate approaches are restored with exact object, geometry and landing contracts.
+The five inward rows require Desert Treasure I progress plus the post-child-sequence unlock
+(`382>1`); the six outward rows remain available because they only leave the area. This slice owns
+the gate crossing, not survival in the extreme-cold area beyond it, and remains live-deferred.
+
+Eight post-Royal-Trouble stepping-stone directions are restored with one reusable plank as a
+bankable item requirement. NavigationEngine stages the inventory selection and then issues `Use`
+on the exact rocks object, retaining ownership until the exact opposite tile is observed. Repeated
+edges plan one plank rather than consuming one per crossing. Both completed-quest ropeswing rows
+are also restored with 40 Agility and permanent-installation varbit `2147=1`; first-time quest rope
+installation remains outside walker ownership. Both obstacle families remain live-deferred.
 
 The complete focused Phase 6 banking, League, transport, navigation, pathfinder, POH, collision and
 minimap suite passes, as do main and test Checkstyle. Existing deprecation warnings are unrelated.
