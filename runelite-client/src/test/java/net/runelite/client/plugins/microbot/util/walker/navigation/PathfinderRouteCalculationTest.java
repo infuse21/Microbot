@@ -127,7 +127,7 @@ public class PathfinderRouteCalculationTest
 		}
 		assertEquals(127, candidates);
 		assertEquals(104, migrated);
-		assertEquals(973, legacy);
+		assertEquals(958, legacy);
 	}
 
 	@Test
@@ -624,7 +624,7 @@ public class PathfinderRouteCalculationTest
 		assertEquals(50, stiles.stream().filter(candidate ->
 			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(candidate))
 				== RouteEdge.Kind.CATALOG_TRANSITION).count());
-		assertEquals(608, ordinary.stream().filter(candidate ->
+		assertEquals(593, ordinary.stream().filter(candidate ->
 			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(candidate))
 				== RouteEdge.Kind.TRANSPORT).count());
 		java.util.Set<Integer> directManifestIds = new java.util.HashSet<>(java.util.Arrays.asList(
@@ -876,10 +876,12 @@ public class PathfinderRouteCalculationTest
 		assertEquals(3, tunnels.stream().filter(candidate -> candidate.getObjectId() == 2141)
 			.filter(candidate -> PathfinderRouteCalculation.classifyTransportEdge(
 				Collections.singleton(candidate)) == RouteEdge.Kind.CATALOG_TRANSITION).count());
-		assertEquals(11, tunnels.stream().filter(candidate -> candidate.getObjectId() == 5009)
+		Set<Integer> trollRomanceIds = Set.of(5008, 5009, 5011, 5012, 5013, 5014);
+		assertEquals(26, tunnels.stream().filter(candidate -> trollRomanceIds.contains(
+			candidate.getObjectId()))
 			.filter(candidate -> PathfinderRouteCalculation.classifyTransportEdge(
 				Collections.singleton(candidate)) == RouteEdge.Kind.CATALOG_TRANSITION).count());
-		assertEquals(28, tunnels.stream().filter(candidate -> candidate.getObjectId() != 2141)
+		assertEquals(13, tunnels.stream().filter(candidate -> candidate.getObjectId() != 2141)
 			.filter(candidate -> PathfinderRouteCalculation.classifyTransportEdge(
 				Collections.singleton(candidate)) == RouteEdge.Kind.TRANSPORT).count());
 	}
@@ -1081,12 +1083,12 @@ public class PathfinderRouteCalculationTest
 	@Test
 	public void completedQuestEntrancesUseExactCatalogOwnership()
 	{
-		Set<Integer> objectIds = Set.of(5009, 6310, 6621);
+		Set<Integer> objectIds = Set.of(5008, 5009, 5011, 5012, 5013, 5014, 6310, 6621);
 		java.util.List<Transport> rows = Transport.loadAllFromResources().values().stream()
 			.flatMap(java.util.Collection::stream)
 			.filter(row -> objectIds.contains(row.getObjectId()))
 			.collect(java.util.stream.Collectors.toList());
-		assertEquals(35, rows.size());
+		assertEquals(50, rows.size());
 		assertTrue(rows.stream().allMatch(row ->
 			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(row))
 				== RouteEdge.Kind.CATALOG_TRANSITION));

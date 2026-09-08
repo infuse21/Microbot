@@ -23,18 +23,18 @@ remain open rather than blocking each batch or being silently marked complete.
 
 ## Golem, Sophanem and Trollweiss quest-gated entrances - 2026-09-08
 
-Thirty-five exact members-only entrances now use catalogue/NavigationEngine ownership: 12 Golem
-portal approaches on object 6310, 12 eastern Sophanem rock approaches on object 6621, and 11
-Trollweiss piste tunnel approaches on object 5009. OSRS Wiki MCP identifies the cache contracts as
-`golem_portal`, `ics_little_entrance_multi` and `trollromance_piste_top`; the quest guides confirm
-the underlying access flows. The resource now conservatively requires completion of The Golem,
-Icthlarin's Little Helper and Troll Romance respectively, rather than exposing quest-time variants
-whose intermediate setup state is not represented.
+Fifty exact members-only entrances now use catalogue/NavigationEngine ownership: 12 Golem portal
+approaches on object 6310, 12 eastern Sophanem rock approaches on object 6621, and 26 Troll Romance
+tunnel approaches on objects 5008, 5009 and 5011-5014. OSRS Wiki MCP identifies the cache contracts
+as `golem_portal`, `ics_little_entrance_multi` and the distinct `trollromance_*` tunnel objects; the
+quest guides confirm the underlying access flows. The resource conservatively requires completion
+of The Golem, Icthlarin's Little Helper and Troll Romance respectively, rather than exposing
+quest-time variants whose intermediate setup state is not represented.
 
 The immutable directed manifest freezes every origin, destination, object, action and catalogue
 name. It does not broaden generic Door, Rock or Tunnel handling, and only the selected remote
 landing clears the pending transition. Focused policy, scanner, route-publication and classifier
-tests pass. The classifier floor is now **973 legacy entries**: 608 ordinary `TRANSPORT`, 10
+tests pass. The classifier floor is now **958 legacy entries**: 593 ordinary `TRANSPORT`, 10
 `AGILITY_SHORTCUT`, 37 `TELEPORTATION_ITEM` and 318 `WILDERNESS_OBELISK` entries. Representative
 post-quest crossings and interruption recovery remain live-deferred, so Phase 6 remains open.
 

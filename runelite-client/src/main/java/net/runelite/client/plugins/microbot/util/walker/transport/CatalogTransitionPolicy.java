@@ -425,7 +425,22 @@ public final class CatalogTransitionPolicy
 		"2782,3868,0->2772,10232,0|5009|enter|tunnel",
 		"2781,3867,0->2772,10232,0|5009|enter|tunnel",
 		"2780,3867,0->2772,10232,0|5009|enter|tunnel",
-		"2779,3867,0->2772,10232,0|5009|enter|tunnel");
+		"2779,3867,0->2772,10232,0|5009|enter|tunnel",
+		"2730,3714,0->2773,10162,0|5008|enter|tunnel",
+		"2730,3713,0->2773,10162,0|5008|enter|tunnel",
+		"2730,3712,0->2773,10162,0|5008|enter|tunnel",
+		"2731,3711,0->2773,10162,0|5008|enter|tunnel",
+		"2773,10162,0->2730,3713,0|5014|enter|tunnel",
+		"2773,10163,0->2730,3713,0|5014|enter|tunnel",
+		"2773,10161,0->2730,3713,0|5014|enter|tunnel",
+		"2799,10134,0->2797,3719,0|5013|enter|tunnel",
+		"2800,10134,0->2797,3719,0|5013|enter|tunnel",
+		"2797,3719,0->2799,10134,0|5012|enter|tunnel",
+		"2795,3719,0->2799,10134,0|5012|enter|tunnel",
+		"2796,3719,0->2799,10134,0|5012|enter|tunnel",
+		"2804,10187,0->2822,3745,0|5011|enter|tunnel",
+		"2803,10187,0->2822,3745,0|5011|enter|tunnel",
+		"2802,10187,0->2822,3745,0|5011|enter|tunnel");
 	private static final Set<Integer> MOR_UL_REK_CAPE_IDS = Set.of(6570, 13329, 24134, 24223);
 	private static final Set<Set<Integer>> MOR_UL_REK_CAPES = Set.of(MOR_UL_REK_CAPE_IDS);
 	private static final int GUARDIANS_OF_THE_RIFT_BARRIER_ID = 43700;
@@ -860,13 +875,19 @@ public final class CatalogTransitionPolicy
 			case 6621:
 				quest = Quest.ICTHLARINS_LITTLE_HELPER;
 				break;
+			case 5008:
 			case 5009:
+			case 5011:
+			case 5012:
+			case 5013:
+			case 5014:
 				quest = Quest.TROLL_ROMANCE;
 				break;
 			default:
 				return false;
 		}
-		int expectedDuration = transport.getObjectId() == 6621 ? 0 : 1;
+		int expectedDuration = transport.getObjectId() == 6310
+			|| transport.getObjectId() == 5009 || transport.getObjectId() == 5011 ? 1 : 0;
 		return transport.getDuration() == expectedDuration
 			&& transport.getQuests().equals(Map.of(quest, QuestState.FINISHED));
 	}

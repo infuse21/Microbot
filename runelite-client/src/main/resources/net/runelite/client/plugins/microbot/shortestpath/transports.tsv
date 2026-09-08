@@ -4276,20 +4276,20 @@
 2707 10204 0	2744 3830 1	Exit;Cave;19764									
 											
 # Keldagrim											
-2730 3714 0	2773 10162 0	Enter;Tunnel;5008									
-2773 10162 0	2730 3713 0	Enter;Tunnel;5014									
-2730 3713 0	2773 10162 0	Enter;Tunnel;5008									
-2773 10163 0	2730 3713 0	Enter;Tunnel;5014									
-2730 3712 0	2773 10162 0	Enter;Tunnel;5008									
-2773 10161 0	2730 3713 0	Enter;Tunnel;5014									
-2731 3711 0	2773 10162 0	Enter;Tunnel;5008									
+2730 3714 0	2773 10162 0	Enter;Tunnel;5008				Troll Romance=FINISHED			yes
+2773 10162 0	2730 3713 0	Enter;Tunnel;5014				Troll Romance=FINISHED			yes
+2730 3713 0	2773 10162 0	Enter;Tunnel;5008				Troll Romance=FINISHED			yes
+2773 10163 0	2730 3713 0	Enter;Tunnel;5014				Troll Romance=FINISHED			yes
+2730 3712 0	2773 10162 0	Enter;Tunnel;5008				Troll Romance=FINISHED			yes
+2773 10161 0	2730 3713 0	Enter;Tunnel;5014				Troll Romance=FINISHED			yes
+2731 3711 0	2773 10162 0	Enter;Tunnel;5008				Troll Romance=FINISHED			yes
 2780 10161 0	2838 10124 0	Go-through;Cave Entrance;5973									
 2838 10124 0	2778 10161 0	Go-through;Entrance;5998									
-2799 10134 0	2797 3719 0	Enter;Tunnel;5013									
-2797 3719 0	2799 10134 0	Enter;Tunnel;5012									
-2800 10134 0	2797 3719 0	Enter;Tunnel;5013									
-2795 3719 0	2799 10134 0	Enter;Tunnel;5012									
-2796 3719 0	2799 10134 0	Enter;Tunnel;5012									
+2799 10134 0	2797 3719 0	Enter;Tunnel;5013				Troll Romance=FINISHED			yes
+2797 3719 0	2799 10134 0	Enter;Tunnel;5012				Troll Romance=FINISHED			yes
+2800 10134 0	2797 3719 0	Enter;Tunnel;5013				Troll Romance=FINISHED			yes
+2795 3719 0	2799 10134 0	Enter;Tunnel;5012				Troll Romance=FINISHED			yes
+2796 3719 0	2799 10134 0	Enter;Tunnel;5012				Troll Romance=FINISHED			yes
 2917 10196 0	2914 10196 1	Climb-up;Stairs;6085									
 2914 10196 1	2917 10196 0	Climb-down;Stairs;6086									
 2914 10187 0	1943 4705 1	Climb-down;Stairs;10288									
@@ -5843,9 +5843,9 @@
 2822 3745 0	2803 10187 0	Enter;Cave entrance;5007								1	
 2822 3744 0	2803 10187 0	Enter;Cave entrance;5007								1	
 2822 3743 0	2803 10187 0	Enter;Cave entrance;5007								1	
-2804 10187 0	2822 3745 0	Enter;Tunnel;5011								1	
-2803 10187 0	2822 3745 0	Enter;Tunnel;5011								1	
-2802 10187 0	2822 3745 0	Enter;Tunnel;5011								1	
+2804 10187 0	2822 3745 0	Enter;Tunnel;5011				Troll Romance=FINISHED			yes	1
+2803 10187 0	2822 3745 0	Enter;Tunnel;5011				Troll Romance=FINISHED			yes	1
+2802 10187 0	2822 3745 0	Enter;Tunnel;5011				Troll Romance=FINISHED			yes	1
 2772 10232 0	2778 3869 0	Enter;Crevasse;5025								1	
 2778 3869 0	2772 10232 0	Enter;Tunnel;5009				Troll Romance=FINISHED			yes	1
 2778 3870 0	2772 10232 0	Enter;Tunnel;5009				Troll Romance=FINISHED			yes	1

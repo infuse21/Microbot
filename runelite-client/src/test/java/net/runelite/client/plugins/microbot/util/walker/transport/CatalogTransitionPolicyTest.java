@@ -226,15 +226,16 @@ public class CatalogTransitionPolicyTest
 	}
 
 	@Test
-	public void acceptsOnlyTheThirtyFiveExactCompletedQuestEntrances()
+	public void acceptsOnlyTheFiftyExactCompletedQuestEntrances()
 	{
-		Set<Integer> objectIds = Set.of(5009, 6310, 6621);
+		Set<Integer> objectIds = Set.of(5008, 5009, 5011, 5012, 5013, 5014, 6310, 6621);
 		java.util.List<Transport> rows = Transport.loadAllFromResources().values().stream()
 			.flatMap(java.util.Collection::stream)
 			.filter(row -> objectIds.contains(row.getObjectId()))
 			.collect(java.util.stream.Collectors.toList());
-		assertEquals(35, rows.size());
-		assertEquals(11, rows.stream().filter(row -> row.getObjectId() == 5009).count());
+		assertEquals(50, rows.size());
+		assertEquals(26, rows.stream().filter(row -> row.getObjectId() >= 5008
+			&& row.getObjectId() <= 5014).count());
 		assertEquals(12, rows.stream().filter(row -> row.getObjectId() == 6310).count());
 		assertEquals(12, rows.stream().filter(row -> row.getObjectId() == 6621).count());
 		assertTrue(rows.stream().allMatch(CatalogTransitionPolicy::isQuestGatedEntranceTransition));
@@ -622,7 +623,12 @@ public class CatalogTransitionPolicyTest
 	{
 		switch (objectId)
 		{
+			case 5008:
 			case 5009:
+			case 5011:
+			case 5012:
+			case 5013:
+			case 5014:
 				return Quest.TROLL_ROMANCE;
 			case 6310:
 				return Quest.THE_GOLEM;
