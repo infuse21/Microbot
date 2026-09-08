@@ -1991,3 +1991,16 @@ Keep the route contract exact: freeze the destination and the allowed ID alterna
 inventory and equipment actions independently, and retain one non-consumable banking requirement
 across repeated uses. Do not broaden the policy to other Max cape destinations whose grouped menus,
 configuration-dependent targets or daily limits have not been represented.
+
+## 108. Quest-time access and completed-quest traversal are separate contracts
+
+A route that becomes permanently usable through a quest may have additional items, dialogue,
+puzzles or temporary state while the quest is in progress. When that intermediate protocol is not
+modelled, gate the ordinary walker route on quest completion instead of inferring that reaching the
+object proves every quest-time prerequisite. This deliberately sacrifices some quest-time
+reachability to avoid publishing an unusable directed edge.
+
+The Golem portal, eastern Sophanem rocks and Trollweiss piste tunnel are examples. Freeze their
+directed origin/destination and object identity, require the matching completed quest, and retain
+NavigationEngine ownership until the remote landing. Quest helpers can model the richer in-progress
+flows independently without teaching the walker to solve the quests.

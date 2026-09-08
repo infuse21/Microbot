@@ -127,7 +127,7 @@ public class PathfinderRouteCalculationTest
 		}
 		assertEquals(127, candidates);
 		assertEquals(104, migrated);
-		assertEquals(1008, legacy);
+		assertEquals(973, legacy);
 	}
 
 	@Test
@@ -624,7 +624,7 @@ public class PathfinderRouteCalculationTest
 		assertEquals(50, stiles.stream().filter(candidate ->
 			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(candidate))
 				== RouteEdge.Kind.CATALOG_TRANSITION).count());
-		assertEquals(643, ordinary.stream().filter(candidate ->
+		assertEquals(608, ordinary.stream().filter(candidate ->
 			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(candidate))
 				== RouteEdge.Kind.TRANSPORT).count());
 		java.util.Set<Integer> directManifestIds = new java.util.HashSet<>(java.util.Arrays.asList(
@@ -864,7 +864,7 @@ public class PathfinderRouteCalculationTest
 	}
 
 	@Test
-	public void exactFremennikSlayerDungeonExitTunnelsUseDirectEngineOwnership()
+	public void exactAuditedTunnelFamiliesUseDirectEngineOwnership()
 	{
 		java.util.List<Transport> tunnels = Transport.loadAllFromResources().values()
 			.stream().flatMap(java.util.Collection::stream)
@@ -876,7 +876,10 @@ public class PathfinderRouteCalculationTest
 		assertEquals(3, tunnels.stream().filter(candidate -> candidate.getObjectId() == 2141)
 			.filter(candidate -> PathfinderRouteCalculation.classifyTransportEdge(
 				Collections.singleton(candidate)) == RouteEdge.Kind.CATALOG_TRANSITION).count());
-		assertEquals(39, tunnels.stream().filter(candidate -> candidate.getObjectId() != 2141)
+		assertEquals(11, tunnels.stream().filter(candidate -> candidate.getObjectId() == 5009)
+			.filter(candidate -> PathfinderRouteCalculation.classifyTransportEdge(
+				Collections.singleton(candidate)) == RouteEdge.Kind.CATALOG_TRANSITION).count());
+		assertEquals(28, tunnels.stream().filter(candidate -> candidate.getObjectId() != 2141)
 			.filter(candidate -> PathfinderRouteCalculation.classifyTransportEdge(
 				Collections.singleton(candidate)) == RouteEdge.Kind.TRANSPORT).count());
 	}
@@ -1073,6 +1076,20 @@ public class PathfinderRouteCalculationTest
 			false, "Climb-up", "Rope", 13999);
 		assertEquals(RouteEdge.Kind.TRANSPORT,
 			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(unrelated)));
+	}
+
+	@Test
+	public void completedQuestEntrancesUseExactCatalogOwnership()
+	{
+		Set<Integer> objectIds = Set.of(5009, 6310, 6621);
+		java.util.List<Transport> rows = Transport.loadAllFromResources().values().stream()
+			.flatMap(java.util.Collection::stream)
+			.filter(row -> objectIds.contains(row.getObjectId()))
+			.collect(java.util.stream.Collectors.toList());
+		assertEquals(35, rows.size());
+		assertTrue(rows.stream().allMatch(row ->
+			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(row))
+				== RouteEdge.Kind.CATALOG_TRANSITION));
 	}
 
 	@Test

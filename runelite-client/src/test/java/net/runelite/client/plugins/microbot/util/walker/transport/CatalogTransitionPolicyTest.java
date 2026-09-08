@@ -1,11 +1,14 @@
 package net.runelite.client.plugins.microbot.util.walker.transport;
 
+import net.runelite.api.Quest;
+import net.runelite.api.QuestState;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.Skill;
 import net.runelite.client.plugins.microbot.shortestpath.Transport;
 import net.runelite.client.plugins.microbot.shortestpath.TransportType;
 import org.junit.Test;
 
+import java.util.Map;
 import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
@@ -220,6 +223,30 @@ public class CatalogTransitionPolicyTest
 		Transport exit = rows.get(0);
 		exit.setItemIdRequirements(Set.of(Set.of(954)));
 		assertFalse(CatalogTransitionPolicy.isRopeExitTransition(exit));
+	}
+
+	@Test
+	public void acceptsOnlyTheThirtyFiveExactCompletedQuestEntrances()
+	{
+		Set<Integer> objectIds = Set.of(5009, 6310, 6621);
+		java.util.List<Transport> rows = Transport.loadAllFromResources().values().stream()
+			.flatMap(java.util.Collection::stream)
+			.filter(row -> objectIds.contains(row.getObjectId()))
+			.collect(java.util.stream.Collectors.toList());
+		assertEquals(35, rows.size());
+		assertEquals(11, rows.stream().filter(row -> row.getObjectId() == 5009).count());
+		assertEquals(12, rows.stream().filter(row -> row.getObjectId() == 6310).count());
+		assertEquals(12, rows.stream().filter(row -> row.getObjectId() == 6621).count());
+		assertTrue(rows.stream().allMatch(CatalogTransitionPolicy::isQuestGatedEntranceTransition));
+		assertTrue(rows.stream().allMatch(CatalogTransitionPolicy::isEligible));
+		assertTrue(rows.stream().allMatch(row -> row.isMembers() && !row.isConsumable()
+			&& row.getItemIdRequirements().isEmpty() && row.getCurrencyAmount() == 0
+			&& row.getVarbits().isEmpty() && row.getVarplayers().isEmpty()
+			&& row.getQuests().equals(Map.of(expectedQuest(row.getObjectId()), QuestState.FINISHED))));
+
+		Transport missingQuest = rows.get(0);
+		missingQuest.getQuests().clear();
+		assertFalse(CatalogTransitionPolicy.isQuestGatedEntranceTransition(missingQuest));
 	}
 
 	@Test
@@ -589,5 +616,20 @@ public class CatalogTransitionPolicyTest
 	{
 		return new Transport(origin, destination, "test", TransportType.AGILITY_SHORTCUT,
 			false, action, name, 123);
+	}
+
+	private static Quest expectedQuest(int objectId)
+	{
+		switch (objectId)
+		{
+			case 5009:
+				return Quest.TROLL_ROMANCE;
+			case 6310:
+				return Quest.THE_GOLEM;
+			case 6621:
+				return Quest.ICTHLARINS_LITTLE_HELPER;
+			default:
+				throw new AssertionError(objectId);
+		}
 	}
 }

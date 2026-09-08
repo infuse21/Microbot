@@ -419,7 +419,7 @@ is outstanding. Equipment-free crossings do not satisfy grapple-specific diary t
 | Catacombs vines, 2026-09-03 | 20 exits; incorrect incoming-unlock requirements removed. | Five exit destinations and first-use unlock writes, especially Shayzien identity fallback; then corresponding surface entrance. |
 | Catacombs/Corsair holes, 2026-09-02 | 13 entrances; three independent Catacombs unlock varbits corrected. | Each unlocked entrance and rejection of still-locked other locations; Corsair descent. |
 | Revenant easy pillars, 2026-09-02 | Two exact 65-Agility rows. | Both directions and damage-with-success landing, only under an explicit safe Wilderness test plan. |
-| Fremennik Slayer exit, 2026-09-02 | Three object-2141 approaches. | Direct one-way exit. Other 39 Enter/Tunnel rows are not covered. |
+| Fremennik Slayer exit, 2026-09-02 | Three object-2141 approaches. | Direct one-way exit. Other 28 Enter/Tunnel rows are not covered after the Trollweiss cutover. |
 | Passageways, 2026-09-02 | 52 Tarn room links and Rogues' Den lobby exit. | Rogues' Den exit; representative Tarn transitions with hazard preparation. Tarn traps/pillars are not included. |
 | Prifddinas gates, 2026-09-02 | 32 Enter/Exit rows with Song of the Elves completion. | Both gate actions/directions on an eligible account. |
 | Myths' Guild barriers, 2026-09-02 | Ten bridge/dungeon rows with Dragon Slayer II gate. | Each distinct bridge/dungeon crossing and landing. |
@@ -432,6 +432,7 @@ is outstanding. Equipment-free crossings do not satisfy grapple-specific diary t
 | Ferox barriers, earlier batch | 16 adjacent entry-barrier rows. | Both barrier IDs/directions; do not confuse with accepted Wilderness Ditch warning tests. |
 | Lithkren vault barrier, earlier batch | 48 exact object-32153 rows. | Quest-access audit and representative physical crossing; original rows omit quest requirements, so classification alone does not validate access. |
 | Ordinary Climb/Rocks, earlier batch | 49 catalog + four adjacent rows. | Distinct rock protocols and skill/quest variants; two climbing-boot rows remain unsupported. |
+| Quest-gated Golem/Sophanem/Trollweiss entrances, 2026-09-08 | 35 exact completed-quest rows are headless-complete. | Representative Golem portal, eastern Sophanem rock and Trollweiss piste tunnel crossings; quest-time intermediate states remain unsupported. |
 | Seasonal, 2026-08-30 | 47 Clue Compass + 122 Map of Alacrity rows. | League world/items required; direct compass action, two-level map, off-screen hotkeys, locked entries, banked requirement and landing. |
 
 ## Partially live-accepted families: remaining branches
@@ -495,7 +496,7 @@ The production classifier, not this prose list, is authoritative for the remaini
 Pre-Zanaris checkpoint: 1,466 legacy edges, including 990 ordinary TRANSPORT edges; after the
 headless Zanaris cutover: 1,465 and 989; after Waterfall internal doors: 1,463 and 987;
 after Draynor unlocked crossings: 1,445 and 969 respectively; after Yanille pick-lock:
-1,443 and 967 respectively. The current classifier is 1,008 total: 643 ordinary TRANSPORT, 10
+1,443 and 967 respectively. The current classifier is 973 total: 608 ordinary TRANSPORT, 10
 AGILITY_SHORTCUT, 37 TELEPORTATION_ITEM and 318 WILDERNESS_OBELISK rows, with
 no ordinary FAIRY_RING or GRAPPLE_SHORTCUT row remaining. Classifier counts
 are not percentages of live acceptance or estimates of implementation effort.

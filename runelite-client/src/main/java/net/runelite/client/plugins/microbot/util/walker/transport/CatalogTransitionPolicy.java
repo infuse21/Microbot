@@ -390,6 +390,42 @@ public final class CatalogTransitionPolicy
 		"2880,5311,2->2916,3745,0|26370|climb|rope",
 		"2881,5310,2->2916,3745,0|26370|climb|rope",
 		"2882,5311,2->2916,3745,0|26370|climb|rope");
+	private static final Set<String> QUEST_GATED_ENTRANCE_ROUTES = Set.of(
+		"3322,2858,0->3319,2796,0|6621|enter|rock",
+		"3322,2859,0->3319,2796,0|6621|enter|rock",
+		"3323,2860,0->3319,2796,0|6621|enter|rock",
+		"3324,2860,0->3319,2796,0|6621|enter|rock",
+		"3322,2857,0->3319,2796,0|6621|enter|rock",
+		"3323,2856,0->3319,2796,0|6621|enter|rock",
+		"3324,2856,0->3319,2796,0|6621|enter|rock",
+		"3325,2856,0->3319,2796,0|6621|enter|rock",
+		"3325,2860,0->3319,2796,0|6621|enter|rock",
+		"3326,2859,0->3319,2796,0|6621|enter|rock",
+		"3326,2857,0->3319,2796,0|6621|enter|rock",
+		"3326,2858,0->3319,2796,0|6621|enter|rock",
+		"2719,4913,0->2720,4884,2|6310|enter|door",
+		"2721,4911,0->2720,4884,2|6310|enter|door",
+		"2720,4911,0->2720,4884,2|6310|enter|door",
+		"2719,4912,0->2720,4884,2|6310|enter|door",
+		"2722,4911,0->2720,4884,2|6310|enter|door",
+		"2723,4911,0->2720,4884,2|6310|enter|door",
+		"2724,4912,0->2720,4884,2|6310|enter|door",
+		"2724,4913,0->2720,4884,2|6310|enter|door",
+		"2723,4914,0->2720,4884,2|6310|enter|door",
+		"2722,4914,0->2720,4884,2|6310|enter|door",
+		"2721,4914,0->2720,4884,2|6310|enter|door",
+		"2720,4914,0->2720,4884,2|6310|enter|door",
+		"2778,3869,0->2772,10232,0|5009|enter|tunnel",
+		"2778,3870,0->2772,10232,0|5009|enter|tunnel",
+		"2779,3871,0->2772,10232,0|5009|enter|tunnel",
+		"2780,3871,0->2772,10232,0|5009|enter|tunnel",
+		"2781,3871,0->2772,10232,0|5009|enter|tunnel",
+		"2782,3870,0->2772,10232,0|5009|enter|tunnel",
+		"2782,3869,0->2772,10232,0|5009|enter|tunnel",
+		"2782,3868,0->2772,10232,0|5009|enter|tunnel",
+		"2781,3867,0->2772,10232,0|5009|enter|tunnel",
+		"2780,3867,0->2772,10232,0|5009|enter|tunnel",
+		"2779,3867,0->2772,10232,0|5009|enter|tunnel");
 	private static final Set<Integer> MOR_UL_REK_CAPE_IDS = Set.of(6570, 13329, 24134, 24223);
 	private static final Set<Set<Integer>> MOR_UL_REK_CAPES = Set.of(MOR_UL_REK_CAPE_IDS);
 	private static final int GUARDIANS_OF_THE_RIFT_BARRIER_ID = 43700;
@@ -682,6 +718,7 @@ public final class CatalogTransitionPolicy
 			|| isOpeningExitTransition(transport)
 			|| isClimbUpExitTransition(transport)
 			|| isRopeExitTransition(transport)
+			|| isQuestGatedEntranceTransition(transport)
 			|| "pass".equals(action) && "barrier".equals(name)
 				&& transport.getObjectId() == 32153
 			|| "enter".equals(action) && "dense forest".equals(name)
@@ -799,6 +836,39 @@ public final class CatalogTransitionPolicy
 		return transport.isMembers() == expectedMembers
 			&& ROPE_EXIT_ROUTES.contains(routeKey(transport,
 				normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
+	}
+
+	static boolean isQuestGatedEntranceTransition(Transport transport)
+	{
+		if (transport == null || transport.getType() != TransportType.TRANSPORT
+			|| transport.getOrigin() == null || transport.getDestination() == null
+			|| transport.isConsumable() || transport.getCurrencyAmount() != 0
+			|| !transport.isMembers() || !transport.getItemIdRequirements().isEmpty()
+			|| !transport.getVarbits().isEmpty() || !transport.getVarplayers().isEmpty()
+			|| java.util.Arrays.stream(transport.getSkillLevels()).anyMatch(level -> level != 0)
+			|| !QUEST_GATED_ENTRANCE_ROUTES.contains(routeKey(transport,
+				normalizeDirectAction(transport.getAction()), normalize(transport.getName()))))
+		{
+			return false;
+		}
+		Quest quest;
+		switch (transport.getObjectId())
+		{
+			case 6310:
+				quest = Quest.THE_GOLEM;
+				break;
+			case 6621:
+				quest = Quest.ICTHLARINS_LITTLE_HELPER;
+				break;
+			case 5009:
+				quest = Quest.TROLL_ROMANCE;
+				break;
+			default:
+				return false;
+		}
+		int expectedDuration = transport.getObjectId() == 6621 ? 0 : 1;
+		return transport.getDuration() == expectedDuration
+			&& transport.getQuests().equals(Map.of(quest, QuestState.FINISHED));
 	}
 
 	static boolean isFremennikSurfaceBridge(Transport transport)
