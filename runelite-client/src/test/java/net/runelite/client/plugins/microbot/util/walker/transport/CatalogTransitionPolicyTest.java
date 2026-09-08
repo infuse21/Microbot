@@ -200,6 +200,29 @@ public class CatalogTransitionPolicyTest
 	}
 
 	@Test
+	public void acceptsOnlyTheFifteenExactOutwardRopeExits()
+	{
+		Set<Integer> objectIds = Set.of(5946, 10434, 12230, 25213, 26370);
+		java.util.List<Transport> rows = Transport.loadAllFromResources().values().stream()
+			.flatMap(java.util.Collection::stream)
+			.filter(row -> objectIds.contains(row.getObjectId()))
+			.filter(row -> "Climb".equals(row.getAction()))
+			.collect(java.util.stream.Collectors.toList());
+		assertEquals(15, rows.size());
+		assertEquals(4, rows.stream().filter(row -> !row.isMembers()).count());
+		assertEquals(11, rows.stream().filter(Transport::isMembers).count());
+		assertTrue(rows.stream().allMatch(CatalogTransitionPolicy::isRopeExitTransition));
+		assertTrue(rows.stream().allMatch(CatalogTransitionPolicy::isEligible));
+		assertTrue(rows.stream().allMatch(row -> !row.isConsumable()
+			&& row.getItemIdRequirements().isEmpty() && row.getCurrencyAmount() == 0
+			&& !row.isQuestLocked() && row.getVarbits().isEmpty() && row.getVarplayers().isEmpty()));
+
+		Transport exit = rows.get(0);
+		exit.setItemIdRequirements(Set.of(Set.of(954)));
+		assertFalse(CatalogTransitionPolicy.isRopeExitTransition(exit));
+	}
+
+	@Test
 	public void acceptsOnlyExactItemFreeOrdinaryDirectContracts()
 	{
 		assertTrue(CatalogTransitionPolicy.isEligible(transport(SURFACE,

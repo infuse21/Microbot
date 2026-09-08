@@ -21,6 +21,16 @@ additive totals; source rows, generated edges and duplicated approaches must not
 
 ## Latest work versus earlier headless batches
 
+### Outward rope-exit transitions - 2026-09-08
+
+- **Headless:** 15 exact fixed-landing rope exits are engine-owned across Lumbridge Swamp Caves,
+  Crandor, Water Ravine/Elid, Giant Mole and God Wars Dungeon. Eleven members flags were corrected;
+  the four Crandor exits remain free-to-play. Reverse rope installation and entrance protocols are
+  excluded.
+- **Live pending:** exit one representative route in each area and verify one exact interaction,
+  the selected surface landing, interruption recovery and no legacy handoff. Use minimal equipment
+  in aggressive areas; this cutover does not claim any inward rope/light/quest setup.
+
 ### Witchaven, Wyvern Cave and Miscellania climb-up exits - 2026-09-08
 
 - **Headless:** all seven exact members-only `Climb-up;Exit` rows are engine-owned: one Witchaven

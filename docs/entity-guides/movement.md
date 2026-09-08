@@ -1965,3 +1965,16 @@ Witchaven Dungeon, the Fossil Island Wyvern Cave and the Miscellania/Etceteria d
 direct `Climb-up;Exit` objects with remote surface landings. Freeze each route and object identity,
 then keep NavigationEngine ownership until its selected landing. This supports escape traversal; it
 does not grant the corresponding inward quest, task or unlock protocol.
+
+## 106. An installed rope entrance and its outward rope are different contracts
+
+Several dungeons require a rope, light source, quest stage or one-time setup while entering, but
+expose a direct rope interaction to leave. Do not infer a bankable rope requirement from the word
+`Rope` on an outward object. Being at the underground source proves the player has access, and an
+exit must remain available without replaying the entrance setup or trapping an in-progress player.
+
+Freeze outward rope routes by full origin, destination, object ID, action and name. Preserve each
+location's members status independently—Crandor remains free-to-play while Lumbridge Swamp, Water
+Ravine, Giant Mole and God Wars are members content—and retain NavigationEngine ownership until
+the selected remote surface landing. Reverse entrances stay separate until their setup lifecycle is
+explicitly modelled.

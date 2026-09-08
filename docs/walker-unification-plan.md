@@ -21,6 +21,22 @@ headless batches, outstanding branches of representative live passes, and contra
 implementation. As of 2026-09-06 the user requests headless-first progress; deferred physical tests
 remain open rather than blocking each batch or being silently marked complete.
 
+## Outward rope-exit transitions - 2026-09-08
+
+Fifteen exact outward rope exits now use catalogue/NavigationEngine ownership: three Lumbridge
+Swamp Cave rows on object 5946, four free-to-play Crandor rows on object 25213, four Water Ravine/
+Elid rows on object 10434, the Giant Mole exit on object 12230, and three God Wars Dungeon rows on
+object 26370. OSRS Wiki MCP confirms that rope installation, light-source, quest and first-entry
+requirements belong to entering these areas; presence at each outward source already proves access.
+The members flags are corrected on the 11 members-only rows while Crandor remains free-to-play.
+
+The immutable directed manifest excludes every reverse entrance and all same-name ropes elsewhere.
+NavigationEngine retains each command through the plane/region transition and only the exact remote
+surface landing clears it. Focused policy, scanner, route-publication and classifier tests pass.
+The classifier floor is now **1,009 legacy entries**: 643 ordinary `TRANSPORT`, 10
+`AGILITY_SHORTCUT`, 38 `TELEPORTATION_ITEM` and 318 `WILDERNESS_OBELISK` entries. Representative
+exits and combat/external-movement recovery remain live-deferred, so Phase 6 remains open.
+
 ## Witchaven, Wyvern Cave and Miscellania climb-up exits - 2026-09-08
 
 All seven exact `Climb-up;Exit` rows now use catalogue/NavigationEngine ownership: one Witchaven

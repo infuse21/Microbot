@@ -325,7 +325,7 @@
 2973 3386 0	2972 3385 1	Climb-up;Staircase;24075								1	
 2972 3385 1	2973 3386 0	Climb-down;Staircase;24076								1	
 2974 3386 0	2972 3385 1	Climb-up;Staircase;24075								1	
-1752 5137 0	2985 3316 0	Climb;Rope;12230								2	
+1752 5137 0	2985 3316 0	Climb;Rope;12230							Y	2
 											
 # Makeover Mage											
 2916 3323 0	2916 3323 1	Climb-up;Ladder;9558								2	
@@ -3314,13 +3314,13 @@
 3371 9313 0	3371 9312 0	Open;Door;10431								1	
 3371 9312 0	3371 9313 0	Open;Door;10431								1	
 3371 9313 0	3371 9312 0	Open;Door;10431								1	
-3373 9304 0	3375 2904 0	Climb;Rope;10434									
+3373 9304 0	3375 2904 0	Climb;Rope;10434							Y
 3375 2904 0	3374 9305 0	Climb-down;Crevice;10416									
-3374 9305 0	3375 2904 0	Climb;Rope;10434									
+3374 9305 0	3375 2904 0	Climb;Rope;10434							Y
 3375 2905 0	3374 9305 0	Climb-down;Crevice;10416									
-3373 9306 0	3375 2904 0	Climb;Rope;10434									
+3373 9306 0	3375 2904 0	Climb;Rope;10434							Y
 3375 2906 0	3374 9305 0	Climb-down;Crevice;10416									
-3372 9305 0	3375 2904 0	Climb;Rope;10434									
+3372 9305 0	3375 2904 0	Climb;Rope;10434							Y
 3374 2903 0	3374 9305 0	Climb-down;Crevice;10416									
 3374 2902 0	3374 9305 0	Climb-down;Crevice;10416									
 3372 2902 0	3374 9305 0	Climb-down;Crevice;10416									
@@ -4492,11 +4492,11 @@
 2899 3713 0	2904 3720 0	Crawl-through;Little crack;26382									
 2904 3720 0	2899 3713 0	Crawl-through;Little crack;26382									
 2916 3748 0	2882 5311 2	Climb-down;Hole;26419					3966=1
-2880 5311 2	2916 3745 0	Climb;Rope;26370									
+2880 5311 2	2916 3745 0	Climb;Rope;26370							Y
 2916 3745 0	2882 5311 2	Climb-down;Hole;26419					3966=1
-2882 5311 2	2916 3745 0	Climb;Rope;26370									
+2882 5311 2	2916 3745 0	Climb;Rope;26370							Y
 2916 3746 0	2882 5311 2	Climb-down;Hole;26419					3966=1
-2881 5310 2	2916 3745 0	Climb;Rope;26370									
+2881 5310 2	2916 3745 0	Climb;Rope;26370							Y
 2917 3744 0	2882 5311 2	Climb-down;Hole;26419					3966=1
 2918 3744 0	2882 5311 2	Climb-down;Hole;26419					3966=1
 2919 3744 0	2882 5311 2	Climb-down;Hole;26419					3966=1
@@ -5316,11 +5316,11 @@
 # --- Backfilled 2026-07-20 from upstream Skretzo/shortest-path (7e7e5bf94b): routes absent locally (intentional exclusions omitted) ---
 3205 3209 1	3206 3208 0	Climb-down;Staircase;16672								1	
 3169 3171 0	3169 9571 0	Climb-down;Dark hole;5947								2	
-3169 9571 0	3169 3171 0	Climb;Climbing rope;5946								2	
+3169 9571 0	3169 3171 0	Climb;Climbing rope;5946							Y	2
 3168 3172 0	3168 9572 0	Climb-down;Dark hole;5947								2	
-3168 9572 0	3168 3172 0	Climb;Climbing rope;5946								2	
+3168 9572 0	3168 3172 0	Climb;Climbing rope;5946							Y	2
 3170 3172 0	3170 9572 0	Climb-down;Dark hole;5947								2	
-3170 9572 0	3170 3172 0	Climb;Climbing rope;5946								2	
+3170 9572 0	3170 3172 0	Climb;Climbing rope;5946							Y	2
 3169 3173 0	3167 9573 0	Climb-down;Dark hole;5947								2	
 3225 9542 0	3219 9532 2	Enter;Tunnel;6659								2	
 3227 9542 0	3219 9532 2	Enter;Tunnel;6659								2	

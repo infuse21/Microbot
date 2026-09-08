@@ -374,6 +374,22 @@ public final class CatalogTransitionPolicy
 		"2619,10265,0->2620,3864,0|15193|climbup|exit",
 		"2618,10264,0->2620,3864,0|15193|climbup|exit",
 		"2617,10265,0->2620,3864,0|15193|climbup|exit");
+	private static final Set<String> ROPE_EXIT_ROUTES = Set.of(
+		"3168,9572,0->3168,3172,0|5946|climb|climbing rope",
+		"3169,9571,0->3169,3171,0|5946|climb|climbing rope",
+		"3170,9572,0->3170,3172,0|5946|climb|climbing rope",
+		"2832,9657,0->2834,3258,0|25213|climb|climbing rope",
+		"2833,9656,0->2834,3258,0|25213|climb|climbing rope",
+		"2833,9658,0->2834,3258,0|25213|climb|climbing rope",
+		"2834,9657,0->2834,3258,0|25213|climb|climbing rope",
+		"3372,9305,0->3375,2904,0|10434|climb|rope",
+		"3373,9304,0->3375,2904,0|10434|climb|rope",
+		"3373,9306,0->3375,2904,0|10434|climb|rope",
+		"3374,9305,0->3375,2904,0|10434|climb|rope",
+		"1752,5137,0->2985,3316,0|12230|climb|rope",
+		"2880,5311,2->2916,3745,0|26370|climb|rope",
+		"2881,5310,2->2916,3745,0|26370|climb|rope",
+		"2882,5311,2->2916,3745,0|26370|climb|rope");
 	private static final Set<Integer> MOR_UL_REK_CAPE_IDS = Set.of(6570, 13329, 24134, 24223);
 	private static final Set<Set<Integer>> MOR_UL_REK_CAPES = Set.of(MOR_UL_REK_CAPE_IDS);
 	private static final int GUARDIANS_OF_THE_RIFT_BARRIER_ID = 43700;
@@ -665,6 +681,7 @@ public final class CatalogTransitionPolicy
 			|| isKaramjaVolcanoTransition(transport)
 			|| isOpeningExitTransition(transport)
 			|| isClimbUpExitTransition(transport)
+			|| isRopeExitTransition(transport)
 			|| "pass".equals(action) && "barrier".equals(name)
 				&& transport.getObjectId() == 32153
 			|| "enter".equals(action) && "dense forest".equals(name)
@@ -765,6 +782,23 @@ public final class CatalogTransitionPolicy
 		}
 		return CLIMB_UP_EXIT_ROUTES.contains(routeKey(transport,
 			normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
+	}
+
+	static boolean isRopeExitTransition(Transport transport)
+	{
+		if (transport == null || transport.getType() != TransportType.TRANSPORT
+			|| transport.getOrigin() == null || transport.getDestination() == null
+			|| transport.isConsumable() || transport.getCurrencyAmount() != 0
+			|| transport.isQuestLocked() || !transport.getVarbits().isEmpty()
+			|| !transport.getVarplayers().isEmpty() || !transport.getItemIdRequirements().isEmpty()
+			|| java.util.Arrays.stream(transport.getSkillLevels()).anyMatch(level -> level != 0))
+		{
+			return false;
+		}
+		boolean expectedMembers = transport.getObjectId() != 25213;
+		return transport.isMembers() == expectedMembers
+			&& ROPE_EXIT_ROUTES.contains(routeKey(transport,
+				normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
 	}
 
 	static boolean isFremennikSurfaceBridge(Transport transport)
