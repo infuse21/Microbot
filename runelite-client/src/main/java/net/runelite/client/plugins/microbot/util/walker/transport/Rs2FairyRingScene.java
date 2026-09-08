@@ -15,6 +15,7 @@ import net.runelite.client.plugins.microbot.shortestpath.TransportEdgeMatcher;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
+import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2PathApi;
 import net.runelite.client.plugins.microbot.util.walker.obstacle.PlannedEdge;
 import net.runelite.client.plugins.microbot.util.walker.transport.model.FairyRing;
@@ -86,8 +87,13 @@ public final class Rs2FairyRingScene implements FairyRingScene
 	public static boolean interactObject(PlannedEdge edge, String expectedAction)
 	{
 		Transport transport = findTransport(edge);
-		RingObject ring = transport == null ? null : findRingObject(transport);
-		String liveAction = ring == null ? null : exactAction(ring.actions, expectedAction);
+		int sequenceStep = FairyRingPolicy.sequenceStep(expectedAction);
+		WorldPoint anchor = transport == null ? null : FairyRingPolicy.sequenceRingAnchor(
+			transport.getOrigin(), sequenceStep);
+		RingObject ring = transport == null ? null : findRingObject(transport, anchor);
+		String requestedAction = sequenceStep < 0 ? expectedAction
+			: FairyRingPolicy.sequenceObjectLiveAction(expectedAction);
+		String liveAction = ring == null ? null : exactAction(ring.actions, requestedAction);
 		return ring != null && liveAction != null && ring.object.click(liveAction);
 	}
 
@@ -95,7 +101,20 @@ public final class Rs2FairyRingScene implements FairyRingScene
 		int originalWeaponId)
 	{
 		WorldPoint origin = transport.getOrigin();
-		String code = FairyRingPolicy.normalizeCode(transport.getDisplayInfo());
+		boolean sequence = FairyRingPolicy.isHideoutSequence(transport);
+		int sequenceStep = sequence ? Math.max(0, FairyRingPolicy.sequenceStep(pendingAction)) : -1;
+		if (sequence && FairyRingPolicy.isSequenceTeleportAction(pendingAction))
+		{
+			DialState previous = dialState(FairyRingPolicy.sequenceCode(sequenceStep));
+			if (!FairyRingPolicy.sequenceTeleportCompleted(sequenceStep,
+				Rs2Player.getWorldLocation(), previous.visible))
+			{
+				return null;
+			}
+			sequenceStep++;
+		}
+		String code = sequence ? FairyRingPolicy.sequenceCode(sequenceStep)
+			: FairyRingPolicy.normalizeCode(transport.getDisplayInfo());
 		if (!hasStaffRequirementWaiver() && !isWearingStaff())
 		{
 			int staffId = inventoryStaffId();
@@ -115,12 +134,18 @@ public final class Rs2FairyRingScene implements FairyRingScene
 		{
 			if (dials.rotationWidgetId > 0)
 			{
+				String action = sequence
+					? FairyRingPolicy.sequenceRotateAction(sequenceStep,
+						dials.rotationWidgetId, dials.observedRotation)
+					: FairyRingPolicy.rotateAction(dials.rotationWidgetId,
+						dials.observedRotation);
 				return new FairyRing(origin, transport.getDestination(), code, origin, -1,
-					FairyRingPolicy.rotateAction(dials.rotationWidgetId,
-						dials.observedRotation), FairyRing.Stage.ROTATE, originalWeaponId);
+					action, FairyRing.Stage.ROTATE, originalWeaponId);
 			}
+			String action = sequence ? FairyRingPolicy.sequenceTeleportAction(sequenceStep)
+				: FairyRingPolicy.TELEPORT_ACTION;
 			return new FairyRing(origin, transport.getDestination(), code, origin, -1,
-				FairyRingPolicy.TELEPORT_ACTION, FairyRing.Stage.TELEPORT,
+				action, FairyRing.Stage.TELEPORT,
 				originalWeaponId);
 		}
 
@@ -131,13 +156,16 @@ public final class Rs2FairyRingScene implements FairyRingScene
 			return null;
 		}
 
-		RingObject ring = findRingObject(transport);
+		WorldPoint ringAnchor = sequence
+			? FairyRingPolicy.sequenceRingAnchor(origin, sequenceStep) : origin;
+		RingObject ring = findRingObject(transport, ringAnchor);
 		if (ring == null)
 		{
 			return null;
 		}
-		String direct = exactAction(ring.actions, "last-destination (" + code + ")");
-		if (direct == null)
+		String direct = sequence ? null
+			: exactAction(ring.actions, "last-destination (" + code + ")");
+		if (!sequence && direct == null)
 		{
 			direct = exactAction(ring.actions, "Ring-last-destination (" + code + ")");
 		}
@@ -150,8 +178,10 @@ public final class Rs2FairyRingScene implements FairyRingScene
 		{
 			return null;
 		}
+		String publishedAction = sequence
+			? FairyRingPolicy.sequenceObjectAction(sequenceStep, action) : action;
 		return new FairyRing(origin, transport.getDestination(), code, ring.tile,
-			ring.object.getId(), action, FairyRing.Stage.OBJECT, originalWeaponId);
+			ring.object.getId(), publishedAction, FairyRing.Stage.OBJECT, originalWeaponId);
 	}
 
 	private static Transport findTransport(PlannedEdge edge)
@@ -166,14 +196,23 @@ public final class Rs2FairyRingScene implements FairyRingScene
 
 	private static RingObject findRingObject(Transport transport)
 	{
+		return findRingObject(transport, transport.getOrigin());
+	}
+
+	private static RingObject findRingObject(Transport transport, WorldPoint anchor)
+	{
+		if (anchor == null)
+		{
+			return null;
+		}
 		return Microbot.getClientThread().runOnClientThreadOptional(() ->
 		{
 			List<Rs2TileObjectModel> candidates = Microbot.getRs2TileObjectCache().query()
-				.within(transport.getOrigin(), 2).toList();
+				.within(anchor, 2).toList();
 			return candidates.stream().map(Rs2FairyRingScene::ringObject)
 				.filter(java.util.Objects::nonNull)
 				.min(Comparator.comparingInt(candidate ->
-					candidate.tile.distanceTo2D(transport.getOrigin())))
+					candidate.tile.distanceTo2D(anchor)))
 				.orElse(null);
 		}).orElse(null);
 	}
@@ -304,7 +343,8 @@ public final class Rs2FairyRingScene implements FairyRingScene
 			int widgetId = FairyRingPolicy.rotationWidgetId(action);
 			return widgetId > 0 && Rs2Widget.clickWidget(widgetId);
 		}
-		return FairyRingPolicy.TELEPORT_ACTION.equals(action)
+		return (FairyRingPolicy.TELEPORT_ACTION.equals(action)
+			|| FairyRingPolicy.isSequenceTeleportAction(action))
 			&& Rs2Widget.clickWidget(InterfaceID.Fairyrings.CONFIRM);
 	}
 

@@ -21,6 +21,16 @@ additive totals; source rows, generated edges and duplicated approaches must not
 
 ## Latest work versus earlier headless batches
 
+### Fairy Resistance Hideout sequence - 2026-09-08
+
+- **Headless:** all 53 generated `AIR DLR DJQ AJS` fan-in rows are engine-owned after Fairytale II
+  completion. Exact intermediate AIR/DLR landings, DJQ's intentional no-movement transition, final
+  AJS landing, one retained interaction and final-only weapon restoration are covered.
+- **Live pending:** run the full four-code chain from a non-POH ring after quest completion; verify
+  each interface transition and landing, no direct-last-destination shortcut, no command advance
+  before acknowledgement, final weapon restoration and no legacy handoff. Quest-time certificate
+  access is deliberately not implemented by this slice.
+
 ### Max-cape duplicate cleanup - 2026-09-08
 
 - **Headless:** one exact duplicate Black-chinchompa route was removed; 21 unique Max-cape rows
@@ -332,7 +342,7 @@ is outstanding. Equipment-free crossings do not satisfy grapple-specific diary t
 | Mushtrees | Meadow/Verdant journey, locked-node invalidation/replan and config-off publication checks. | Other distinct destinations as available; no fabricated pre-arrival unlock varbit. |
 | Fossil rowboats | Camp/Digsite return pair; unlocked sea -> camp. | Unlocked camp -> north/sea and other directions; immediate Cancel/replan with genuinely locked menu (current account now unlocked). Earlier 57-second automatic recovery is not acceptance of the faster fix. |
 | Spirit trees | GE/Stronghold both ways, grey locked-menu recovery; corrected Brimhaven-disabled route reached Ardougne. | Planted-tree variants and absent-object stale opt-in automatic recovery; do not assume remote farming transmit state proves a planted tree. |
-| Fairy rings | Non-POH directed travel both ways with original-weapon restoration. | Distinct staff-free/account-locked configurations; POH/DIQ is a separate unsupported contract. |
+| Fairy rings | Non-POH directed travel both ways with original-weapon restoration. | Full post-quest `AIR DLR DJQ AJS` hideout chain; distinct staff-free/account-locked configurations; POH/DIQ is a separate unsupported contract. |
 | Gliders/Quetzals | Stronghold chain/tree door and transformed captain; Quetzacalli/Civitas pair and locked Cam Torum filtering. | Other endpoint variants as regression coverage; whistle is not Renu travel and is unimplemented. |
 | Agility/stiles | Falador crumbling wall and Taverley stile representatives; basalt causeway all ten edges both ways. | Other distinct protocols in the 248 scene-changing agility batch; post-fix random basalt failed-jump recovery (recorded failure reproduced headlessly, subsequent crossings did not fail). |
 | Core recovery/arrival | Ordinary recovery, manual displacement/input contention, exact caller-radius walk, non-consuming off-centre final approach. | 2026-09-05 moving-mouse/combat correction end-to-end; charged teleport -> exact final tile without repeat use; short-link origin/midpoint/overshoot regressions across representative physical boundaries. |
@@ -355,8 +365,10 @@ Do not label these as "just waiting for live testing":
 
 - Advanced POH facilities: chamber/nexus/jewellery box/mounted teleports/POH rings/trees and house
   destination/instance flows. The level-48 test house is empty; only physical Home/Enter passed.
-- 53 multi-code/POH fairy-ring rows; 318 random-obelisk rows including 48 unsafe self-pad artifacts;
-  12 grapple rows; 14 remaining agility rows. The 12 redundant random Guthix rows were removed.
+- POH/DIQ fairy-ring facilities; quest-time certificate form of the Fairy Resistance Hideout;
+  318 random-obelisk rows including 48 unsafe self-pad artifacts; 12 grapple rows; 14 remaining
+  agility rows. The 53 post-quest multi-code rows are headless-complete above, and the 12 redundant
+  random Guthix rows were removed.
 - 43 item rows after the Max duplicate cleanup: 24 jewellery/cape exceptions (Max, Black chinchompa
   Hunter cape, Camulet); 14 whistles; moth; Ardougne Farm, Chronicle,
   Slepe and Jaltevas. Some need data/charge fixes rather than a new executor.
@@ -373,7 +385,9 @@ The production classifier, not this prose list, is authoritative for the remaini
 Pre-Zanaris checkpoint: 1,466 legacy edges, including 990 ordinary TRANSPORT edges; after the
 headless Zanaris cutover: 1,465 and 989; after Waterfall internal doors: 1,463 and 987;
 after Draynor unlocked crossings: 1,445 and 969 respectively; after Yanille pick-lock:
-1,443 and 967 respectively. Classifier counts
+1,443 and 967 respectively. The current post-hideout classifier is 1,094 total: 711 ordinary
+TRANSPORT, 10 AGILITY_SHORTCUT, 12 GRAPPLE_SHORTCUT, 43 TELEPORTATION_ITEM and 318
+WILDERNESS_OBELISK rows, with no ordinary FAIRY_RING row remaining. Classifier counts
 are not percentages of live acceptance or estimates of implementation effort.
 
 ## Acceptance record to append for each future run

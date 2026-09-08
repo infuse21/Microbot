@@ -21,6 +21,29 @@ headless batches, outstanding branches of representative live passes, and contra
 implementation. As of 2026-09-06 the user requests headless-first progress; deferred physical tests
 remain open rather than blocking each batch or being silently marked complete.
 
+## Fairy Resistance Hideout sequence - 2026-09-08
+
+All 53 generated `AIR DLR DJQ AJS` fan-in rows now use the fairy-ring/NavigationEngine lifecycle.
+OSRS Wiki MCP verification confirms the exact four-code order: AIR reaches the south-east Ardougne
+island, DLR reaches the Poison Waste island, DJQ intentionally goes nowhere, and AJS reaches the
+hideout. The resource is conservatively gated on Fairytale II `FINISHED`; this avoids selecting the
+quest-time form that additionally needs Nuff's certificate, while retaining any stricter quest
+requirements inherited from the source ring.
+
+The four commands remain one immutable pending route interaction. Each intermediate command must
+close the interface and reach its exact expected landing before the next code can be staged; DJQ
+therefore acknowledges the unchanged DLR-island position only after its own interface transition.
+The final AJS command still requires the directed hideout landing, and the originally equipped
+weapon is restored only after that final landing. No direct last-destination shortcut is used for
+this sequence and no legacy movement owner is entered between its legs.
+
+The integrated walker, banking, transport, seasonal, POH, cost and collision regression passed
+**815** tests with zero failures, errors or skips; compile, both Checkstyle tasks and the whitespace
+check pass. The classifier floor is now **1,094 legacy entries**, comprising 711 ordinary
+`TRANSPORT`, 10 `AGILITY_SHORTCUT`, 12 `GRAPPLE_SHORTCUT`, 43 `TELEPORTATION_ITEM` and 318
+`WILDERNESS_OBELISK` entries. No ordinary `FAIRY_RING` row remains legacy-owned. Physical sequence
+acceptance remains in the live backlog, so this slice is headless-complete and Phase 6 remains open.
+
 ## Shantay pass gates - 2026-09-08
 
 All 14 packaged `Go-through;Shantay pass` rows now use the catalogue/NavigationEngine interaction
