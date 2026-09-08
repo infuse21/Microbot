@@ -21,6 +21,17 @@ additive totals; source rows, generated edges and duplicated approaches must not
 
 ## Latest work versus earlier headless batches
 
+### Abyss guaranteed passages - 2026-09-08
+
+- **Headless:** all 12 exact object-26250 Passage configurations are engine-owned with a frozen
+  directed manifest, no fabricated requirements and exact acknowledgement of their three possible
+  inner-ring landings. Wiki MCP confirms Passage is guaranteed, tool-free and present opposite the
+  initial blockage in each of the 12 random configurations.
+- **Live pending:** with an intentionally minimal loadout, traverse representative configurations
+  for each distinct landing and verify exact object/action identity, uninterrupted movement,
+  directed arrival and no legacy handoff. The outer Abyss is aggressive multicombat territory;
+  headless support is not a safety claim or a request for immediate physical testing.
+
 ### Fairy Resistance Hideout sequence - 2026-09-08
 
 - **Headless:** all 53 generated `AIR DLR DJQ AJS` fan-in rows are engine-owned after Fairytale II
@@ -385,7 +396,7 @@ The production classifier, not this prose list, is authoritative for the remaini
 Pre-Zanaris checkpoint: 1,466 legacy edges, including 990 ordinary TRANSPORT edges; after the
 headless Zanaris cutover: 1,465 and 989; after Waterfall internal doors: 1,463 and 987;
 after Draynor unlocked crossings: 1,445 and 969 respectively; after Yanille pick-lock:
-1,443 and 967 respectively. The current post-hideout classifier is 1,094 total: 711 ordinary
+1,443 and 967 respectively. The current post-Passage classifier is 1,082 total: 699 ordinary
 TRANSPORT, 10 AGILITY_SHORTCUT, 12 GRAPPLE_SHORTCUT, 43 TELEPORTATION_ITEM and 318
 WILDERNESS_OBELISK rows, with no ordinary FAIRY_RING row remaining. Classifier counts
 are not percentages of live acceptance or estimates of implementation effort.

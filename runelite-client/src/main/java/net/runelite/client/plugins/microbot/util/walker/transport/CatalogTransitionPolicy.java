@@ -53,6 +53,19 @@ public final class CatalogTransitionPolicy
 		"3027,4834,0->3229,4834,0|25382|exitthrough|blood rift",
 		"3028,4837,0->2142,4836,0|25382|exitthrough|cosmic rift",
 		"3035,4842,0->2400,4844,0|25382|exitthrough|nature rift");
+	private static final Set<String> ABYSS_PASSAGE_ROUTES = Set.of(
+		"3039,4854,0->3039,4844,0|26250|gothrough|passage",
+		"3029,4850,0->3033,4843,0|26250|gothrough|passage",
+		"3021,4843,0->3039,4844,0|26250|gothrough|passage",
+		"3018,4834,0->3039,4844,0|26250|gothrough|passage",
+		"3018,4822,0->3039,4844,0|26250|gothrough|passage",
+		"3030,4812,0->3039,4844,0|26250|gothrough|passage",
+		"3042,4811,0->3039,4844,0|26250|gothrough|passage",
+		"3050,4813,0->3039,4844,0|26250|gothrough|passage",
+		"3058,4822,0->3039,4844,0|26250|gothrough|passage",
+		"3061,4831,0->3052,4831,0|26250|gothrough|passage",
+		"3059,4840,0->3039,4844,0|26250|gothrough|passage",
+		"3050,4850,0->3039,4844,0|26250|gothrough|passage");
 	private static final Set<String> RUNECRAFTING_EXIT_PORTAL_ROUTES = Set.of(
 		"2793,4828,0->2980,3511,0|34749|use|portal",
 		"2726,4832,0->3182,3162,0|34750|use|portal",
@@ -500,6 +513,7 @@ public final class CatalogTransitionPolicy
 		String name = normalize(transport.getName());
 		return isAuditedDirectDoor(transport)
 			|| isAbyssExitRift(transport)
+			|| isAbyssPassage(transport)
 			|| isRunecraftingExitPortal(transport)
 			|| isEnakhraSecretEntrance(transport)
 			|| isSwanSongHole(transport)
@@ -653,6 +667,18 @@ public final class CatalogTransitionPolicy
 		return ABYSS_EXIT_RIFT_ROUTES.contains(routeKey(transport,
 			normalizeDirectAction(transport.getAction()), name))
 			&& transport.getQuests().equals(ABYSS_EXIT_RIFT_QUESTS.getOrDefault(name, Map.of()));
+	}
+
+	static boolean isAbyssPassage(Transport transport)
+	{
+		return transport != null && transport.getType() == TransportType.TRANSPORT
+			&& transport.getOrigin() != null && transport.getDestination() != null
+			&& !transport.isConsumable() && transport.getItemIdRequirements().isEmpty()
+			&& transport.getCurrencyAmount() == 0 && transport.getQuests().isEmpty()
+			&& transport.getVarbits().isEmpty() && transport.getVarplayers().isEmpty()
+			&& java.util.Arrays.stream(transport.getSkillLevels()).allMatch(level -> level == 0)
+			&& ABYSS_PASSAGE_ROUTES.contains(routeKey(transport,
+				normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
 	}
 
 	static boolean isRunecraftingExitPortal(Transport transport)

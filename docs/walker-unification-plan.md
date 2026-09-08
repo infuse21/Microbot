@@ -21,6 +21,23 @@ headless batches, outstanding branches of representative live passes, and contra
 implementation. As of 2026-09-06 the user requests headless-first progress; deferred physical tests
 remain open rather than blocking each batch or being silently marked complete.
 
+## Abyss guaranteed passages - 2026-09-08
+
+All 12 exact `Go-through;Passage;26250` outer-Abyss configurations now use the catalogue/
+NavigationEngine lifecycle. The frozen directed manifest preserves all 12 unique origins and their
+three packaged inner-ring landings; exact route identity is required because the same object ID can
+lead to different destinations. The policy also freezes the absence of item, currency, skill,
+quest, varbit and varplayer requirements rather than broadly admitting objects named Passage.
+
+OSRS Wiki MCP verification identifies Passage as guaranteed with no tool and documents exactly 12
+random outer-ring obstacle configurations. Runtime resolution nevertheless requires object 26250
+at the selected origin, and only the selected directed landing clears the pending interaction;
+another Passage landing cannot acknowledge it. Focused policy, scanner and classifier checks plus
+both Checkstyle tasks pass. The integrated walker regression passed **817** tests with zero failures,
+errors or skips. The classifier floor is now **1,082 legacy entries**, including **699** ordinary
+`TRANSPORT` entries. Physical verification remains deferred because the outer Abyss is aggressive
+multicombat territory, so this is headless-complete and Phase 6 remains open.
+
 ## Fairy Resistance Hideout sequence - 2026-09-08
 
 All 53 generated `AIR DLR DJQ AJS` fan-in rows now use the fairy-ring/NavigationEngine lifecycle.

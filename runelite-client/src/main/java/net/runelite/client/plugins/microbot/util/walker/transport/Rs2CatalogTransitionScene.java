@@ -116,6 +116,7 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 				|| CatalogTransitionPolicy.isMeiyerditchPreparedFloor(transport)
 				|| CatalogTransitionPolicy.isMeiyerditchTunnel(transport)
 				|| CatalogTransitionPolicy.isMeiyerditchPostQuestAccess(transport)
+				|| CatalogTransitionPolicy.isAbyssPassage(transport)
 				|| CatalogTransitionPolicy.isRunecraftingExitPortal(transport)
 				|| CatalogTransitionPolicy.isEnakhraSecretEntrance(transport)
 				|| CatalogTransitionPolicy.isSwanSongHole(transport)
