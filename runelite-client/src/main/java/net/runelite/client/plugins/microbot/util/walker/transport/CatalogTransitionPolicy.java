@@ -123,6 +123,24 @@ public final class CatalogTransitionPolicy
 		6898, Quest.THE_LOST_TRIBE,
 		6899, Quest.THE_LOST_TRIBE,
 		6912, Quest.THE_LOST_TRIBE);
+	private static final Set<String> HAUNTED_MINE_CART_TUNNEL_ROUTES = Set.of(
+		"3441,3232,0->3436,9637,0|4913|crawldown|cart tunnel",
+		"3436,9637,0->3441,3232,0|4920|crawlthrough|cart tunnel",
+		"3435,9635,0->2800,4429,0|29332|crawlthrough|cart tunnel",
+		"2800,4429,0->3435,9635,0|29333|crawlthrough|cart tunnel",
+		"3405,9631,0->3429,3233,0|4921|crawlthrough|cart tunnel",
+		"3429,3233,0->3405,9631,0|4914|crawldown|cart tunnel",
+		"3428,3225,0->3409,9623,0|4915|crawldown|cart tunnel",
+		"3409,9623,0->3428,3225,0|15830|crawlthrough|cart tunnel");
+	private static final Map<Integer, Quest> HAUNTED_MINE_CART_TUNNEL_QUESTS = Map.of(
+		4913, Quest.PRIEST_IN_PERIL,
+		4920, Quest.PRIEST_IN_PERIL,
+		4914, Quest.PRIEST_IN_PERIL,
+		4921, Quest.PRIEST_IN_PERIL,
+		4915, Quest.PRIEST_IN_PERIL,
+		15830, Quest.PRIEST_IN_PERIL,
+		29332, Quest.HAUNTED_MINE,
+		29333, Quest.HAUNTED_MINE);
 	private static final Set<String> SWAN_SONG_HOLE_ROUTES = Set.of(
 		"2344,3650,0->2344,3655,0|12656|enter|hole",
 		"2344,3655,0->2344,3650,0|12656|enter|hole");
@@ -303,6 +321,18 @@ public final class CatalogTransitionPolicy
 		"3318,9602,0->2748,5374,0|6919|open|door",
 		"3317,9602,0->2747,5374,0|6919|open|door",
 		"3317,9603,0->2748,5374,0|6919|open|door");
+	private static final Set<String> AUDITED_ACCESS_DOOR_ROUTE_KEYS = Set.of(
+		"2657,3438,0->2659,3437,0|11665|open|guild door",
+		"2658,3439,0->2659,3437,0|11665|open|guild door",
+		"2658,3437,0->2657,3439,0|11665|open|guild door",
+		"2659,3438,0->2657,3439,0|11665|open|guild door",
+		"2748,5374,0->3317,9603,0|22945|open|bone door",
+		"2747,5374,0->3317,9603,0|22945|open|bone door",
+		"1802,9958,0->1802,9956,0|34843|open|temple door",
+		"1802,9956,0->1802,9958,0|34843|open|temple door");
+	private static final Set<String> FORTIS_COLOSSEUM_ENTRANCE_ROUTE_KEYS = Set.of(
+		"1795,3107,0->1799,9506,0|50749|enter|colosseum entrance",
+		"1795,3106,0->1799,9506,0|50749|enter|colosseum entrance");
 	private static final Set<String> SHADOW_LADDER_ROUTE_KEYS = Set.of(
 		"2547,3422,0->2630,5071,0|6560|climbdown|ladder",
 		"2546,3421,0->2630,5071,0|6560|climbdown|ladder",
@@ -860,12 +890,15 @@ public final class CatalogTransitionPolicy
 		String action = normalizeDirectAction(transport.getAction());
 		String name = normalize(transport.getName());
 		return isAuditedDirectDoor(transport)
+			|| isAuditedAccessDoor(transport)
+			|| isFortisColosseumEntrance(transport)
 			|| isAbyssExitRift(transport)
 			|| isAbyssPassage(transport)
 			|| isRunecraftingExitPortal(transport)
 			|| isEnakhraSecretEntrance(transport)
 			|| isEnakhraMagicBarrier(transport)
 			|| isCompletedQuestTunnel(transport)
+			|| isHauntedMineCartTunnel(transport)
 			|| isSwanSongHole(transport)
 			|| isMolchLizardTempleTransition(transport)
 			|| isMeiyerditchFloor(transport)
@@ -1506,6 +1539,24 @@ public final class CatalogTransitionPolicy
 				normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
 	}
 
+	static boolean isHauntedMineCartTunnel(Transport transport)
+	{
+		if (transport == null || transport.getType() != TransportType.TRANSPORT
+			|| transport.getOrigin() == null || transport.getDestination() == null
+			|| !transport.isMembers() || transport.isConsumable()
+			|| !transport.getItemIdRequirements().isEmpty() || transport.getCurrencyAmount() != 0
+			|| !transport.getVarbits().isEmpty() || !transport.getVarplayers().isEmpty()
+			|| java.util.Arrays.stream(transport.getSkillLevels()).anyMatch(level -> level != 0))
+		{
+			return false;
+		}
+		Quest quest = HAUNTED_MINE_CART_TUNNEL_QUESTS.get(transport.getObjectId());
+		return quest != null
+			&& transport.getQuests().equals(Map.of(quest, QuestState.FINISHED))
+			&& HAUNTED_MINE_CART_TUNNEL_ROUTES.contains(routeKey(transport,
+				normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
+	}
+
 	static boolean isSwanSongHole(Transport transport)
 	{
 		return transport != null && transport.getType() == TransportType.TRANSPORT
@@ -1856,6 +1907,64 @@ public final class CatalogTransitionPolicy
 		}
 		return transport.getObjectId() != 6919 || transport.getQuests().equals(
 			Map.of(Quest.DEATH_TO_THE_DORGESHUUN, QuestState.FINISHED));
+	}
+
+	static boolean isAuditedAccessDoor(Transport transport)
+	{
+		if (transport == null || transport.getOrigin() == null || transport.getDestination() == null
+			|| transport.getType() != TransportType.TRANSPORT || transport.isConsumable()
+			|| transport.getCurrencyAmount() != 0 || !transport.getItemIdRequirements().isEmpty()
+			|| !transport.getVarplayers().isEmpty() || !AUDITED_ACCESS_DOOR_ROUTE_KEYS.contains(
+				routeKey(transport, normalizeDirectAction(transport.getAction()),
+					normalize(transport.getName()))))
+		{
+			return false;
+		}
+		switch (transport.getObjectId())
+		{
+			case 11665:
+				int ranged = transport.getSkillLevels()[net.runelite.api.Skill.RANGED.ordinal()];
+				return transport.isMembers() && transport.getDuration() == 1
+					&& transport.getQuests().isEmpty() && transport.getVarbits().isEmpty()
+					&& ranged == (transport.getDestination().getY() == 3439 ? 40 : 0)
+					&& java.util.Arrays.stream(transport.getSkillLevels()).sum() == ranged;
+			case 22945:
+				return transport.isMembers() && transport.getDuration() == 1
+					&& transport.getQuests().equals(
+						Map.of(Quest.DEATH_TO_THE_DORGESHUUN, QuestState.FINISHED))
+					&& transport.getVarbits().isEmpty()
+					&& java.util.Arrays.stream(transport.getSkillLevels()).allMatch(level -> level == 0);
+			case 34843:
+				if (!transport.isMembers() || transport.getDuration() != 2
+					|| !transport.getQuests().isEmpty() || transport.getVarbits().size() != 1
+					|| java.util.Arrays.stream(transport.getSkillLevels()).anyMatch(level -> level != 0))
+				{
+					return false;
+				}
+				TransportVarbit gate = transport.getVarbits().iterator().next();
+				return gate.getVarbitId() == 8397 && gate.getValue() == 1
+					&& gate.getOperator() == TransportVarbit.Operator.EQUAL;
+			default:
+				return false;
+		}
+	}
+
+	static boolean isAuditedAccessDoorObject(int objectId)
+	{
+		return objectId == 11665 || objectId == 22945 || objectId == 34843 || objectId == 50749;
+	}
+
+	private static boolean isFortisColosseumEntrance(Transport transport)
+	{
+		return transport != null && transport.getOrigin() != null && transport.getDestination() != null
+			&& transport.getType() == TransportType.TRANSPORT && transport.isMembers()
+			&& !transport.isConsumable() && transport.getCurrencyAmount() == 0
+			&& transport.getDuration() == 8 && transport.getItemIdRequirements().isEmpty()
+			&& transport.getQuests().equals(Map.of(Quest.CHILDREN_OF_THE_SUN, QuestState.FINISHED))
+			&& transport.getVarbits().isEmpty() && transport.getVarplayers().isEmpty()
+			&& java.util.Arrays.stream(transport.getSkillLevels()).allMatch(level -> level == 0)
+			&& FORTIS_COLOSSEUM_ENTRANCE_ROUTE_KEYS.contains(routeKey(transport,
+				normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
 	}
 
 	public static boolean supportsClosedVariant(String action)

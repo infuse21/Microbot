@@ -21,6 +21,17 @@ additive totals; source rows, generated edges and duplicated approaches must not
 
 ## Latest work versus earlier headless batches
 
+### Access doors, cart tunnels and hazard-route pruning - 2026-09-08
+
+- **Headless:** eight access doors, eight Haunted Mine cart tunnels and two Fortis Colosseum lobby
+  entrances are exact engine-owned transitions with their members, skill, quest and unlock gates.
+  Ten unsafe door/state rows and eight light/fire-hazard cave tunnels are runtime-disabled with
+  Wiki/cache MCP evidence and exact source-shape tests.
+- **Live pending:** traverse each migrated family, including Ranging Guild entry/exit, the Dorgesh
+  and Forthos doors, each Haunted Mine entrance family and a Colosseum lobby entrance. Verify exact
+  landing and no legacy handoff. Disabled state/hazard rows are pending implementation, not live
+  coverage. Current classifier floor: 268 ordinary plus 23 item rows, 291 total.
+
 ### Weiss post-quest routes, guide NPCs and stale portal duplicates - 2026-09-08
 
 - **Headless:** seven safe post-quest Weiss routes and ten deterministic Dorgesh/Elkoy/Auburn guide

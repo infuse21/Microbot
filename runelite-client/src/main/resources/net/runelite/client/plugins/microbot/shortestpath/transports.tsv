@@ -3421,10 +3421,11 @@
 3326 2858 0	3319 2796 0	Enter;Rock;6621				Icthlarin's Little Helper=FINISHED			yes
 											
 # Pyramid											
-3233 2900 0	3233 2898 0	Open;Pyramid entrance;6545									
-3232 2900 0	3232 2898 0	Open;Pyramid entrance;6547									
-3233 2898 0	3233 2900 0	Open;Pyramid entrance;6545									
-3232 2898 0	3232 2900 0	Open;Pyramid entrance;6547									
+# Unsupported: these Pyramid entrance variants are quest-time Desert Treasure state, not permanent post-quest doors.
+# 3233 2900 0	3233 2898 0	Open;Pyramid entrance;6545
+# 3232 2900 0	3232 2898 0	Open;Pyramid entrance;6547
+# 3233 2898 0	3233 2900 0	Open;Pyramid entrance;6545
+# 3232 2898 0	3232 2900 0	Open;Pyramid entrance;6547
 3232 2897 0	2913 4954 3	Climb-down;Ladder;6497								2	
 2913 4954 3	3233 2898 0	Climb-up;Ladder;6504								2	
 3233 2898 0	2913 4954 3	Climb-down;Ladder;6497								2	
@@ -3442,10 +3443,11 @@
 2909 4963 3	2846 4964 2	Climb-down;Ladder;6498								2	
 2844 4964 2	2909 4965 3	Climb-up;Ladder;6503								2	
 3233 2887 0	3233 9313 0	Enter;Tunnel;6481				Desert Treasure I=FINISHED			Y	1
-3233 9323 0	3233 9325 0	Open;Doorway;6555									
-3233 9325 0	3233 9323 0	Open;Doorway;6555									
-3234 9323 0	3234 9325 0	Open;Doorway;6553									
-3234 9325 0	3234 9323 0	Open;Doorway;6553									
+# Unsupported: 6553/6555 are open-state doorway variants and do not expose the encoded Open action.
+# 3233 9323 0	3233 9325 0	Open;Doorway;6555
+# 3233 9325 0	3233 9323 0	Open;Doorway;6555
+# 3234 9323 0	3234 9325 0	Open;Doorway;6553
+# 3234 9325 0	3234 9323 0	Open;Doorway;6553
 3233 9293 0	2783 4941 1	Climb-up;Ladder;6501								2	
 2783 4941 1	3233 9293 0	Climb-down;Ladder;6500								2	
 3232 9294 0	2783 4941 1	Climb-up;Ladder;6501								2	
@@ -3480,9 +3482,10 @@
 3229 3108 0	3483 9510 2	Climb-down;Tunnel entrance;3827					4586=1
 3484 9510 2	3226 3108 0	Climb-up;Rope;3829									
 3483 9509 2	3226 3108 0	Climb-up;Rope;3829									
-3514 9521 2	2711 5206 0	Enter;Tunnel;23596									
+# Unsupported: the Dorgesh-Kaan tunnel requires completed access and safe light-source state; otherwise the destination inflicts insect damage.
+# 3514 9521 2	2711 5206 0	Enter;Tunnel;23596
 2711 5206 0	3514 9521 2	Enter;Blocked tunnel;22656									
-3514 9520 2	2711 5206 0	Enter;Tunnel;23596									
+# 3514 9520 2	2711 5206 0	Enter;Tunnel;23596
 2711 5207 0	3514 9520 2	Enter;Blocked tunnel;22657									
 3508 9498 2	3508 9493 0	Climb-down;Tunnel entrance;23609		954			11705=0					T
 3508 9498 2	3508 9493 0	Climb-down;Tunnel entrance;23609					11705>0
@@ -3613,8 +3616,9 @@
 # Harmony Island											
 3794 2844 0	3785 9254 0	Climb-down;Statue;22355									
 3785 9254 0	3796 2843 0	Climb;Ladder;22371								2	
-3804 2844 0	3806 2844 0	Open;Door;22119					3393>4			1
-3806 2844 0	3804 2844 0	Open;Door;22119					3393>4			1
+# Unsupported: Harmony Island door state depends on quest gas, instance and object transforms not represented by varbit 3393 alone.
+# 3804 2844 0	3806 2844 0	Open;Door;22119					3393>4			1
+# 3806 2844 0	3804 2844 0	Open;Door;22119					3393>4			1
 3816 2847 0	3817 2847 0	Open;Door;22007								1	
 3817 2847 0	3816 2847 0	Open;Door;22007								1	
 3818 2853 1	3818 2851 0	Climb-down;Ladder;22122								2	
@@ -3681,10 +3685,10 @@
 # Haunted Mine											
 3446 3236 0	3444 3236 0	Climb-over;Mine cart;4918									
 3444 3236 0	3446 3236 0	Climb-over;Mine cart;4918									
-3441 3232 0	3436 9637 0	Crawl-down;Cart tunnel;4913									
-3436 9637 0	3441 3232 0	Crawl-through;Cart tunnel;4920									
-3435 9635 0	2800 4429 0	Crawl-through;Cart tunnel;29332									
-2800 4429 0	3435 9635 0	Crawl-through;Cart tunnel;29333									
+3441 3232 0	3436 9637 0	Crawl-down;Cart tunnel;4913				Priest in Peril=FINISHED			Y	1
+3436 9637 0	3441 3232 0	Crawl-through;Cart tunnel;4920				Priest in Peril=FINISHED			Y	1
+3435 9635 0	2800 4429 0	Crawl-through;Cart tunnel;29332				Haunted Mine=FINISHED			Y	1
+2800 4429 0	3435 9635 0	Crawl-through;Cart tunnel;29333				Haunted Mine=FINISHED			Y	1
 2758 4454 0	2691 4437 0	Walk-up;Stairs;4973									
 2712 4593 0	2691 4437 0	Walk-up;Stairs;4972									
 2712 4592 0	2691 4437 0	Walk-up;Stairs;4972									
@@ -3740,10 +3744,10 @@
 3413 9632 0	2773 4576 0	Climb-down;Ladder;4965								2	
 2772 4577 0	3412 9633 0	Climb-up;Ladder;4966								2	
 3412 9633 0	2772 4577 0	Climb-down;Ladder;4965								2	
-3405 9631 0	3429 3233 0	Crawl-through;Cart tunnel;4921									
-3429 3233 0	3405 9631 0	Crawl-down;Cart tunnel;4914									
-3428 3225 0	3409 9623 0	Crawl-down;Cart tunnel;4915									
-3409 9623 0	3428 3225 0	Crawl-through;Cart tunnel;15830									
+3405 9631 0	3429 3233 0	Crawl-through;Cart tunnel;4921				Priest in Peril=FINISHED			Y	1
+3429 3233 0	3405 9631 0	Crawl-down;Cart tunnel;4914				Priest in Peril=FINISHED			Y	1
+3428 3225 0	3409 9623 0	Crawl-down;Cart tunnel;4915				Priest in Peril=FINISHED			Y	1
+3409 9623 0	3428 3225 0	Crawl-through;Cart tunnel;15830				Priest in Peril=FINISHED			Y	1
 3423 9625 0	2783 4569 0	Climb-down;Ladder;4965								2	
 2783 4569 0	3423 9625 0	Climb-up;Ladder;4966								2	
 3422 9624 0	2782 4568 0	Climb-down;Ladder;4965								2	
@@ -4554,10 +4558,10 @@
 2642 3429 1	2642 3429 0	Climb-down;Ladder;16679								2	
 2641 3428 0	2641 3428 1	Climb-up;Ladder;16683								2	
 2641 3428 1	2641 3428 0	Climb-down;Ladder;16679								2	
-2657 3438 0	2659 3437 0	Open;Guild door;11665									
-2658 3439 0	2659 3437 0	Open;Guild door;11665									
-2658 3437 0	2657 3439 0	Open;Guild door;11665	40 Ranged
-2659 3438 0	2657 3439 0	Open;Guild door;11665	40 Ranged
+2657 3438 0	2659 3437 0	Open;Guild door;11665							Y	1
+2658 3439 0	2659 3437 0	Open;Guild door;11665							Y	1
+2658 3437 0	2657 3439 0	Open;Guild door;11665	40 Ranged						Y	1
+2659 3438 0	2657 3439 0	Open;Guild door;11665	40 Ranged						Y	1
 2668 3429 0	2668 3429 2	Climb-up;Tower ladder;11661									
 2667 3428 0	2668 3429 2	Climb-up;Tower ladder;11661									
 2668 3427 0	2668 3429 2	Climb-up;Tower ladder;11661									
@@ -4731,10 +4735,11 @@
 3221 9618 0	3219 9618 0	Squeeze-through;Hole;6899				The Lost Tribe=FINISHED			Y	1
 3224 9604 0	3224 9600 0	Squeeze-through;Hole;6912				The Lost Tribe=FINISHED			Y	1
 3224 9600 0	3224 9604 0	Squeeze-through;Hole;6912				The Lost Tribe=FINISHED			Y	1
-3226 9542 0	3219 9532 2	Enter;Tunnel;6659									
-3219 9532 2	3226 9542 0	Enter;Tunnel;6658									
+# Unsupported: Tears-cave tunnels omit members and safe light-source/fire state; duplicate approaches also disagree on duration.
+# 3226 9542 0	3219 9532 2	Enter;Tunnel;6659
+# 3219 9532 2	3226 9542 0	Enter;Tunnel;6658
 3317 9603 0	2748 5374 0	Open;Door;6919				Death to the Dorgeshuun					
-2748 5374 0	3317 9603 0	Open;Bone door;22945									
+2748 5374 0	3317 9603 0	Open;Bone door;22945				Death to the Dorgeshuun=FINISHED			Y	1
 											
 # Mountain camp											
 2761 3657 0	2761 3660 0	Climb-over;Rockslide;5847									
@@ -4897,7 +4902,7 @@
 1427 2933 0	1425 2933 0	Pass-through;Entryway;54707								4	
 											
 # Fortis Colosseum											
-1795 3107 0	1799 9506 0	Enter;Colosseum entrance;50749								8	
+1795 3107 0	1799 9506 0	Enter;Colosseum entrance;50749				Children of the Sun=FINISHED			Y	8
 1799 9506 0	1795 3107 0	Exit;Stairs;50750								8	
 											
 # Hunter Guild											
@@ -5340,10 +5345,10 @@
 3170 3172 0	3170 9572 0	Climb-down;Dark hole;5947								2	
 3170 9572 0	3170 3172 0	Climb;Climbing rope;5946							Y	2
 3169 3173 0	3167 9573 0	Climb-down;Dark hole;5947								2	
-3225 9542 0	3219 9532 2	Enter;Tunnel;6659								2	
-3227 9542 0	3219 9532 2	Enter;Tunnel;6659								2	
-3218 9532 2	3226 9542 0	Enter;Tunnel;6658								2	
-3220 9532 2	3226 9542 0	Enter;Tunnel;6658								2	
+# 3225 9542 0	3219 9532 2	Enter;Tunnel;6659								2
+# 3227 9542 0	3219 9532 2	Enter;Tunnel;6659								2
+# 3218 9532 2	3226 9542 0	Enter;Tunnel;6658								2
+# 3220 9532 2	3226 9542 0	Enter;Tunnel;6658								2
 3239 9525 2	3241 9525 2	Climb;Rocks;6673								4	
 3241 9525 2	3239 9525 2	Climb;Rocks;6673								4	
 3239 9524 2	3241 9524 2	Climb;Rocks;6673								4	
@@ -5488,7 +5493,7 @@
 2721 5358 0	2720 5361 1	Climb-up;Stairs;22939								1	
 2720 5361 1	2720 5358 0	Climb-down;Stairs;22940								1	
 2721 5361 1	2720 5358 0	Climb-down;Stairs;22940								1	
-2747 5374 0	3317 9603 0	Open;Bone door;22945								1	
+2747 5374 0	3317 9603 0	Open;Bone door;22945				Death to the Dorgeshuun=FINISHED			Y	1
 3317 9602 0	2747 5374 0	Open;Door;6919				Death to the Dorgeshuun				1	
 3318 9602 0	2748 5374 0	Open;Door;6919				Death to the Dorgeshuun				1	
 2736 5352 0	2733 5351 1	Climb-up;Stairs;22931								1	
@@ -5590,7 +5595,7 @@
 2865 3938 0	2866 3938 0	Squeeze-through;Broken fence;46817					6528>199				
 2866 3938 0	2865 3938 0	Squeeze-through;Broken fence;46817					6528>199				
 2895 3672 0	2893 10074 2	Enter;Cave Entrance;3759								1	
-1795 3106 0	1799 9506 0	Enter;Colosseum entrance;50749									
+1795 3106 0	1799 9506 0	Enter;Colosseum entrance;50749				Children of the Sun=FINISHED			Y	8
 1799 9506 0	1795 3106 0	Exit;Stairs;50750									
 1799 9507 0	1795 3106 0	Exit;Stairs;50750									
 2304 3194 0	2306 3194 0	Pass;Tree;8742						517>1		5	
@@ -5683,8 +5688,8 @@
 1670 3566 0	1800 9968 0	Climb-down;Staircase;34865								1	
 1824 9973 0	1825 9973 0	Open;Temple Door;34843								2	
 1825 9973 0	1824 9973 0	Open;Temple Door;34843					8398=1			2	
-1802 9958 0	1802 9956 0	Open;Temple Door;34843					8397=1			2	
-1802 9956 0	1802 9958 0	Open;Temple Door;34843					8397=1			2	
+1802 9958 0	1802 9956 0	Open;Temple Door;34843					8397=1		Y	2
+1802 9956 0	1802 9958 0	Open;Temple Door;34843					8397=1		Y	2
 1803 9968 0	1726 9994 0	Enter;Strange passage;28918					5087=1		yes	1
 1803 9967 0	1726 9994 0	Enter;Strange passage;28918					5087=1		yes	1
 1470 3652 0	1650 9987 0	Enter;Hole;28915					5088=1			2	

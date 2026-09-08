@@ -21,6 +21,22 @@ headless batches, outstanding branches of representative live passes, and contra
 implementation. As of 2026-09-06 the user requests headless-first progress; deferred physical tests
 remain open rather than blocking each batch or being silently marked complete.
 
+## Access doors, cart tunnels and hazard-route pruning - 2026-09-08
+
+Eighteen exact direct boundaries now use catalogue/NavigationEngine ownership. Four Ranging Guild
+doors preserve the members and 40-Ranged entry contract, two Dorgesh-Kaan bone doors require
+`Death to the Dorgeshuun=FINISHED`, and two western Forthos temple doors preserve unlock varbit
+8397. Eight Haunted Mine cart-tunnel rows are split between completed Priest in Peril access and
+the completed-Haunted-Mine crystal shortcut. Both Fortis Colosseum entrances require members,
+`Children of the Sun=FINISHED`, and complete only at the underground lobby landing.
+
+Eighteen unsafe rows are now source-only: Harmony Island gas/state doors, quest-time Ancient
+Pyramid doors, mismatched open-state Pyramid doorways, and eight cave tunnels whose routes omit
+light-source, insect-damage or fire-state safety. Wiki and cache MCP evidence pins the identities,
+requirements and exclusions; focused source, policy, classification and exact-landing tests cover
+the batch. The classifier floor is now **291 legacy entries**: 268 ordinary `TRANSPORT` and 23
+`TELEPORTATION_ITEM` entries. Physical traversal remains pending.
+
 ## Weiss post-quest routes, guide NPCs and stale portal duplicates - 2026-09-08
 
 Seven completed-Making Friends with My Arm Weiss routes now use exact catalogue/NavigationEngine
