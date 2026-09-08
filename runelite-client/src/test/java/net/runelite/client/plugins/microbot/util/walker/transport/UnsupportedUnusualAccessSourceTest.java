@@ -30,8 +30,6 @@ public class UnsupportedUnusualAccessSourceTest
 		entry("3105 9306 2>3105 9308 2:Climb-over;Pile of rubble;33342", "|0"),
 		entry("3104 9308 2>3104 9306 2:Climb-over;Pile of bones;18342", "|0"),
 		entry("3104 9306 2>3104 9308 2:Climb-over;Pile of bones;18342", "|0"),
-		entry("2912 5300 2>2914 5300 1:Climb-down;Rock;26561", "|0"),
-		entry("2920 5276 1>2920 5274 0:Climb-down;Rock;26562", "|0"),
 		entry("2477 9437 2>2485 3045 0:Climb-up;Stairs;6842", "|0"),
 		entry("2442 9417 0>2446 9417 2:Climb-over;Stairs;6842", "|0"),
 		entry("2477 9438 2>2485 3045 0:Climb-up;Stairs;6842", "|7"),
@@ -40,7 +38,7 @@ public class UnsupportedUnusualAccessSourceTest
 		entry("3050 4829 0>1816 3856 0:Exit-through;Soul rift;25382", "|0"));
 
 	@Test
-	public void allEighteenUnsafeRowsAreDisabledAndPreserveSourceShape()
+	public void allSixteenUnsafeRowsAreDisabledAndPreserveSourceShape()
 		throws IOException
 	{
 		assertFalse(Transport.loadAllFromResources().values().stream()

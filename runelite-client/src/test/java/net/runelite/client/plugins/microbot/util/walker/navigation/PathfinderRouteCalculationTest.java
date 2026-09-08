@@ -76,6 +76,20 @@ public class PathfinderRouteCalculationTest
 	}
 
 	@Test
+	public void everyDraynorUnderwallTunnelLaneIsEngineOwned()
+	{
+		java.util.List<Transport> rows = Transport.loadAllFromResources().values().stream()
+			.flatMap(java.util.Collection::stream)
+			.filter(row -> row.getObjectId() == 19032 || row.getObjectId() == 19036)
+			.collect(java.util.stream.Collectors.toList());
+
+		assertEquals(8, rows.size());
+		assertTrue(rows.stream().allMatch(row ->
+			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(row))
+				== RouteEdge.Kind.CATALOG_TRANSITION));
+	}
+
+	@Test
 	public void everyShantayPassGateRowIsEngineOwned()
 	{
 		java.util.List<Transport> rows = Transport.loadAllFromResources().values().stream()
@@ -90,7 +104,7 @@ public class PathfinderRouteCalculationTest
 	}
 
 	@Test
-	public void auditedItemBatchPublishesOneHundredFourRowsAndDefersTwentyThree()
+	public void auditedItemBatchPublishesAllOneHundredTwentySevenRows()
 	{
 		int candidates = 0;
 		int migrated = 0;
@@ -115,19 +129,13 @@ public class PathfinderRouteCalculationTest
 					continue;
 				}
 				candidates++;
-				boolean deferred = (family.equals("max cape")
-					&& !row.getDisplayInfo().equals("Max cape: Crafting Guild")) || family.equals("camulet")
-					|| row.getDisplayInfo().equals("Hunter cape: Black chinchompa");
-				assertEquals(deferred ? RouteEdge.Kind.TRANSPORT : RouteEdge.Kind.ITEM_TELEPORT, kind);
-				if (!deferred)
-				{
-					migrated++;
-				}
+				assertEquals(RouteEdge.Kind.ITEM_TELEPORT, kind);
+				migrated++;
 			}
 		}
 		assertEquals(127, candidates);
-		assertEquals(104, migrated);
-		assertEquals(65, legacy);
+		assertEquals(127, migrated);
+		assertEquals(0, legacy);
 	}
 
 	@Test
@@ -623,7 +631,7 @@ public class PathfinderRouteCalculationTest
 		assertEquals(50, stiles.stream().filter(candidate ->
 			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(candidate))
 				== RouteEdge.Kind.CATALOG_TRANSITION).count());
-		assertEquals(42, ordinary.stream().filter(candidate ->
+		assertEquals(0, ordinary.stream().filter(candidate ->
 			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(candidate))
 				== RouteEdge.Kind.TRANSPORT).count());
 		java.util.Set<Integer> directManifestIds = new java.util.HashSet<>(java.util.Arrays.asList(
@@ -637,7 +645,7 @@ public class PathfinderRouteCalculationTest
 			.filter(candidate -> candidate.getVarbits().isEmpty())
 			.filter(candidate -> candidate.getVarplayers().isEmpty())
 			.collect(java.util.stream.Collectors.toList());
-		assertEquals(30, directManifestRows.size());
+		assertEquals(26, directManifestRows.size());
 		assertTrue(directManifestRows.stream().allMatch(candidate ->
 			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(candidate))
 				== RouteEdge.Kind.CATALOG_TRANSITION));

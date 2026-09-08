@@ -18,6 +18,7 @@ import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public class IsafdarTransportTest
 {
@@ -80,10 +81,12 @@ public class IsafdarTransportTest
 	}
 
 	@Test
-	public void leafPitsRemainDeferredUntilClimbOutRecoveryExists()
+	public void leafPitsUseGuardedHazardOwnership()
 	{
 		List<Transport> leaves = Transport.loadAllFromResources().values().stream().flatMap(Collection::stream)
 			.filter(row -> row.getObjectId() == 3925).collect(Collectors.toList());
-		assertEquals(0, leaves.size());
+		assertEquals(4, leaves.size());
+		assertTrue(leaves.stream().allMatch(CatalogTransitionPolicy::isAuditedHazardTransition));
+		assertTrue(leaves.stream().allMatch(CatalogTransitionPolicy::isEligible));
 	}
 }

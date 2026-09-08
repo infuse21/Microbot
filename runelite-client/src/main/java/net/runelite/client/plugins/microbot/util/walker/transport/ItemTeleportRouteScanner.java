@@ -42,6 +42,21 @@ public final class ItemTeleportRouteScanner
 		if (player != null && player.getPlane() == pending.getCrossingTo().getPlane()
 			&& player.distanceTo2D(pending.getCrossingTo()) <= 3)
 		{
+			if (requiresRestoration(pending.getAction()))
+			{
+				ItemTeleport restore = scene.restore(new PlannedEdge(pending.getFrom(), pending.getTo()),
+					pending.getAction());
+				if (restore == null)
+				{
+					return pending.withStatus(RouteInteraction.Status.AVAILABLE, true);
+				}
+				if (restore.command().startsWith("item-restored:"))
+				{
+					return pending.withStatus(RouteInteraction.Status.CLEARED, false);
+				}
+				return interaction(pending.getGeneration(), new RouteEdge(pending.getRawEdgeIndex(),
+					pending.getFrom(), pending.getTo(), RouteEdge.Kind.ITEM_TELEPORT), restore);
+			}
 			return pending.withStatus(RouteInteraction.Status.CLEARED, false);
 		}
 		ItemTeleport item = scene.observe(new PlannedEdge(pending.getFrom(), pending.getTo()),
@@ -62,7 +77,14 @@ public final class ItemTeleportRouteScanner
 	private static boolean isTerminalAction(String action)
 	{
 		return action.startsWith("item-use:") || action.startsWith("book-select:")
-			|| action.startsWith("book-confirm:") || action.startsWith("wilderness-confirm:");
+			|| action.startsWith("book-confirm:") || action.startsWith("wilderness-confirm:")
+			|| requiresRestoration(action);
+	}
+
+	private static boolean requiresRestoration(String action)
+	{
+		return action.startsWith("item-use-restore:") || action.startsWith("item-restore-")
+			|| action.startsWith("wilderness-confirm-restore:");
 	}
 
 	private static RouteInteraction interaction(long generation, RouteEdge edge, ItemTeleport item)

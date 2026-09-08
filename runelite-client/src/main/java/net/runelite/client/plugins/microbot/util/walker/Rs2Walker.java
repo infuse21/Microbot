@@ -4213,7 +4213,9 @@ public class Rs2Walker {
             return false;
         }
 
-        Rs2Player.toggleRunEnergy(toggleRun);
+        if (!Rs2Player.toggleRunEnergy(toggleRun)) {
+            return false;
+        }
         NewMenuEntry entry = new NewMenuEntry()
                 .param0(canvasX)
                 .param1(canvasY)

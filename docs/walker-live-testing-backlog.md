@@ -21,6 +21,23 @@ additive totals; source rows, generated edges and duplicated approaches must not
 
 ## Latest work versus earlier headless batches
 
+### Active graph, instanced doors and large agility objects - 2026-09-08
+
+- **Headless:** all 6,015 currently loaded transports now classify into an explicit
+  NavigationEngine-owned family; no active edge remains generic `TRANSPORT`. This does not include
+  the 204 genuine disabled traversals that still need complete protocols.
+- **Live pending:** in a rebuilt client, repeat a GOTR/instanced layout where a closed ordinary door
+  precedes stairs and verify the door is issued first. Repeat the Draynor underwall route through
+  object `19032` from a northern approach and verify `Climb-into`, directed landing and continued
+  walking without a legacy marker.
+- **Regression context:** the earlier underwall trace had agility enabled and routed to
+  `(3065,3260,0)`, but its two-tile object search could not see the large object anchored three tiles
+  away. The new five-tile allowance applies only to agility transitions and retains exact catalog
+  identity checks.
+- **Not complete:** the active classification boundary is not Phase 6 closure. Disabled equipment,
+  safety, quest-state, payment, stochastic and staged interactions remain implementation work, and
+  all previously listed representative live gates remain deferred unless explicitly accepted.
+
 ### Steps, access routes and audited shortcut cleanup - 2026-09-08
 
 - **Headless:** exact Steps/climb obstacles, access doors/exits, quest gates and four Wiki-audited

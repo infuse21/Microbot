@@ -1320,6 +1320,9 @@ public class PathfinderConfig {
     private boolean useTransport(Transport transport) {
 		if (CatalogTransitionPolicy.isEquippedGrappleShortcut(transport)
 				&& !TransportRequirementPolicy.grappleEquipmentReady()) return false;
+		if (CatalogTransitionPolicy.isAuditedHazardTransition(transport)
+				&& transport.getObjectId() == 25274
+				&& !TransportRequirementPolicy.noFollower()) return false;
         if (!TransportRequirementPolicy.questVariantAvailable(transport)) {
             return false;
         }
@@ -1603,6 +1606,16 @@ public class PathfinderConfig {
 				&& CatalogTransitionPolicy.isAuditedMiscAccess(transport)) {
 			type = TransportType.AGILITY_SHORTCUT;
 		} else if (type == TransportType.TRANSPORT
+				&& (transport.getObjectId() == 20882 || transport.getObjectId() == 20884
+						|| transport.getObjectId() == 21738 || transport.getObjectId() == 21739)
+				&& CatalogTransitionPolicy.isAuditedWaterAndBalance(transport)) {
+			type = TransportType.AGILITY_SHORTCUT;
+		} else if (type == TransportType.TRANSPORT
+				&& (transport.getObjectId() == 2234 || transport.getObjectId() == 2236
+						|| transport.getObjectId() == 3922 || transport.getObjectId() == 3925)
+				&& CatalogTransitionPolicy.isAuditedHazardTransition(transport)) {
+			type = TransportType.AGILITY_SHORTCUT;
+		} else if (type == TransportType.TRANSPORT
 				&& ((MEIYERDITCH_FLOORBOARD_IDS.contains(transport.getObjectId())
 						&& "Floorboards".equalsIgnoreCase(transport.getName())
 						&& "Jump-to".equalsIgnoreCase(transport.getAction()))
@@ -1641,6 +1654,11 @@ public class PathfinderConfig {
 		} else if (type == TransportType.TRANSPORT && transport.getObjectId() == 29326
 				&& "Gap".equalsIgnoreCase(transport.getName())
 				&& "Jump".equalsIgnoreCase(transport.getAction())) {
+			type = TransportType.AGILITY_SHORTCUT;
+		} else if (type == TransportType.TRANSPORT
+				&& (transport.getObjectId() == 27257 || transport.getObjectId() == 27258)
+				&& "Tunnel".equalsIgnoreCase(transport.getName())
+				&& "Use".equalsIgnoreCase(transport.getAction())) {
 			type = TransportType.AGILITY_SHORTCUT;
 		} else if (type == TransportType.TRANSPORT
 				&& ((transport.getObjectId() == 3522

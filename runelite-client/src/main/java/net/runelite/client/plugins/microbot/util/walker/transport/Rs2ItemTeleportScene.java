@@ -30,6 +30,13 @@ public final class Rs2ItemTeleportScene implements ItemTeleportScene
 	private static final String BOOK_SELECT_PREFIX = "book-select:";
 	private static final String BOOK_CONFIRM_PREFIX = "book-confirm:";
 	private static final String WILDERNESS_CONFIRM_PREFIX = "wilderness-confirm:";
+	private static final String UNEQUIP_PREFIX = "item-prepare:unequip:";
+	private static final String ITEM_OPEN_RESTORE_PREFIX = "item-open-restore:";
+	private static final String ITEM_USE_RESTORE_PREFIX = "item-use-restore:";
+	private static final String WILDERNESS_CONFIRM_RESTORE_PREFIX = "wilderness-confirm-restore:";
+	private static final String RESTORE_OPEN_PREFIX = "item-restore-open:";
+	private static final String RESTORE_EQUIP_PREFIX = "item-restore-equip:";
+	private static final String RESTORED_PREFIX = "item-restored:";
 	private static final String QUETZAL_WHISTLE_DESTINATION_PREFIX = "whistle-destination:";
 	private static final String REVENANT_CONFIRM = "Yes, teleport me now";
 	private static final String BURNING_AMULET_CONFIRM = "Okay, teleport to level";
@@ -73,19 +80,34 @@ public final class Rs2ItemTeleportScene implements ItemTeleportScene
 			return new ItemTeleport(firstItemId(whistle), destinationName,
 				QUETZAL_WHISTLE_DESTINATION_PREFIX + destinationName);
 		}
-		if (pendingAction != null && pendingAction.startsWith("item-use:")
+		if (isItemUse(pendingAction)
 			&& transports.stream().anyMatch(ItemTeleportPolicy::isBurningAmulet)
 			&& Rs2Dialogue.hasDialogueOption(BURNING_AMULET_CONFIRM, false))
 		{
 			return new ItemTeleport(21166, BURNING_AMULET_CONFIRM,
 				WILDERNESS_CONFIRM_PREFIX + BURNING_AMULET_CONFIRM);
 		}
-		if (pendingAction != null && pendingAction.startsWith(WILDERNESS_CONFIRM_PREFIX))
+		Transport blackHunterArea = transports.stream().filter(ItemTeleportPolicy::isEligible)
+			.filter(ItemTeleportPolicy::isBlackHunterArea).findFirst().orElse(null);
+		if (isItemUse(pendingAction)
+			&& blackHunterArea != null
+			&& Rs2Dialogue.hasDialogueOption(BURNING_AMULET_CONFIRM, false))
+		{
+			boolean restore = pendingAction.startsWith(ITEM_USE_RESTORE_PREFIX);
+			return new ItemTeleport(firstItemId(blackHunterArea), BURNING_AMULET_CONFIRM,
+				restore ? WILDERNESS_CONFIRM_RESTORE_PREFIX
+					+ restorationId(pendingAction) : WILDERNESS_CONFIRM_PREFIX + BURNING_AMULET_CONFIRM);
+		}
+		if (pendingAction != null && (pendingAction.startsWith(WILDERNESS_CONFIRM_PREFIX)
+			|| pendingAction.startsWith(WILDERNESS_CONFIRM_RESTORE_PREFIX)))
 		{
 			return null;
 		}
 		return Microbot.getClientThread().runOnClientThreadOptional(() ->
 		{
+			boolean restoreAfterUse = pendingAction != null && (pendingAction.startsWith(UNEQUIP_PREFIX)
+				|| pendingAction.startsWith(ITEM_OPEN_RESTORE_PREFIX)
+				|| pendingAction.startsWith(ITEM_USE_RESTORE_PREFIX));
 			for (Transport transport : transports)
 			{
 				if (!ItemTeleportPolicy.isEligible(transport))
@@ -101,9 +123,16 @@ public final class Rs2ItemTeleportScene implements ItemTeleportScene
 					for (int id : group)
 					{
 						ItemTeleport item = observe(Rs2Inventory.get(id), transport, false);
+						if (item != null && restoreAfterUse)
+						{
+							item = withRestoration(item);
+						}
 						if (item == null)
 						{
-							item = observe(Rs2Equipment.get(id), transport, true);
+							Rs2ItemModel equipped = Rs2Equipment.get(id);
+							item = equipped != null && ItemTeleportPolicy.requiresInventorySurface(transport)
+								? new ItemTeleport(id, "Remove", UNEQUIP_PREFIX + id)
+								: observe(equipped, transport, true);
 						}
 						if (item != null)
 						{
@@ -113,6 +142,31 @@ public final class Rs2ItemTeleportScene implements ItemTeleportScene
 				}
 			}
 			return null;
+		}).orElse(null);
+	}
+
+	@Override
+	public ItemTeleport restore(PlannedEdge edge, String pendingAction)
+	{
+		int id = restorationId(pendingAction);
+		if (id <= 0 || !isExactInventoryPreparation(edge, id))
+		{
+			return null;
+		}
+		return Microbot.getClientThread().runOnClientThreadOptional(() ->
+		{
+			if (Rs2Equipment.get(id) != null)
+			{
+				return new ItemTeleport(id, "Wear", RESTORED_PREFIX + id);
+			}
+			Rs2ItemModel item = Rs2Inventory.get(id);
+			if (item == null || !hasExactAction(item.getInventoryActions(), item.getInventoryActions(),
+				item.getSubops(), "Wear"))
+			{
+				return null;
+			}
+			return new ItemTeleport(id, "Wear", inventoryReady()
+				? RESTORE_EQUIP_PREFIX + id : RESTORE_OPEN_PREFIX + id);
 		}).orElse(null);
 	}
 
@@ -203,6 +257,43 @@ public final class Rs2ItemTeleportScene implements ItemTeleportScene
 
 	public boolean dispatch(RouteInteraction interaction)
 	{
+		if (interaction.getAction().startsWith(ITEM_OPEN_RESTORE_PREFIX)
+			|| interaction.getAction().startsWith(RESTORE_OPEN_PREFIX))
+		{
+			return openInventory();
+		}
+		if (interaction.getAction().startsWith(ITEM_USE_RESTORE_PREFIX))
+		{
+			int id = restorationId(interaction.getAction());
+			String action = restorationAction(interaction.getAction());
+			return isExactInventoryPreparation(new PlannedEdge(interaction.getFrom(), interaction.getTo()), id)
+				&& Rs2Inventory.get(id) != null && Rs2Inventory.interact(id, action);
+		}
+		if (interaction.getAction().startsWith(RESTORE_EQUIP_PREFIX))
+		{
+			int id = restorationId(interaction.getAction());
+			return isExactInventoryPreparation(new PlannedEdge(interaction.getFrom(), interaction.getTo()), id)
+				&& Rs2Inventory.get(id) != null && Rs2Inventory.interact(id, "Wear");
+		}
+		if (interaction.getAction().startsWith(WILDERNESS_CONFIRM_RESTORE_PREFIX))
+		{
+			return Rs2Dialogue.clickOption(BURNING_AMULET_CONFIRM, false);
+		}
+		if (interaction.getAction().startsWith(UNEQUIP_PREFIX))
+		{
+			int id;
+			try
+			{
+				id = Integer.parseInt(interaction.getAction().substring(UNEQUIP_PREFIX.length()));
+			}
+		catch (NumberFormatException ex)
+		{
+			return false;
+		}
+		return isExactInventoryPreparation(new PlannedEdge(interaction.getFrom(), interaction.getTo()), id)
+			&& interaction.getObjectId() == id && Rs2Equipment.get(id) != null
+			&& Rs2Equipment.unEquip(id);
+		}
 		if (interaction.getAction().startsWith(QUETZAL_WHISTLE_DESTINATION_PREFIX))
 		{
 			String destinationName = interaction.getAction().substring(
@@ -251,6 +342,64 @@ public final class Rs2ItemTeleportScene implements ItemTeleportScene
 		Widget widget = Microbot.getClient().getWidget(ComponentID.INVENTORY_CONTAINER);
 		return Rs2Tab.isCurrentTab(InterfaceTab.INVENTORY) && widget != null && !widget.isHidden()
 			&& widget.getChildren() != null;
+	}
+
+	private static boolean openInventory()
+	{
+		return Microbot.getClientThread().runOnClientThreadOptional(() ->
+		{
+			Microbot.getClient().runScript(915, InterfaceTab.INVENTORY.getVarcIntIndex());
+			return true;
+		}).orElse(false);
+	}
+
+	private static ItemTeleport withRestoration(ItemTeleport item)
+	{
+		String prefix = item.isTabReady() ? ITEM_USE_RESTORE_PREFIX : ITEM_OPEN_RESTORE_PREFIX;
+		return new ItemTeleport(item.getItemId(), item.getAction(),
+			prefix + item.getItemId() + ":" + item.getAction());
+	}
+
+	private static boolean isItemUse(String action)
+	{
+		return action != null && (action.startsWith("item-use:")
+			|| action.startsWith(ITEM_USE_RESTORE_PREFIX));
+	}
+
+	private static int restorationId(String action)
+	{
+		if (action == null)
+		{
+			return -1;
+		}
+		for (String prefix : new String[] {ITEM_OPEN_RESTORE_PREFIX, ITEM_USE_RESTORE_PREFIX,
+			WILDERNESS_CONFIRM_RESTORE_PREFIX, RESTORE_OPEN_PREFIX, RESTORE_EQUIP_PREFIX, RESTORED_PREFIX})
+		{
+			if (action.startsWith(prefix))
+			{
+				String value = action.substring(prefix.length()).split(":", 2)[0];
+				try
+				{
+					return Integer.parseInt(value);
+				}
+				catch (NumberFormatException ignored)
+				{
+					return -1;
+				}
+			}
+		}
+		return -1;
+	}
+
+	private static String restorationAction(String command)
+	{
+		String[] values = command.substring(ITEM_USE_RESTORE_PREFIX.length()).split(":", 2);
+		return values.length == 2 ? values[1] : "";
+	}
+
+	private static boolean isExactInventoryPreparation(PlannedEdge edge, int id)
+	{
+		return edge != null && ItemTeleportPolicy.isInventoryRestorationTarget(id, edge.to());
 	}
 
 	private static boolean visible(Widget widget)

@@ -19,7 +19,7 @@ public class UnsafeAccessGateSourceTest
 {
 	private static final String TRANSPORT_RESOURCE =
 		"/net/runelite/client/plugins/microbot/shortestpath/transports.tsv";
-	private static final Set<Integer> UNSAFE_OBJECT_IDS = Set.of(23104, 26415);
+	private static final Set<Integer> UNSAFE_OBJECT_IDS = Set.of(23104);
 
 	@Test
 	public void rowsWithoutRequiredAccessGatesAreNotLoaded()
@@ -30,7 +30,7 @@ public class UnsafeAccessGateSourceTest
 	}
 
 	@Test
-	public void allTenRowsRemainAsExactSourceEvidence()
+	public void allFiveRowsRemainAsExactSourceEvidence()
 		throws IOException
 	{
 		Set<String> expected = Set.of(
@@ -38,20 +38,14 @@ public class UnsafeAccessGateSourceTest
 			"1291 1253 0>1240 1226 0:Turn;Iron Winch;23104",
 			"1309 1269 0>1304 1290 0:Turn;Iron Winch;23104",
 			"1328 1253 0>1368 1226 0:Turn;Iron Winch;23104",
-			"1329 1253 0>1368 1226 0:Turn;Iron Winch;23104",
-			"2899 3715 0>2898 3719 0:Move;Boulder;26415",
-			"2898 3719 0>2898 3715 0:Move;Boulder;26415",
-			"2898 3715 0>2898 3719 0:Move;Boulder;26415",
-			"2899 3719 0>2898 3715 0:Move;Boulder;26415",
-			"2900 3719 0>2898 3715 0:Move;Boulder;26415");
+			"1329 1253 0>1368 1226 0:Turn;Iron Winch;23104");
 		InputStream resource = UnsafeAccessGateSourceTest.class.getResourceAsStream(TRANSPORT_RESOURCE);
 		assertNotNull(resource);
 		try (BufferedReader reader = new BufferedReader(new InputStreamReader(resource,
 			StandardCharsets.UTF_8)))
 		{
 			Set<String> disabled = reader.lines()
-				.filter(line -> line.startsWith("# ")
-					&& (line.contains(";23104") || line.contains(";26415")))
+				.filter(line -> line.startsWith("# ") && line.contains(";23104"))
 				.map(line -> line.substring(2).split("\\t", -1))
 				.peek(columns -> assertTrue(noRequirements(columns)))
 				.map(columns -> columns[0] + ">" + columns[1] + ":" + columns[2])

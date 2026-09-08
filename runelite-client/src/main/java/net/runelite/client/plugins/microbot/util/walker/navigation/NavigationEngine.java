@@ -29,6 +29,7 @@ public final class NavigationEngine
 	private static final long DIALOGUE_CONTINUE_COMMAND_TIMEOUT_MS = 2_000L;
 	private static final long NPC_DIALOGUE_TRANSPORT_COMMAND_TIMEOUT_MS = 60_000L;
 	private static final long JUNGLE_OBSTACLE_COMMAND_TIMEOUT_MS = 60_000L;
+	private static final int MAX_STOCHASTIC_TRANSITION_ATTEMPTS = 5;
 	private static final int MAX_INTERACTION_COMMAND_DISTANCE = 13;
 	private static final int MAX_ROUTE_EXHAUSTED_ATTEMPTS = 3;
 	private static final int MAX_EXTERNAL_REPLAN_ATTEMPTS = 3;
@@ -716,6 +717,13 @@ public final class NavigationEngine
 				session.interactionCommandPending = false;
 				session.interactionCommandOrigin = null;
 				session.interactionCommandDeadlineMs = 0L;
+				if (isStochasticCatalogTransition(pending)
+					&& ++session.stochasticTransitionAttempts
+					>= MAX_STOCHASTIC_TRANSITION_ATTEMPTS)
+				{
+					return requestReplan(RecoveryCause.NO_ACKNOWLEDGEMENT,
+						"stochastic-transition-attempts-exhausted", observation);
+				}
 			}
 			else
 			{
@@ -760,6 +768,16 @@ public final class NavigationEngine
 		session.interactionCommandOrigin = null;
 		session.interactionCommandDeadlineMs = 0L;
 		session.interactionClearedObserved = false;
+		session.stochasticTransitionAttempts = 0;
+	}
+
+	private static boolean isStochasticCatalogTransition(RouteInteraction interaction)
+	{
+		return interaction != null
+			&& interaction.getKind() == RouteInteraction.Kind.CATALOG_TRANSITION
+			&& (interaction.getObjectId() == 2234 || interaction.getObjectId() == 2236
+				|| interaction.getObjectId() == 3922 || interaction.getObjectId() == 3925
+				|| interaction.getObjectId() == 16544);
 	}
 
 	private static boolean isLongHomeTeleport(RouteInteraction interaction)

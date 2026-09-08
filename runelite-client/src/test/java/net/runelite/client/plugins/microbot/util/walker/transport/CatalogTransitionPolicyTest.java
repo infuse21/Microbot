@@ -292,12 +292,10 @@ public class CatalogTransitionPolicyTest
 			.filter(row -> row.getSkillLevels()[net.runelite.api.Skill.FIREMAKING.ordinal()] == 50).count());
 		assertTrue(rows.stream().allMatch(CatalogTransitionPolicy::isEligible));
 
-		Transport excludedLithkrenVine = Transport.loadAllFromResources().values().stream()
+		assertTrue(Transport.loadAllFromResources().values().stream()
 			.flatMap(java.util.Collection::stream)
 			.filter(row -> row.getObjectId() == 23703)
-			.filter(row -> row.getOrigin().equals(new WorldPoint(1570, 5061, 0)))
-			.findFirst().orElseThrow(AssertionError::new);
-		assertFalse(CatalogTransitionPolicy.isStrongholdEscape(excludedLithkrenVine));
+			.noneMatch(row -> row.getOrigin().equals(new WorldPoint(1570, 5061, 0))));
 	}
 
 	@Test

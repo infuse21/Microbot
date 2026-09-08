@@ -13,6 +13,7 @@ import net.runelite.client.plugins.microbot.api.npc.models.Rs2NpcModel;
 import net.runelite.client.plugins.microbot.shortestpath.PurchasableItemCatalog;
 import net.runelite.client.plugins.microbot.shortestpath.Transport;
 import net.runelite.client.plugins.microbot.shortestpath.TransportEdgeMatcher;
+import net.runelite.client.plugins.microbot.shortestpath.TransportType;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.policy.TransportRequirementPolicy;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
@@ -29,6 +30,9 @@ import java.util.Locale;
 /** Cache-backed live resolver for direct catalog scene transitions. */
 public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 {
+	private static final int DEFAULT_OBJECT_SEARCH_RADIUS = 2;
+	private static final int AGILITY_OBJECT_SEARCH_RADIUS = 5;
+
 	public enum DispatchResult
 	{
 		REJECTED,
@@ -77,6 +81,11 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 		{
 			return null;
 		}
+		if (CatalogTransitionPolicy.isAuditedHazardTransition(transport)
+			&& transport.getObjectId() == 25274 && !TransportRequirementPolicy.noFollower())
+		{
+			return null;
+		}
 		if (CatalogTransitionPolicy.isMorUlRekHotVentDoor(transport)
 			&& CatalogTransitionPolicy.morUlRekCapeIds().stream().noneMatch(itemId ->
 				Rs2Inventory.hasItem(itemId) || Rs2Equipment.isWearing(itemId)))
@@ -116,12 +125,18 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 		List<Rs2TileObjectModel> candidates = pohPortal
 			? Microbot.getRs2TileObjectCache().query().withId(transport.getObjectId()).toList()
 			: Microbot.getRs2TileObjectCache().query().within(transport.getOrigin(),
-				floorboardJump ? 5 : ShantayPassPolicy.isEligible(transport) ? 3 : 2).toList();
+				objectSearchRadius(transport)).toList();
 		Rs2TileObjectModel direct = candidates.stream()
 			.filter(candidate -> !(floorboardJump || tarnsJump || CatalogTransitionPolicy.isShortAgilityCrossing(transport)
 				|| CatalogTransitionPolicy.isIsafdarCrossing(transport)
+				|| CatalogTransitionPolicy.isAuditedHazardTransition(transport)
 				|| CatalogTransitionPolicy.isFremennikSurfaceBridge(transport)
 				|| CatalogTransitionPolicy.isAuditedAgilityTraversal(transport)
+				|| CatalogTransitionPolicy.isAuditedResidualExit(transport)
+				|| CatalogTransitionPolicy.isZanarisOneWayExit(transport)
+				|| CatalogTransitionPolicy.isGuardedProtocolRoute(transport)
+				|| CatalogTransitionPolicy.isGodWarsBoulder(transport)
+				|| CatalogTransitionPolicy.isSaradominRopeDescent(transport)
 				|| CatalogTransitionPolicy.isMeiyerditchFloor(transport)
 				|| CatalogTransitionPolicy.isMeiyerditchCourseTraversal(transport)
 				|| CatalogTransitionPolicy.isMeiyerditchPreparedFloor(transport)
@@ -145,12 +160,22 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 			.orElse(null);
 		if (direct != null)
 		{
+			if (CatalogTransitionPolicy.isSaradominRopeSetup(transport)
+				|| CatalogTransitionPolicy.isGuardedProtocolRoute(transport)
+					&& transport.getObjectId() == 6382)
+			{
+				return transition(direct, transport,
+					CatalogTransitionPolicy.ATTACH_ROPE_ACTION, false);
+			}
 			String action = resolveLiveAction(direct, transport);
 			if (action != null)
 			{
 				return transition(direct, transport, action, pohPortal);
 			}
-			if (CatalogTransitionPolicy.isKalphiteRopeSetup(transport))
+			if (CatalogTransitionPolicy.isKalphiteRopeSetup(transport)
+				|| CatalogTransitionPolicy.isSaradominRopeSetup(transport)
+				|| CatalogTransitionPolicy.isGuardedProtocolRoute(transport)
+					&& transport.getObjectId() == 6382)
 			{
 				return transition(direct, transport,
 					CatalogTransitionPolicy.ATTACH_ROPE_ACTION, false);
@@ -166,6 +191,20 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 				candidate.getWorldLocation().distanceTo2D(transport.getOrigin())))
 			.orElse(null);
 		return closed == null ? null : transition(closed, transport, "Open", false);
+	}
+
+	static int objectSearchRadius(Transport transport)
+	{
+		if (transport != null && transport.getType() == TransportType.AGILITY_SHORTCUT)
+		{
+			return AGILITY_OBJECT_SEARCH_RADIUS;
+		}
+		if (transport != null && CatalogTransitionPolicy.isFloorboardJump(transport))
+		{
+			return 5;
+		}
+		return transport != null && ShantayPassPolicy.isEligible(transport)
+			? 3 : DEFAULT_OBJECT_SEARCH_RADIUS;
 	}
 
 	private static CatalogTransition transition(Rs2TileObjectModel object, Transport transport,
@@ -452,7 +491,10 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 	static boolean requiresRopePreparation(Transport transport, String action)
 	{
 		return CatalogTransitionPolicy.ATTACH_ROPE_ACTION.equalsIgnoreCase(action)
-			&& CatalogTransitionPolicy.isKalphiteRopeSetup(transport);
+			&& (CatalogTransitionPolicy.isKalphiteRopeSetup(transport)
+				|| CatalogTransitionPolicy.isSaradominRopeSetup(transport)
+				|| CatalogTransitionPolicy.isGuardedProtocolRoute(transport)
+					&& transport.getObjectId() == 6382);
 	}
 
 	private static String resolveLiveAction(Rs2TileObjectModel object, Transport transport)

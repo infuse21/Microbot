@@ -63,7 +63,7 @@ public class AuditedMiscDirectRoutePolicyTest
 	public void unsafeRowsAreNotLoadedAndTrollRocksRetainTheirGates()
 	{
 		List<Transport> all = allRows();
-		assertTrue(all.stream().noneMatch(row -> Set.of(2020, 2236, 22355).contains(row.getObjectId())));
+		assertTrue(all.stream().noneMatch(row -> row.getObjectId() == 22355));
 		assertTrue(all.stream().noneMatch(row -> row.getObjectId() == 3748
 			&& !row.getItemIdRequirements().isEmpty()));
 

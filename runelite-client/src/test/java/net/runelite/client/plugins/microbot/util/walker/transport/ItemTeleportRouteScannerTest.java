@@ -150,6 +150,46 @@ public class ItemTeleportRouteScannerTest
 	}
 
 	@Test
+	public void wornInventoryOnlyTeleportStagesRemovalThenUsesExactSubaction()
+	{
+		ItemTeleportRouteScanner scanner = new ItemTeleportRouteScanner();
+		RoutePlan plan = plan(RouteEdge.Kind.ITEM_TELEPORT);
+		RouteInteraction remove = scanner.scan(plan, 0, 1,
+			edge -> new ItemTeleport(6707, "Remove", "item-prepare:unequip:6707"));
+		assertEquals("item-prepare:unequip:6707", remove.getAction());
+
+		RouteInteraction use = scanner.observePending(remove, FROM,
+			edge -> new ItemTeleport(6707, "Enakhra's Temple",
+				"item-use-restore:6707:Enakhra's Temple"));
+		assertEquals("item-use-restore:6707:Enakhra's Temple", use.getAction());
+		assertEquals(RouteInteraction.Status.AVAILABLE,
+			scanner.observePending(use, FROM, edge -> null).getStatus());
+		RouteInteraction restore = scanner.observePending(use, TO, restoringScene(
+			new ItemTeleport(6707, "Wear", "item-restore-equip:6707")));
+		assertEquals("item-restore-equip:6707", restore.getAction());
+		assertEquals(RouteInteraction.Status.CLEARED,
+			scanner.observePending(restore, TO, restoringScene(
+				new ItemTeleport(6707, "Wear", "item-restored:6707"))).getStatus());
+	}
+
+	@Test
+	public void blackHunterAreaUsesTheScopedWildernessConfirmationLifecycle()
+	{
+		ItemTeleportRouteScanner scanner = new ItemTeleportRouteScanner();
+		RouteInteraction use = scanner.scan(plan(RouteEdge.Kind.ITEM_TELEPORT), 0, 1,
+			edge -> new ItemTeleport(9948, "Black Chinchompas", false, true));
+		RouteInteraction confirm = scanner.observePending(use, FROM,
+			edge -> new ItemTeleport(9948, "Okay, teleport to level",
+				"wilderness-confirm:Okay, teleport to level"));
+
+		assertEquals("wilderness-confirm:Okay, teleport to level", confirm.getAction());
+		assertEquals(RouteInteraction.Status.AVAILABLE,
+			scanner.observePending(confirm, FROM, edge -> null).getStatus());
+		assertEquals(RouteInteraction.Status.CLEARED,
+			scanner.observePending(confirm, TO, edge -> null).getStatus());
+	}
+
+	@Test
 	public void offCentreLandingFinishesTheExactTargetWithoutAnotherTeleport()
 	{
 		ItemTeleportRouteScanner scanner = new ItemTeleportRouteScanner();
@@ -179,6 +219,25 @@ public class ItemTeleportRouteScannerTest
 	{
 		return NavigationObservation.route(time, player, plan, false, false, false, false,
 			false, false, null, "item-test").withRouteInteraction(interaction);
+	}
+
+	private static ItemTeleportScene restoringScene(ItemTeleport restoration)
+	{
+		return new ItemTeleportScene()
+		{
+			@Override
+			public ItemTeleport find(net.runelite.client.plugins.microbot.util.walker.obstacle.PlannedEdge edge)
+			{
+				return null;
+			}
+
+			@Override
+			public ItemTeleport restore(net.runelite.client.plugins.microbot.util.walker.obstacle.PlannedEdge edge,
+				String pendingAction)
+			{
+				return restoration;
+			}
+		};
 	}
 
 	private static RoutePlan plan(RouteEdge.Kind kind)

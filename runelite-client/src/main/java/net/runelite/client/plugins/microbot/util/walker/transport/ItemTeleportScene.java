@@ -11,4 +11,9 @@ public interface ItemTeleportScene
 	{
 		return find(edge);
 	}
+
+	default ItemTeleport restore(PlannedEdge edge, String pendingAction)
+	{
+		return null;
+	}
 }

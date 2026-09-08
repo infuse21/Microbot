@@ -3,7 +3,6 @@ package net.runelite.client.plugins.microbot.util.walker;
 import java.awt.geom.AffineTransform;
 import net.runelite.api.Perspective;
 import net.runelite.api.Point;
-import net.runelite.api.SpriteID;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.widgets.ComponentID;
@@ -16,11 +15,19 @@ import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 import javax.annotation.Nullable;
 import java.awt.*;
 import java.awt.geom.Ellipse2D;
-import java.awt.image.BufferedImage;
-import java.util.ArrayList;
-import java.util.List;
 
 public class Rs2MiniMap {
+	private static final class MinimapSnapshot
+	{
+		private final Rectangle bounds;
+		private final boolean resized;
+
+		private MinimapSnapshot(Rectangle bounds, boolean resized)
+		{
+			this.bounds = bounds;
+			this.resized = resized;
+		}
+	}
 
     /**
      * Converts a {@link LocalPoint} to a minimap coordinate {@link Point}.
@@ -80,40 +87,27 @@ public class Rs2MiniMap {
      *
      * @return A {@link Shape} representing the minimap clip area.
      */
-    private static Shape getMinimapClipAreaSimple() {
-        Widget minimapDrawArea = getMinimapDrawWidget();
-        if (minimapDrawArea == null) {
+    static Shape createMinimapClipArea(Rectangle bounds, double scale) {
+        if (bounds == null || bounds.isEmpty()) {
             return null;
         }
-        Rectangle bounds = minimapDrawArea.getBounds();
-        return new Ellipse2D.Double(bounds.getX(), bounds.getY(), bounds.getWidth(), bounds.getHeight());
+        Shape clipArea = new Ellipse2D.Double(
+            bounds.getX(), bounds.getY(), bounds.getWidth(), bounds.getHeight());
+        return scale == 1.0 ? clipArea : shrinkShape(clipArea, scale);
     }
 
 	/**
-	 * Retrieves the minimap clipping area as a polygon derived from the minimap alpha mask sprite,
-	 * and scales it inward to avoid overlapping edge elements.
+	 * Retrieves a conservative minimap clipping area from one widget-bounds snapshot.
 	 *
 	 * @param scale The scale factor to shrink the polygon (e.g., 0.94 for 94% of the original size).
-	 * @return A {@link Shape} representing the scaled minimap clickable area, or a fallback shape if the sprite is unavailable.
+	 * @return A {@link Shape} representing the scaled minimap clickable area.
 	 */
 	public static Shape getMinimapClipArea(double scale) {
-		Widget minimapWidget = getMinimapDrawWidget();
-		if (minimapWidget == null) {
+		MinimapSnapshot snapshot = getMinimapSnapshot();
+		if (snapshot == null) {
 			return null;
 		}
-
-		boolean isResized = Microbot.getClient().isResized();
-
-		BufferedImage minimapSprite = Microbot.getClientThread().runOnClientThreadOptional(() ->
-			Microbot.getSpriteManager().getSprite(
-				isResized ? SpriteID.RESIZEABLE_MODE_MINIMAP_ALPHA_MASK : SpriteID.FIXED_MODE_MINIMAP_ALPHA_MASK, 0)).orElse(null);
-
-		if (minimapSprite == null) {
-			return getMinimapClipAreaSimple();
-		}
-
-		Shape rawClipArea = bufferedImageToPolygon(minimapSprite, minimapWidget.getBounds());
-		return shrinkShape(rawClipArea, scale);
+		return createMinimapClipArea(snapshot.bounds, scale);
 	}
 
 	/**
@@ -124,54 +118,26 @@ public class Rs2MiniMap {
 	 * @return A {@link Shape} representing the scaled minimap clip area, or {@code null} if the minimap widget is unavailable.
 	 */
 	public static Shape getMinimapClipArea() {
-		return getMinimapClipArea(Microbot.getClient().isResized() ? 0.94 : 1.0);
+		MinimapSnapshot snapshot = getMinimapSnapshot();
+		if (snapshot == null) {
+			return null;
+		}
+		return createMinimapClipArea(snapshot.bounds, snapshot.resized ? 0.94 : 1.0);
 	}
 
-    /**
-     * Converts a BufferedImage to a polygon by detecting the border based on the outside color.
-     *
-     * @param image         The image to convert.
-     * @param minimapBounds The bounds of the minimap widget.
-     * @return A polygon representing the minimap's clickable area.
-     */
-    private static Polygon bufferedImageToPolygon(BufferedImage image, Rectangle minimapBounds) {
-        Color outsideColour = null;
-        Color previousColour;
-        final int width = image.getWidth();
-        final int height = image.getHeight();
-        List<java.awt.Point> points = new ArrayList<>();
-
-        for (int y = 0; y < height; y++) {
-            previousColour = outsideColour;
-            for (int x = 0; x < width; x++) {
-                int rgb = image.getRGB(x, y);
-                int a = (rgb & 0xff000000) >>> 24;
-                int r = (rgb & 0x00ff0000) >> 16;
-                int g = (rgb & 0x0000ff00) >> 8;
-                int b = (rgb & 0x000000ff);
-                Color colour = new Color(r, g, b, a);
-                if (x == 0 && y == 0) {
-                    outsideColour = colour;
-                    previousColour = colour;
-                }
-                if (!colour.equals(outsideColour) && previousColour.equals(outsideColour)) {
-                    points.add(new java.awt.Point(x, y));
-                }
-                if ((colour.equals(outsideColour) || x == (width - 1)) && !previousColour.equals(outsideColour)) {
-                    points.add(0, new java.awt.Point(x, y));
-                }
-                previousColour = colour;
-            }
-        }
-
-        int offsetX = minimapBounds.x;
-        int offsetY = minimapBounds.y;
-        Polygon polygon = new Polygon();
-        for (java.awt.Point point : points) {
-            polygon.addPoint(point.x + offsetX, point.y + offsetY);
-        }
-        return polygon;
-    }
+	private static MinimapSnapshot getMinimapSnapshot()
+	{
+		return Microbot.getClientThread().runOnClientThreadOptional(() ->
+		{
+			Widget minimapWidget = getMinimapDrawWidget();
+			if (minimapWidget == null || minimapWidget.isHidden())
+			{
+				return null;
+			}
+			return new MinimapSnapshot(new Rectangle(minimapWidget.getBounds()),
+				Microbot.getClient().isResized());
+		}).orElse(null);
+	}
 
 	/**
 	 * Shrinks the given shape toward its center by the specified scale factor.

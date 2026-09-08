@@ -4,8 +4,10 @@ import net.runelite.client.plugins.microbot.shortestpath.Transport;
 import net.runelite.client.plugins.microbot.shortestpath.TransportType;
 import org.junit.Test;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -17,6 +19,7 @@ public class RemainingTransportClassificationTest
 	public void pinsCurrentLegacyClassificationBoundary()
 	{
 		Map<TransportType, Integer> byType = new EnumMap<>(TransportType.class);
+		List<Transport> legacyRows = new ArrayList<>();
 		for (Set<Transport> group : Transport.loadAllFromResources().values())
 		{
 			for (Transport row : group)
@@ -27,12 +30,10 @@ public class RemainingTransportClassificationTest
 					continue;
 				}
 				byType.merge(row.getType(), 1, Integer::sum);
+				legacyRows.add(row);
 			}
 		}
-		Map<TransportType, Integer> expected = new EnumMap<>(TransportType.class);
-		expected.put(TransportType.TRANSPORT, 42);
-		expected.put(TransportType.TELEPORTATION_ITEM, 23);
-		assertEquals(expected, byType);
-		assertEquals(65, byType.values().stream().mapToInt(Integer::intValue).sum());
+		assertEquals("Legacy rows: " + legacyRows, Collections.emptyMap(), byType);
+		assertEquals(Collections.emptyList(), legacyRows);
 	}
 }

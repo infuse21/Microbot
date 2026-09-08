@@ -8,7 +8,7 @@ import java.util.TreeMap;
 import net.runelite.client.plugins.microbot.shortestpath.Transport;
 import org.junit.Test;
 
-import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 /** Regenerates a behaviour inventory using the production classifier, not action-name guesses. */
 public class LegacyTransportInventoryTest
@@ -22,7 +22,7 @@ public class LegacyTransportInventoryTest
 				== RouteEdge.Kind.TRANSPORT)
 			.forEach(row -> groups.merge(row.getType() + " | " + row.getAction() + " | " + row.getName(),
 				1, Integer::sum));
-		assertFalse(groups.isEmpty());
+		assertTrue(groups.toString(), groups.isEmpty());
 		groups.entrySet().stream().sorted(Map.Entry.<String, Integer>comparingByValue(Comparator.reverseOrder())
 			.thenComparing(Map.Entry.comparingByKey())).forEach(entry ->
 				System.out.println(entry.getValue() + " | " + entry.getKey()));

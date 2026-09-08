@@ -14,6 +14,19 @@ import static org.junit.Assert.assertFalse;
 public class Rs2CatalogTransitionSceneTest
 {
 	@Test
+	public void largeAgilityObjectCanResolveEveryUnderwallApproachLane()
+	{
+		java.util.List<Transport> rows = Transport.loadAllFromResources().values().stream()
+			.flatMap(java.util.Collection::stream)
+			.filter(row -> row.getObjectId() == 19032 || row.getObjectId() == 19036)
+			.collect(java.util.stream.Collectors.toList());
+
+		assertEquals(8, rows.size());
+		assertTrue(rows.stream().allMatch(row ->
+			Rs2CatalogTransitionScene.objectSearchRadius(row) >= 5));
+	}
+
+	@Test
 	public void invisibleShadowLadderPublishesEquipmentStagesBeforeObjectLookup()
 	{
 		int checked = 0;

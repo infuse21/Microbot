@@ -48,6 +48,7 @@ final class WalkSession
 	WorldPoint interactionCommandOrigin;
 	long interactionCommandDeadlineMs;
 	boolean interactionClearedObserved;
+	int stochasticTransitionAttempts;
 
 	WalkSession(NavigationRequest request)
 	{
@@ -92,6 +93,7 @@ final class WalkSession
 		interactionCommandOrigin = null;
 		interactionCommandDeadlineMs = 0L;
 		interactionClearedObserved = false;
+		stochasticTransitionAttempts = 0;
 		routeDistance = Integer.MAX_VALUE;
 		if (!executionModeSelected)
 		{

@@ -17,6 +17,7 @@ public final class ItemTeleportPolicy
 {
 	private static final Map<String, Set<Integer>> ITEMS = Map.ofEntries(
 		Map.entry("Burning amulet", Set.of(21166, 21169, 21171, 21173, 21175)),
+		Map.entry("Camulet", Set.of(6707)),
 		Map.entry("Master Scroll Book", Set.of(21389)),
 		Map.entry("Mokhaiotl waystone", Set.of(31099)),
 		Map.entry("Mythical cape", Set.of(22114, 24855)),
@@ -72,6 +73,8 @@ public final class ItemTeleportPolicy
 		Map.entry("Burning amulet: Chaos Temple", "Chaos Temple"),
 		Map.entry("Burning amulet: Bandit Camp", "Bandit Camp"),
 		Map.entry("Burning amulet: Lava Maze", "Lava Maze"),
+		Map.entry("Camulet: Enakhra's Temple", "Enakhra's Temple"),
+		Map.entry("Camulet: Enakhra's Temple Entrance", "Enakhra's Temple Entrance"),
 		Map.entry("Mokhaiotl waystone: Channel", "Channel"),
 		Map.entry("Mythical cape: Teleport", "Teleport"),
 		Map.entry("Ardougne cloak: Monastery", "Monastery Teleport"),
@@ -106,7 +109,20 @@ public final class ItemTeleportPolicy
 		Map.entry("Kharedst's memoirs: The Fisher's Flute", "The Fisher's Flute"),
 		Map.entry("Morytania legs: Burgh Teleport", "Burgh Teleport"),
 		Map.entry("Morytania legs: Ecto Teleport", "Ecto Teleport"),
+		Map.entry("Max cape: Home", "Home"),
+		Map.entry("Max cape: Rimmington", "Rimmington"),
+		Map.entry("Max cape: Taverley", "Taverley"),
+		Map.entry("Max cape: Pollnivneach", "Pollnivneach"),
+		Map.entry("Max cape: Hosidius", "Hosidius"),
+		Map.entry("Max cape: Rellekka", "Rellekka"),
+		Map.entry("Max cape: Brimhaven", "Brimhaven"),
+		Map.entry("Max cape: Yanille", "Yanille"),
+		Map.entry("Max cape: Prifddinas", "Prifddinas"),
+		Map.entry("Max cape: Warriors' Guild", "Warrior's Guild"),
+		Map.entry("Max cape: Fishing Guild", "Fishing Guild"),
 		Map.entry("Max cape: Crafting Guild", "Crafting Guild"),
+		Map.entry("Max cape: Feldip Hills", "Feldip Hills"),
+		Map.entry("Max cape: Black chinchompa", "Black chinchompas"),
 		Map.entry("Pharaoh's sceptre: Jaldraocht", "Jaldraocht"),
 		Map.entry("Pharaoh's sceptre: Jaleustrophos", "Jaleustrophos"),
 		Map.entry("Pharaoh's sceptre: Jalsavrah", "Jalsavrah"),
@@ -184,6 +200,7 @@ public final class ItemTeleportPolicy
 		Map.entry("Giantsoul Amulet: Bryophyta", "Bryophyta"),
 		Map.entry("Giantsoul Amulet: Obor", "Obor"),
 		Map.entry("Hunter cape: Feldip Hills", "Carnivorous Chinchompas"),
+		Map.entry("Hunter cape: Black chinchompa", "Black Chinchompas"),
 		Map.entry("Music cape: Teleport", "Teleport"),
 		Map.entry("Necklace of passage: Eagles' Eyrie", "Eagles' Eyrie"),
 		Map.entry("Necklace of passage: The Outpost", "The Outpost"),
@@ -258,6 +275,20 @@ public final class ItemTeleportPolicy
 		6, new WorldPoint(2545, 3097, 0),
 		7, new WorldPoint(3239, 6077, 0),
 		8, new WorldPoint(1740, 3517, 0));
+	private static final Map<String, WorldPoint> MAX_CAPE_DESTINATIONS = Map.ofEntries(
+		Map.entry("Max cape: Rimmington", new WorldPoint(2952, 3224, 0)),
+		Map.entry("Max cape: Taverley", new WorldPoint(2892, 3465, 0)),
+		Map.entry("Max cape: Pollnivneach", new WorldPoint(3339, 3001, 0)),
+		Map.entry("Max cape: Hosidius", new WorldPoint(1743, 3517, 0)),
+		Map.entry("Max cape: Rellekka", new WorldPoint(2669, 3629, 0)),
+		Map.entry("Max cape: Brimhaven", new WorldPoint(2756, 3176, 0)),
+		Map.entry("Max cape: Yanille", new WorldPoint(2545, 3097, 0)),
+		Map.entry("Max cape: Prifddinas", new WorldPoint(3239, 6077, 0)),
+		Map.entry("Max cape: Warriors' Guild", new WorldPoint(2865, 3546, 0)),
+		Map.entry("Max cape: Fishing Guild", new WorldPoint(2604, 3401, 0)),
+		Map.entry("Max cape: Crafting Guild", new WorldPoint(2931, 3286, 0)),
+		Map.entry("Max cape: Feldip Hills", new WorldPoint(2556, 2917, 0)),
+		Map.entry("Max cape: Black chinchompa", new WorldPoint(3144, 3772, 0)));
 	private static final Map<String, WorldPoint> BURNING_AMULET_DESTINATIONS = Map.of(
 		"Burning amulet: Chaos Temple", new WorldPoint(3234, 3634, 0),
 		"Burning amulet: Bandit Camp", new WorldPoint(3038, 3651, 0),
@@ -312,6 +343,16 @@ public final class ItemTeleportPolicy
 		{
 			return false;
 		}
+		if (transport.getDisplayInfo().startsWith("Camulet:")
+			&& !isCamulet(transport))
+		{
+			return false;
+		}
+		if (transport.getDisplayInfo().startsWith("Hunter cape:")
+			&& !isAuditedHunterCape(transport))
+		{
+			return false;
+		}
 		if ("Mokhaiotl waystone: Channel".equals(transport.getDisplayInfo())
 			&& !isMokhaiotlWaystone(transport))
 		{
@@ -322,8 +363,8 @@ public final class ItemTeleportPolicy
 		{
 			return false;
 		}
-		if ("Max cape: Crafting Guild".equals(transport.getDisplayInfo())
-			&& !isCraftingGuildMaxCape(transport))
+		if (transport.getDisplayInfo().startsWith("Max cape:")
+			&& !isAuditedMaxCape(transport))
 		{
 			return false;
 		}
@@ -452,19 +493,123 @@ public final class ItemTeleportPolicy
 			&& java.util.Arrays.stream(transport.getSkillLevels()).allMatch(level -> level == 0);
 	}
 
-	private static boolean isCraftingGuildMaxCape(Transport transport)
+	private static boolean isAuditedMaxCape(Transport transport)
 	{
-		return transport != null && transport.getType() == TransportType.TELEPORTATION_ITEM
-			&& transport.getOrigin() == null
-			&& Objects.equals(transport.getDestination(), new WorldPoint(2931, 3286, 0))
-			&& "Max cape: Crafting Guild".equals(transport.getDisplayInfo())
-			&& transport.isMembers() && !transport.isConsumable()
-			&& transport.getDuration() == 4 && transport.getMaxWildernessLevel() == 19
-			&& transport.getCurrencyAmount() == 0
-			&& transport.getItemIdRequirements().equals(Set.of(Set.of(13280), Set.of(13342)))
-			&& transport.getQuests().isEmpty() && transport.getVarbits().isEmpty()
-			&& transport.getVarplayers().isEmpty()
-			&& java.util.Arrays.stream(transport.getSkillLevels()).allMatch(level -> level == 0);
+		if (transport == null || transport.getType() != TransportType.TELEPORTATION_ITEM
+			|| transport.getOrigin() != null || !transport.isMembers() || transport.isConsumable()
+			|| transport.getDuration() != 4 || transport.getMaxWildernessLevel() != 19
+			|| transport.getCurrencyAmount() != 0 || !transport.getQuests().isEmpty()
+			|| !transport.getVarplayers().isEmpty()
+			|| java.util.Arrays.stream(transport.getSkillLevels()).anyMatch(level -> level != 0))
+		{
+			return false;
+		}
+		if ("Max cape: Home".equals(transport.getDisplayInfo()))
+		{
+			if (!transport.getItemIdRequirements().equals(Set.of(Set.of(13280), Set.of(13342)))
+				|| transport.getVarbits().size() != 1)
+			{
+				return false;
+			}
+			TransportVarbit gate = transport.getVarbits().iterator().next();
+			return gate.getVarbitId() == 2187 && gate.getOperator() == TransportVarbit.Operator.EQUAL
+				&& Objects.equals(transport.getDestination(), HOUSE_EXTERIORS.get(gate.getValue()));
+		}
+		WorldPoint destination = MAX_CAPE_DESTINATIONS.get(transport.getDisplayInfo());
+		if (destination == null || !Objects.equals(transport.getDestination(), destination))
+		{
+			return false;
+		}
+		boolean hunterArea = isHunterArea(transport);
+		Set<Set<Integer>> expectedItems = hunterArea
+			|| "Max cape: Crafting Guild".equals(transport.getDisplayInfo())
+			? Set.of(Set.of(13280), Set.of(13342)) : Set.of(Set.of(13280));
+		return transport.getItemIdRequirements().equals(expectedItems)
+			&& (hunterArea ? hasOnlyDailyHunterGate(transport) : transport.getVarbits().isEmpty());
+	}
+
+	private static boolean isAuditedHunterCape(Transport transport)
+	{
+		if (transport == null || transport.getType() != TransportType.TELEPORTATION_ITEM
+			|| transport.getOrigin() != null || !transport.isMembers() || transport.isConsumable()
+			|| transport.getDuration() != 4 || transport.getMaxWildernessLevel() != 19
+			|| transport.getCurrencyAmount() != 0 || !transport.getQuests().isEmpty()
+			|| !transport.getVarplayers().isEmpty()
+			|| java.util.Arrays.stream(transport.getSkillLevels()).anyMatch(level -> level != 0)
+			|| !transport.getItemIdRequirements().equals(Set.of(Set.of(9948), Set.of(9949)))
+			|| !hasOnlyDailyHunterGate(transport))
+		{
+			return false;
+		}
+		WorldPoint destination = "Hunter cape: Feldip Hills".equals(transport.getDisplayInfo())
+			? new WorldPoint(2556, 2917, 0) : "Hunter cape: Black chinchompa".equals(transport.getDisplayInfo())
+			? new WorldPoint(3144, 3772, 0) : null;
+		return Objects.equals(destination, transport.getDestination());
+	}
+
+	private static boolean isCamulet(Transport transport)
+	{
+		if (transport == null || transport.getType() != TransportType.TELEPORTATION_ITEM
+			|| transport.getOrigin() != null || !transport.isMembers() || transport.isConsumable()
+			|| transport.getDuration() != 4 || transport.getMaxWildernessLevel() != 19
+			|| transport.getCurrencyAmount() != 0 || !transport.getQuests().isEmpty()
+			|| !transport.getVarplayers().isEmpty()
+			|| java.util.Arrays.stream(transport.getSkillLevels()).anyMatch(level -> level != 0)
+			|| !transport.getItemIdRequirements().equals(Set.of(Set.of(6707))))
+		{
+			return false;
+		}
+		boolean entrance = "Camulet: Enakhra's Temple Entrance".equals(transport.getDisplayInfo());
+		WorldPoint destination = entrance ? new WorldPoint(3191, 2924, 0)
+			: "Camulet: Enakhra's Temple".equals(transport.getDisplayInfo())
+			? new WorldPoint(3105, 9315, 2) : null;
+		return Objects.equals(destination, transport.getDestination())
+			&& transport.getVarbits().size() == (entrance ? 2 : 1)
+			&& hasVarbit(transport, 1574, 0, TransportVarbit.Operator.GREATER_THAN)
+			&& (!entrance || hasVarbit(transport, 4485, 1, TransportVarbit.Operator.EQUAL));
+	}
+
+	private static boolean hasOnlyDailyHunterGate(Transport transport)
+	{
+		return transport.getVarbits().size() == 1
+			&& hasVarbit(transport, 4819, 5, TransportVarbit.Operator.LESS_THAN);
+	}
+
+	private static boolean hasVarbit(Transport transport, int id, int value,
+		TransportVarbit.Operator operator)
+	{
+		return transport.getVarbits().stream().anyMatch(gate -> gate.getVarbitId() == id
+			&& gate.getValue() == value && gate.getOperator() == operator);
+	}
+
+	public static boolean isHunterArea(Transport transport)
+	{
+		return transport != null && transport.getDisplayInfo() != null
+			&& (transport.getDisplayInfo().startsWith("Hunter cape:")
+			|| "Max cape: Feldip Hills".equals(transport.getDisplayInfo())
+			|| "Max cape: Black chinchompa".equals(transport.getDisplayInfo()));
+	}
+
+	public static boolean isBlackHunterArea(Transport transport)
+	{
+		return isHunterArea(transport)
+			&& transport.getDestination().equals(new WorldPoint(3144, 3772, 0));
+	}
+
+	public static boolean requiresInventorySurface(Transport transport)
+	{
+		return transport != null && transport.getDisplayInfo() != null
+			&& (transport.getDisplayInfo().startsWith("Camulet:")
+			|| "Max cape: Feldip Hills".equals(transport.getDisplayInfo())
+			|| "Max cape: Black chinchompa".equals(transport.getDisplayInfo()));
+	}
+
+	public static boolean isInventoryRestorationTarget(int itemId, WorldPoint destination)
+	{
+		return itemId == 6707 && (new WorldPoint(3105, 9315, 2).equals(destination)
+			|| new WorldPoint(3191, 2924, 0).equals(destination))
+			|| itemId == 13342 && (new WorldPoint(2556, 2917, 0).equals(destination)
+			|| new WorldPoint(3144, 3772, 0).equals(destination));
 	}
 
 	private static boolean isUnlimitedArdougneFarm(Transport transport)
@@ -604,6 +749,16 @@ public final class ItemTeleportPolicy
 		if ("Strength cape: Warriors' Guild".equals(transport.getDisplayInfo()))
 		{
 			return "Warriors' Guild";
+		}
+		if (requiresInventorySurface(transport))
+		{
+			return null;
+		}
+		if (transport.getDisplayInfo().startsWith("Max cape:")
+			&& !"Max cape: Home".equals(transport.getDisplayInfo())
+			&& !"Max cape: Crafting Guild".equals(transport.getDisplayInfo()))
+		{
+			return null;
 		}
 		if ("Ring of shadows: Ancient Vault".equals(transport.getDisplayInfo()))
 		{

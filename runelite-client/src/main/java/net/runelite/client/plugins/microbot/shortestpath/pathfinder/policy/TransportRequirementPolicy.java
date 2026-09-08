@@ -1,5 +1,6 @@
 package net.runelite.client.plugins.microbot.shortestpath.pathfinder.policy;
 
+import net.runelite.api.NPC;
 import net.runelite.api.Quest;
 import net.runelite.api.QuestState;
 import net.runelite.client.plugins.microbot.Microbot;
@@ -169,6 +170,21 @@ public final class TransportRequirementPolicy {
                     weapon == null ? null : weapon.getName());
         }).orElse(false);
     }
+
+	public static boolean noFollower()
+	{
+		if (Microbot.getClient() == null)
+		{
+			return false;
+		}
+		return Microbot.getClientThread().runOnClientThreadOptional(
+			() -> noFollower(Microbot.getClient().getFollower())).orElse(false);
+	}
+
+	static boolean noFollower(NPC follower)
+	{
+		return follower == null;
+	}
 
     static boolean brokenRaftEquipmentReady(int ammoId, String weaponName) {
 		return grappleEquipmentReady(ammoId, weaponName);

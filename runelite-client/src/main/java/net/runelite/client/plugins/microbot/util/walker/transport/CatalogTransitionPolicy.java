@@ -5,6 +5,7 @@ import net.runelite.api.QuestState;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.shortestpath.Transport;
 import net.runelite.client.plugins.microbot.shortestpath.TransportType;
+import net.runelite.client.plugins.microbot.shortestpath.TransportVarPlayer;
 import net.runelite.client.plugins.microbot.shortestpath.TransportVarbit;
 
 import java.util.Locale;
@@ -193,6 +194,21 @@ public final class CatalogTransitionPolicy
 		"2697,3283,0->2696,9683,0|18270|climbdown|old ruin entrance",
 		"2484,3463,1->2486,3465,2|2447|climbup|tree",
 		"2485,3465,2->2484,3463,1|28800|climbdown|tree");
+	private static final Set<String> AUDITED_STATEFUL_DIRECT_ROUTES = Set.of(
+		"2306,3194,0->2304,3194,0|8742|pass|tree",
+		"2306,3195,0->2304,3195,0|8742|pass|tree",
+		"2304,3194,0->2306,3195,0|8742|pass|tree",
+		"2304,3195,0->2306,3195,0|8742|pass|tree",
+		"2304,3194,0->2306,3194,0|8742|pass|tree",
+		"2507,10288,0->2509,10288,1|15239|uselift|platform",
+		"2508,10289,0->2509,10288,1|15239|uselift|platform",
+		"2509,10288,1->2507,10288,0|15242|uselift|lift platform",
+		"2630,4013,1->2656,10423,0|21245|use|a crack",
+		"2631,4013,1->2656,10423,0|21245|use|a crack",
+		"2656,10423,0->2631,4013,1|21035|use|chasm",
+		"2654,4495,0->2393,3466,0|4869|operate|teleportation device",
+		"3578,3526,0->3577,9927,0|5167|push|memorial",
+		"3504,3571,0->3504,9969,0|5167|push|memorial");
 	private static final Set<String> AUDITED_MISC_BOUNDARY_ROUTES = Set.of(
 		"2761,3657,0->2761,3660,0|5847|climbover|rockslide",
 		"2761,3660,0->2761,3657,0|5847|climbover|rockslide",
@@ -309,6 +325,33 @@ public final class CatalogTransitionPolicy
 		"3627,3332,0->3627,3328,0|39170|enter|cracked wall",
 		"2855,10334,0->2845,3960,0|33262|enter|smelly hole",
 		"2856,10335,0->2845,3960,0|33262|enter|smelly hole");
+	private static final Set<String> AUDITED_WATER_AND_BALANCE_ROUTES = Set.of(
+		"2512,3476,0->2527,3413,0|10283|swim|river",
+		"2511,3477,0->2527,3413,0|10283|swim|river",
+		"2512,3476,0->2527,3413,0|1996|swimto|rock",
+		"2576,9631,0->2575,9631,0|1597|push|wall",
+		"2575,9631,0->2576,9631,0|1597|push|wall",
+		"2647,9557,0->2649,9562,0|21739|jumpfrom|stepping stone",
+		"2649,9562,0->2647,9557,0|21738|jumpfrom|stepping stone",
+		"2682,9506,0->2687,9506,0|20882|walkacross|log balance",
+		"2687,9506,0->2682,9506,0|20884|walkacross|log balance");
+	private static final Set<String> AUDITED_HAZARD_ROUTES = Set.of(
+		"2511,3511,0->1768,5366,0|25274|divein|whirlpool",
+		"2512,3511,0->1768,5366,0|25274|divein|whirlpool",
+		"2572,9499,0->2588,9573,0|412|prayat|altar",
+		"2762,2989,0->2760,9389,0|2234|search|well stacked rocks",
+		"2512,3466,0->2527,3413,0|2020|climb|dead tree",
+		"2199,3169,0->2202,3169,0|3922|pass|sticks",
+		"2202,3169,0->2199,3169,0|3922|pass|sticks",
+		"2234,3181,0->2238,3181,0|3922|pass|sticks",
+		"2238,3181,0->2234,3181,0|3922|pass|sticks",
+		"2295,3215,0->2295,3217,0|3922|pass|sticks",
+		"2295,3217,0->2295,3215,0|3922|pass|sticks",
+		"2274,3172,0->2274,3176,0|3925|jump|leaves",
+		"2274,3176,0->2274,3172,0|3925|jump|leaves",
+		"2267,3201,0->2267,3205,0|3925|jump|leaves",
+		"2267,3205,0->2267,3201,0|3925|jump|leaves",
+		"2764,9376,0->2765,2976,0|2236|climb|climbing rocks");
 	private static final Set<String> ISAFDAR_CROSSINGS = Set.of(
 		"2215,3156,0->2215,3153,0|3921|stepover|tripwire",
 		"2220,3155,0->2220,3152,0|3921|stepover|tripwire",
@@ -709,6 +752,15 @@ public final class CatalogTransitionPolicy
 		"2772,10232,0->2778,3869,0|5025|enter|crevasse",
 		"2840,3690,0->2837,10090,2|3771|enter|stronghold",
 		"2837,10091,2->2840,3690,0|3772|use|exit");
+	private static final Set<String> AUDITED_RESIDUAL_EXIT_ROUTES = Set.of(
+		"1639,3673,0->1666,10050,0|27785|investigate|statue",
+		"2429,9824,0->2430,3424,0|27257|use|tunnel",
+		"2429,9825,0->2430,3424,0|27258|use|tunnel",
+		"2780,10161,0->2838,10124,0|5973|gothrough|cave entrance",
+		"2838,10124,0->2778,10161,0|5998|gothrough|entrance",
+		"3034,4793,0->3221,3219,0|27027|operate|appendage",
+		"3305,9497,0->3321,3122,0|26712|use|crevice",
+		"3440,9887,0->3423,3485,0|3443|passthrough|holy barrier");
 	private static final Set<String> CAMDOZAAL_ROUTES = Set.of(
 		"2998,3494,0->2952,5762,0|41357|enter|ruins entrance",
 		"2952,5762,0->2998,3494,0|41446|exit|ruins exit");
@@ -847,10 +899,6 @@ public final class CatalogTransitionPolicy
 		"2386,3335,0->2386,3333,0|3944|enter|huge gate",
 		"2385,3333,0->2385,3335,0|3945|enter|huge gate",
 		"2385,3335,0->2385,3333,0|3945|enter|huge gate",
-		"2304,3194,0->2306,3195,0|8742|pass|tree",
-		"2304,3195,0->2306,3195,0|8742|pass|tree",
-		"2306,3194,0->2304,3194,0|8742|pass|tree",
-		"2306,3195,0->2304,3195,0|8742|pass|tree",
 		"3363,3298,0->3363,3300,0|10721|enter|doorway",
 		"3363,3300,0->3363,3298,0|10721|enter|doorway",
 		"2715,3798,0->2715,3802,1|19690|ascend|steps",
@@ -867,6 +915,24 @@ public final class CatalogTransitionPolicy
 		"1427,2933,0->1425,2933,0|54707|passthrough|entryway",
 		"1259,3430,0->1271,3436,0|57219|passthrough|cave",
 		"1271,3436,0->1259,3430,0|57220|passthrough|cave");
+	private static final Set<String> ZANARIS_ONE_WAY_EXIT_ROUTES = Set.of(
+		"2452,4473,0->3201,3169,0|12094|use|fairy ring",
+		"2486,4471,0->3260,3171,0|12003|use|fairy ring");
+	private static final Set<String> GUARDED_PROTOCOL_ROUTES = Set.of(
+		"3480,9837,0->3480,9836,0|5052|search|wall",
+		"3480,9836,0->3480,9837,0|5052|search|wall",
+		"3371,3129,0->3349,9536,0|6382|use|rope -> root",
+		"3424,9660,0->3166,4547,0|20822|enter|entrance");
+	private static final Set<Integer> SALVE_AMULET_IDS = Set.of(4081, 10588, 12017, 12018);
+	private static final Set<String> GOD_WARS_BOULDER_ROUTES = Set.of(
+		"2899,3715,0->2898,3719,0|26415|move|boulder",
+		"2898,3719,0->2898,3715,0|26415|move|boulder",
+		"2898,3715,0->2898,3719,0|26415|move|boulder",
+		"2899,3719,0->2898,3715,0|26415|move|boulder",
+		"2900,3719,0->2898,3715,0|26415|move|boulder");
+	private static final Set<String> SARADOMIN_ROPE_DESCENT_ROUTES = Set.of(
+		"2912,5300,2->2914,5300,1|26561|climbdown|rock",
+		"2920,5276,1->2920,5274,0|26562|climbdown|rock");
 
 	private CatalogTransitionPolicy()
 	{
@@ -904,7 +970,8 @@ public final class CatalogTransitionPolicy
 			|| isWeissHole(transport) || isWeissPostQuestDirect(transport)
 			|| isPostQuestIceTrollCave(transport)
 			|| isPostQuestMyrequeDoor(transport)
-			|| isHauntedMineStairsOrLift(transport))
+			|| isHauntedMineStairsOrLift(transport) || isGuardedProtocolRoute(transport)
+			|| isGodWarsBoulder(transport) || isSaradominRopeDescent(transport))
 		{
 			return true;
 		}
@@ -920,7 +987,9 @@ public final class CatalogTransitionPolicy
 		{
 			return false;
 		}
-		if (isShortAgilityCrossing(transport) || isMeiyerditchCourseTraversal(transport)
+		if (isAuditedWaterAndBalance(transport) || isAuditedHazardTransition(transport)
+			|| isShortAgilityCrossing(transport)
+			|| isMeiyerditchCourseTraversal(transport)
 			|| isMeiyerditchPreparedFloor(transport) || isMeiyerditchPostQuestAccess(transport)) return true;
 		if (isAuditedMiscBoundary(transport))
 		{
@@ -1040,10 +1109,13 @@ public final class CatalogTransitionPolicy
 			|| isCrashSiteOpening(transport)
 			|| isAuditedStepsAndClimbObstacle(transport)
 			|| isAuditedMiscDirectRoute(transport)
+			|| isAuditedStatefulDirectRoute(transport)
 			|| isAuditedMiscBoundary(transport)
 			|| isAuditedBossExit(transport)
 			|| isAuditedAccessAndExit(transport)
 			|| isAuditedUnusualAccess(transport)
+			|| isAuditedResidualExit(transport)
+			|| isZanarisOneWayExit(transport)
 			|| isSwanSongHole(transport)
 			|| isMolchLizardTempleTransition(transport)
 			|| isMeiyerditchFloor(transport)
@@ -1057,6 +1129,8 @@ public final class CatalogTransitionPolicy
 			|| isFremennikSurfaceBridge(transport)
 			|| isAuditedShortcutTraversal(transport)
 			|| isAuditedMiscAccess(transport)
+			|| isAuditedWaterAndBalance(transport)
+			|| isAuditedHazardTransition(transport)
 			|| isAuditedAgilityTraversal(transport)
 			|| AUDITED_DIRECT_ROUTE_KEYS.contains(routeKey(transport, action, name))
 			|| NEYPOTZLI_ENTRANCE_ROUTE_KEYS.contains(routeKey(transport, action, name))
@@ -1454,6 +1528,151 @@ public final class CatalogTransitionPolicy
 		return objectId == 6620 || objectId == 5025 || objectId == 3771 || objectId == 3772;
 	}
 
+	static boolean isAuditedResidualExit(Transport transport)
+	{
+		if (transport == null || transport.getType() != TransportType.TRANSPORT
+			|| transport.getOrigin() == null || transport.getDestination() == null
+			|| !transport.isMembers() || transport.isConsumable()
+			|| transport.getCurrencyAmount() != 0 || !transport.getItemIdRequirements().isEmpty()
+			|| !transport.getVarbits().isEmpty() || !transport.getVarplayers().isEmpty()
+			|| !AUDITED_RESIDUAL_EXIT_ROUTES.contains(routeKey(transport,
+				normalizeDirectAction(transport.getAction()), normalize(transport.getName()))))
+		{
+			return false;
+		}
+		boolean slayerExit = transport.getObjectId() == 27257 || transport.getObjectId() == 27258;
+		if (!hasOnlySkill(transport, net.runelite.api.Skill.AGILITY, slayerExit ? 72 : 0))
+		{
+			return false;
+		}
+		Map<Quest, QuestState> quests = transport.getObjectId() == 3443
+			? Map.of(Quest.PRIEST_IN_PERIL, QuestState.FINISHED) : Map.of();
+		int duration = transport.getObjectId() == 27027 ? 4 : 1;
+		return transport.getQuests().equals(quests) && transport.getDuration() == duration;
+	}
+
+	static boolean hasRequiredResidualExitAgility(Transport transport, int agility)
+	{
+		return isAuditedResidualExit(transport)
+			&& agility >= transport.getSkillLevels()[net.runelite.api.Skill.AGILITY.ordinal()];
+	}
+
+	static boolean isAuditedResidualExitObject(int objectId)
+	{
+		return Set.of(27785, 27257, 27258, 5973, 5998, 27027, 26712, 3443)
+			.contains(objectId);
+	}
+
+	static boolean isZanarisOneWayExit(Transport transport)
+	{
+		return transport != null && transport.getType() == TransportType.TRANSPORT
+			&& transport.getOrigin() != null && transport.getDestination() != null
+			&& transport.isMembers() && !transport.isConsumable()
+			&& transport.getCurrencyAmount() == 0 && transport.getDuration() == 6
+			&& transport.getItemIdRequirements().isEmpty()
+			&& transport.getVarbits().isEmpty() && transport.getVarplayers().isEmpty()
+			&& hasOnlySkill(transport, net.runelite.api.Skill.AGILITY, 0)
+			&& transport.getQuests().equals(Map.of(Quest.LOST_CITY, QuestState.FINISHED))
+			&& ZANARIS_ONE_WAY_EXIT_ROUTES.contains(routeKey(transport,
+				normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
+	}
+
+	static boolean isZanarisOneWayExitObject(int objectId)
+	{
+		return objectId == 12003 || objectId == 12094;
+	}
+
+	static boolean isGuardedProtocolRoute(Transport transport)
+	{
+		if (transport == null || transport.getType() != TransportType.TRANSPORT
+			|| transport.getOrigin() == null || transport.getDestination() == null
+			|| !transport.isMembers() || transport.getCurrencyAmount() != 0
+			|| !transport.getVarbits().isEmpty() || !transport.getVarplayers().isEmpty()
+			|| !hasOnlySkill(transport, net.runelite.api.Skill.AGILITY, 0)
+			|| !GUARDED_PROTOCOL_ROUTES.contains(routeKey(transport,
+				normalizeDirectAction(transport.getAction()), normalize(transport.getName()))))
+		{
+			return false;
+		}
+		switch (transport.getObjectId())
+		{
+			case 5052:
+				return !transport.isConsumable() && transport.getDuration() == 1
+					&& transport.getItemIdRequirements().isEmpty()
+					&& transport.getQuests().equals(Map.of(
+						Quest.IN_SEARCH_OF_THE_MYREQUE, QuestState.FINISHED));
+			case 6382:
+				return transport.isConsumable() && transport.getDuration() == 1
+					&& transport.getItemIdRequirements().equals(Set.of(Set.of(ROPE_ITEM_ID)))
+					&& transport.getQuests().equals(Map.of(
+						Quest.SPIRITS_OF_THE_ELID, QuestState.IN_PROGRESS));
+			case 20822:
+				return !transport.isConsumable() && transport.getDuration() == 6
+					&& transport.getItemIdRequirements().equals(Set.of(SALVE_AMULET_IDS))
+					&& transport.getQuests().equals(Map.of(
+						Quest.HAUNTED_MINE, QuestState.FINISHED));
+			default:
+				return false;
+		}
+	}
+
+	static boolean isGuardedProtocolObject(int objectId)
+	{
+		return objectId == 5052 || objectId == 6382 || objectId == 20822;
+	}
+
+	static boolean isGodWarsBoulder(Transport transport)
+	{
+		return transport != null && transport.getType() == TransportType.TRANSPORT
+			&& transport.getOrigin() != null && transport.getDestination() != null
+			&& transport.isMembers() && !transport.isConsumable()
+			&& transport.getCurrencyAmount() == 0 && transport.getDuration() == 1
+			&& transport.getItemIdRequirements().isEmpty()
+			&& transport.getVarbits().isEmpty() && transport.getVarplayers().isEmpty()
+			&& hasOnlySkill(transport, net.runelite.api.Skill.STRENGTH, 60)
+			&& transport.getQuests().equals(Map.of(Quest.TROLL_STRONGHOLD, QuestState.IN_PROGRESS))
+			&& GOD_WARS_BOULDER_ROUTES.contains(routeKey(transport,
+				normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
+	}
+
+	static boolean isGodWarsBoulderObject(int objectId)
+	{
+		return objectId == 26415;
+	}
+
+	static boolean isSaradominRopeDescent(Transport transport)
+	{
+		if (transport == null || transport.getType() != TransportType.TRANSPORT
+			|| transport.getOrigin() == null || transport.getDestination() == null
+			|| !transport.isMembers() || transport.getCurrencyAmount() != 0
+			|| transport.getDuration() != 1 || !transport.getVarplayers().isEmpty()
+			|| !hasOnlySkill(transport, net.runelite.api.Skill.AGILITY, 70)
+			|| !transport.getQuests().equals(Map.of(
+				Quest.TROLL_STRONGHOLD, QuestState.IN_PROGRESS))
+			|| !SARADOMIN_ROPE_DESCENT_ROUTES.contains(routeKey(transport,
+				normalizeDirectAction(transport.getAction()), normalize(transport.getName()))))
+		{
+			return false;
+		}
+		int varbit = transport.getObjectId() == 26561 ? 3967 : 3968;
+		boolean setup = transport.isConsumable()
+			&& transport.getItemIdRequirements().equals(Set.of(Set.of(ROPE_ITEM_ID)))
+			&& hasOnlyVarbit(transport, varbit, 0, TransportVarbit.Operator.EQUAL);
+		boolean installed = !transport.isConsumable() && transport.getItemIdRequirements().isEmpty()
+			&& hasOnlyVarbit(transport, varbit, 1, TransportVarbit.Operator.EQUAL);
+		return setup || installed;
+	}
+
+	static boolean isSaradominRopeSetup(Transport transport)
+	{
+		return isSaradominRopeDescent(transport) && transport.isConsumable();
+	}
+
+	static boolean isSaradominRopeDescentObject(int objectId)
+	{
+		return objectId == 26561 || objectId == 26562;
+	}
+
 	static boolean isCamdozaalRoute(Transport transport)
 	{
 		if (transport == null || transport.getType() != TransportType.TRANSPORT
@@ -1543,6 +1762,21 @@ public final class CatalogTransitionPolicy
 		for (int i = 0; i < levels.length; i++)
 		{
 			if (levels[i] != (i == skill.ordinal() ? level : 0))
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+	private static boolean hasOnlySkills(Transport transport,
+		Map<net.runelite.api.Skill, Integer> required)
+	{
+		int[] levels = transport.getSkillLevels();
+		for (int i = 0; i < levels.length; i++)
+		{
+			int expected = required.getOrDefault(net.runelite.api.Skill.values()[i], 0);
+			if (levels[i] != expected)
 			{
 				return false;
 			}
@@ -1747,6 +1981,100 @@ public final class CatalogTransitionPolicy
 	{
 		return objectId == 30236 || objectId == 31626 || objectId == 33262
 			|| objectId == 38574 || objectId == 39170 || objectId == 44003;
+	}
+
+	public static boolean isAuditedWaterAndBalance(Transport transport)
+	{
+		boolean agilityShadow = transport != null
+			&& transport.getType() == TransportType.AGILITY_SHORTCUT
+			&& (transport.getObjectId() == 20882 || transport.getObjectId() == 20884
+				|| transport.getObjectId() == 21738 || transport.getObjectId() == 21739);
+		if (transport == null
+			|| (transport.getType() != TransportType.TRANSPORT && !agilityShadow)
+			|| transport.getOrigin() == null || transport.getDestination() == null
+			|| !transport.isMembers() || transport.isConsumable()
+			|| transport.getCurrencyAmount() != 0 || transport.getDuration() != 1
+			|| !transport.getItemIdRequirements().isEmpty()
+			|| !transport.getQuests().isEmpty() || !transport.getVarbits().isEmpty()
+			|| !transport.getVarplayers().isEmpty()
+			|| !AUDITED_WATER_AND_BALANCE_ROUTES.contains(routeKey(transport,
+				normalizeDirectAction(transport.getAction()), normalize(transport.getName()))))
+		{
+			return false;
+		}
+		int agility = transport.getObjectId() == 21738 ? 12
+			: transport.getObjectId() == 20882 ? 30 : 0;
+		return hasOnlySkill(transport, net.runelite.api.Skill.AGILITY, agility);
+	}
+
+	static boolean isAuditedWaterAndBalanceObject(int objectId)
+	{
+		return objectId == 10283 || objectId == 1597 || objectId == 1996
+			|| objectId == 20882 || objectId == 20884
+			|| objectId == 21738 || objectId == 21739;
+	}
+
+	public static boolean isAuditedHazardTransition(Transport transport)
+	{
+		boolean agilityShadow = transport != null
+			&& transport.getType() == TransportType.AGILITY_SHORTCUT
+			&& Set.of(2234, 2236, 3922, 3925).contains(transport.getObjectId());
+		if (transport == null
+			|| (transport.getType() != TransportType.TRANSPORT && !agilityShadow)
+			|| transport.getOrigin() == null || transport.getDestination() == null
+			|| !transport.isMembers() || transport.isConsumable()
+			|| transport.getCurrencyAmount() != 0
+			|| !transport.getItemIdRequirements().isEmpty()
+			|| !transport.getVarplayers().isEmpty()
+			|| !AUDITED_HAZARD_ROUTES.contains(routeKey(transport,
+				normalizeDirectAction(transport.getAction()), normalize(transport.getName()))))
+		{
+			return false;
+		}
+		if (transport.getObjectId() == 25274)
+		{
+			return transport.getDuration() == 2 && transport.getQuests().isEmpty()
+				&& hasOnlySkill(transport, net.runelite.api.Skill.AGILITY, 0)
+				&& hasExactGreaterThanVarbit(transport, 3759, 1);
+		}
+		if (transport.getObjectId() == 412)
+		{
+			return transport.getDuration() == 2 && transport.getQuests().isEmpty()
+				&& transport.getVarbits().isEmpty()
+				&& hasOnlySkill(transport, net.runelite.api.Skill.HITPOINTS, 16);
+		}
+		if (transport.getObjectId() == 2020)
+		{
+			return transport.getDuration() == 0 && transport.getVarbits().isEmpty()
+				&& transport.getQuests().equals(Map.of(Quest.WATERFALL_QUEST,
+					QuestState.IN_PROGRESS))
+				&& hasOnlySkill(transport, net.runelite.api.Skill.HITPOINTS, 10);
+		}
+		if (transport.getObjectId() == 3922 || transport.getObjectId() == 3925)
+		{
+			int hitpoints = transport.getObjectId() == 3922 ? 9 : 19;
+			return transport.getDuration() == 0 && transport.getVarbits().isEmpty()
+				&& transport.getQuests().equals(Map.of(Quest.REGICIDE, QuestState.IN_PROGRESS))
+				&& hasOnlySkills(transport, Map.of(net.runelite.api.Skill.AGILITY, 1,
+					net.runelite.api.Skill.HITPOINTS, hitpoints));
+		}
+		if (transport.getObjectId() == 2236)
+		{
+			return transport.getDuration() == 0 && transport.getVarbits().isEmpty()
+				&& transport.getQuests().equals(Map.of(Quest.SHILO_VILLAGE,
+					QuestState.IN_PROGRESS))
+				&& hasOnlySkills(transport, Map.of(net.runelite.api.Skill.AGILITY, 32,
+					net.runelite.api.Skill.HITPOINTS, 11));
+		}
+		return transport.getDuration() == 15 && transport.getVarbits().isEmpty()
+			&& transport.getQuests().equals(Map.of(Quest.SHILO_VILLAGE, QuestState.IN_PROGRESS))
+			&& hasOnlySkill(transport, net.runelite.api.Skill.AGILITY, 32);
+	}
+
+	static boolean isAuditedHazardObject(int objectId)
+	{
+		return objectId == 412 || objectId == 2020 || objectId == 2234 || objectId == 2236
+			|| objectId == 25274 || objectId == 3922 || objectId == 3925;
 	}
 
 	static boolean isIsafdarCrossing(Transport transport)
@@ -2064,6 +2392,96 @@ public final class CatalogTransitionPolicy
 	static boolean isAuditedMiscDirectObject(int objectId)
 	{
 		return Set.of(881, 882, 2022, 2447, 10321, 18270, 20790, 28800).contains(objectId);
+	}
+
+	static boolean isAuditedStatefulDirectRoute(Transport transport)
+	{
+		if (transport == null || transport.getType() != TransportType.TRANSPORT
+			|| transport.getOrigin() == null || transport.getDestination() == null
+			|| !transport.isMembers() || transport.isConsumable()
+			|| transport.getCurrencyAmount() != 0 || !transport.getItemIdRequirements().isEmpty()
+			|| java.util.Arrays.stream(transport.getSkillLevels()).anyMatch(level -> level != 0)
+			|| !AUDITED_STATEFUL_DIRECT_ROUTES.contains(routeKey(transport,
+				normalizeDirectAction(transport.getAction()), normalize(transport.getName()))))
+		{
+			return false;
+		}
+
+		int objectId = transport.getObjectId();
+		if (objectId == 8742)
+		{
+			return transport.getDuration() == 5 && transport.getVarbits().isEmpty()
+				&& transport.getQuests().equals(Map.of(Quest.MOURNINGS_END_PART_I, QuestState.IN_PROGRESS))
+				&& hasOnlyVarplayer(transport, 517, 1, TransportVarPlayer.Operator.GREATER_THAN);
+		}
+		if (objectId == 15239 || objectId == 15242)
+		{
+			int expectedFloor = objectId == 15242 ? 1 : 0;
+			return transport.getDuration() == 1 && transport.getVarplayers().isEmpty()
+				&& transport.getQuests().equals(Map.of(Quest.ROYAL_TROUBLE, QuestState.IN_PROGRESS))
+				&& hasOnlyLiftVarbits(transport, expectedFloor);
+		}
+		if (objectId == 21035 || objectId == 21245)
+		{
+			return transport.getDuration() == 1 && transport.getVarbits().isEmpty()
+				&& transport.getVarplayers().isEmpty()
+				&& transport.getQuests().equals(Map.of(Quest.COLD_WAR, QuestState.FINISHED));
+		}
+		if (objectId == 4869)
+		{
+			return transport.getDuration() == 6 && transport.getVarbits().isEmpty()
+				&& transport.getVarplayers().isEmpty()
+				&& transport.getQuests().equals(Map.of(Quest.MONKEY_MADNESS_I, QuestState.IN_PROGRESS));
+		}
+		return objectId == 5167 && transport.getDuration() == 2
+			&& transport.getVarplayers().isEmpty() && hasExactVarbit(transport, 192, 1)
+			&& transport.getQuests().equals(
+				Map.of(Quest.CREATURE_OF_FENKENSTRAIN, QuestState.IN_PROGRESS));
+	}
+
+	private static boolean hasOnlyLiftVarbits(Transport transport, int floor)
+	{
+		if (transport.getVarbits().size() != 2)
+		{
+			return false;
+		}
+		boolean repaired = false;
+		boolean platformFloor = false;
+		for (TransportVarbit requirement : transport.getVarbits())
+		{
+			if (requirement.getVarbitId() == 2146 && requirement.getValue() == 6
+				&& requirement.getOperator() == TransportVarbit.Operator.GREATER_THAN)
+			{
+				repaired = true;
+			}
+			else if (requirement.getVarbitId() == 2155 && requirement.getValue() == floor
+				&& requirement.getOperator() == TransportVarbit.Operator.EQUAL)
+			{
+				platformFloor = true;
+			}
+			else
+			{
+				return false;
+			}
+		}
+		return repaired && platformFloor;
+	}
+
+	private static boolean hasOnlyVarplayer(Transport transport, int id, int value,
+		TransportVarPlayer.Operator operator)
+	{
+		if (transport.getVarplayers().size() != 1)
+		{
+			return false;
+		}
+		TransportVarPlayer requirement = transport.getVarplayers().iterator().next();
+		return requirement.getVarplayerId() == id && requirement.getValue() == value
+			&& requirement.getOperator() == operator;
+	}
+
+	static boolean isAuditedStatefulDirectObject(int objectId)
+	{
+		return Set.of(4869, 5167, 8742, 15239, 15242, 21035, 21245).contains(objectId);
 	}
 
 	static boolean isAuditedMiscBoundary(Transport transport)

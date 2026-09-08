@@ -21,6 +21,34 @@ headless batches, outstanding branches of representative live passes, and contra
 implementation. As of 2026-09-06 the user requests headless-first progress; deferred physical tests
 remain open rather than blocking each batch or being silently marked complete.
 
+## Active-graph classification closure and resolver hardening - 2026-09-08
+
+The current production resource set loads **6,015 transports** and has no active route edge left
+classified as the generic legacy `TRANSPORT` kind. This closes the active-graph classification
+boundary only: a source audit still identifies **204 genuine disabled traversals** whose quest,
+equipment, safety, payment, failure or staged-interaction contracts remain implementation work.
+Phase 6 therefore remains open, and Phase 7 deletion has not started.
+
+The final active item batch moves the two Camulet destinations and the Hunter/Max cape Feldip and
+Black-chinchompa destinations into exact item-teleport ownership, including charges, the shared
+Hunter daily counter, scoped Wilderness confirmation, and worn-item restoration. Five God Wars
+boulder approaches and two Saradomin rope descents now have exact strength/setup/installed-state
+contracts; the latter expose separate consumable-rope setup and permanent-rope variants. Guarded
+protocol, residual exit and hazardous-transition batches retain their exact requirement and landing
+checks rather than broadening generic actions.
+
+Two live regressions are now headlessly covered. Ordinary door snapshots no longer disappear merely
+because the scene is instanced; object anchors are normalized to route template coordinates, so a
+door immediately before stairs remains the first interaction. Large agility objects use a bounded
+five-tile catalog lookup while preserving exact ID/name/action matching; this fixes the Draynor
+underwall route that reached `(3065,3260,0)` but could not resolve object `19032` anchored at
+`(3067,3257,0)`. Both changes require rebuilt-client physical confirmation. The minimap walking hot
+path also uses one immutable widget-bounds snapshot instead of synchronously loading sprite data,
+and timed-out client-thread futures are no longer interrupted.
+
+The complete focused Phase 6 banking, League, transport, navigation, pathfinder, POH, collision and
+minimap suite passes, as do main and test Checkstyle. Existing deprecation warnings are unrelated.
+
 ## Final unusual-access and direct-route audit - 2026-09-08
 
 The latest combined audit reduces the production classifier from 120 to **65** remaining entries:

@@ -210,7 +210,8 @@
 3092 3361 0	3117 9753 0	Climb-down;Ladder;133								2	
 3117 9753 0	3092 3361 0	Climb-up;Ladder;132								2	
 3098 3358 0	3096 3358 0	Search;Bookcase;155								3	
-3096 3357 0	3098 3358 0	Pull;Lever;160								6	
+# Unsupported: hauntedleverup is an Ernest the Chicken puzzle-state control, not a traversal edge.
+# 3096 3357 0	3098 3358 0	Pull;Lever;160								6
 3108 3353 0	3108 3354 0	Open;Large door;134								3	
 3097 3360 0	3096 3359 0	Search;Bookcase;156								3	
 3097 3357 0	3096 3358 0	Search;Bookcase;155								3	
@@ -780,8 +781,8 @@
 2621 9660 0	2621 3260 0	Climb-up;Ladder;17385								2	
 2620 3261 0	2620 9661 0	Climb-down;Ladder;17384								2	
 2620 9661 0	2620 3261 0	Climb-up;Ladder;17385								2	
-2576 9631 0	2575 9631 0	Push;Wall;1597									
-2575 9631 0	2576 9631 0	Push;Wall;1597									
+2576 9631 0	2575 9631 0	Push;Wall;1597							Y	1
+2575 9631 0	2576 9631 0	Push;Wall;1597							Y	1
 2573 9631 0	2573 3231 0	Climb-up;Ladder;17385								2	
 2571 9631 0	2571 3231 0	Climb-up;Ladder;17385								2	
 2572 9632 0	2572 3232 0	Climb-up;Ladder;17385								2	
@@ -1381,14 +1382,14 @@
 2516 3423 0	2517 3426 1	Climb-up;Staircase;16668									
 											
 # Waterfall Island and Dungeon											
-2512 3476 0	2527 3413 0	Swim;River;10283									
+2512 3476 0	2527 3413 0	Swim;River;10283							Y	1
 2510 3494 0	2512 3481 0	Board;Log raft;1987									
-2511 3477 0	2527 3413 0	Swim;River;10283									
+2511 3477 0	2527 3413 0	Swim;River;10283							Y	1
 2510 3493 0	2512 3481 0	Board;Log raft;1987									
 2511 3463 0	2527 3413 0	Get in;Barrel;2022							Y	1
-# DEFERRED: climbing the Waterfall dead tree always washes the player downstream and deals up to 9 damage.
-# 2512 3466 0	2527 3413 0	Climb;Dead Tree;2020
-2512 3476 0	2527 3413 0	Swim to;Rock;1996									
+# Deliberate wash-down route: require enough current Hitpoints to survive the documented maximum hit.
+2512 3466 0	2527 3413 0	Climb;Dead Tree;2020	10 Hitpoints			Waterfall Quest=IN_PROGRESS			Y
+2512 3476 0	2527 3413 0	Swim to;Rock;1996							Y	1
 2511 3463 0	2575 9861 0	Open;Door;2010				Waterfall Quest
 2575 9861 0	2511 3463 0	Open;Door;2000									
 2568 9893 0	2568 9894 0	Open;Door;2002		298
@@ -1615,16 +1616,16 @@
 2636 9517 0	2636 9510 2	Walk-up;Stairs;21725
 2636 9510 2	2636 9517 0	Walk-down;Stairs;21726
 # Stepping Stones
-2647 9557 0	2649 9562 0	Jump-from;Stepping stone;21739
-2649 9562 0	2647 9557 0	Jump-from;Stepping stone;21738
+2647 9557 0	2649 9562 0	Jump-from;Stepping stone;21739							Y	1
+2649 9562 0	2647 9557 0	Jump-from;Stepping stone;21738	12 Agility						Y	1
 # Unsupported: island-bound eastern Brimhaven stepping stones require 56 Agility, but these rows do not identify the asymmetric direction.
 # 2695 9533 0	2697 9525 0	Cross;Stepping stone;19040
 # 2697 9525 0	2695 9533 0	Cross;Stepping stone;19040
 # 2690 9547 0	2682 9548 0	Cross;Stepping stone;19040
 # 2682 9548 0	2690 9547 0	Cross;Stepping stone;19040
 # Log Balance
-2682 9506 0	2687 9506 0	Walk-across;Log balance;20882
-2687 9506 0	2682 9506 0	Walk-across;Log balance;20884
+2682 9506 0	2687 9506 0	Walk-across;Log balance;20882	30 Agility						Y	1
+2687 9506 0	2682 9506 0	Walk-across;Log balance;20884							Y	1
 # Pipes
 2698 9500 0	2698 9492 0	Squeeze-through;Pipe;21727	34 Agility						Y	1
 2698 9492 0	2698 9500 0	Squeeze-through;Pipe;21727							Y	1
@@ -1641,7 +1642,9 @@
 # 2761 3063 0	2734 9478 0	Climb;Rope;66
 # 2760 3064 0	2734 9478 0	Climb;Rope;66
 # 2760 3061 0	2734 9478 0	Climb;Rope;66
-2734 9478 0	2760 3061 0	Use;Crevice;30201
+# DEFERRED: Brimhaven backdoor requires Banisoch's permanent 5,000-trading-stick unlock;
+# no reliable client varbit/varplayer gate is currently identified for this source row.
+# 2734 9478 0	2760 3061 0	Use;Crevice;30201
 
 # Karamja Volcano											
 2855 3169 0	2855 9569 0	Climb-down;Rocks;11441									
@@ -1966,8 +1969,8 @@
 2468 9903 0	2468 9905 0	Push;Roots;2451				The Grand Tree=FINISHED			Y	1
 2468 9905 0	2468 9903 0	Push;Roots;2451				The Grand Tree=FINISHED			Y	1
 2430 3424 0	2429 9824 0	Enter;Cave;26709									
-2429 9824 0	2430 3424 0	Use;Tunnel;27257									
-2429 9825 0	2430 3424 0	Use;Tunnel;27258									
+2429 9824 0	2430 3424 0	Use;Tunnel;27257	72 Agility						Y	1
+2429 9825 0	2430 3424 0	Use;Tunnel;27258	72 Agility						Y	1
 2435 9807 0	2429 9807 0	Enter;Tunnel;30174	72 Agility						yes
 2435 9806 0	2429 9806 0	Enter;Tunnel;30174	72 Agility						yes
 2402 3420 0	2409 9812 0	Enter;Cave entrance;17209									
@@ -2203,8 +2206,9 @@
 # 3672 3374 0	3670 3375 0	Climb;Wall;39541
 											
 # The Hollows											
-3480 9837 0	3480 9836 0	Search;Wall;5052									
-3480 9836 0	3480 9837 0	Search;Wall;5052									
+# The Hollows wall opens and walks the player through after Search; require post-quest access.
+3480 9837 0	3480 9836 0	Search;Wall;5052				In Search of the Myreque=FINISHED			Y	1
+3480 9836 0	3480 9837 0	Search;Wall;5052				In Search of the Myreque=FINISHED			Y	1
 3500 9811 0	3509 3449 0	Open;Wooden doors;5056				In Search of the Myreque=FINISHED			Y	1
 3509 3449 0	3500 9811 0	Open;Wooden doors;5061				In Search of the Myreque=FINISHED			Y	1
 3501 9811 0	3509 3449 0	Open;Wooden doors;5057				In Search of the Myreque=FINISHED			Y	1
@@ -3552,7 +3556,8 @@
 2720 4914 0	2720 4884 2	Enter;Door;6310				The Golem=FINISHED			yes	1
 											
 # River Elid Dungeon											
-3371 3129 0	3349 9536 0	Use;Rope -> Root;6382									
+# Root has no object action: select and consume a rope, then use it on the root.
+3371 3129 0	3349 9536 0	Use;Rope -> Root;6382		954		Spirits of the Elid=IN_PROGRESS			Y	1		T
 3349 9536 0	3371 3129 0	Leave;Cave exit;10417									
 											
 # Pollnivneach											
@@ -3591,7 +3596,7 @@
 											
 # Kalphite Cave											
 3321 3122 0	3305 9497 0	Enter;Cave;30180									
-3305 9497 0	3321 3122 0	Use;Crevice;26712									
+3305 9497 0	3321 3122 0	Use;Crevice;26712							Y	1
 											
 # Mos Le'Harmless											
 3696 2996 0	3696 2996 1	Climb-up;Bamboo Ladder;4772									
@@ -3685,7 +3690,8 @@
 # DEFERRED: Shade Catacombs entry requires a shade key; these rows omit that item gate.
 # 3485 3322 0	3493 9725 0	Open;Wooden doors;4132
 # 3484 3322 0	3493 9725 0	Open;Wooden doors;4133
-3493 9726 0	3485 3322 0	Open;Solid bronze door;17900								1	
+# Unsupported: object 17900 is a Meiyerditch lab wall, not the Shade Catacombs solid bronze door named here.
+# 3493 9726 0	3485 3322 0	Open;Solid bronze door;17900								1
 # Burgh de Rott											
 3484 3244 0	3484 3243 0	Open;Gate;12817									
 3484 3243 0	3484 3244 0	Open;Gate;12817									
@@ -3811,7 +3817,8 @@
 2772 4450 0	2772 4449 0	Open;Large door;4964		4077							
 											
 # Tarn's Lair											
-3424 9660 0	3166 4547 0	Enter;Entrance;20822									
+# Tarn's Lair is dangerous; entry requires Haunted Mine and any usable Salve amulet variant.
+3424 9660 0	3166 4547 0	Enter;Entrance;20822		4081 10588 12017 12018		Haunted Mine=FINISHED			Y	6
 3166 4547 0	3424 9660 0	Enter;Passageway;20482									
 3158 4552 0	3158 4557 1	Enter;Passageway;16132									
 3158 4557 1	3158 4552 0	Climb;Stairs;17098									
@@ -3945,7 +3952,7 @@
 3432 9897 0	3431 9897 0	Open;Gate;3445									
 3360 9904 0	3440 9899 0	Climb-up;Ladder;12764								2	
 3440 9899 0	3360 9904 0	Climb-down;Trapdoor;12762									
-3440 9887 0	3423 3485 0	Pass-through;Holy barrier;3443									
+3440 9887 0	3423 3485 0	Pass-through;Holy barrier;3443				Priest in Peril=FINISHED			Y	1
 3423 3485 0	3440 9887 0	Climb-down;Trapdoor;3433									
 3422 3484 0	3440 9887 0	Climb-down;Trapdoor;3433									
 3408 3489 0	3409 3489 0	Open;Large door;3489									
@@ -4117,9 +4124,9 @@
 2509 10245 0	2510 3846 0	Climb-up;Ladder;15115								2	
 2505 10280 0	2505 10283 0	Squeeze-through;Crevice;15186	40 Agility			Royal Trouble=FINISHED			Y	1
 2505 10283 0	2505 10280 0	Squeeze-through;Crevice;15187	40 Agility			Royal Trouble=FINISHED			Y	1
-2507 10288 0	2509 10288 1	Use-Lift;Platform;15239									
-2509 10288 1	2507 10288 0	Use-Lift;Lift Platform;15242									
-2508 10289 0	2509 10288 1	Use-Lift;Platform;15239									
+2507 10288 0	2509 10288 1	Use-Lift;Platform;15239				Royal Trouble=IN_PROGRESS	2146>6;2155=0		Y	1
+2509 10288 1	2507 10288 0	Use-Lift;Lift Platform;15242				Royal Trouble=IN_PROGRESS	2146>6;2155=1		Y	1
+2508 10289 0	2509 10288 1	Use-Lift;Platform;15239				Royal Trouble=IN_PROGRESS	2146>6;2155=0		Y	1
 2510 10287 1	2514 10291 0	Enter;Tunnel;15188				Royal Trouble=FINISHED			Y	1
 2514 10291 0	2510 10287 1	Enter;Tunnel;15189				Royal Trouble=FINISHED			Y	1
 # Deferred: Royal Trouble's ropeswing requires rope setup and quest-stage access not encoded by these rows.
@@ -4262,9 +4269,9 @@
 2364 3799 2	2362 3799 0	Climb-down;Ladder;21513								2	
 											
 # Iceberg											
-2630 4013 1	2656 10423 0	Use;A crack;21245									
-2656 10423 0	2631 4013 1	Use;Chasm;21035									
-2631 4013 1	2656 10423 0	Use;A crack;21245									
+2630 4013 1	2656 10423 0	Use;A crack;21245				Cold War=FINISHED			Y	1
+2656 10423 0	2631 4013 1	Use;Chasm;21035				Cold War=FINISHED			Y	1
+2631 4013 1	2656 10423 0	Use;A crack;21245				Cold War=FINISHED			Y	1
 2638 10424 0	2639 10424 0	Open;Door;21167									
 2639 10424 0	2638 10424 0	Open;Door;21167									
 											
@@ -4324,8 +4331,8 @@
 2730 3712 0	2773 10162 0	Enter;Tunnel;5008				Troll Romance=FINISHED			yes
 2773 10161 0	2730 3713 0	Enter;Tunnel;5014				Troll Romance=FINISHED			yes
 2731 3711 0	2773 10162 0	Enter;Tunnel;5008				Troll Romance=FINISHED			yes
-2780 10161 0	2838 10124 0	Go-through;Cave Entrance;5973									
-2838 10124 0	2778 10161 0	Go-through;Entrance;5998									
+2780 10161 0	2838 10124 0	Go-through;Cave Entrance;5973							Y	1
+2838 10124 0	2778 10161 0	Go-through;Entrance;5998							Y	1
 2799 10134 0	2797 3719 0	Enter;Tunnel;5013				Troll Romance=FINISHED			yes
 2797 3719 0	2799 10134 0	Enter;Tunnel;5012				Troll Romance=FINISHED			yes
 2800 10134 0	2797 3719 0	Enter;Tunnel;5013				Troll Romance=FINISHED			yes
@@ -4529,12 +4536,12 @@
 2867 3718 0	2874 3720 0	Enter;Cave Entrance;6440									
 2874 3719 0	2867 3719 0	Enter;Cave Exit;6447									
 2868 3721 0	2874 3720 0	Enter;Cave Entrance;6440									
-# DEFERRED: God Wars Dungeon boulder requires 60 Strength and members access; these rows encode neither gate.
-# 2899 3715 0	2898 3719 0	Move;Boulder;26415
-# 2898 3719 0	2898 3715 0	Move;Boulder;26415
-# 2898 3715 0	2898 3719 0	Move;Boulder;26415
-# 2899 3719 0	2898 3715 0	Move;Boulder;26415
-# 2900 3719 0	2898 3715 0	Move;Boulder;26415
+# God Wars boulder: direct Move requires 60 Strength and Troll Stronghold access.
+2899 3715 0	2898 3719 0	Move;Boulder;26415	60 Strength			Troll Stronghold=IN_PROGRESS			Y	1
+2898 3719 0	2898 3715 0	Move;Boulder;26415	60 Strength			Troll Stronghold=IN_PROGRESS			Y	1
+2898 3715 0	2898 3719 0	Move;Boulder;26415	60 Strength			Troll Stronghold=IN_PROGRESS			Y	1
+2899 3719 0	2898 3715 0	Move;Boulder;26415	60 Strength			Troll Stronghold=IN_PROGRESS			Y	1
+2900 3719 0	2898 3715 0	Move;Boulder;26415	60 Strength			Troll Stronghold=IN_PROGRESS			Y	1
 2899 3713 0	2904 3720 0	Crawl-through;Little crack;26382	60 Agility			Troll Stronghold=IN_PROGRESS			Y	1
 2904 3720 0	2899 3713 0	Crawl-through;Little crack;26382	60 Agility			Troll Stronghold=IN_PROGRESS			Y	1
 2916 3748 0	2882 5311 2	Climb-down;Hole;26419					3966=1
@@ -4555,10 +4562,13 @@
 2921 3748 0	2882 5311 2	Climb-down;Hole;26419					3966=1
 2921 3747 0	2882 5311 2	Climb-down;Hole;26419					3966=1
 2921 3746 0	2882 5311 2	Climb-down;Hole;26419					3966=1
-# Unsupported: Saradomin encampment descents need 70 unboostable Agility and permanent first-use rope state.
-# 2912 5300 2	2914 5300 1	Climb-down;Rock;26561
+# Saradomin descent: first use consumes a rope; installed rope is permanent (varbit 3967).
+2912 5300 2	2914 5300 1	Climb-down;Rock;26561	70 Agility	954		Troll Stronghold=IN_PROGRESS	3967=0		Y	1		T
+2912 5300 2	2914 5300 1	Climb-down;Rock;26561	70 Agility			Troll Stronghold=IN_PROGRESS	3967=1		Y	1
 2914 5300 1	2912 5299 2	Climb-up;Rope;26371					3967=1
-# 2920 5276 1	2920 5274 0	Climb-down;Rock;26562
+# Second descent has its own permanent installed-rope state (varbit 3968).
+2920 5276 1	2920 5274 0	Climb-down;Rock;26562	70 Agility	954		Troll Stronghold=IN_PROGRESS	3968=0		Y	1		T
+2920 5276 1	2920 5274 0	Climb-down;Rock;26562	70 Agility			Troll Stronghold=IN_PROGRESS	3968=1		Y	1
 2920 5274 0	2919 5276 1	Climb-up;Rope;26375					3968=1
 2919 5274 0	2919 5276 1	Climb-up;Rope;26375					3968=1
 2915 5300 1	2912 5299 2	Climb-up;Rope;26371					3967=1
@@ -4709,11 +4719,11 @@
 2451 4645 0	2090 3930 0	Open;Door;16774								2	
 											
 # Zanaris											
-2452 4473 0	3201 3169 0	Use;Fairy ring;12094								6	
+2452 4473 0	3201 3169 0	Use;Fairy ring;12094				Lost City			yes	6
 3202 3169 0	2452 4473 0	Open;Door;2406		772		Lost City	4498=0			6
 3202 3169 0	2452 4473 0	Open;Door;2406	65 Magic;40 Defence	9084		Lost City	4498=0			6
 3202 3169 0	2452 4473 0	Open;Door;2406				Lost City	4498=1			6
-2486 4471 0	3260 3171 0	Use;Fairy ring;12003								6	
+2486 4471 0	3260 3171 0	Use;Fairy ring;12003				Lost City			yes	6
 											
 # Wintertodt											
 1630 3968 0	1630 3963 0	Enter;Doors of dinh;29322							yes	1
@@ -4810,7 +4820,8 @@
 1457 10076 1	1457 10076 2	Enter;Lift;30259									
 											
 # dungeon shayzien mountain camp											
-1169 9973 0	1171 9946 0	Pass;Magic gate;31967									
+# DEFERRED: object 31967 is the Tale of the Righteous cave exit, not the poison-combat magic gate encoded here.
+# 1169 9973 0	1171 9946 0	Pass;Magic gate;31967
 # Malformed: the origin axes are reversed/out of world bounds and cache object 32507 is a Shayzien quest magic gate, not a climbable rope.
 # 9363 1050 0	1214 3557 0	Climb;Rope;32507
 											
@@ -4833,7 +4844,7 @@
 1614 3680 1	1618 3680 0	Climb-down;Staircase;11799									
 1616 3686 1	1616 3686 2	Climb-up;Staircase;12536									
 1616 3686 2	1616 3686 1	Climb-down;Staircase;12538									
-1639 3673 0	1666 10050 0	Investigate;Statue;27785									
+1639 3673 0	1666 10050 0	Investigate;Statue;27785							Y	1
 1666 10050 0	1639 3673 0	Climb-up;Vine ladder;28894									
 1562 3791 0	1617 10101 0	Enter;Hole;28921					5090=1				
 1617 10101 0	1562 3791 0	Climb-up;Vine;28895					
@@ -4988,9 +4999,9 @@
 2188 3165 0	2188 3162 0	Enter;Dense forest;3999									
 2188 3168 0	2188 3165 0	Enter;Dense forest;3939									
 2188 3171 0	2188 3168 0	Enter;Dense forest;3998									
-# DEFERRED: Regicide sticks can damage and fail; requirements and recovery semantics are absent.
-# 2199 3169 0	2202 3169 0	Pass;Sticks;3922
-# 2202 3169 0	2199 3169 0	Pass;Sticks;3922
+# Regicide traps retain the pending edge after failure; the Hitpoints gate prevents a lethal retry.
+2199 3169 0	2202 3169 0	Pass;Sticks;3922	1 Agility;9 Hitpoints			Regicide=IN_PROGRESS			Y
+2202 3169 0	2199 3169 0	Pass;Sticks;3922	1 Agility;9 Hitpoints			Regicide=IN_PROGRESS			Y
 2217 3169 0	2217 3166 0	Enter;Dense forest;3939									
 2217 3166 0	2217 3163 0	Enter;Dense forest;3938									
 2217 3163 0	2217 3160 0	Enter;Dense forest;3939									
@@ -5007,11 +5018,11 @@
 2234 3149 0	2231 3149 0	Enter;Dense forest;3937									
 2237 3149 0	2234 3149 0	Enter;Dense forest;3938									
 2240 3149 0	2237 3149 0	Enter;Dense forest;3939									
-# Unsupported: Regicide leaf traps can fail for 15 damage and need failure-landing recovery.
-# 2274 3172 0	2274 3176 0	Jump;Leaves;3925
-# 2274 3176 0	2274 3172 0	Jump;Leaves;3925
-# 2234 3181 0	2238 3181 0	Pass;Sticks;3922
-# 2238 3181 0	2234 3181 0	Pass;Sticks;3922
+# Leaf and stick failures remain pending; current Hitpoints must exceed their documented maximum hit.
+2274 3172 0	2274 3176 0	Jump;Leaves;3925	1 Agility;19 Hitpoints			Regicide=IN_PROGRESS			Y
+2274 3176 0	2274 3172 0	Jump;Leaves;3925	1 Agility;19 Hitpoints			Regicide=IN_PROGRESS			Y
+2234 3181 0	2238 3181 0	Pass;Sticks;3922	1 Agility;9 Hitpoints			Regicide=IN_PROGRESS			Y
+2238 3181 0	2234 3181 0	Pass;Sticks;3922	1 Agility;9 Hitpoints			Regicide=IN_PROGRESS			Y
 2238 3219 0	2235 3219 0	Enter;Dense forest;3939									
 2235 3219 0	2232 3219 0	Enter;Dense forest;3937									
 2232 3219 0	2229 3219 0	Enter;Dense forest;3939									
@@ -5026,14 +5037,14 @@
 2271 3192 0	2274 3192 0	Enter;Dense forest;3937									
 2268 3192 0	2271 3192 0	Enter;Dense forest;3939									
 2265 3192 0	2268 3192 0	Enter;Dense forest;3938									
-# 2267 3201 0	2267 3205 0	Jump;Leaves;3925
-# 2267 3205 0	2267 3201 0	Jump;Leaves;3925
+2267 3201 0	2267 3205 0	Jump;Leaves;3925	1 Agility;19 Hitpoints			Regicide=IN_PROGRESS			Y
+2267 3205 0	2267 3201 0	Jump;Leaves;3925	1 Agility;19 Hitpoints			Regicide=IN_PROGRESS			Y
 2284 3188 0	2287 3188 0	Step-over;Tripwire;3921									
 2287 3188 0	2284 3188 0	Step-over;Tripwire;3921									
-2306 3194 0	2304 3194 0	Pass;Tree;8742									
-2306 3195 0	2304 3195 0	Pass;Tree;8742									
-2304 3194 0	2306 3195 0	Pass;Tree;8742									
-2304 3195 0	2306 3195 0	Pass;Tree;8742									
+2306 3194 0	2304 3194 0	Pass;Tree;8742				Mourning's End Part I=IN_PROGRESS		517>1	Y	5
+2306 3195 0	2304 3195 0	Pass;Tree;8742				Mourning's End Part I=IN_PROGRESS		517>1	Y	5
+2304 3194 0	2306 3195 0	Pass;Tree;8742				Mourning's End Part I=IN_PROGRESS		517>1	Y	5
+2304 3195 0	2306 3195 0	Pass;Tree;8742				Mourning's End Part I=IN_PROGRESS		517>1	Y	5
 2202 3237 0	2196 3237 0	Cross;Log balance;3931	45 Agility			Regicide=IN_PROGRESS
 2196 3237 0	2202 3237 0	Cross;Log balance;3931	45 Agility			Regicide=IN_PROGRESS
 2303 3213 0	2303 3216 0	Enter;Dense forest;3937									
@@ -5048,8 +5059,8 @@
 2290 3239 0	2290 3232 0	Cross;Log balance;3933	45 Agility			Regicide=IN_PROGRESS
 2294 3242 0	2294 3245 0	Step-over;Tripwire;3921									
 2294 3245 0	2294 3242 0	Step-over;Tripwire;3921									
-# 2295 3215 0	2295 3217 0	Pass;Sticks;3922
-# 2295 3217 0	2295 3215 0	Pass;Sticks;3922
+2295 3215 0	2295 3217 0	Pass;Sticks;3922	1 Agility;9 Hitpoints			Regicide=IN_PROGRESS			Y
+2295 3217 0	2295 3215 0	Pass;Sticks;3922	1 Agility;9 Hitpoints			Regicide=IN_PROGRESS			Y
 2279 3221 0	2279 3225 0	Enter;Dense forest;3938									
 2279 3225 0	2279 3228 0	Enter;Dense forest;3937									
 2279 3228 0	2279 3231 0	Enter;Dense forest;3939									
@@ -5474,10 +5485,10 @@
 3712 3496 0	3709 3496 0	Cross;Gangplank;11210								2	
 3714 3503 0	3714 3503 1	Climb-up;Ship's ladder;11308								2	
 3714 3503 1	3714 3503 0	Climb-down;Ship's ladder;11309								2	
-3578 3526 0	3577 9927 0	Push;Memorial;5167				Creature of Fenkenstrain				2	
+3578 3526 0	3577 9927 0	Push;Memorial;5167				Creature of Fenkenstrain=IN_PROGRESS	192=1		Y	2
 3577 9927 0	3578 3526 0	Climb-up;Ladder;17387								2	
 3504 9969 0	3504 3569 0	Climb-up;Ladder;17387				Creature of Fenkenstrain				2	
-3504 3571 0	3504 9969 0	Push;Memorial;5167								2	
+3504 3571 0	3504 9969 0	Push;Memorial;5167				Creature of Fenkenstrain=IN_PROGRESS	192=1		Y	2
 3019 9741 0	3019 9741 0	Climb-down;Ladder;30367	60 Mining							2	
 3019 9741 0	3019 9741 0	Climb-up;Ladder;17386								2	
 3019 3337 0	3019 9737 0	Climb-down;Ladder;30367	60 Mining							2	
@@ -5636,7 +5647,7 @@
 1795 3106 0	1799 9506 0	Enter;Colosseum entrance;50749				Children of the Sun=FINISHED			Y	8
 1799 9506 0	1795 3106 0	Exit;Stairs;50750									
 1799 9507 0	1795 3106 0	Exit;Stairs;50750									
-2304 3194 0	2306 3194 0	Pass;Tree;8742						517>1		5	
+2304 3194 0	2306 3194 0	Pass;Tree;8742				Mourning's End Part I=IN_PROGRESS		517>1	Y	5
 2970 3462 0	2972 3462 0	Climb-over;Crumbling wall;24749				Grim Tales=IN_PROGRESS			Y	2
 2972 3462 0	2970 3462 0	Climb-over;Crumbling wall;24749	58 Thieving			Grim Tales=IN_PROGRESS			Y	2
 1401 3536 0	1275 3559 0	Travel;Mountain Guide;7600					5421=1			7	1: Mount Quidamortem.
@@ -5696,7 +5707,7 @@
 2570 3121 0	2569 9525 0	Climb-up;Staircase;16665								1	
 2569 9525 0	2569 3121 0	Climb-up;Staircase;16665								1	
 2569 9526 0	2569 3121 0	Climb-up;Staircase;16665								1	
-2572 9499 0	2588 9573 0	Pray-at;Altar;412								2	
+2572 9499 0	2588 9573 0	Pray-at;Altar;412	16 Hitpoints						Y	2
 2579 9583 0	2567 9524 0	Climb-up;Staircase;16665								1	
 2578 9583 0	2567 9524 0	Climb-up;Staircase;16665								1	
 2594 3085 0	2594 9485 0	Climb-down;Ladder;17384								2	
@@ -5872,8 +5883,8 @@
 2522 3493 0	2522 3493 1	Climb-up;Ladder;16683								2	
 2521 3494 1	2521 3494 0	Climb-down;Ladder;16679								2	
 2522 3493 1	2522 3493 0	Climb-down;Ladder;16679								2	
-2511 3511 0	1768 5366 0	Jump-into;Whirlpool;25274					3759>1			2	
-2512 3511 0	1768 5366 0	Jump-into;Whirlpool;25274					3759>1			2	
+2511 3511 0	1768 5366 0	Dive in;Whirlpool;25274					3759>1		Y	2
+2512 3511 0	1768 5366 0	Dive in;Whirlpool;25274					3759>1		Y	2
 1742 5352 0	2531 3446 0	Ride;Aged log;25216								2	
 1761 5362 0	2531 3446 0	Ride;Aged log;25216								2	
 1559 3046 0	1556 3046 2	Climb-up;Rope;51647								2	
@@ -5926,11 +5937,11 @@
 # 2785 3772 0	2794 3719 0	Slide;Slope;5015		4084						30
 2484 3486 1	2649 4516 0	Travel;Daero;1445								6	
 2649 4518 0	2894 2726 0	Travel;Waydar;1446								4	
-2654 4495 0	2393 3466 0	Operate;Teleportation Device;4869								6	
+2654 4495 0	2393 3466 0	Operate;Teleportation Device;4869				Monkey Madness I=IN_PROGRESS			Y	6
 2896 2727 0	2393 3465 0	Travel;Waydar;1446								4	
-2762 2989 0	2760 9389 0	Search;Well stacked rocks;2234								15	
-# DEFERRED: Tomb of Bervirius climbing rocks can fail for 1-10 damage and need an HP-aware retry policy.
-# 2764 9376 0	2765 2976 0	Climb;Climbing rocks;2236
+2762 2989 0	2760 9389 0	Search;Well stacked rocks;2234	32 Agility			Shilo Village=IN_PROGRESS			Y	15
+# Tomb exit can fail for up to 10 damage; retry only while the current Hitpoints gate remains met.
+2764 9376 0	2765 2976 0	Climb;Climbing rocks;2236	32 Agility;11 Hitpoints			Shilo Village=IN_PROGRESS			Y
 2840 3516 0	2836 3517 0	Mine;Rock slide;2634	50 Mining	1265 1267 1269 12297 1273 1271 1275 11920 23680 23276 13243 20014		Heroes' Quest=FINISHED			yes	10
 2839 3516 0	2836 3517 0	Mine;Rock slide;2634	50 Mining	1265 1267 1269 12297 1273 1271 1275 11920 23680 23276 13243 20014		Heroes' Quest=FINISHED			yes	10
 2837 3517 0	2840 3516 0	Mine;Rock slide;2634	50 Mining	1265 1267 1269 12297 1273 1271 1275 11920 23680 23276 13243 20014		Heroes' Quest=FINISHED			yes	10
@@ -5947,7 +5958,8 @@
 3057 9562 0	3057 9555 0	Enter;Ice Cavern;10596								1	
 3055 9555 0	3055 9562 0	Enter;Ice Cavern;10595								1	
 3057 9555 0	3057 9562 0	Enter;Ice Cavern;10595								1	
-3106 3559 0	3035 4852 0	Teleport;Mage of Zamorak;2581				Enter the Abyss					
+# Dedicated NPC transport: level-5 Wilderness approach; arrival drains Prayer and normally skulls.
+3106 3559 0	3035 4852 0	Teleport;Mage of Zamorak;2581				Enter the Abyss=FINISHED			Y	6
 # Unsupported: this one-way Abyssal Nexus passage lacks its boss-area access and warning contract.
 # 3039 4805 0	3039 4800 0	Enter;Passage;27054
 3039 4854 0	3039 4844 0	Go-through;Passage;26250									
@@ -5962,7 +5974,7 @@
 3061 4831 0	3052 4831 0	Go-through;Passage;26250									
 3059 4840 0	3039 4844 0	Go-through;Passage;26250									
 3050 4850 0	3039 4844 0	Go-through;Passage;26250									
-3034 4793 0	3221 3219 0	Operate;Appendage;27027								4	
+3034 4793 0	3221 3219 0	Operate;Appendage;27027							Y	4
 3044 4842 0	2269 4840 0	Exit-through;Chaos rift;25382									
 2259 4846 0	2259 4846 1	Climb-up;Ladder;16683								1	
 2259 4846 1	2259 4846 0	Climb-up;Ladder;16683								1	
@@ -6034,7 +6046,7 @@
 3615 9484 0	3615 9482 0	Quick-pass;Barrier;43700				Temple of the Eye				5	
 3616 9484 0	3616 9482 0	Quick-pass;Barrier;43700				Temple of the Eye				5	
 3617 9484 0	3617 9482 0	Quick-pass;Barrier;43700				Temple of the Eye				5	
-# DEFERRED: Strange floor has a level-dependent failure chance; safe damage/failure recovery is not encoded.
+# Disabled shadows: agility_shortcuts.tsv owns these exact stochastic crossings and the feature toggle.
 # 2775 10003 0	2773 10003 0	Jump-over;Strange floor;16544	43 Agility							10
 # 2773 10003 0	2775 10003 0	Jump-over;Strange floor;16544	43 Agility							10
 # 2770 10002 0	2768 10002 0	Jump-over;Strange floor;16544	43 Agility							10

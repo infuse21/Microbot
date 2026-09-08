@@ -19,18 +19,18 @@ public class UnsupportedPlankAndSticksSourceTest
 {
 	private static final String TRANSPORT_RESOURCE =
 		"/net/runelite/client/plugins/microbot/shortestpath/transports.tsv";
-	private static final Set<Integer> UNSUPPORTED_OBJECT_IDS = Set.of(3922, 15213);
+	private static final int UNSUPPORTED_PLANK_ID = 15213;
 
 	@Test
 	public void unstagedPlankAndFailureObstacleRowsAreNotLoaded()
 	{
 		assertTrue(Transport.loadAllFromResources().values().stream()
 			.flatMap(java.util.Collection::stream)
-			.noneMatch(row -> UNSUPPORTED_OBJECT_IDS.contains(row.getObjectId())));
+			.noneMatch(row -> row.getObjectId() == UNSUPPORTED_PLANK_ID));
 	}
 
 	@Test
-	public void allFourteenRowsRemainAsExactSourceEvidence()
+	public void allEightPlankRowsRemainAsExactSourceEvidence()
 		throws IOException
 	{
 		Set<String> expected = Set.of(
@@ -41,13 +41,7 @@ public class UnsupportedPlankAndSticksSourceTest
 			"2543 10287 0>2541 10287 0:Use;Plank -> Rocks;15213",
 			"2541 10287 0>2543 10287 0:Use;Plank -> Rocks;15213",
 			"2540 10286 0>2538 10286 0:Use;Plank -> Rocks;15213",
-			"2538 10286 0>2540 10286 0:Use;Plank -> Rocks;15213",
-			"2199 3169 0>2202 3169 0:Pass;Sticks;3922",
-			"2202 3169 0>2199 3169 0:Pass;Sticks;3922",
-			"2234 3181 0>2238 3181 0:Pass;Sticks;3922",
-			"2238 3181 0>2234 3181 0:Pass;Sticks;3922",
-			"2295 3215 0>2295 3217 0:Pass;Sticks;3922",
-			"2295 3217 0>2295 3215 0:Pass;Sticks;3922");
+			"2538 10286 0>2540 10286 0:Use;Plank -> Rocks;15213");
 		InputStream resource = UnsupportedPlankAndSticksSourceTest.class
 			.getResourceAsStream(TRANSPORT_RESOURCE);
 		assertNotNull(resource);
@@ -56,7 +50,7 @@ public class UnsupportedPlankAndSticksSourceTest
 		{
 			Set<String> disabled = reader.lines()
 				.filter(line -> line.startsWith("# ")
-					&& (line.contains(";15213") || line.contains(";3922")))
+					&& line.contains(";15213"))
 				.map(line -> line.substring(2).split("\\t", -1))
 				.peek(columns -> assertTrue(noRequirements(columns)))
 				.map(columns -> columns[0] + ">" + columns[1] + ":" + columns[2])

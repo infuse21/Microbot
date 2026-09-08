@@ -27,6 +27,7 @@ public final class NpcTransportPolicy
 		TransportType.NPC, TransportType.SHIP, TransportType.BOAT);
 	private static final int LIVE_NPC_ORIGIN_RADIUS = 15;
 	private static final Set<String> ORDINARY_DIRECT_ROUTES = Set.of(
+		"3106,3559,0->3035,4852,0|2581|Teleport|Mage of Zamorak||6",
 		"3680,2963,0->3786,2824,0|550|Transport|Brother Tranquility||2",
 		"3786,2824,0->3680,2963,0|550|Transport|Brother Tranquility||2",
 		"2484,3486,1->2649,4516,0|1445|Travel|Daero||6",
@@ -92,6 +93,11 @@ public final class NpcTransportPolicy
 		{
 			return transport.getQuests().size() == 1
 				&& transport.getQuests().get(Quest.CHILDREN_OF_THE_SUN) == QuestState.FINISHED;
+		}
+		if (transport.getObjectId() == 2581)
+		{
+			return transport.isMembers() && transport.getQuests().equals(
+				Map.of(Quest.ENTER_THE_ABYSS, QuestState.FINISHED));
 		}
 		return transport.getQuests().isEmpty();
 	}

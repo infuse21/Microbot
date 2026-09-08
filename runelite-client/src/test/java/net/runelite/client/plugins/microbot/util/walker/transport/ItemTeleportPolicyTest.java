@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.shortestpath.Transport;
 import net.runelite.client.plugins.microbot.shortestpath.TransportType;
+import net.runelite.client.plugins.microbot.shortestpath.TransportVarbit;
 import net.runelite.client.plugins.microbot.util.walker.banking.Rs2WalkerBankingPlanner;
 import org.junit.Test;
 
@@ -19,6 +20,7 @@ import java.util.stream.Collectors;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 public class ItemTeleportPolicyTest
@@ -52,24 +54,38 @@ public class ItemTeleportPolicyTest
 						Definition definition = definitions.get(id);
 						assertNotNull(definition);
 						String message = row.getDisplayInfo() + " item=" + id;
-						if ("Max cape: Crafting Guild".equals(row.getDisplayInfo()))
+						if (row.getDisplayInfo().startsWith("Max cape:"))
 						{
 							if (id == 13280)
 							{
 								assertTrue(message, Rs2ItemTeleportScene.hasExactAction(definition.actions,
-									definition.actions, definition.subops, "Crafting Guild"));
+									definition.actions, definition.subops,
+									ItemTeleportPolicy.inventoryAction(row)));
 							}
 							else
 							{
 								assertEquals(13342, id);
-								assertTrue(message, Rs2ItemTeleportScene.hasExactAction(definition.equipment,
-									definition.actions, definition.subops, "Crafting Guild"));
+								if (ItemTeleportPolicy.requiresInventorySurface(row))
+								{
+									assertNull(ItemTeleportPolicy.equipmentAction(row));
+								}
+								else
+								{
+									assertTrue(message, Rs2ItemTeleportScene.hasExactAction(definition.equipment,
+										definition.actions, definition.subops,
+										ItemTeleportPolicy.equipmentAction(row)));
+								}
 							}
 							continue;
 						}
 						assertTrue(message, Rs2ItemTeleportScene.hasExactAction(definition.actions,
 							definition.actions, definition.subops, ItemTeleportPolicy.inventoryAction(row)));
 						String equipmentAction = ItemTeleportPolicy.equipmentAction(row);
+						if (ItemTeleportPolicy.requiresInventorySurface(row))
+						{
+							assertNull(equipmentAction);
+							continue;
+						}
 						if (equipmentAction == null)
 						{
 							assertFalse(message, Arrays.stream(definition.equipment)
@@ -84,7 +100,7 @@ public class ItemTeleportPolicyTest
 				}
 			}
 		}
-		assertEquals(194, eligible);
+		assertEquals(217, eligible);
 	}
 
 	@Test
@@ -147,7 +163,7 @@ public class ItemTeleportPolicyTest
 		assertFalse(ItemTeleportPolicy.isEligible(row("Games necklace: Burthorpe", 1)));
 		assertFalse(ItemTeleportPolicy.isEligible(row("Games necklace: Unknown", 3853)));
 		assertFalse(ItemTeleportPolicy.isEligible(row("Burning amulet: Lava Maze", 21166)));
-		assertFalse(ItemTeleportPolicy.isEligible(row("Max cape: Home", 13280)));
+		assertFalse(ItemTeleportPolicy.isEligible(row("Max cape: Feldip Hills", 13280)));
 		assertFalse(ItemTeleportPolicy.isEligible(row("Camulet: Enakhra's Temple", 6707)));
 		assertFalse(ItemTeleportPolicy.isEligible(row("Hunter cape: Black chinchompa", 9948)));
 		assertFalse(ItemTeleportPolicy.isEligible(row("Mythical cape: Teleport", 21913)));
@@ -192,7 +208,7 @@ public class ItemTeleportPolicyTest
 	}
 
 	@Test
-	public void craftingGuildMaxCapeUsesTheOneExactUngroupedDestinationAction()
+	public void auditedMaxCapeRowsUseExactInventoryAndDirectWornActions()
 	{
 		java.util.List<Transport> rows = Transport.loadAllFromResources().values().stream()
 			.flatMap(Set::stream)
@@ -206,14 +222,67 @@ public class ItemTeleportPolicyTest
 		assertEquals("Crafting Guild", ItemTeleportPolicy.inventoryAction(row));
 		assertEquals("Crafting Guild", ItemTeleportPolicy.equipmentAction(row));
 
-		long otherMaxRowsOwned = Transport.loadAllFromResources().values().stream()
+		long maxRowsOwned = Transport.loadAllFromResources().values().stream()
 			.flatMap(Set::stream)
 			.filter(candidate -> candidate.getDisplayInfo() != null
-				&& candidate.getDisplayInfo().startsWith("Max cape:")
-				&& !"Max cape: Crafting Guild".equals(candidate.getDisplayInfo()))
+				&& candidate.getDisplayInfo().startsWith("Max cape:"))
 			.filter(ItemTeleportPolicy::isEligible)
 			.count();
-		assertEquals(0, otherMaxRowsOwned);
+		assertEquals(21, maxRowsOwned);
+		assertEquals(0, Transport.loadAllFromResources().values().stream().flatMap(Set::stream)
+			.filter(candidate -> candidate.getDisplayInfo() != null
+				&& candidate.getDisplayInfo().startsWith("Max cape:"))
+			.filter(candidate -> !ItemTeleportPolicy.isEligible(candidate)).count());
+	}
+
+	@Test
+	public void camuletRowsUseExactChargesDiaryAndInventorySubactions()
+	{
+		java.util.List<Transport> rows = rows("Camulet:");
+		assertEquals(2, rows.size());
+		for (Transport row : rows)
+		{
+			assertTrue(ItemTeleportPolicy.isEligible(row));
+			assertTrue(ItemTeleportPolicy.requiresInventorySurface(row));
+			assertNull(ItemTeleportPolicy.equipmentAction(row));
+			assertTrue(hasVarbit(row, 1574, 0, TransportVarbit.Operator.GREATER_THAN));
+			assertEquals(row.getDisplayInfo().split(": ", 2)[1], ItemTeleportPolicy.inventoryAction(row));
+		}
+		Transport entrance = rows.stream().filter(row -> row.getDisplayInfo().endsWith("Entrance"))
+			.findFirst().orElseThrow(AssertionError::new);
+		assertTrue(hasVarbit(entrance, 4485, 1, TransportVarbit.Operator.EQUAL));
+	}
+
+	@Test
+	public void hunterAndMaxRowsShareOneExactDailyCounter()
+	{
+		java.util.List<Transport> rows = Transport.loadAllFromResources().values().stream()
+			.flatMap(Set::stream).filter(ItemTeleportPolicy::isHunterArea).collect(Collectors.toList());
+		assertEquals(4, rows.size());
+		for (Transport row : rows)
+		{
+			assertTrue(row.getDisplayInfo(), ItemTeleportPolicy.isEligible(row));
+			assertEquals(1, row.getVarbits().size());
+			assertTrue(hasVarbit(row, 4819, 5, TransportVarbit.Operator.LESS_THAN));
+		}
+		assertEquals(2, rows.stream().filter(ItemTeleportPolicy::isBlackHunterArea).count());
+		assertEquals(2, rows.stream().filter(ItemTeleportPolicy::requiresInventorySurface).count());
+	}
+
+	@Test
+	public void missingDailyChargeAndDiaryGatesAreRejected()
+	{
+		Transport hunter = rows("Hunter cape: Black").get(0);
+		hunter.getVarbits().clear();
+		assertFalse(ItemTeleportPolicy.isEligible(hunter));
+
+		Transport max = rows("Max cape: Feldip").get(0);
+		max.getVarbits().clear();
+		assertFalse(ItemTeleportPolicy.isEligible(max));
+
+		Transport entrance = rows("Camulet: Enakhra's Temple Entrance").get(0);
+		entrance.getVarbits().removeIf(gate -> gate.getVarbitId() == 4485);
+		assertFalse(ItemTeleportPolicy.isEligible(entrance));
 	}
 
 	@Test
@@ -233,6 +302,20 @@ public class ItemTeleportPolicyTest
 	{
 		return new Transport(new WorldPoint(3000, 3000, 0), display, TransportType.TELEPORTATION_ITEM,
 			true, 20, Collections.singleton(Collections.singleton(id)));
+	}
+
+	private static java.util.List<Transport> rows(String displayPrefix)
+	{
+		return Transport.loadAllFromResources().values().stream().flatMap(Set::stream)
+			.filter(row -> row.getDisplayInfo() != null && row.getDisplayInfo().startsWith(displayPrefix))
+			.collect(Collectors.toList());
+	}
+
+	private static boolean hasVarbit(Transport row, int id, int value,
+		TransportVarbit.Operator operator)
+	{
+		return row.getVarbits().stream().anyMatch(gate -> gate.getVarbitId() == id
+			&& gate.getValue() == value && gate.getOperator() == operator);
 	}
 
 	private static final class Definition

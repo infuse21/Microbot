@@ -112,6 +112,8 @@ public class TransportFeatureToggleTest
 			Set.of(15186, 15187, 15194, 15195), 4);
 		assertShadowRows("Little crack", "useAgilityShortcuts", Set.of(26382), 2);
 		assertShadowRows("Mausoleum Door", "useAgilityShortcuts", Set.of(38574), 1);
+		assertShadowRows("Stepping stone", "useAgilityShortcuts", Set.of(21738, 21739), 2);
+		assertShadowRows("Log balance", "useAgilityShortcuts", Set.of(20882, 20884), 2);
 	}
 
 	@Test
@@ -122,6 +124,21 @@ public class TransportFeatureToggleTest
 		assertShadowRows("Rocky handholds", "useAgilityShortcuts", Set.of(19846, 19847, 26405), 6);
 		assertShadowRows("Tunnel", "useAgilityShortcuts", Set.of(30174), 2);
 		assertShadowRows("Gap", "useAgilityShortcuts", Set.of(29326), 6);
+	}
+
+	@Test
+	public void auditedSlayerExitTunnelsRespectAgilityToggle() throws Exception
+	{
+		assertShadowRows("Tunnel", "useAgilityShortcuts", Set.of(27257, 27258), 2);
+	}
+
+	@Test
+	public void auditedStochasticHazardsRespectAgilityToggle() throws Exception
+	{
+		assertShadowRows("Well stacked rocks", "useAgilityShortcuts", Set.of(2234), 1);
+		assertShadowRows("Climbing rocks", "useAgilityShortcuts", Set.of(2236), 1);
+		assertShadowRows("Sticks", "useAgilityShortcuts", Set.of(3922), 6);
+		assertShadowRows("Leaves", "useAgilityShortcuts", Set.of(3925), 4);
 	}
 
 	@Test

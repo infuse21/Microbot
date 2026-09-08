@@ -91,7 +91,7 @@ public class ClientThread
 				Thread.currentThread().interrupt();
 				return Optional.empty();
 			}			
-			task.cancel(true);
+			task.cancel(false);
 			if (!Microbot.isDebug()) {
 				log.error("Exception during task execution: {}: {}\n{}", e.getClass().getSimpleName(), e.getMessage(),e);
 			}

@@ -35,6 +35,24 @@ public class OrdinaryDoorRouteScannerTest
 
 		assertNull(interaction);
 	}
+
+	@Test
+	public void doorImmediatelyBeforeStairsIsSelectedFirst()
+	{
+		WorldPoint upstairs = new WorldPoint(3201, 3200, 1);
+		RoutePlan plan = new RoutePlan(1, 1, A, Collections.singleton(upstairs),
+			Arrays.asList(A, B, upstairs), Arrays.asList(A, B, upstairs), true,
+			Arrays.asList(
+				new RouteEdge(0, A, B, RouteEdge.Kind.WALK),
+				new RouteEdge(1, B, upstairs, RouteEdge.Kind.CATALOG_TRANSITION)));
+		DoorScene scene = edge -> edge.from().equals(A) && edge.to().equals(B)
+			? door(B) : null;
+
+		RouteInteraction interaction = scanner.scan(plan, 0, 2, A, scene, 13);
+
+		assertEquals(RouteInteraction.Kind.DOOR, interaction.getKind());
+		assertEquals(0, interaction.getRawEdgeIndex());
+	}
 	private static final WorldPoint A = new WorldPoint(3200, 3200, 0);
 	private static final WorldPoint B = new WorldPoint(3201, 3200, 0);
 	private static final WorldPoint C = new WorldPoint(3202, 3200, 0);
