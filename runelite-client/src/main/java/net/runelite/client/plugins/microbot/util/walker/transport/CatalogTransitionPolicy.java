@@ -313,6 +313,18 @@ public final class CatalogTransitionPolicy
 		"1761,5362,0->2531,3446,0|25216|ride|aged log",
 		"2567,9680,0->2606,9692,0|2849|board|raft",
 		"2606,9692,0->2567,9680,0|2849|board|raft");
+	private static final Set<String> EQUIPPED_GRAPPLE_ROUTES = Set.of(
+		"3246,3179,0->3259,3179,0|17068|grapple|broken raft",
+		"3259,3179,0->3246,3179,0|17068|grapple|broken raft",
+		"3033,3390,0->3033,3389,1|17049|grapple|wall",
+		"3032,3388,0->3032,3389,1|17050|grapple|wall",
+		"2866,3428,0->2869,3428,0|17042|grapple|rocks",
+		"2556,3072,0->2556,3073,1|17047|grapple|wall",
+		"2556,3075,0->2556,3074,1|17047|grapple|wall",
+		"2874,3133,0->2874,3127,0|17074|grapple|strong tree",
+		"2874,3127,0->2874,3133,0|17074|grapple|strong tree",
+		"2874,3136,0->2874,3142,0|17074|grapple|strong tree",
+		"2874,3142,0->2874,3136,0|17074|grapple|strong tree");
 	private static final Set<String> TEMPLE_OF_THE_EYE_PORTAL_ROUTES = Set.of(
 		"3104,9573,0->3615,9470,0|43841|enter|portal",
 		"3615,9470,0->3104,9573,0|43692|enter|portal");
@@ -467,6 +479,10 @@ public final class CatalogTransitionPolicy
 		{
 			return true;
 		}
+		if (isEquippedGrappleShortcut(transport))
+		{
+			return true;
+		}
 		if (!transport.getItemIdRequirements().isEmpty())
 		{
 			return false;
@@ -501,6 +517,44 @@ public final class CatalogTransitionPolicy
 		return name.contains("ladder") || name.contains("stair")
 			|| name.contains("trapdoor") || name.contains("cave")
 			|| name.contains("gangplank");
+	}
+
+	public static boolean isEquippedGrappleShortcut(Transport transport)
+	{
+		if (transport == null || transport.getType() != TransportType.GRAPPLE_SHORTCUT
+			|| transport.getOrigin() == null || transport.getDestination() == null
+			|| transport.isConsumable() || transport.getCurrencyAmount() != 0
+			|| transport.isQuestLocked() || !transport.getVarbits().isEmpty()
+			|| !transport.getVarplayers().isEmpty()
+			|| !EQUIPPED_GRAPPLE_ROUTES.contains(routeKey(transport,
+				normalizeDirectAction(transport.getAction()), normalize(transport.getName()))))
+		{
+			return false;
+		}
+		int agility = transport.getSkillLevels()[net.runelite.api.Skill.AGILITY.ordinal()];
+		int ranged = transport.getSkillLevels()[net.runelite.api.Skill.RANGED.ordinal()];
+		int strength = transport.getSkillLevels()[net.runelite.api.Skill.STRENGTH.ordinal()];
+		Set<Set<Integer>> items = transport.getItemIdRequirements();
+		switch (transport.getObjectId())
+		{
+			case 17068:
+				return agility == 8 && ranged == 37 && strength == 19 && items.isEmpty();
+			case 17049:
+			case 17050:
+				return agility == 11 && ranged == 19 && strength == 37
+					&& items.equals(Set.of(Set.of(9419)));
+			case 17042:
+				return agility == 32 && ranged == 35 && strength == 35
+					&& items.equals(Set.of(Set.of(9419)));
+			case 17047:
+				return agility == 39 && ranged == 21 && strength == 38
+					&& items.equals(Set.of(Set.of(9419)));
+			case 17074:
+				return agility == 53 && ranged == 42 && strength == 21
+					&& items.equals(Set.of(Set.of(9419)));
+			default:
+				return false;
+		}
 	}
 
 	private static boolean isOrdinaryDirectTransition(Transport transport)

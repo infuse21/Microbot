@@ -27,6 +27,9 @@ public class TransportRequirementPolicyTest {
         assertTrue(TransportRequirementPolicy.brokenRaftEquipmentReady(9419, "Rune crossbow"));
         assertTrue(TransportRequirementPolicy.brokenRaftEquipmentReady(9419, "Crossbow"));
         assertTrue(TransportRequirementPolicy.brokenRaftEquipmentReady(9419, "Dorgeshuun crossbow"));
+		assertFalse(TransportRequirementPolicy.grappleEquipmentReady(9418, "Rune crossbow"));
+		assertFalse(TransportRequirementPolicy.grappleEquipmentReady(9419, "Love crossbow"));
+		assertTrue(TransportRequirementPolicy.grappleEquipmentReady(9419, "Rune crossbow"));
     }
 
     @Test

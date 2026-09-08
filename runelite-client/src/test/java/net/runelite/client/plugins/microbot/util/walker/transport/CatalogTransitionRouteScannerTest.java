@@ -100,6 +100,37 @@ public class CatalogTransitionRouteScannerTest
 	}
 
 	@Test
+	public void grappleRowsRequireLandingAndEquipmentLossMakesTheSourceUnavailable()
+	{
+		CatalogTransitionRouteScanner scanner = new CatalogTransitionRouteScanner();
+		int checked = 0;
+		for (Set<Transport> group : Transport.loadAllFromResources().values())
+		{
+			for (Transport row : group)
+			{
+				if (!CatalogTransitionPolicy.isEquippedGrappleShortcut(row))
+				{
+					continue;
+				}
+				checked++;
+				RouteInteraction pending = new RouteInteraction(1, 0, row.getOrigin(),
+					row.getDestination(), row.getOrigin(), RouteInteraction.Kind.CATALOG_TRANSITION,
+					RouteInteraction.Status.AVAILABLE, "Grapple", true, row.getObjectId(),
+					row.getOrigin(), row.getDestination());
+				CatalogTransition transition = new CatalogTransition(null, row.getOrigin(),
+					row.getObjectId(), "Grapple", "Grapple", row.getOrigin(), row.getDestination());
+				assertEquals(RouteInteraction.Status.AVAILABLE,
+					scanner.observePending(pending, row.getOrigin(), edge -> transition, 13).getStatus());
+				assertEquals(RouteInteraction.Status.CLEARED,
+					scanner.observePending(pending, row.getDestination(), edge -> null, 13).getStatus());
+				assertEquals(RouteInteraction.Status.UNAVAILABLE,
+					scanner.observePending(pending, row.getOrigin(), edge -> null, 13).getStatus());
+			}
+		}
+		assertEquals(11, checked);
+	}
+
+	@Test
 	public void dwarvenMineTrapdoorWaitsForUndergroundArrival()
 	{
 		CatalogTransitionRouteScanner scanner = new CatalogTransitionRouteScanner();

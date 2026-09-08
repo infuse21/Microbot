@@ -72,6 +72,11 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 
 	private static CatalogTransition find(Transport transport, String pendingAction)
 	{
+		if (CatalogTransitionPolicy.isEquippedGrappleShortcut(transport)
+			&& !TransportRequirementPolicy.grappleEquipmentReady())
+		{
+			return null;
+		}
 		if (ShantayPassPolicy.isEligible(transport))
 		{
 			CatalogTransition transition = shantayTransition(transport, pendingAction);

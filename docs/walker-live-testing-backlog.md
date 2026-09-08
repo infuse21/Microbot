@@ -21,6 +21,17 @@ additive totals; source rows, generated edges and duplicated approaches must not
 
 ## Latest work versus earlier headless batches
 
+### Already-equipped grapple shortcuts - 2026-09-08
+
+- **Headless:** 11 exact `Grapple` routes are engine-owned only while mith grapple 9419 is in the
+  ammo slot and a compatible crossbow is equipped. Route publication and dispatch both recheck the
+  equipment; inventory/bank-only tools, lost equipment and excluded weapon classes cannot enable
+  the route. Wiki MCP confirms both equipped items and the grapple break chance.
+- **Live pending:** cross representative raft, wall, rock and Strong Tree links with an intentionally
+  minimal loadout; verify both directions where present, exact landings, 1-in-25 break recovery and
+  no legacy handoff. This slice does not equip/restore tools or claim barehand variants. The Water
+  Obelisk Crossbow Tree row is still pending implementation due to its catalog/live action mismatch.
+
 ### Unlimited Ardougne Farm cape teleport - 2026-09-08
 
 - **Headless:** the exact Farm row now accepts only unlimited item IDs 13124/20760, with inventory
@@ -386,9 +397,9 @@ Do not label these as "just waiting for live testing":
 - Advanced POH facilities: chamber/nexus/jewellery box/mounted teleports/POH rings/trees and house
   destination/instance flows. The level-48 test house is empty; only physical Home/Enter passed.
 - POH/DIQ fairy-ring facilities; quest-time certificate form of the Fairy Resistance Hideout;
-  318 random-obelisk rows including 48 unsafe self-pad artifacts; 12 grapple rows; 14 remaining
-  agility rows. The 53 post-quest multi-code rows are headless-complete above, and the 12 redundant
-  random Guthix rows were removed.
+  318 random-obelisk rows including 48 unsafe self-pad artifacts; one Crossbow Tree grapple row;
+  14 remaining agility rows. The other 11 grapple rows and 53 post-quest multi-code rows are
+  headless-complete above, and the 12 redundant random Guthix rows were removed.
 - 42 item rows after the unlimited Ardougne Farm cutover: 24 jewellery/cape exceptions (Max,
   Black chinchompa Hunter cape, Camulet); 14 whistles; moth; Chronicle,
   Slepe and Jaltevas. Some need data/charge fixes rather than a new executor.
@@ -405,8 +416,8 @@ The production classifier, not this prose list, is authoritative for the remaini
 Pre-Zanaris checkpoint: 1,466 legacy edges, including 990 ordinary TRANSPORT edges; after the
 headless Zanaris cutover: 1,465 and 989; after Waterfall internal doors: 1,463 and 987;
 after Draynor unlocked crossings: 1,445 and 969 respectively; after Yanille pick-lock:
-1,443 and 967 respectively. The current post-Ardougne classifier is 1,081 total: 699 ordinary
-TRANSPORT, 10 AGILITY_SHORTCUT, 12 GRAPPLE_SHORTCUT, 42 TELEPORTATION_ITEM and 318
+1,443 and 967 respectively. The current post-grapple classifier is 1,070 total: 699 ordinary
+TRANSPORT, 10 AGILITY_SHORTCUT, one GRAPPLE_SHORTCUT, 42 TELEPORTATION_ITEM and 318
 WILDERNESS_OBELISK rows, with no ordinary FAIRY_RING row remaining. Classifier counts
 are not percentages of live acceptance or estimates of implementation effort.
 

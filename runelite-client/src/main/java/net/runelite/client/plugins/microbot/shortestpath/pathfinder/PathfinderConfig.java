@@ -28,6 +28,7 @@ import net.runelite.client.plugins.microbot.util.leaguetransport.SeasonalTranspo
 import net.runelite.client.plugins.microbot.util.poh.PohTeleports;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.walker.WebWalkLog;
+import net.runelite.client.plugins.microbot.util.walker.transport.CatalogTransitionPolicy;
 import net.runelite.client.plugins.microbot.util.walker.transport.NpcDialogueTransportPolicy;
 import java.io.File;
 import java.io.IOException;
@@ -1317,8 +1318,8 @@ public class PathfinderConfig {
     }
 
     private boolean useTransport(Transport transport) {
-        if (TransportRequirementPolicy.isBrokenRaft(transport)
-                && !TransportRequirementPolicy.brokenRaftEquipmentReady()) return false;
+		if (CatalogTransitionPolicy.isEquippedGrappleShortcut(transport)
+				&& !TransportRequirementPolicy.grappleEquipmentReady()) return false;
         if (!TransportRequirementPolicy.questVariantAvailable(transport)) {
             return false;
         }

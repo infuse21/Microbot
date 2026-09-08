@@ -155,6 +155,10 @@ public final class TransportRequirementPolicy {
     }
 
     public static boolean brokenRaftEquipmentReady() {
+		return grappleEquipmentReady();
+	}
+
+	public static boolean grappleEquipmentReady() {
         if (Microbot.getClient() == null) return false;
         return Microbot.getClientThread().runOnClientThreadOptional(() -> {
             var weapon = net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment.get(
@@ -167,6 +171,10 @@ public final class TransportRequirementPolicy {
     }
 
     static boolean brokenRaftEquipmentReady(int ammoId, String weaponName) {
+		return grappleEquipmentReady(ammoId, weaponName);
+	}
+
+	static boolean grappleEquipmentReady(int ammoId, String weaponName) {
         if (ammoId != 9419 || weaponName == null) return false;
         String name = weaponName.toLowerCase(java.util.Locale.ROOT);
         return !name.equals("love crossbow") && (name.equals("crossbow") || name.endsWith(" crossbow"));

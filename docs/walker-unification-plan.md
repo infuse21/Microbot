@@ -21,6 +21,29 @@ headless batches, outstanding branches of representative live passes, and contra
 implementation. As of 2026-09-06 the user requests headless-first progress; deferred physical tests
 remain open rather than blocking each batch or being silently marked complete.
 
+## Already-equipped grapple shortcuts - 2026-09-08
+
+Eleven exact `Grapple` rows now use catalogue/NavigationEngine ownership: the two Broken Raft
+directions, Falador and Yanille walls, Catherby rocks, and four Karamja Strong Tree links. Their
+directed geometry, object/name/action identity, skill levels and packaged grapple requirements are
+frozen. The Water Obelisk Crossbow Tree row remains legacy-classified because its packaged
+`Grapple Crossbow` action does not match the live `Grapple` contract and needs separate correction.
+
+OSRS Wiki MCP verification confirms that mith grapple 9419 must be equipped in the ammo slot and a
+compatible crossbow must be equipped in the weapon slot; the love crossbow and ballistae do not
+qualify, and a grapple can break on use. Pathfinder publication and live scene resolution both
+recheck the equipped state, so inventory-only or bank-only tools cannot select these edges and a
+broken/removed grapple makes the route unavailable. This slice does not equip or restore either
+slot and does not claim the higher-Agility barehand variants.
+
+Focused equipment, policy, scanner and classifier tests plus both Checkstyle tasks pass. The
+classifier floor is now **1,070 legacy entries**, comprising 699 ordinary `TRANSPORT`, 10
+`AGILITY_SHORTCUT`, one `GRAPPLE_SHORTCUT`, 42 `TELEPORTATION_ITEM` and 318
+`WILDERNESS_OBELISK` entries. The integrated walker and pathfinder-policy regression passed **827**
+tests with zero failures, errors or skips; compile and the whitespace check also pass. Physical
+representative crossings and break recovery remain deferred, so this is headless-complete and
+Phase 6 remains open.
+
 ## Unlimited Ardougne Farm cape teleport - 2026-09-08
 
 The `Ardougne cloak: Farm` row now uses the engine-owned reusable item-teleport lifecycle, narrowed

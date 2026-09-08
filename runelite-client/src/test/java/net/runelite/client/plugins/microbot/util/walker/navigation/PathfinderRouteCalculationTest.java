@@ -125,7 +125,25 @@ public class PathfinderRouteCalculationTest
 		}
 		assertEquals(127, candidates);
 		assertEquals(103, migrated);
-		assertEquals(1081, legacy);
+		assertEquals(1070, legacy);
+	}
+
+	@Test
+	public void exactAlreadyEquippedGrappleRowsAreEngineOwned()
+	{
+		java.util.List<Transport> rows = Transport.loadAllFromResources().values().stream()
+			.flatMap(java.util.Collection::stream)
+			.filter(row -> row.getType() == TransportType.GRAPPLE_SHORTCUT)
+			.collect(java.util.stream.Collectors.toList());
+		assertEquals(12, rows.size());
+		assertEquals(11, rows.stream().filter(row ->
+			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(row))
+				== RouteEdge.Kind.CATALOG_TRANSITION).count());
+		Transport deferred = rows.stream().filter(row ->
+			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(row))
+				== RouteEdge.Kind.TRANSPORT).findFirst().orElseThrow(AssertionError::new);
+		assertEquals(17062, deferred.getObjectId());
+		assertEquals("Grapple Crossbow", deferred.getAction());
 	}
 
 	private static SplitFlagMap collisionMap;

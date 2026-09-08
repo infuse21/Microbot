@@ -1,6 +1,7 @@
 package net.runelite.client.plugins.microbot.util.walker.transport;
 
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.Skill;
 import net.runelite.client.plugins.microbot.shortestpath.Transport;
 import net.runelite.client.plugins.microbot.shortestpath.TransportType;
 import org.junit.Test;
@@ -59,6 +60,40 @@ public class CatalogTransitionPolicyTest
 			new WorldPoint(105, 100, 0), "Grapple", "Rocks")));
 		assertFalse(CatalogTransitionPolicy.isEligible(agilityTransport(SURFACE,
 			new WorldPoint(102, 100, 0), "Use", "Rope -> Boulder")));
+	}
+
+	@Test
+	public void acceptsOnlyFrozenEquippedGrappleRowsAndRequirements()
+	{
+		java.util.List<Transport> rows = Transport.loadAllFromResources().values().stream()
+			.flatMap(java.util.Collection::stream)
+			.filter(CatalogTransitionPolicy::isEquippedGrappleShortcut)
+			.collect(java.util.stream.Collectors.toList());
+		assertEquals(11, rows.size());
+		assertTrue(rows.stream().allMatch(CatalogTransitionPolicy::isEligible));
+		assertFalse(rows.stream().anyMatch(row -> row.getObjectId() == 17062));
+
+		Transport catherby = rows.stream().filter(row -> row.getObjectId() == 17042)
+			.findFirst().orElseThrow(AssertionError::new);
+		catherby.getSkillLevels()[Skill.AGILITY.ordinal()] = 33;
+		assertFalse(CatalogTransitionPolicy.isEquippedGrappleShortcut(catherby));
+		catherby.getSkillLevels()[Skill.AGILITY.ordinal()] = 32;
+		catherby.setItemIdRequirements(Set.of());
+		assertFalse(CatalogTransitionPolicy.isEquippedGrappleShortcut(catherby));
+		catherby.setItemIdRequirements(Set.of(Set.of(9419)));
+		catherby.setAction("Swim-to");
+		assertFalse(CatalogTransitionPolicy.isEquippedGrappleShortcut(catherby));
+		catherby.setAction("Grapple");
+		assertTrue(CatalogTransitionPolicy.isEquippedGrappleShortcut(catherby));
+
+		Transport shifted = new Transport(new WorldPoint(2865, 3428, 0),
+			new WorldPoint(2869, 3428, 0), "test", TransportType.GRAPPLE_SHORTCUT,
+			false, "Grapple", "Rocks", 17042);
+		shifted.getSkillLevels()[Skill.AGILITY.ordinal()] = 32;
+		shifted.getSkillLevels()[Skill.RANGED.ordinal()] = 35;
+		shifted.getSkillLevels()[Skill.STRENGTH.ordinal()] = 35;
+		shifted.setItemIdRequirements(Set.of(Set.of(9419)));
+		assertFalse(CatalogTransitionPolicy.isEquippedGrappleShortcut(shifted));
 	}
 
 	@Test
