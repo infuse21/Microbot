@@ -127,7 +127,7 @@ public class PathfinderRouteCalculationTest
 		}
 		assertEquals(127, candidates);
 		assertEquals(104, migrated);
-		assertEquals(640, legacy);
+		assertEquals(629, legacy);
 	}
 
 	@Test
@@ -576,7 +576,7 @@ public class PathfinderRouteCalculationTest
 	}
 
 	@Test
-	public void deterministicAgilityCatalogIsPublishedAndUnsafeRowsStayLocked()
+	public void agilityCatalogContainsOnlyEngineOwnedRows()
 	{
 		java.util.List<Transport> shortcuts = Transport.loadAllFromResources().values()
 			.stream().flatMap(java.util.Collection::stream)
@@ -593,16 +593,15 @@ public class PathfinderRouteCalculationTest
 				== RouteEdge.Kind.TRANSPORT)
 			.collect(java.util.stream.Collectors.toList());
 
-		assertEquals(275, shortcuts.size());
+		assertEquals(265, shortcuts.size());
 		assertEquals(12, adjacent);
 		assertEquals(253, transitions);
-		assertEquals(10, locked.size());
-		assertEquals(8, locked.stream()
-			.filter(candidate -> "Jump-onto".equals(candidate.getAction())).count());
-		assertTrue(locked.stream().anyMatch(candidate ->
-			!candidate.getItemIdRequirements().isEmpty()));
-		assertTrue(locked.stream().anyMatch(candidate ->
-			"Grapple".equals(candidate.getAction())));
+		assertEquals(0, locked.size());
+		assertTrue(shortcuts.stream().noneMatch(candidate -> Set.of(5842, 16533, 31850)
+			.contains(candidate.getObjectId())));
+		assertTrue(Transport.loadAllFromResources().values().stream()
+			.flatMap(java.util.Collection::stream)
+			.noneMatch(candidate -> candidate.getObjectId() == 5842));
 	}
 
 	@Test
@@ -624,7 +623,7 @@ public class PathfinderRouteCalculationTest
 		assertEquals(50, stiles.stream().filter(candidate ->
 			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(candidate))
 				== RouteEdge.Kind.CATALOG_TRANSITION).count());
-		assertEquals(593, ordinary.stream().filter(candidate ->
+		assertEquals(592, ordinary.stream().filter(candidate ->
 			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(candidate))
 				== RouteEdge.Kind.TRANSPORT).count());
 		java.util.Set<Integer> directManifestIds = new java.util.HashSet<>(java.util.Arrays.asList(

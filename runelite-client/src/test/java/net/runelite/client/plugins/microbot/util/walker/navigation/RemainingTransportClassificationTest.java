@@ -30,10 +30,9 @@ public class RemainingTransportClassificationTest
 			}
 		}
 		Map<TransportType, Integer> expected = new EnumMap<>(TransportType.class);
-		expected.put(TransportType.TRANSPORT, 593);
-		expected.put(TransportType.AGILITY_SHORTCUT, 10);
+		expected.put(TransportType.TRANSPORT, 592);
 		expected.put(TransportType.TELEPORTATION_ITEM, 37);
 		assertEquals(expected, byType);
-		assertEquals(640, byType.values().stream().mapToInt(Integer::intValue).sum());
+		assertEquals(629, byType.values().stream().mapToInt(Integer::intValue).sum());
 	}
 }

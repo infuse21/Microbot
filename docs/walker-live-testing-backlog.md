@@ -479,7 +479,8 @@ Do not label these as "just waiting for live testing":
 - POH/DIQ fairy-ring facilities; quest-time certificate form of the Fairy Resistance Hideout;
   Random Wilderness obelisks are runtime-disabled: the retained resource contains 270 random remote
   permutations and 48 unsafe self-pad artifacts. A future deterministic hard-diary selection protocol
-  is separate implementation work; 10 remaining agility rows also require correction or replacement.
+  is separate implementation work. The ten unsafe agility rows were removed: eight stale River Lum
+  segments and malformed Mountain Camp/Observatory setup rows need separately verified replacements.
   All grapple rows and 53 post-quest multi-code rows are
   headless-complete above, and the 12 redundant random Guthix rows were removed.
 - 37 item rows after the Crafting Guild Max cape cutover: 23 jewellery/cape exceptions (20 other
@@ -498,8 +499,8 @@ The production classifier, not this prose list, is authoritative for the remaini
 Pre-Zanaris checkpoint: 1,466 legacy edges, including 990 ordinary TRANSPORT edges; after the
 headless Zanaris cutover: 1,465 and 989; after Waterfall internal doors: 1,463 and 987;
 after Draynor unlocked crossings: 1,445 and 969 respectively; after Yanille pick-lock:
-1,443 and 967 respectively. The current classifier is 640 total: 593 ordinary TRANSPORT, 10
-AGILITY_SHORTCUT and 37 TELEPORTATION_ITEM rows, with
+1,443 and 967 respectively. The current classifier is 629 total: 592 ordinary TRANSPORT and 37
+TELEPORTATION_ITEM rows, with
 no ordinary FAIRY_RING or GRAPPLE_SHORTCUT row remaining. Classifier counts
 are not percentages of live acceptance or estimates of implementation effort.
 

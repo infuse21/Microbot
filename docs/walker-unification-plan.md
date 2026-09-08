@@ -21,6 +21,21 @@ headless batches, outstanding branches of representative live passes, and contra
 implementation. As of 2026-09-06 the user requests headless-first progress; deferred physical tests
 remain open rather than blocking each batch or being silently marked complete.
 
+## Stale and malformed agility catalogue cleanup - 2026-09-08
+
+The final ten legacy `AGILITY_SHORTCUT` rows were removed after OSRS Wiki MCP and current cache
+evidence showed that none represented a safe current traversal. Eight object-16533 River Lum rows
+encoded the obsolete four-stone geometry replaced in April 2026; the replacement one-stone crossing
+needs current directed endpoints and failure-landings captured before it is added.
+
+The Mountain Camp row used unicorn horn 237 instead of rope 954 and conflated one-time Mountain
+Daughter setup with repeat traversal; its duplicate ordinary object-5842 setup row was also removed.
+The Observatory object-31850 row similarly conflated permanent rope setup with traversal while
+omitting its quest, stats, equipment and persistent unlock state. These are unsupported-family data
+removals, not migrated coverage. Every remaining loaded agility row is engine-owned, and the
+classifier floor is now **629 legacy entries**: 592 ordinary `TRANSPORT` and 37
+`TELEPORTATION_ITEM` entries.
+
 ## Random Wilderness obelisk catalogue disabled - 2026-09-08
 
 The 318 generated `WILDERNESS_OBELISK` edges are no longer loaded into the runtime graph and the
