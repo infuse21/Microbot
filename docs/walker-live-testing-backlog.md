@@ -435,6 +435,7 @@ is outstanding. Equipment-free crossings do not satisfy grapple-specific diary t
 | Quest-gated Golem/Sophanem/Trollweiss entrances, 2026-09-08 | 50 exact completed-quest rows are headless-complete. | Representative Golem portal, eastern Sophanem rock and distinct Troll Romance tunnel crossings; quest-time intermediate states remain unsupported. |
 | Post-quest Crandor/Shilo entrances, 2026-09-08 | 12 Crandor hole and ten Shilo broken-cart rows are headless-complete. | Representative completed-quest crossing; pre-quest boat/dialogue/setup states remain quest-helper work. |
 | Stronghold escapes/Wintertodt doors, 2026-09-08 | 14 Stronghold vine/chain rows and 16 direction-gated Wintertodt door rows are headless-complete. | Representative vertical exit and Firemaking-qualified inbound/outbound Wintertodt crossings. |
+| Lithkren broken doors, 2026-09-08 | Nine exact post-Dragon Slayer II rows are headless-complete. | Representative crossing; quest-time dragon-key setup remains quest-helper work. |
 | Seasonal, 2026-08-30 | 47 Clue Compass + 122 Map of Alacrity rows. | League world/items required; direct compass action, two-level map, off-screen hotkeys, locked entries, banked requirement and landing. |
 
 ## Partially live-accepted families: remaining branches
@@ -501,7 +502,7 @@ The production classifier, not this prose list, is authoritative for the remaini
 Pre-Zanaris checkpoint: 1,466 legacy edges, including 990 ordinary TRANSPORT edges; after the
 headless Zanaris cutover: 1,465 and 989; after Waterfall internal doors: 1,463 and 987;
 after Draynor unlocked crossings: 1,445 and 969 respectively; after Yanille pick-lock:
-1,443 and 967 respectively. The current classifier is 549 total: 512 ordinary TRANSPORT and 37
+1,443 and 967 respectively. The current classifier is 516 total: 479 ordinary TRANSPORT and 37
 TELEPORTATION_ITEM rows, with
 no ordinary FAIRY_RING or GRAPPLE_SHORTCUT row remaining. Classifier counts
 are not percentages of live acceptance or estimates of implementation effort.

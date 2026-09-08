@@ -127,7 +127,7 @@ public class PathfinderRouteCalculationTest
 		}
 		assertEquals(127, candidates);
 		assertEquals(104, migrated);
-		assertEquals(549, legacy);
+		assertEquals(516, legacy);
 	}
 
 	@Test
@@ -623,7 +623,7 @@ public class PathfinderRouteCalculationTest
 		assertEquals(50, stiles.stream().filter(candidate ->
 			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(candidate))
 				== RouteEdge.Kind.CATALOG_TRANSITION).count());
-		assertEquals(512, ordinary.stream().filter(candidate ->
+		assertEquals(479, ordinary.stream().filter(candidate ->
 			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(candidate))
 				== RouteEdge.Kind.TRANSPORT).count());
 		java.util.Set<Integer> directManifestIds = new java.util.HashSet<>(java.util.Arrays.asList(
@@ -932,7 +932,7 @@ public class PathfinderRouteCalculationTest
 			.filter(row -> row.getType() == TransportType.TRANSPORT)
 			.filter(row -> "Climb".equals(row.getAction()) && "Steps".equals(row.getName()))
 			.collect(java.util.stream.Collectors.toList());
-		assertEquals(22, steps.size());
+		assertEquals(14, steps.size());
 		int supported = 0;
 		java.util.Map<String, WorldPoint> inputs = new HashMap<>();
 		for (Transport step : steps)

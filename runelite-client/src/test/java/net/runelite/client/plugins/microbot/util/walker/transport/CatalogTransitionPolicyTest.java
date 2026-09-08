@@ -300,6 +300,31 @@ public class CatalogTransitionPolicyTest
 	}
 
 	@Test
+	public void acceptsOnlyPostQuestLithkrenBrokenDoors()
+	{
+		java.util.List<Transport> rows = Transport.loadAllFromResources().values().stream()
+			.flatMap(java.util.Collection::stream)
+			.filter(row -> Set.of(32117, 32132).contains(row.getObjectId()))
+			.collect(java.util.stream.Collectors.toList());
+		assertEquals(9, rows.size());
+		assertTrue(rows.stream().allMatch(CatalogTransitionPolicy::isLithkrenBrokenDoor));
+		assertTrue(rows.stream().allMatch(CatalogTransitionPolicy::isEligible));
+		assertTrue(rows.stream().allMatch(row -> row.isMembers()
+			&& row.getQuests().equals(Map.of(Quest.DRAGON_SLAYER_II, QuestState.FINISHED))));
+
+		rows.get(0).getQuests().clear();
+		assertFalse(CatalogTransitionPolicy.isLithkrenBrokenDoor(rows.get(0)));
+	}
+
+	@Test
+	public void unsafeKaruulmHazardRowsAreNotLoaded()
+	{
+		assertTrue(Transport.loadAllFromResources().values().stream()
+			.flatMap(java.util.Collection::stream)
+			.noneMatch(row -> Set.of(34359, 34530, 34531).contains(row.getObjectId())));
+	}
+
+	@Test
 	public void acceptsOnlyExactItemFreeOrdinaryDirectContracts()
 	{
 		assertTrue(CatalogTransitionPolicy.isEligible(transport(SURFACE,

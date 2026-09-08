@@ -495,6 +495,16 @@ public final class CatalogTransitionPolicy
 		"1631,3963,0->1630,3958,0|29322|enter|door of dinh",
 		"1632,3963,0->1630,3958,0|29322|enter|door of dinh",
 		"1633,3963,0->1630,3958,0|29322|enter|door of dinh");
+	private static final Set<String> LITHKREN_BROKEN_DOOR_ROUTES = Set.of(
+		"3551,10481,0->1568,5061,0|32117|enter|broken grandiose doors",
+		"3550,10481,0->1568,5061,0|32117|enter|broken grandiose doors",
+		"3549,10481,0->1568,5061,0|32117|enter|broken grandiose doors",
+		"1569,5061,0->3549,10481,0|32132|enter|broken grandiose doors",
+		"1568,5061,0->3549,10481,0|32132|enter|broken grandiose doors",
+		"1567,5061,0->3549,10481,0|32132|enter|broken grandiose doors",
+		"1566,5061,0->3549,10481,0|32132|enter|broken grandiose doors",
+		"1565,5061,0->3549,10481,0|32132|enter|broken grandiose doors",
+		"3680,3854,0->3595,10291,0|32132|enter|broken grandiose doors");
 	private static final Set<Integer> MOR_UL_REK_CAPE_IDS = Set.of(6570, 13329, 24134, 24223);
 	private static final Set<Set<Integer>> MOR_UL_REK_CAPES = Set.of(MOR_UL_REK_CAPE_IDS);
 	private static final int GUARDIANS_OF_THE_RIFT_BARRIER_ID = 43700;
@@ -646,7 +656,8 @@ public final class CatalogTransitionPolicy
 		if (isShadowDungeonLadder(transport) || ZanarisEntrancePolicy.isEligible(transport)
 			|| isWaterfallThroneDoor(transport) || isMorUlRekHotVentDoor(transport)
 			|| isCrandorHole(transport) || isShiloBrokenCart(transport)
-			|| isStrongholdEscape(transport) || isWintertodtDoor(transport))
+			|| isStrongholdEscape(transport) || isWintertodtDoor(transport)
+			|| isLithkrenBrokenDoor(transport))
 		{
 			return true;
 		}
@@ -1009,6 +1020,24 @@ public final class CatalogTransitionPolicy
 			return false;
 		}
 		return WINTERTODT_DOOR_ROUTES.contains(routeKey(transport,
+			normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
+	}
+
+	static boolean isLithkrenBrokenDoor(Transport transport)
+	{
+		if (transport == null || transport.getType() != TransportType.TRANSPORT
+			|| transport.getOrigin() == null || transport.getDestination() == null
+			|| !Set.of(32117, 32132).contains(transport.getObjectId())
+			|| transport.isConsumable() || transport.getCurrencyAmount() != 0
+			|| !transport.isMembers() || !transport.getItemIdRequirements().isEmpty()
+			|| !transport.getVarbits().isEmpty() || !transport.getVarplayers().isEmpty()
+			|| java.util.Arrays.stream(transport.getSkillLevels()).anyMatch(level -> level != 0)
+			|| transport.getDuration() != 0
+			|| !transport.getQuests().equals(Map.of(Quest.DRAGON_SLAYER_II, QuestState.FINISHED)))
+		{
+			return false;
+		}
+		return LITHKREN_BROKEN_DOOR_ROUTES.contains(routeKey(transport,
 			normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
 	}
 

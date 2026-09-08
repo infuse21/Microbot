@@ -1418,15 +1418,15 @@
 3549 10473 0	3549 10468 0	Climb;Staircase;32113									
 3550 10468 0	3550 10473 0	Climb;Staircase;32113									
 3550 10473 0	3550 10468 0	Climb;Staircase;32113									
-3551 10481 0	1568 5061 0	Enter;Broken Grandiose Doors;32117									
+3551 10481 0	1568 5061 0	Enter;Broken Grandiose Doors;32117				Dragon Slayer II=FINISHED			yes
 1570 5061 0	3549 10481 0	Climb-up;Goo covered vine;23703									
-3550 10481 0	1568 5061 0	Enter;Broken Grandiose Doors;32117									
-1569 5061 0	3549 10481 0	Enter;Broken Grandiose Doors;32132									
-3549 10481 0	1568 5061 0	Enter;Broken Grandiose Doors;32117									
-1568 5061 0	3549 10481 0	Enter;Broken Grandiose Doors;32132									
-1567 5061 0	3549 10481 0	Enter;Broken Grandiose Doors;32132									
-1566 5061 0	3549 10481 0	Enter;Broken Grandiose Doors;32132									
-1565 5061 0	3549 10481 0	Enter;Broken Grandiose Doors;32132									
+3550 10481 0	1568 5061 0	Enter;Broken Grandiose Doors;32117				Dragon Slayer II=FINISHED			yes
+1569 5061 0	3549 10481 0	Enter;Broken Grandiose Doors;32132				Dragon Slayer II=FINISHED			yes
+3549 10481 0	1568 5061 0	Enter;Broken Grandiose Doors;32117				Dragon Slayer II=FINISHED			yes
+1568 5061 0	3549 10481 0	Enter;Broken Grandiose Doors;32132				Dragon Slayer II=FINISHED			yes
+1567 5061 0	3549 10481 0	Enter;Broken Grandiose Doors;32132				Dragon Slayer II=FINISHED			yes
+1566 5061 0	3549 10481 0	Enter;Broken Grandiose Doors;32132				Dragon Slayer II=FINISHED			yes
+1565 5061 0	3549 10481 0	Enter;Broken Grandiose Doors;32132				Dragon Slayer II=FINISHED			yes
 1573 5077 0	1575 5077 0	Pass;Barrier;32153									
 1575 5077 0	1573 5077 0	Pass;Barrier;32153									
 1573 5076 0	1575 5076 0	Pass;Barrier;32153									
@@ -1488,7 +1488,7 @@
 											
 # Fossil Island											
 3595 10291 0	3680 3854 0	Climb-up;Exit;30844							Y
-3680 3854 0	3595 10291 0	Enter;Broken Grandiose Doors;32132									
+3680 3854 0	3595 10291 0	Enter;Broken Grandiose Doors;32132				Dragon Slayer II=FINISHED			yes
 3596 10291 0	3680 3854 0	Climb-up;Exit;30844							Y
 3603 10291 0	3607 10290 0	Climb;Stairs;31485									
 3607 10290 0	3603 10290 0	Climb;Stairs;31485									
@@ -1507,21 +1507,22 @@
 3665 3808 0	3685 3756 0	Jump on;Rubber cap mushroom;30606
 # Magic Mushtree - Fossil Island Mycelium Transportation System
 # House on the Hill mushtree (ID 30920)
-3764 3880 1	3760 3758 0	Use;Magic Mushtree;30920
-3764 3880 1	3676 3755 0	Use;Magic Mushtree;30920
-3764 3880 1	3676 3871 0	Use;Magic Mushtree;30920
+# DEFERRED: redundant direct rows omit destination discovery state; use magic_mushtrees.tsv.
+# 3764 3880 1	3760 3758 0	Use;Magic Mushtree;30920
+# 3764 3880 1	3676 3755 0	Use;Magic Mushtree;30920
+# 3764 3880 1	3676 3871 0	Use;Magic Mushtree;30920
 # Verdant Valley mushtree (ID 30924)
-3758 3756 0	3764 3879 1	Use;Magic Mushtree;30924
-3758 3756 0	3676 3755 0	Use;Magic Mushtree;30924
-3758 3756 0	3676 3871 0	Use;Magic Mushtree;30924
+# 3758 3756 0	3764 3879 1	Use;Magic Mushtree;30924
+# 3758 3756 0	3676 3755 0	Use;Magic Mushtree;30924
+# 3758 3756 0	3676 3871 0	Use;Magic Mushtree;30924
 # Sticky Swamp mushtree (ID 30924)
-3677 3755 0	3764 3879 1	Use;Magic Mushtree;30924
-3677 3755 0	3760 3758 0	Use;Magic Mushtree;30924
-3677 3755 0	3676 3871 0	Use;Magic Mushtree;30924
+# 3677 3755 0	3764 3879 1	Use;Magic Mushtree;30924
+# 3677 3755 0	3760 3758 0	Use;Magic Mushtree;30924
+# 3677 3755 0	3676 3871 0	Use;Magic Mushtree;30924
 # Mushroom Meadow mushtree (ID 30924)
-3674 3871 0	3764 3879 1	Use;Magic Mushtree;30924
-3674 3871 0	3760 3758 0	Use;Magic Mushtree;30924
-3674 3871 0	3676 3755 0	Use;Magic Mushtree;30924
+# 3674 3871 0	3764 3879 1	Use;Magic Mushtree;30924
+# 3674 3871 0	3760 3758 0	Use;Magic Mushtree;30924
+# 3674 3871 0	3676 3755 0	Use;Magic Mushtree;30924
 3768 3868 1	3768 3868 0	Climb-down;Trapdoor;30725									
 3768 3868 0	3768 3868 1	Climb-up;Ladder;30727									
 3767 3868 1	3768 3868 0	Climb-down;Trapdoor;30725									
@@ -5111,10 +5112,11 @@
 3225 12445 0	3225 6046 0	Exit;Steps;36691									
 											
 # Mount Karuulm Dungeon											
-1311 3806 0	1311 10189 0	Activate;Elevator;34359									
-1311 3808 0	1311 10189 0	Activate;Elevator;34359									
-1311 3806 0	1312 10189 0	Activate;Elevator;34359									
-1311 3808 0	1312 10189 0	Activate;Elevator;34359									
+# DEFERRED: Karuulm route requires route-wide heat-protection readiness.
+# 1311 3806 0	1311 10189 0	Activate;Elevator;34359
+# 1311 3808 0	1311 10189 0	Activate;Elevator;34359
+# 1311 3806 0	1312 10189 0	Activate;Elevator;34359
+# 1311 3808 0	1312 10189 0	Activate;Elevator;34359
 1311 10189 0	1311 3806 0	Exit;Cave exit;34514									
 1311 10189 0	1311 3808 0	Exit;Cave exit;34514									
 1312 10189 0	1311 3806 0	Exit;Cave exit;34514									
@@ -5131,14 +5133,14 @@
 1320 10206 0	1322 10206 0	Climb;Rocks;34544									
 1322 10205 0	1320 10205 0	Climb;Rocks;34544									
 1322 10206 0	1320 10205 0	Climb;Rocks;34544									
-1329 10205 0	1334 10205 1	Climb;Steps;34530									
-1329 10206 0	1334 10206 1	Climb;Steps;34530									
-1334 10205 1	1329 10205 0	Climb;Steps;34531									
-1334 10206 1	1329 10206 0	Climb;Steps;34531									
-1313 10188 1	1318 10188 2	Climb;Steps;34530									
-1313 10189 1	1318 10189 2	Climb;Steps;34530									
-1318 10188 2	1313 10188 1	Climb;Steps;34531									
-1318 10189 2	1313 10189 1	Climb;Steps;34531									
+# 1329 10205 0	1334 10205 1	Climb;Steps;34530
+# 1329 10206 0	1334 10206 1	Climb;Steps;34530
+# 1334 10205 1	1329 10205 0	Climb;Steps;34531
+# 1334 10206 1	1329 10206 0	Climb;Steps;34531
+# 1313 10188 1	1318 10188 2	Climb;Steps;34530
+# 1313 10189 1	1318 10189 2	Climb;Steps;34530
+# 1318 10188 2	1313 10188 1	Climb;Steps;34531
+# 1318 10189 2	1313 10189 1	Climb;Steps;34531
 
 # Piscatoris Fishing Colony											
 2344 3650 0	2344 3655 0	Enter;Hole;12656				Swan Song

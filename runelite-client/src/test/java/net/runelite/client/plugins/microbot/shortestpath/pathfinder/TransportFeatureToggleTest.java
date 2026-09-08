@@ -77,9 +77,12 @@ public class TransportFeatureToggleTest
 	}
 
 	@Test
-	public void ordinaryMushtreeRowsCannotBypassTheNetworkToggle() throws Exception
+	public void redundantOrdinaryMushtreeRowsAreNotLoaded()
 	{
-		assertShadowRows("Magic Mushtree", "useMagicMushtrees", Set.of(30920, 30924), 12);
+		assertTrue(Transport.loadAllFromResources().values().stream()
+			.flatMap(java.util.Collection::stream)
+			.noneMatch(row -> row.getType() == TransportType.TRANSPORT
+				&& Set.of(30920, 30924).contains(row.getObjectId())));
 	}
 
 	@Test

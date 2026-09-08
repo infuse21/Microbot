@@ -21,6 +21,19 @@ headless batches, outstanding branches of representative live passes, and contra
 implementation. As of 2026-09-06 the user requests headless-first progress; deferred physical tests
 remain open rather than blocking each batch or being silently marked complete.
 
+## Lithkren broken doors and unsafe shadow-route cleanup - 2026-09-08
+
+Nine exact members-only Broken Grandiose Doors routes now use catalogue/NavigationEngine ownership
+after `Dragon Slayer II=FINISHED`. This deliberately excludes the quest-time dragon-key unlock and
+freezes both object IDs 32117/32132 across their distinct directed landings.
+
+Twelve redundant ordinary Magic Mushtree rows are runtime-disabled in favour of the dedicated
+discovery-aware mushtree network. Twelve Karuulm elevator/stairs rows are also retained only as
+commented evidence because the catalogue omits the route-wide boot-or-elite-diary heat protection;
+admitting the click alone could route an account into four-damage-per-tick flooring. These 24 rows
+are not claimed as migrated coverage. The classifier floor is now **516 legacy entries**: 479
+ordinary `TRANSPORT` and 37 `TELEPORTATION_ITEM` entries.
+
 ## Stronghold escape routes and Wintertodt doors - 2026-09-08
 
 Fourteen direct Stronghold of Security vertical/escape rows and all 16 Wintertodt door rows now use
