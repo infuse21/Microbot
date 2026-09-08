@@ -251,6 +251,31 @@ public class CatalogTransitionPolicyTest
 	}
 
 	@Test
+	public void acceptsExactPostQuestCrandorAndShiloEntrances()
+	{
+		java.util.List<Transport> rows = Transport.loadAllFromResources().values().stream()
+			.flatMap(java.util.Collection::stream)
+			.filter(row -> row.getObjectId() == 25154 || row.getObjectId() == 2216)
+			.collect(java.util.stream.Collectors.toList());
+		assertEquals(22, rows.size());
+		assertEquals(12, rows.stream().filter(CatalogTransitionPolicy::isCrandorHole).count());
+		assertEquals(10, rows.stream().filter(CatalogTransitionPolicy::isShiloBrokenCart).count());
+		assertTrue(rows.stream().allMatch(CatalogTransitionPolicy::isEligible));
+
+		Transport missingQuest = rows.get(0);
+		missingQuest.getQuests().clear();
+		assertFalse(CatalogTransitionPolicy.isEligible(missingQuest));
+	}
+
+	@Test
+	public void unsafeFeeAndSetupCrevicesAreNotLoaded()
+	{
+		assertTrue(Transport.loadAllFromResources().values().stream()
+			.flatMap(java.util.Collection::stream)
+			.noneMatch(row -> row.getObjectId() == 40386 || row.getObjectId() == 10416));
+	}
+
+	@Test
 	public void acceptsOnlyExactItemFreeOrdinaryDirectContracts()
 	{
 		assertTrue(CatalogTransitionPolicy.isEligible(transport(SURFACE,

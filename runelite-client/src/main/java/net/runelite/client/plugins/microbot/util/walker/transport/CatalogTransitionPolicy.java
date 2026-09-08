@@ -441,6 +441,30 @@ public final class CatalogTransitionPolicy
 		"2804,10187,0->2822,3745,0|5011|enter|tunnel",
 		"2803,10187,0->2822,3745,0|5011|enter|tunnel",
 		"2802,10187,0->2822,3745,0|5011|enter|tunnel");
+	private static final Set<String> CRANDOR_HOLE_ROUTES = Set.of(
+		"2832,3255,0->2833,9658,0|25154|enter|hole",
+		"2832,3256,0->2833,9658,0|25154|enter|hole",
+		"2832,3257,0->2833,9658,0|25154|enter|hole",
+		"2833,3258,0->2833,9658,0|25154|enter|hole",
+		"2834,3258,0->2833,9658,0|25154|enter|hole",
+		"2835,3258,0->2833,9658,0|25154|enter|hole",
+		"2833,3254,0->2833,9658,0|25154|enter|hole",
+		"2834,3254,0->2833,9658,0|25154|enter|hole",
+		"2835,3254,0->2833,9658,0|25154|enter|hole",
+		"2836,3255,0->2833,9658,0|25154|enter|hole",
+		"2836,3256,0->2833,9658,0|25154|enter|hole",
+		"2836,3257,0->2833,9658,0|25154|enter|hole");
+	private static final Set<String> SHILO_BROKEN_CART_ROUTES = Set.of(
+		"2879,2954,0->2876,2952,0|2216|climbover|broken cart",
+		"2880,2953,0->2876,2952,0|2216|climbover|broken cart",
+		"2880,2952,0->2876,2952,0|2216|climbover|broken cart",
+		"2880,2951,0->2876,2952,0|2216|climbover|broken cart",
+		"2879,2950,0->2876,2952,0|2216|climbover|broken cart",
+		"2877,2954,0->2880,2952,0|2216|climbover|broken cart",
+		"2876,2953,0->2880,2952,0|2216|climbover|broken cart",
+		"2876,2952,0->2880,2952,0|2216|climbover|broken cart",
+		"2876,2951,0->2880,2952,0|2216|climbover|broken cart",
+		"2877,2950,0->2880,2952,0|2216|climbover|broken cart");
 	private static final Set<Integer> MOR_UL_REK_CAPE_IDS = Set.of(6570, 13329, 24134, 24223);
 	private static final Set<Set<Integer>> MOR_UL_REK_CAPES = Set.of(MOR_UL_REK_CAPE_IDS);
 	private static final int GUARDIANS_OF_THE_RIFT_BARRIER_ID = 43700;
@@ -590,7 +614,8 @@ public final class CatalogTransitionPolicy
 			return isKalphiteRopeSetup(transport) || isKalphiteInstalledDescent(transport);
 		}
 		if (isShadowDungeonLadder(transport) || ZanarisEntrancePolicy.isEligible(transport)
-			|| isWaterfallThroneDoor(transport) || isMorUlRekHotVentDoor(transport))
+			|| isWaterfallThroneDoor(transport) || isMorUlRekHotVentDoor(transport)
+			|| isCrandorHole(transport) || isShiloBrokenCart(transport))
 		{
 			return true;
 		}
@@ -890,6 +915,42 @@ public final class CatalogTransitionPolicy
 			|| transport.getObjectId() == 5009 || transport.getObjectId() == 5011 ? 1 : 0;
 		return transport.getDuration() == expectedDuration
 			&& transport.getQuests().equals(Map.of(quest, QuestState.FINISHED));
+	}
+
+	static boolean isCrandorHole(Transport transport)
+	{
+		if (transport == null || transport.getType() != TransportType.TRANSPORT
+			|| transport.getOrigin() == null || transport.getDestination() == null
+			|| transport.getObjectId() != 25154 || transport.isConsumable()
+			|| transport.getCurrencyAmount() != 0 || transport.isMembers()
+			|| !transport.getItemIdRequirements().isEmpty()
+			|| !transport.getVarbits().isEmpty() || !transport.getVarplayers().isEmpty()
+			|| java.util.Arrays.stream(transport.getSkillLevels()).anyMatch(level -> level != 0)
+			|| transport.getDuration() != 1
+			|| !transport.getQuests().equals(Map.of(Quest.DRAGON_SLAYER_I, QuestState.FINISHED)))
+		{
+			return false;
+		}
+		return CRANDOR_HOLE_ROUTES.contains(routeKey(transport,
+			normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
+	}
+
+	static boolean isShiloBrokenCart(Transport transport)
+	{
+		if (transport == null || transport.getType() != TransportType.TRANSPORT
+			|| transport.getOrigin() == null || transport.getDestination() == null
+			|| transport.getObjectId() != 2216 || transport.isConsumable()
+			|| transport.getCurrencyAmount() != 0 || !transport.isMembers()
+			|| !transport.getItemIdRequirements().isEmpty()
+			|| !transport.getVarbits().isEmpty() || !transport.getVarplayers().isEmpty()
+			|| java.util.Arrays.stream(transport.getSkillLevels()).anyMatch(level -> level != 0)
+			|| transport.getDuration() != 2
+			|| !transport.getQuests().equals(Map.of(Quest.SHILO_VILLAGE, QuestState.FINISHED)))
+		{
+			return false;
+		}
+		return SHILO_BROKEN_CART_ROUTES.contains(routeKey(transport,
+			normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
 	}
 
 	static boolean isFremennikSurfaceBridge(Transport transport)

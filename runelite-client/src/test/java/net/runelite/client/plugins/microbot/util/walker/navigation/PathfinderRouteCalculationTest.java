@@ -127,7 +127,7 @@ public class PathfinderRouteCalculationTest
 		}
 		assertEquals(127, candidates);
 		assertEquals(104, migrated);
-		assertEquals(629, legacy);
+		assertEquals(579, legacy);
 	}
 
 	@Test
@@ -623,7 +623,7 @@ public class PathfinderRouteCalculationTest
 		assertEquals(50, stiles.stream().filter(candidate ->
 			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(candidate))
 				== RouteEdge.Kind.CATALOG_TRANSITION).count());
-		assertEquals(592, ordinary.stream().filter(candidate ->
+		assertEquals(542, ordinary.stream().filter(candidate ->
 			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(candidate))
 				== RouteEdge.Kind.TRANSPORT).count());
 		java.util.Set<Integer> directManifestIds = new java.util.HashSet<>(java.util.Arrays.asList(
@@ -1234,9 +1234,9 @@ public class PathfinderRouteCalculationTest
 	}
 
 	@Test
-	public void exactDirectAndSwanSongHolesDoNotMigrateDragonSlayerHoles()
+	public void exactDirectSwanSongAndPostQuestCrandorHolesAreOwned()
 	{
-		Set<Integer> supportedIds = Set.of(12656, 31791, 28915, 28919, 28920, 28921);
+		Set<Integer> supportedIds = Set.of(12656, 25154, 31791, 28915, 28919, 28920, 28921);
 		java.util.List<Transport> holes = Transport.loadAllFromResources().values().stream()
 			.flatMap(java.util.Collection::stream)
 			.filter(row -> row.getType() == TransportType.TRANSPORT)
@@ -1260,7 +1260,7 @@ public class PathfinderRouteCalculationTest
 				assertTrue(previous == null || previous.equals(hole.getDestination()));
 			}
 		}
-		assertEquals(15, supported);
+		assertEquals(27, supported);
 	}
 
 	@Test

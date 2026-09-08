@@ -21,6 +21,20 @@ headless batches, outstanding branches of representative live passes, and contra
 implementation. As of 2026-09-06 the user requests headless-first progress; deferred physical tests
 remain open rather than blocking each batch or being silently marked complete.
 
+## Paid/setup crevice removal and post-quest entrances - 2026-09-08
+
+Two incomplete crevice families are retained as commented audit evidence but no longer enter the
+runtime graph. The 16 Revenant Caves object-40386 rows omitted the 100,000-coin entry confirmation
+and paid-since-last-death state; the 12 Spirits of the Elid object-10416 rows omitted installed-rope,
+light-source and quest-access state. Neither family is claimed as migrated coverage.
+
+Twenty-two deterministic post-quest entries now use exact catalogue/NavigationEngine ownership.
+Twelve F2P Crandor object-25154 approaches require `Dragon Slayer I=FINISHED`; ten members-only
+Shilo object-2216 cart crossings require `Shilo Village=FINISHED`, excluding its pre-quest Search
+and dialogue flow. MCP-backed cache identities, exact directed manifests and requirement checks
+prevent the same action/name from widening to unrelated holes or carts. The classifier floor is now
+**579 legacy entries**: 542 ordinary `TRANSPORT` and 37 `TELEPORTATION_ITEM` entries.
+
 ## Stale and malformed agility catalogue cleanup - 2026-09-08
 
 The final ten legacy `AGILITY_SHORTCUT` rows were removed after OSRS Wiki MCP and current cache
