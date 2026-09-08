@@ -77,6 +77,12 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 		{
 			return null;
 		}
+		if (CatalogTransitionPolicy.isMorUlRekHotVentDoor(transport)
+			&& CatalogTransitionPolicy.morUlRekCapeIds().stream().noneMatch(itemId ->
+				Rs2Inventory.hasItem(itemId) || Rs2Equipment.isWearing(itemId)))
+		{
+			return null;
+		}
 		if (ShantayPassPolicy.isEligible(transport))
 		{
 			CatalogTransition transition = shantayTransition(transport, pendingAction);

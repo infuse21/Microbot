@@ -324,10 +324,25 @@ public final class CatalogTransitionPolicy
 		"2874,3133,0->2874,3127,0|17074|grapple|strong tree",
 		"2874,3127,0->2874,3133,0|17074|grapple|strong tree",
 		"2874,3136,0->2874,3142,0|17074|grapple|strong tree",
-		"2874,3142,0->2874,3136,0|17074|grapple|strong tree");
+		"2874,3142,0->2874,3136,0|17074|grapple|strong tree",
+		"2841,3427,0->2841,3433,0|17062|grapple|tree");
 	private static final Set<String> TEMPLE_OF_THE_EYE_PORTAL_ROUTES = Set.of(
 		"3104,9573,0->3615,9470,0|43841|enter|portal",
 		"3615,9470,0->3104,9573,0|43692|enter|portal");
+	private static final Set<String> MOR_UL_REK_HOT_VENT_ROUTES = Set.of(
+		"2493,5174,0->2495,5174,0|30266|pass|hot vent door",
+		"2495,5174,0->2493,5174,0|30266|pass|hot vent door",
+		"2494,5157,0->2496,5157,0|30266|pass|hot vent door",
+		"2496,5157,0->2494,5157,0|30266|pass|hot vent door",
+		"2474,5138,0->2474,5136,0|30266|pass|hot vent door",
+		"2474,5136,0->2474,5138,0|30266|pass|hot vent door",
+		"2457,5120,0->2457,5118,0|30266|pass|hot vent door",
+		"2457,5118,0->2457,5120,0|30266|pass|hot vent door",
+		"2436,5121,0->2436,5119,0|30266|pass|hot vent door",
+		"2436,5119,0->2436,5121,0|30266|pass|hot vent door",
+		"2399,5177,0->2399,5175,0|30266|pass|hot vent door");
+	private static final Set<Integer> MOR_UL_REK_CAPE_IDS = Set.of(6570, 13329, 24134, 24223);
+	private static final Set<Set<Integer>> MOR_UL_REK_CAPES = Set.of(MOR_UL_REK_CAPE_IDS);
 	private static final int GUARDIANS_OF_THE_RIFT_BARRIER_ID = 43700;
 	private static final int RUBBER_CAP_MUSHROOM_ID = 30606;
 	private static final Set<String> NEYPOTZLI_ENTRANCE_ROUTE_KEYS = Set.of(
@@ -475,11 +490,11 @@ public final class CatalogTransitionPolicy
 			return isKalphiteRopeSetup(transport) || isKalphiteInstalledDescent(transport);
 		}
 		if (isShadowDungeonLadder(transport) || ZanarisEntrancePolicy.isEligible(transport)
-			|| isWaterfallThroneDoor(transport))
+			|| isWaterfallThroneDoor(transport) || isMorUlRekHotVentDoor(transport))
 		{
 			return true;
 		}
-		if (isEquippedGrappleShortcut(transport))
+		if (isEquippedGrappleShortcut(transport) || isBarehandGrappleShortcut(transport))
 		{
 			return true;
 		}
@@ -552,9 +567,29 @@ public final class CatalogTransitionPolicy
 			case 17074:
 				return agility == 53 && ranged == 42 && strength == 21
 					&& items.equals(Set.of(Set.of(9419)));
+			case 17062:
+				return agility == 36 && ranged == 39 && strength == 22
+					&& items.equals(Set.of(Set.of(9419)));
 			default:
 				return false;
 		}
+	}
+
+	public static boolean isBarehandGrappleShortcut(Transport transport)
+	{
+		if (transport == null || transport.getType() != TransportType.AGILITY_SHORTCUT
+			|| transport.getOrigin() == null || transport.getDestination() == null
+			|| transport.isConsumable() || transport.getCurrencyAmount() != 0
+			|| transport.isQuestLocked() || !transport.getVarbits().isEmpty()
+			|| !transport.getVarplayers().isEmpty() || !transport.getItemIdRequirements().isEmpty()
+			|| !"2841,3427,0->2841,3433,0|17062|grapple|tree".equals(routeKey(transport,
+				normalizeDirectAction(transport.getAction()), normalize(transport.getName()))))
+		{
+			return false;
+		}
+		return transport.getSkillLevels()[net.runelite.api.Skill.AGILITY.ordinal()] == 72
+			&& transport.getSkillLevels()[net.runelite.api.Skill.RANGED.ordinal()] == 0
+			&& transport.getSkillLevels()[net.runelite.api.Skill.STRENGTH.ordinal()] == 0;
 	}
 
 	private static boolean isOrdinaryDirectTransition(Transport transport)
@@ -593,6 +628,7 @@ public final class CatalogTransitionPolicy
 			|| DIRECT_RAFT_ROUTES.contains(routeKey(transport, action, name))
 			|| TEMPLE_OF_THE_EYE_PORTAL_ROUTES.contains(routeKey(transport, action, name))
 			|| isGuardiansOfTheRiftBarrier(transport, action, name)
+			|| isMorUlRekHotVentDoor(transport)
 			|| "pass".equals(action) && "barrier".equals(name)
 				&& transport.getObjectId() == 32153
 			|| "enter".equals(action) && "dense forest".equals(name)
@@ -625,6 +661,26 @@ public final class CatalogTransitionPolicy
 					|| transport.getOrigin().distanceTo2D(transport.getDestination()) > 2)
 			|| "jumpto".equals(action) && "pillar".equals(name)
 				&& isEasyRevenantCavesPillar(transport);
+	}
+
+	static boolean isMorUlRekHotVentDoor(Transport transport)
+	{
+		if (transport == null || transport.getType() != TransportType.TRANSPORT
+			|| transport.getOrigin() == null || transport.getDestination() == null
+			|| transport.getObjectId() != 30266 || transport.isConsumable()
+			|| transport.getCurrencyAmount() != 0 || transport.isQuestLocked()
+			|| !transport.getVarbits().isEmpty() || !transport.getVarplayers().isEmpty()
+			|| !transport.isMembers() || !transport.getItemIdRequirements().equals(MOR_UL_REK_CAPES))
+		{
+			return false;
+		}
+		return MOR_UL_REK_HOT_VENT_ROUTES.contains(routeKey(transport,
+			normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
+	}
+
+	static Set<Integer> morUlRekCapeIds()
+	{
+		return MOR_UL_REK_CAPE_IDS;
 	}
 
 	static boolean isFremennikSurfaceBridge(Transport transport)

@@ -10,6 +10,7 @@ import net.runelite.client.plugins.microbot.shortestpath.pathfinder.SplitFlagMap
 import net.runelite.client.plugins.microbot.shortestpath.Transport;
 import net.runelite.client.plugins.microbot.shortestpath.TransportType;
 import net.runelite.client.plugins.microbot.shortestpath.WorldPointUtil;
+import net.runelite.client.plugins.microbot.util.walker.transport.CatalogTransitionPolicy;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -125,25 +126,24 @@ public class PathfinderRouteCalculationTest
 		}
 		assertEquals(127, candidates);
 		assertEquals(103, migrated);
-		assertEquals(1070, legacy);
+		assertEquals(1058, legacy);
 	}
 
 	@Test
-	public void exactAlreadyEquippedGrappleRowsAreEngineOwned()
+	public void exactEquippedAndBarehandGrappleRowsAreEngineOwned()
 	{
 		java.util.List<Transport> rows = Transport.loadAllFromResources().values().stream()
 			.flatMap(java.util.Collection::stream)
-			.filter(row -> row.getType() == TransportType.GRAPPLE_SHORTCUT)
+			.filter(row -> row.getObjectId() == 17062
+				|| row.getType() == TransportType.GRAPPLE_SHORTCUT)
 			.collect(java.util.stream.Collectors.toList());
-		assertEquals(12, rows.size());
-		assertEquals(11, rows.stream().filter(row ->
+		assertEquals(13, rows.size());
+		assertEquals(13, rows.stream().filter(row ->
 			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(row))
 				== RouteEdge.Kind.CATALOG_TRANSITION).count());
-		Transport deferred = rows.stream().filter(row ->
-			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(row))
-				== RouteEdge.Kind.TRANSPORT).findFirst().orElseThrow(AssertionError::new);
-		assertEquals(17062, deferred.getObjectId());
-		assertEquals("Grapple Crossbow", deferred.getAction());
+		assertEquals(2, rows.stream().filter(row -> row.getObjectId() == 17062).count());
+		assertEquals(12, rows.stream().filter(CatalogTransitionPolicy::isEquippedGrappleShortcut).count());
+		assertEquals(1, rows.stream().filter(CatalogTransitionPolicy::isBarehandGrappleShortcut).count());
 	}
 
 	private static SplitFlagMap collisionMap;
@@ -592,9 +592,9 @@ public class PathfinderRouteCalculationTest
 				== RouteEdge.Kind.TRANSPORT)
 			.collect(java.util.stream.Collectors.toList());
 
-		assertEquals(274, shortcuts.size());
+		assertEquals(275, shortcuts.size());
 		assertEquals(12, adjacent);
-		assertEquals(252, transitions);
+		assertEquals(253, transitions);
 		assertEquals(10, locked.size());
 		assertEquals(8, locked.stream()
 			.filter(candidate -> "Jump-onto".equals(candidate.getAction())).count());
@@ -623,7 +623,7 @@ public class PathfinderRouteCalculationTest
 		assertEquals(50, stiles.stream().filter(candidate ->
 			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(candidate))
 				== RouteEdge.Kind.CATALOG_TRANSITION).count());
-		assertEquals(699, ordinary.stream().filter(candidate ->
+		assertEquals(688, ordinary.stream().filter(candidate ->
 			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(candidate))
 				== RouteEdge.Kind.TRANSPORT).count());
 		java.util.Set<Integer> directManifestIds = new java.util.HashSet<>(java.util.Arrays.asList(

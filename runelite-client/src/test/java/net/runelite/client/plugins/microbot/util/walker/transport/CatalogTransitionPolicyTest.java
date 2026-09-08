@@ -69,9 +69,9 @@ public class CatalogTransitionPolicyTest
 			.flatMap(java.util.Collection::stream)
 			.filter(CatalogTransitionPolicy::isEquippedGrappleShortcut)
 			.collect(java.util.stream.Collectors.toList());
-		assertEquals(11, rows.size());
+		assertEquals(12, rows.size());
 		assertTrue(rows.stream().allMatch(CatalogTransitionPolicy::isEligible));
-		assertFalse(rows.stream().anyMatch(row -> row.getObjectId() == 17062));
+		assertEquals(1, rows.stream().filter(row -> row.getObjectId() == 17062).count());
 
 		Transport catherby = rows.stream().filter(row -> row.getObjectId() == 17042)
 			.findFirst().orElseThrow(AssertionError::new);
@@ -94,6 +94,42 @@ public class CatalogTransitionPolicyTest
 		shifted.getSkillLevels()[Skill.STRENGTH.ordinal()] = 35;
 		shifted.setItemIdRequirements(Set.of(Set.of(9419)));
 		assertFalse(CatalogTransitionPolicy.isEquippedGrappleShortcut(shifted));
+	}
+
+	@Test
+	public void acceptsOnlyExactBarehandWaterObeliskVariant()
+	{
+		java.util.List<Transport> rows = Transport.loadAllFromResources().values().stream()
+			.flatMap(java.util.Collection::stream)
+			.filter(CatalogTransitionPolicy::isBarehandGrappleShortcut)
+			.collect(java.util.stream.Collectors.toList());
+		assertEquals(1, rows.size());
+		Transport barehand = rows.get(0);
+		assertEquals(17062, barehand.getObjectId());
+		assertEquals(72, barehand.getSkillLevels()[Skill.AGILITY.ordinal()]);
+		assertTrue(barehand.getItemIdRequirements().isEmpty());
+		assertTrue(CatalogTransitionPolicy.isEligible(barehand));
+
+		barehand.getSkillLevels()[Skill.AGILITY.ordinal()] = 71;
+		assertFalse(CatalogTransitionPolicy.isBarehandGrappleShortcut(barehand));
+		barehand.getSkillLevels()[Skill.AGILITY.ordinal()] = 72;
+		barehand.setItemIdRequirements(Set.of(Set.of(9419)));
+		assertFalse(CatalogTransitionPolicy.isBarehandGrappleShortcut(barehand));
+	}
+
+	@Test
+	public void acceptsOnlyExactCapeGatedMorUlRekHotVentDoors()
+	{
+		java.util.List<Transport> rows = Transport.loadAllFromResources().values().stream()
+			.flatMap(java.util.Collection::stream)
+			.filter(row -> row.getObjectId() == 30266)
+			.collect(java.util.stream.Collectors.toList());
+		assertEquals(11, rows.size());
+		assertTrue(rows.stream().allMatch(CatalogTransitionPolicy::isMorUlRekHotVentDoor));
+		assertTrue(rows.stream().allMatch(CatalogTransitionPolicy::isEligible));
+		assertTrue(rows.stream().allMatch(Transport::isMembers));
+		assertTrue(rows.stream().allMatch(row -> row.getItemIdRequirements().equals(
+			Set.of(Set.of(6570, 13329, 24134, 24223)))));
 	}
 
 	@Test

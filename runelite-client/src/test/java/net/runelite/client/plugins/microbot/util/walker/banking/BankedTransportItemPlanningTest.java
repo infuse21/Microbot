@@ -231,15 +231,31 @@ public class BankedTransportItemPlanningTest {
     }
 
     @Test
-    public void repeatedReusableCapeTeleportsNeedOneCape() {
+	public void repeatedReusableCapeTeleportsNeedOneCape() {
         Transport cape = teleport("Crafting cape: Teleport");
         java.util.Map<Integer, Integer> requirements =
                 Rs2WalkerBankingPlanner.getMissingTransportItemIdsWithQuantities(
                         List.of(cape, cape));
 
-        assertEquals("a reusable cape covers every matching route edge",
-                1, requirements.values().stream().mapToInt(Integer::intValue).sum());
-    }
+		assertEquals("a reusable cape covers every matching route edge",
+				1, requirements.values().stream().mapToInt(Integer::intValue).sum());
+	}
+
+	@Test
+	public void repeatedMorUlRekBarriersNeedOneReusableCape()
+	{
+		Transport barrier = all.stream()
+				.filter(t -> t.getObjectId() == 30266)
+				.findFirst().orElseThrow(() -> new AssertionError("Mor Ul Rek barrier missing"));
+		Map<Integer, Integer> requirements =
+				Rs2WalkerBankingPlanner.getMissingTransportItemIdsWithQuantities(
+						List.of(barrier, barrier));
+
+		assertFalse(barrier.isConsumable());
+		assertTrue(Rs2WalkerBankingPlanner.requiresBankPlanning(barrier));
+		assertEquals(1, requirements.values().stream().mapToInt(Integer::intValue).sum());
+		assertTrue(Set.of(6570, 13329, 24134, 24223).containsAll(requirements.keySet()));
+	}
 
     @Test
     public void repeatedSpellEdgesAggregateTheirRunes() {

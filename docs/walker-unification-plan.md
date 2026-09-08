@@ -21,13 +21,50 @@ headless batches, outstanding branches of representative live passes, and contra
 implementation. As of 2026-09-06 the user requests headless-first progress; deferred physical tests
 remain open rather than blocking each batch or being silently marked complete.
 
+## Mor Ul Rek hot-vent doors - 2026-09-08
+
+All 11 exact Inner Mor Ul Rek `Pass;Hot vent door;30266` rows now use catalogue/
+NavigationEngine ownership. OSRS Wiki MCP verification confirms the direct `Pass` action and that
+entry to the inner city requires a Fire cape or Fire max cape. The catalog now marks these rows
+members-only and accepts the normal and trouver Fire cape / Fire max cape variants (6570, 13329,
+24134 and 24223) as one reusable alternative group. Route planning can therefore use a carried,
+worn or banked cape; repeated barriers require only one withdrawal, and dispatch rechecks that a
+cape remains available before issuing the object interaction.
+
+The exact 11-route manifest excludes Fight Pits hot-vent IDs 11844-11846 and retains directed
+two-tile landing acknowledgement. The Wiki also documents that the cape is no longer needed after
+the player has passed the barrier once, but no reliable local varbit/varplayer for that permanent
+unlock was found; this cutover conservatively continues to require a cape instead of guessing the
+unlock. Focused policy, scanner, banking, route-publication and classifier tests pass. The
+classifier floor is now **1,058 legacy entries**, comprising 688 ordinary `TRANSPORT`, 10
+`AGILITY_SHORTCUT`, 42 `TELEPORTATION_ITEM` and 318 `WILDERNESS_OBELISK` entries. Physical
+carried/worn/banked crossings and the permanent-unlock-without-cape branch remain live-deferred, so
+Phase 6 remains open.
+
+## Water Obelisk grapple and barehand shortcut - 2026-09-08
+
+The one-way Water Obelisk-to-Catherby Crossbow Tree route now uses catalogue/NavigationEngine
+ownership. OSRS Wiki MCP verification confirms live object 17062 exposes `Grapple`, not the
+packaged `Grapple Crossbow` text, and cannot be used in the reverse direction. The resource action
+is corrected and the original 36 Agility / 39 Ranged / 22 Strength variant remains available only
+with mith grapple 9419 in the ammunition slot and a compatible equipped crossbow.
+
+A second exact variant models the documented 72 Agility barehand crossing without inventing an
+item, Ranged or Strength requirement. The variants remain separate so a banked or inventory-only
+grapple cannot enable the equipped route, while a qualifying barehanded player is not forced to
+carry tools. Both publish the same one-way directed interaction and clear only at the Catherby-side
+landing. Focused policy, scanner, route-publication and classifier tests pass. The classifier floor
+is now **1,069 legacy entries**, comprising 699 ordinary `TRANSPORT`, 10 `AGILITY_SHORTCUT`, 42
+`TELEPORTATION_ITEM` and 318 `WILDERNESS_OBELISK` entries; no `GRAPPLE_SHORTCUT` remains legacy.
+Physical equipped/barehand crossing and grapple-break recovery remain live-deferred, so Phase 6
+remains open.
+
 ## Already-equipped grapple shortcuts - 2026-09-08
 
 Eleven exact `Grapple` rows now use catalogue/NavigationEngine ownership: the two Broken Raft
 directions, Falador and Yanille walls, Catherby rocks, and four Karamja Strong Tree links. Their
 directed geometry, object/name/action identity, skill levels and packaged grapple requirements are
-frozen. The Water Obelisk Crossbow Tree row remains legacy-classified because its packaged
-`Grapple Crossbow` action does not match the live `Grapple` contract and needs separate correction.
+frozen. The later Water Obelisk correction above supersedes that row's earlier deferral.
 
 OSRS Wiki MCP verification confirms that mith grapple 9419 must be equipped in the ammo slot and a
 compatible crossbow must be equipped in the weapon slot; the love crossbow and ballistae do not

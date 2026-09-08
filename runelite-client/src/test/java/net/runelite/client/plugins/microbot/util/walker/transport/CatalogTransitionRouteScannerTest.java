@@ -127,7 +127,7 @@ public class CatalogTransitionRouteScannerTest
 					scanner.observePending(pending, row.getOrigin(), edge -> null, 13).getStatus());
 			}
 		}
-		assertEquals(11, checked);
+		assertEquals(12, checked);
 	}
 
 	@Test
