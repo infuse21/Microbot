@@ -276,6 +276,30 @@ public class CatalogTransitionPolicyTest
 	}
 
 	@Test
+	public void acceptsExactStrongholdEscapesAndWintertodtDoors()
+	{
+		java.util.List<Transport> rows = Transport.loadAllFromResources().values().stream()
+			.flatMap(java.util.Collection::stream)
+			.filter(row -> row.getObjectId() == 29322 || Set.of(23703, 23705, 23706, 23732)
+				.contains(row.getObjectId()))
+			.filter(row -> !row.getOrigin().equals(new WorldPoint(1570, 5061, 0)))
+			.collect(java.util.stream.Collectors.toList());
+		assertEquals(30, rows.size());
+		assertEquals(14, rows.stream().filter(CatalogTransitionPolicy::isStrongholdEscape).count());
+		assertEquals(16, rows.stream().filter(CatalogTransitionPolicy::isWintertodtDoor).count());
+		assertEquals(7, rows.stream().filter(row -> row.getObjectId() == 29322)
+			.filter(row -> row.getSkillLevels()[net.runelite.api.Skill.FIREMAKING.ordinal()] == 50).count());
+		assertTrue(rows.stream().allMatch(CatalogTransitionPolicy::isEligible));
+
+		Transport excludedLithkrenVine = Transport.loadAllFromResources().values().stream()
+			.flatMap(java.util.Collection::stream)
+			.filter(row -> row.getObjectId() == 23703)
+			.filter(row -> row.getOrigin().equals(new WorldPoint(1570, 5061, 0)))
+			.findFirst().orElseThrow(AssertionError::new);
+		assertFalse(CatalogTransitionPolicy.isStrongholdEscape(excludedLithkrenVine));
+	}
+
+	@Test
 	public void acceptsOnlyExactItemFreeOrdinaryDirectContracts()
 	{
 		assertTrue(CatalogTransitionPolicy.isEligible(transport(SURFACE,

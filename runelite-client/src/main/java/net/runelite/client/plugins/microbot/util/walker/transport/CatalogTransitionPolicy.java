@@ -2,6 +2,7 @@ package net.runelite.client.plugins.microbot.util.walker.transport;
 
 import net.runelite.api.Quest;
 import net.runelite.api.QuestState;
+import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.shortestpath.Transport;
 import net.runelite.client.plugins.microbot.shortestpath.TransportType;
 import net.runelite.client.plugins.microbot.shortestpath.TransportVarbit;
@@ -465,6 +466,35 @@ public final class CatalogTransitionPolicy
 		"2876,2952,0->2880,2952,0|2216|climbover|broken cart",
 		"2876,2951,0->2880,2952,0|2216|climbover|broken cart",
 		"2877,2950,0->2880,2952,0|2216|climbover|broken cart");
+	private static final Set<String> STRONGHOLD_ESCAPE_ROUTES = Set.of(
+		"2122,5251,0->2042,5245,0|23705|climbup|dripping vine",
+		"2147,5284,0->2358,5215,0|23706|climbdown|dripping vine",
+		"2148,5283,0->2358,5215,0|23706|climbdown|dripping vine",
+		"2149,5284,0->2358,5215,0|23706|climbdown|dripping vine",
+		"2150,5279,0->2123,5252,0|23703|climbup|goo covered vine",
+		"2150,5277,0->2123,5252,0|23703|climbup|goo covered vine",
+		"2151,5278,0->2123,5252,0|23703|climbup|goo covered vine",
+		"2349,5215,0->3081,3421,0|23732|climbup|bone chain",
+		"2350,5214,0->3081,3421,0|23732|climbup|bone chain",
+		"2351,5215,0->3081,3421,0|23732|climbup|bone chain",
+		"2350,5216,0->3081,3421,0|23732|climbup|bone chain");
+	private static final Set<String> WINTERTODT_DOOR_ROUTES = Set.of(
+		"1630,3968,0->1630,3963,0|29322|enter|doors of dinh",
+		"1630,3963,0->1630,3968,0|29322|enter|doors of dinh",
+		"1627,3963,0->1630,3979,0|29322|enter|door of dinh",
+		"1628,3963,0->1630,3979,0|29322|enter|door of dinh",
+		"1629,3963,0->1630,3979,0|29322|enter|door of dinh",
+		"1630,3963,0->1630,3979,0|29322|enter|door of dinh",
+		"1631,3963,0->1630,3979,0|29322|enter|door of dinh",
+		"1632,3963,0->1630,3979,0|29322|enter|door of dinh",
+		"1633,3963,0->1630,3979,0|29322|enter|door of dinh",
+		"1627,3963,0->1630,3958,0|29322|enter|door of dinh",
+		"1628,3963,0->1630,3958,0|29322|enter|door of dinh",
+		"1629,3963,0->1630,3958,0|29322|enter|door of dinh",
+		"1630,3963,0->1630,3958,0|29322|enter|door of dinh",
+		"1631,3963,0->1630,3958,0|29322|enter|door of dinh",
+		"1632,3963,0->1630,3958,0|29322|enter|door of dinh",
+		"1633,3963,0->1630,3958,0|29322|enter|door of dinh");
 	private static final Set<Integer> MOR_UL_REK_CAPE_IDS = Set.of(6570, 13329, 24134, 24223);
 	private static final Set<Set<Integer>> MOR_UL_REK_CAPES = Set.of(MOR_UL_REK_CAPE_IDS);
 	private static final int GUARDIANS_OF_THE_RIFT_BARRIER_ID = 43700;
@@ -615,7 +645,8 @@ public final class CatalogTransitionPolicy
 		}
 		if (isShadowDungeonLadder(transport) || ZanarisEntrancePolicy.isEligible(transport)
 			|| isWaterfallThroneDoor(transport) || isMorUlRekHotVentDoor(transport)
-			|| isCrandorHole(transport) || isShiloBrokenCart(transport))
+			|| isCrandorHole(transport) || isShiloBrokenCart(transport)
+			|| isStrongholdEscape(transport) || isWintertodtDoor(transport))
 		{
 			return true;
 		}
@@ -951,6 +982,43 @@ public final class CatalogTransitionPolicy
 		}
 		return SHILO_BROKEN_CART_ROUTES.contains(routeKey(transport,
 			normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
+	}
+
+	static boolean isStrongholdEscape(Transport transport)
+	{
+		if (!isBareDirectRoute(transport) || transport.isMembers() || transport.getDuration() != 0
+			|| java.util.Arrays.stream(transport.getSkillLevels()).anyMatch(level -> level != 0))
+		{
+			return false;
+		}
+		return STRONGHOLD_ESCAPE_ROUTES.contains(routeKey(transport,
+			normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
+	}
+
+	static boolean isWintertodtDoor(Transport transport)
+	{
+		if (!isBareDirectRoute(transport) || !transport.isMembers()
+			|| transport.getObjectId() != 29322 || transport.getDuration() != 1)
+		{
+			return false;
+		}
+		boolean entersPrison = transport.getDestination().equals(new WorldPoint(1630, 3979, 0));
+		int firemaking = transport.getSkillLevels()[net.runelite.api.Skill.FIREMAKING.ordinal()];
+		if (firemaking != (entersPrison ? 50 : 0))
+		{
+			return false;
+		}
+		return WINTERTODT_DOOR_ROUTES.contains(routeKey(transport,
+			normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
+	}
+
+	private static boolean isBareDirectRoute(Transport transport)
+	{
+		return transport != null && transport.getType() == TransportType.TRANSPORT
+			&& transport.getOrigin() != null && transport.getDestination() != null
+			&& !transport.isConsumable() && transport.getCurrencyAmount() == 0
+			&& !transport.isQuestLocked() && transport.getItemIdRequirements().isEmpty()
+			&& transport.getVarbits().isEmpty() && transport.getVarplayers().isEmpty();
 	}
 
 	static boolean isFremennikSurfaceBridge(Transport transport)

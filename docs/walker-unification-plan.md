@@ -21,6 +21,19 @@ headless batches, outstanding branches of representative live passes, and contra
 implementation. As of 2026-09-06 the user requests headless-first progress; deferred physical tests
 remain open rather than blocking each batch or being silently marked complete.
 
+## Stronghold escape routes and Wintertodt doors - 2026-09-08
+
+Fourteen direct Stronghold of Security vertical/escape rows and all 16 Wintertodt door rows now use
+exact catalogue/NavigationEngine ownership. The Stronghold manifest admits only the documented
+Dripping vine, Goo covered vine and Bone Chain identities, including three duplicate catalogue
+rows, and explicitly excludes the same-ID Dragon Slayer II/Lithkren vine.
+
+Wintertodt rows are corrected to members-only. The seven inbound prison routes retain 50
+Firemaking, while the seven outward routes and two lobby boundaries remain requirement-free so a
+player already inside can leave. Cache identities and OSRS Wiki MCP evidence pin both families;
+exact landings remain the completion signal. The classifier floor is now **549 legacy entries**:
+512 ordinary `TRANSPORT` and 37 `TELEPORTATION_ITEM` entries.
+
 ## Paid/setup crevice removal and post-quest entrances - 2026-09-08
 
 Two incomplete crevice families are retained as commented audit evidence but no longer enter the

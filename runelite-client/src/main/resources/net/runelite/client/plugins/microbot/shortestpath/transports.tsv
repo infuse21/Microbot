@@ -4670,8 +4670,8 @@
 2486 4471 0	3260 3171 0	Use;Fairy ring;12003								6	
 											
 # Wintertodt											
-1630 3968 0	1630 3963 0	Enter;Doors of dinh;29322								1	
-1630 3963 0	1630 3968 0	Enter;Doors of dinh;29322								1	
+1630 3968 0	1630 3963 0	Enter;Doors of dinh;29322							yes	1
+1630 3963 0	1630 3968 0	Enter;Doors of dinh;29322							yes	1
 											
 # Camdozaal											
 2998 3494 0	2952 5762 0	Enter;Ruins Entrance;41357				Below Ice Mountain
@@ -5942,20 +5942,20 @@
 1631 4023 0	1633 4023 0	Jump;Gap;29326	60 Agility							2	
 1629 4023 0	1631 4023 0	Jump;Gap;29326	60 Agility							2	
 1627 4023 0	1629 4023 0	Jump;Gap;29326	60 Agility							2	
-1627 3963 0	1630 3979 0	Enter;Door of Dinh;29322	50 Firemaking							1	
-1628 3963 0	1630 3979 0	Enter;Door of Dinh;29322	50 Firemaking							1	
-1629 3963 0	1630 3979 0	Enter;Door of Dinh;29322	50 Firemaking							1	
-1630 3963 0	1630 3979 0	Enter;Door of Dinh;29322	50 Firemaking							1	
-1631 3963 0	1630 3979 0	Enter;Door of Dinh;29322	50 Firemaking							1	
-1632 3963 0	1630 3979 0	Enter;Door of Dinh;29322	50 Firemaking							1	
-1633 3963 0	1630 3979 0	Enter;Door of Dinh;29322	50 Firemaking							1	
-1627 3963 0	1630 3958 0	Enter;Door of Dinh;29322								1	
-1628 3963 0	1630 3958 0	Enter;Door of Dinh;29322								1	
-1629 3963 0	1630 3958 0	Enter;Door of Dinh;29322								1	
-1630 3963 0	1630 3958 0	Enter;Door of Dinh;29322								1	
-1631 3963 0	1630 3958 0	Enter;Door of Dinh;29322								1	
-1632 3963 0	1630 3958 0	Enter;Door of Dinh;29322								1	
-1633 3963 0	1630 3958 0	Enter;Door of Dinh;29322								1	
+1627 3963 0	1630 3979 0	Enter;Door of Dinh;29322	50 Firemaking						yes	1
+1628 3963 0	1630 3979 0	Enter;Door of Dinh;29322	50 Firemaking						yes	1
+1629 3963 0	1630 3979 0	Enter;Door of Dinh;29322	50 Firemaking						yes	1
+1630 3963 0	1630 3979 0	Enter;Door of Dinh;29322	50 Firemaking						yes	1
+1631 3963 0	1630 3979 0	Enter;Door of Dinh;29322	50 Firemaking						yes	1
+1632 3963 0	1630 3979 0	Enter;Door of Dinh;29322	50 Firemaking						yes	1
+1633 3963 0	1630 3979 0	Enter;Door of Dinh;29322	50 Firemaking						yes	1
+1627 3963 0	1630 3958 0	Enter;Door of Dinh;29322							yes	1
+1628 3963 0	1630 3958 0	Enter;Door of Dinh;29322							yes	1
+1629 3963 0	1630 3958 0	Enter;Door of Dinh;29322							yes	1
+1630 3963 0	1630 3958 0	Enter;Door of Dinh;29322							yes	1
+1631 3963 0	1630 3958 0	Enter;Door of Dinh;29322							yes	1
+1632 3963 0	1630 3958 0	Enter;Door of Dinh;29322							yes	1
+1633 3963 0	1630 3958 0	Enter;Door of Dinh;29322							yes	1
 3633 9503 0	3637 9503 0	Climb;Rubble;43724								5	
 3637 9503 0	3633 9503 0	Climb;Rubble;43726								5	
 3613 9482 0	3613 9484 0	Quick-pass;Barrier;43700				Temple of the Eye	13691=0			5	
