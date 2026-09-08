@@ -168,6 +168,17 @@ public class WalkerArchitectureGuardTest
 		assertNoViolations("NavigationEngine must send Phase 3 input only through WalkerActions", violations);
 	}
 
+	@Test
+	public void pathfinderConfigurationCannotIssueInventoryOrEquipmentInput() throws IOException
+	{
+		Path config = microbotSourceRoot().resolve("shortestpath/pathfinder/PathfinderConfig.java");
+		String code = codeOnly(config);
+		List<String> violations = new ArrayList<>();
+		collectMatches("PathfinderConfig.java", code,
+			Arrays.asList("Rs2Inventory.interact(", "Rs2Equipment.interact("), violations);
+		assertNoViolations("Route calculation must remain read-only", violations);
+	}
+
 	private static void collectMatches(String relative, String code, List<String> forbidden,
 		List<String> violations)
 	{

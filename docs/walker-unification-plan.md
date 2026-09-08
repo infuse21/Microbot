@@ -21,6 +21,25 @@ headless batches, outstanding branches of representative live passes, and contra
 implementation. As of 2026-09-06 the user requests headless-first progress; deferred physical tests
 remain open rather than blocking each batch or being silently marked complete.
 
+## Chronicle and Jaltevas charged-container teleports - 2026-09-08
+
+The Chronicle and final Pharaoh's sceptre destination now use the exact item-teleport/
+NavigationEngine lifecycle. OSRS Wiki MCP verification confirms Chronicle 13660 exposes direct
+inventory and worn `Teleport`, spends one stored card charge, cannot work anywhere in the
+Wilderness, and retains the reusable book. Its catalog ceiling is corrected from 19 to 0.
+PathfinderConfig no longer clicks `Check charges` while calculating a route: it reads the saved
+Item Charges value only, safely rejects missing/malformed/zero state, and can recognize a banked
+Chronicle when bank items are enabled. Banking withdraws one book rather than one book per edge.
+
+The MCP identifies both 26948 and 26950 as charged Pharaoh's sceptres and varbit 13839 as
+`pharaohs_sceptre_necropolis`. All four sceptre rows now accept either charged form, Jaltevas alone
+requires `13839=1`, and the charged sceptre is treated as one reusable container across repeated
+edges. A source guard now prevents route configuration from issuing inventory/equipment input.
+Focused policy, banking, route-publication, architecture and classifier tests pass. The classifier
+floor is now **1,054 legacy entries**: 688 ordinary `TRANSPORT`, 10 `AGILITY_SHORTCUT`, 38
+`TELEPORTATION_ITEM` and 318 `WILDERNESS_OBELISK` entries. Inventory/worn/banked use and exhausted-
+charge rejection remain live-deferred, so Phase 6 remains open.
+
 ## Calcified moth and Slepe medallion teleports - 2026-09-08
 
 The Calcified moth and `Drakan's medallion: Slepe` rows now use the exact item-teleport/

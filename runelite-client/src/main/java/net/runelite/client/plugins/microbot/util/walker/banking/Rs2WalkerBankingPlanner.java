@@ -269,9 +269,15 @@ public final class Rs2WalkerBankingPlanner {
 	private static boolean isReusableItemContainer(Transport transport) {
 		return transport.getType() == TransportType.TELEPORTATION_ITEM
 				&& transport.getDisplayInfo() != null
-				&& transport.getDisplayInfo().startsWith("Master Scroll Book:")
-				&& transport.getItemIdRequirements().equals(
-						Set.of(Set.of(ItemID.BOOKOFSCROLLS_CHARGED)));
+				&& ((transport.getDisplayInfo().startsWith("Master Scroll Book:")
+						&& transport.getItemIdRequirements().equals(
+								Set.of(Set.of(ItemID.BOOKOFSCROLLS_CHARGED))))
+					|| (transport.getDisplayInfo().equals("Chronicle: Teleport")
+						&& transport.getItemIdRequirements().equals(
+								Set.of(Set.of(ItemID.CHRONICLE))))
+					|| (transport.getDisplayInfo().startsWith("Pharaoh's sceptre:")
+						&& transport.getItemIdRequirements().equals(
+								Set.of(Set.of(26948), Set.of(26950)))));
 	}
 
     private static void addAlternativeWithdrawal(Set<Integer> alternatives, int requiredUses,

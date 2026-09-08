@@ -23,6 +23,7 @@ public final class ItemTeleportPolicy
 		Map.entry("Ardougne cloak", Set.of(13121, 13122, 13123, 13124, 20760)),
 		Map.entry("Book of the dead", Set.of(25818)),
 		Map.entry("Calcified moth", Set.of(29090)),
+		Map.entry("Chronicle", Set.of(13660)),
 		Map.entry("Drakan's medallion", Set.of(22400)),
 		Map.entry("Enchanted lyre", Set.of(3691, 6125, 6126, 6127, 13079)),
 		Map.entry("Enchanted lyre(i)", Set.of(23458)),
@@ -31,7 +32,7 @@ public final class ItemTeleportPolicy
 		Map.entry("Karamja gloves", Set.of(11140, 13103)),
 		Map.entry("Kharedst's memoirs", Set.of(21760)),
 		Map.entry("Morytania legs", Set.of(13112, 13113, 13114, 13115)),
-		Map.entry("Pharaoh's sceptre", Set.of(26948)),
+		Map.entry("Pharaoh's sceptre", Set.of(26948, 26950)),
 		Map.entry("Rada's blessing", Set.of(22941, 22943, 22945, 22947)),
 		Map.entry("Stony basalt", Set.of(22601)),
 		Map.entry("Teleport to House tablet", Set.of(8013)),
@@ -79,6 +80,7 @@ public final class ItemTeleportPolicy
 		Map.entry("Book of the dead: Lunch by the Lancalliums", "Lunch by the Lancalliums"),
 		Map.entry("Book of the dead: The Fisher's Flute", "The Fisher's Flute"),
 		Map.entry("Calcified moth: Crush", "Crush"),
+		Map.entry("Chronicle: Teleport", "Teleport"),
 		Map.entry("Drakan's medallion: Darkmeyer", "Darkmeyer"),
 		Map.entry("Drakan's medallion: Slepe", "Slepe"),
 		Map.entry("Drakan's medallion: Ver Sinhaza", "Ver Sinhaza"),
@@ -105,6 +107,7 @@ public final class ItemTeleportPolicy
 		Map.entry("Pharaoh's sceptre: Jaldraocht", "Jaldraocht"),
 		Map.entry("Pharaoh's sceptre: Jaleustrophos", "Jaleustrophos"),
 		Map.entry("Pharaoh's sceptre: Jalsavrah", "Jalsavrah"),
+		Map.entry("Pharaoh's sceptre: Jaltevas", "Jaltevas"),
 		Map.entry("Rada's blessing: Kourend Woodland", "Kourend Woodland"),
 		Map.entry("Rada's blessing: Mount Karuulm", "Mount Karuulm"),
 		Map.entry("Stony basalt: Troll Stronghold", "Troll Stronghold"),
@@ -290,8 +293,18 @@ public final class ItemTeleportPolicy
 		{
 			return false;
 		}
+		if ("Chronicle: Teleport".equals(transport.getDisplayInfo())
+			&& !isChronicle(transport))
+		{
+			return false;
+		}
 		if ("Drakan's medallion: Slepe".equals(transport.getDisplayInfo())
 			&& !isSlepeMedallion(transport))
+		{
+			return false;
+		}
+		if ("Pharaoh's sceptre: Jaltevas".equals(transport.getDisplayInfo())
+			&& !isJaltevasSceptre(transport))
 		{
 			return false;
 		}
@@ -397,6 +410,40 @@ public final class ItemTeleportPolicy
 		}
 		TransportVarbit unlock = transport.getVarbits().iterator().next();
 		return unlock.getVarbitId() == 12416 && unlock.getValue() == 1
+			&& unlock.getOperator() == TransportVarbit.Operator.EQUAL;
+	}
+
+	private static boolean isChronicle(Transport transport)
+	{
+		return transport != null && transport.getType() == TransportType.TELEPORTATION_ITEM
+			&& transport.getOrigin() == null
+			&& Objects.equals(transport.getDestination(), new WorldPoint(3200, 3355, 0))
+			&& !transport.isMembers() && transport.isConsumable()
+			&& transport.getDuration() == 4 && transport.getMaxWildernessLevel() == 0
+			&& transport.getCurrencyAmount() == 0
+			&& transport.getItemIdRequirements().equals(Set.of(Set.of(13660)))
+			&& transport.getQuests().isEmpty() && transport.getVarbits().isEmpty()
+			&& transport.getVarplayers().isEmpty()
+			&& java.util.Arrays.stream(transport.getSkillLevels()).allMatch(level -> level == 0);
+	}
+
+	private static boolean isJaltevasSceptre(Transport transport)
+	{
+		if (transport == null || transport.getType() != TransportType.TELEPORTATION_ITEM
+			|| transport.getOrigin() != null
+			|| !Objects.equals(transport.getDestination(), new WorldPoint(3313, 2718, 0))
+			|| !transport.isMembers() || !transport.isConsumable()
+			|| transport.getDuration() != 4 || transport.getMaxWildernessLevel() != 19
+			|| transport.getCurrencyAmount() != 0
+			|| !transport.getItemIdRequirements().equals(Set.of(Set.of(26948), Set.of(26950)))
+			|| !transport.getQuests().isEmpty() || !transport.getVarplayers().isEmpty()
+			|| java.util.Arrays.stream(transport.getSkillLevels()).anyMatch(level -> level != 0)
+			|| transport.getVarbits().size() != 1)
+		{
+			return false;
+		}
+		TransportVarbit unlock = transport.getVarbits().iterator().next();
+		return unlock.getVarbitId() == 13839 && unlock.getValue() == 1
 			&& unlock.getOperator() == TransportVarbit.Operator.EQUAL;
 	}
 

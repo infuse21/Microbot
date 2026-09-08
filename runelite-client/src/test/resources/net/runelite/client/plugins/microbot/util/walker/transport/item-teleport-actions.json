@@ -149,6 +149,7 @@
 	{"id":23946,"actions":["Lletya","Prifddinas","Toggle",null,"Drop"],"equipment":["","","","","","","",""]},
 	{"id":25818,"actions":["Wield","Reminisce","Read","Check","Destroy"],"subops":[null,["Lunch by the Lancalliums","The Fisher's Flute","History and Hearsay","Jewellery of Jubilation","A Dark Disposition",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],null,null,null],"equipment":["Lunch by the Lancalliums","The Fisher's Flute","History and Hearsay","Jewellery of Jubilation","A Dark Disposition","Check","",""]},
 	{"id":26948,"actions":["Wield","Teleport","Last-Teleport","Check","Uncharge"],"subops":[null,["Jalsavrah","Jaleustrophos","Jaldraocht","Jaltevas",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],null,null,null],"equipment":["Jalsavrah","Jaleustrophos","Jaldraocht","Jaltevas","Check","","",""]},
+	{"id":26950,"actions":["Wield","Teleport","Last-Teleport","Check","Uncharge"],"subops":[null,["Jalsavrah","Jaleustrophos","Jaldraocht","Jaltevas",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],null,null,null],"equipment":["Jalsavrah","Jaleustrophos","Jaldraocht","Jaltevas","Check","","",""]},
 	{"id":29090,"actions":["Crush",null,null,null,"Drop"],"equipment":["","","","","","","",""]},
 	{"id":29092,"actions":[null,null,null,null,"Drop"],"equipment":["","","","","","","",""]},
 	{"id":29093,"actions":[null,null,null,null,"Drop"],"equipment":["","","","","","","",""]},

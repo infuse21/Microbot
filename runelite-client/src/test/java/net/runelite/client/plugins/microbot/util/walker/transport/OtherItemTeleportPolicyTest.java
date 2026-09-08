@@ -24,6 +24,7 @@ public class OtherItemTeleportPolicyTest
 		Map<String, Integer> expected = Map.ofEntries(
 			Map.entry("Ardougne cloak", 2),
 			Map.entry("Book of the dead", 5),
+			Map.entry("Chronicle", 1),
 			Map.entry("Drakan's medallion", 3),
 			Map.entry("Enchanted lyre", 4),
 			Map.entry("Enchanted lyre(i)", 4),
@@ -32,7 +33,7 @@ public class OtherItemTeleportPolicyTest
 			Map.entry("Karamja gloves", 2),
 			Map.entry("Kharedst's memoirs", 5),
 			Map.entry("Morytania legs", 4),
-			Map.entry("Pharaoh's sceptre", 3),
+			Map.entry("Pharaoh's sceptre", 4),
 			Map.entry("Rada's blessing", 5),
 			Map.entry("Stony basalt", 2),
 			Map.entry("Teleport crystal", 2),
@@ -47,8 +48,7 @@ public class OtherItemTeleportPolicyTest
 				for (Transport row : group)
 				{
 					if (row.getType() == TransportType.TELEPORTATION_ITEM
-						&& row.getDisplayInfo().startsWith(family.getKey() + ":")
-						&& !row.getDisplayInfo().equals("Pharaoh's sceptre: Jaltevas"))
+						&& row.getDisplayInfo().startsWith(family.getKey() + ":"))
 					{
 						assertTrue(row.getDisplayInfo(), ItemTeleportPolicy.isEligible(row));
 						rows++;
@@ -58,7 +58,7 @@ public class OtherItemTeleportPolicyTest
 			assertEquals(family.getKey(), family.getValue().intValue(), rows);
 			count += rows;
 		}
-		assertEquals(46, count);
+		assertEquals(48, count);
 	}
 
 	@Test
@@ -160,6 +160,33 @@ public class OtherItemTeleportPolicyTest
 		assertTrue(ItemTeleportPolicy.isEligible(slepe));
 		assertEquals("Slepe", ItemTeleportPolicy.inventoryAction(slepe));
 		assertEquals("Slepe", ItemTeleportPolicy.equipmentAction(slepe));
+	}
+
+	@Test
+	public void chronicleUsesOneChargedReusableContainerOutsideWilderness()
+	{
+		Transport chronicle = find("Chronicle: Teleport");
+		assertEquals(new WorldPoint(3200, 3355, 0), chronicle.getDestination());
+		assertFalse(chronicle.isMembers());
+		assertTrue(chronicle.isConsumable());
+		assertEquals(0, chronicle.getMaxWildernessLevel());
+		assertEquals(Set.of(Set.of(13660)), chronicle.getItemIdRequirements());
+		assertTrue(ItemTeleportPolicy.isEligible(chronicle));
+		assertEquals("Teleport", ItemTeleportPolicy.inventoryAction(chronicle));
+		assertEquals("Teleport", ItemTeleportPolicy.equipmentAction(chronicle));
+	}
+
+	@Test
+	public void jaltevasUsesBothChargedSceptresAndExactNecropolisUnlock()
+	{
+		Transport jaltevas = find("Pharaoh's sceptre: Jaltevas");
+		assertEquals(new WorldPoint(3313, 2718, 0), jaltevas.getDestination());
+		assertEquals(Set.of(Set.of(26948), Set.of(26950)), jaltevas.getItemIdRequirements());
+		assertEquals(1, jaltevas.getVarbits().size());
+		assertEquals(13839, jaltevas.getVarbits().iterator().next().getVarbitId());
+		assertTrue(ItemTeleportPolicy.isEligible(jaltevas));
+		assertEquals("Jaltevas", ItemTeleportPolicy.inventoryAction(jaltevas));
+		assertEquals("Jaltevas", ItemTeleportPolicy.equipmentAction(jaltevas));
 	}
 
 	@Test

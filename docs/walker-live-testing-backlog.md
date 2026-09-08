@@ -21,6 +21,17 @@ additive totals; source rows, generated edges and duplicated approaches must not
 
 ## Latest work versus earlier headless batches
 
+### Chronicle and Jaltevas charged-container teleports - 2026-09-08
+
+- **Headless:** Chronicle now has exact inventory/worn `Teleport`, a corrected Wilderness ceiling
+  of 0, read-only saved-charge planning, bank-only availability when the saved charge count is
+  positive, and one reusable-container withdrawal. All Pharaoh's sceptre destinations accept both
+  charged IDs 26948/26950; Jaltevas additionally requires cache-confirmed necropolis unlock varbit
+  13839, and repeated edges require only one charged sceptre.
+- **Live pending:** test Chronicle from inventory, equipment and bank with positive, zero and unknown
+  saved charges; verify it is never selected in the Wilderness. Test both charged sceptre IDs,
+  Jaltevas locked/unlocked states, depleted-charge rejection, exact landings and no legacy handoff.
+
 ### Calcified moth and Slepe medallion teleports - 2026-09-08
 
 - **Headless:** Calcified moth 29090 now uses exact inventory `Crush`, remains consumable, requires
@@ -431,9 +442,9 @@ Do not label these as "just waiting for live testing":
   318 random-obelisk rows including 48 unsafe self-pad artifacts; 10 remaining agility rows.
   All grapple rows and 53 post-quest multi-code rows are
   headless-complete above, and the 12 redundant random Guthix rows were removed.
-- 40 item rows after the moth/Slepe cutover: 24 jewellery/cape exceptions (Max,
-  Black chinchompa Hunter cape, Camulet); 14 whistles; Chronicle and Jaltevas. Some need
-  data/charge fixes rather than a new executor.
+- 38 item rows after the Chronicle/Jaltevas cutover: 24 jewellery/cape exceptions (Max,
+  Black chinchompa Hunter cape, Camulet) and 14 whistles. Some need data/charge fixes rather
+  than a new executor.
 - The ten alternate spell overrides are headless-complete above; representative live acceptance is
   still pending.
 - Ordinary specialised remainder: Draynor lever-solver ownership (unlocked door crossing is migrated),
@@ -447,8 +458,8 @@ The production classifier, not this prose list, is authoritative for the remaini
 Pre-Zanaris checkpoint: 1,466 legacy edges, including 990 ordinary TRANSPORT edges; after the
 headless Zanaris cutover: 1,465 and 989; after Waterfall internal doors: 1,463 and 987;
 after Draynor unlocked crossings: 1,445 and 969 respectively; after Yanille pick-lock:
-1,443 and 967 respectively. The current post-moth/Slepe classifier is 1,056 total: 688 ordinary
-TRANSPORT, 10 AGILITY_SHORTCUT, 40 TELEPORTATION_ITEM and 318 WILDERNESS_OBELISK rows, with
+1,443 and 967 respectively. The current post-Chronicle/Jaltevas classifier is 1,054 total: 688
+ordinary TRANSPORT, 10 AGILITY_SHORTCUT, 38 TELEPORTATION_ITEM and 318 WILDERNESS_OBELISK rows, with
 no ordinary FAIRY_RING or GRAPPLE_SHORTCUT row remaining. Classifier counts
 are not percentages of live acceptance or estimates of implementation effort.
 

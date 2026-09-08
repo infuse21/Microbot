@@ -1782,26 +1782,21 @@ public class PathfinderConfig {
      * Checks if the Chronicle has charges
      */
     private boolean hasChronicleCharges() {
-        if (!Rs2Equipment.isWearing(ItemID.CHRONICLE)) {
-            if (!Rs2Inventory.hasItem(ItemID.CHRONICLE))
-                return false;
-        }
+        boolean available = refreshAvailableItemIds != null
+                ? refreshAvailableItemIds.contains(ItemID.CHRONICLE)
+                : Rs2Equipment.isWearing(ItemID.CHRONICLE)
+                    || Rs2Inventory.hasItem(ItemID.CHRONICLE)
+                    || (useBankItems && Rs2Bank.hasItem(ItemID.CHRONICLE));
+        if (!available) return false;
 
         String charges = Microbot.getConfigManager()
                 .getRSProfileConfiguration(ItemChargeConfig.GROUP, ItemChargeConfig.KEY_CHRONICLE);
-
-        // If charges are unknown, attempt to retrieve them
-        if (charges == null || charges.isEmpty()) {
-            if (Rs2Inventory.hasItem(ItemID.CHRONICLE)) {
-                Rs2Inventory.interact(ItemID.CHRONICLE, "Check charges");
-            } else if (Rs2Equipment.isWearing(ItemID.CHRONICLE)) {
-                Rs2Equipment.interact(ItemID.CHRONICLE, "Check charges");
-            }
-            charges = Microbot.getConfigManager().getRSProfileConfiguration(ItemChargeConfig.GROUP, ItemChargeConfig.KEY_CHRONICLE);
+        if (charges == null) return false;
+        try {
+            return Integer.parseInt(charges.trim()) > 0;
+        } catch (NumberFormatException ignored) {
+            return false;
         }
-
-        // Validate charges
-        return charges != null && Integer.parseInt(charges) > 0;
     }
 
     @Deprecated(since = "1.6.2 - Add Restrictions to restrictions.tsv", forRemoval = true)

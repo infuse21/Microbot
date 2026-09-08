@@ -236,6 +236,30 @@ public class BankedTransportItemPlanningTest {
 		assertEquals(Map.of(22400, 1), requirements);
 	}
 
+	@Test
+	public void repeatedChronicleTeleportsNeedOneChargedContainer()
+	{
+		Transport chronicle = teleport("Chronicle: Teleport");
+		Map<Integer, Integer> requirements =
+			Rs2WalkerBankingPlanner.getMissingTransportItemIdsWithQuantities(
+				List.of(chronicle, chronicle));
+
+		assertTrue("the catalog models a consumed stored charge", chronicle.isConsumable());
+		assertEquals("the Chronicle itself is reusable", Map.of(ItemID.CHRONICLE, 1), requirements);
+	}
+
+	@Test
+	public void repeatedSceptreTeleportsNeedOneChargedContainer()
+	{
+		Transport jaltevas = teleport("Pharaoh's sceptre: Jaltevas");
+		Map<Integer, Integer> requirements =
+			Rs2WalkerBankingPlanner.getMissingTransportItemIdsWithQuantities(
+				List.of(jaltevas, jaltevas));
+
+		assertEquals(1, requirements.values().stream().mapToInt(Integer::intValue).sum());
+		assertTrue(Set.of(26948, 26950).containsAll(requirements.keySet()));
+	}
+
     @Test
     public void calcifiedMothsAreNotPlannedAboveLevelTwentyWilderness() {
         assertEquals(20, teleport("Calcified moth: Crush").getMaxWildernessLevel());
