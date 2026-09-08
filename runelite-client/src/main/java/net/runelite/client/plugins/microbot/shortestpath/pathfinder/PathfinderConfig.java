@@ -1632,6 +1632,10 @@ public class PathfinderConfig {
 				&& "Tunnel".equalsIgnoreCase(transport.getName())
 				&& "Enter".equalsIgnoreCase(transport.getAction())) {
 			type = TransportType.AGILITY_SHORTCUT;
+		} else if (type == TransportType.TRANSPORT && transport.getObjectId() == 29326
+				&& "Gap".equalsIgnoreCase(transport.getName())
+				&& "Jump".equalsIgnoreCase(transport.getAction())) {
+			type = TransportType.AGILITY_SHORTCUT;
 		} else if (type == TransportType.TRANSPORT
 				&& ((transport.getObjectId() == 3522
 						&& "Bridge".equalsIgnoreCase(transport.getName())

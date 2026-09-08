@@ -90,6 +90,7 @@ public final class CatalogTransitionRouteScanner
 			|| CatalogTransitionPolicy.isIsafdarCrossingObject(pending.getObjectId())
 			|| CatalogTransitionPolicy.isFremennikSurfaceBridgeObject(pending.getObjectId())
 			|| CatalogTransitionPolicy.isAuditedAgilityTraversalObject(pending.getObjectId())
+			|| CatalogTransitionPolicy.isWintertodtGapObject(pending.getObjectId())
 			|| CatalogTransitionPolicy.isMeiyerditchFloorObject(pending.getObjectId())
 			|| CatalogTransitionPolicy.isMeiyerditchCourseObject(pending.getObjectId())
 			|| CatalogTransitionPolicy.isMeiyerditchPreparedFloorObject(pending.getObjectId())

@@ -101,6 +101,13 @@ public final class CatalogTransitionPolicy
 		"3145,2908,0->3080,9306,1|11048|climbdown|secret entrance",
 		"3146,2907,0->3080,9306,1|11048|climbdown|secret entrance",
 		"3147,2908,0->3080,9306,1|11048|climbdown|secret entrance");
+	private static final Set<String> ENAKHRA_MAGIC_BARRIER_ROUTES = Set.of(
+		"3103,9318,1->3103,9320,1|11005|passthrough|magic barrier",
+		"3103,9320,1->3103,9318,1|11005|passthrough|magic barrier",
+		"3104,9318,1->3104,9320,1|11005|passthrough|magic barrier",
+		"3104,9320,1->3104,9318,1|11005|passthrough|magic barrier",
+		"3105,9318,1->3105,9320,1|11005|passthrough|magic barrier",
+		"3105,9320,1->3105,9318,1|11005|passthrough|magic barrier");
 	private static final Set<String> SWAN_SONG_HOLE_ROUTES = Set.of(
 		"2344,3650,0->2344,3655,0|12656|enter|hole",
 		"2344,3655,0->2344,3650,0|12656|enter|hole");
@@ -495,6 +502,13 @@ public final class CatalogTransitionPolicy
 		"1631,3963,0->1630,3958,0|29322|enter|door of dinh",
 		"1632,3963,0->1630,3958,0|29322|enter|door of dinh",
 		"1633,3963,0->1630,3958,0|29322|enter|door of dinh");
+	private static final Set<String> WINTERTODT_GAP_ROUTES = Set.of(
+		"1633,4023,0->1631,4023,0|29326|jump|gap",
+		"1631,4023,0->1629,4023,0|29326|jump|gap",
+		"1629,4023,0->1627,4023,0|29326|jump|gap",
+		"1631,4023,0->1633,4023,0|29326|jump|gap",
+		"1629,4023,0->1631,4023,0|29326|jump|gap",
+		"1627,4023,0->1629,4023,0|29326|jump|gap");
 	private static final Set<String> LITHKREN_BROKEN_DOOR_ROUTES = Set.of(
 		"3551,10481,0->1568,5061,0|32117|enter|broken grandiose doors",
 		"3550,10481,0->1568,5061,0|32117|enter|broken grandiose doors",
@@ -692,6 +706,7 @@ public final class CatalogTransitionPolicy
 			|| isWaterfallThroneDoor(transport) || isMorUlRekHotVentDoor(transport)
 			|| isCrandorHole(transport) || isShiloBrokenCart(transport)
 			|| isStrongholdEscape(transport) || isWintertodtDoor(transport)
+			|| isWintertodtGap(transport)
 			|| isLithkrenBrokenDoor(transport) || isDirectOutwardExit(transport)
 			|| isCamdozaalRoute(transport) || isUnlockedPassage(transport)
 			|| isHeroesRockSlide(transport) || isStrongholdSlayerTunnel(transport)
@@ -810,6 +825,7 @@ public final class CatalogTransitionPolicy
 			|| isAbyssPassage(transport)
 			|| isRunecraftingExitPortal(transport)
 			|| isEnakhraSecretEntrance(transport)
+			|| isEnakhraMagicBarrier(transport)
 			|| isSwanSongHole(transport)
 			|| isMolchLizardTempleTransition(transport)
 			|| isMeiyerditchFloor(transport)
@@ -1059,6 +1075,28 @@ public final class CatalogTransitionPolicy
 		}
 		return WINTERTODT_DOOR_ROUTES.contains(routeKey(transport,
 			normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
+	}
+
+	static boolean isWintertodtGap(Transport transport)
+	{
+		if (transport == null || transport.getType() != TransportType.TRANSPORT
+			|| transport.getOrigin() == null || transport.getDestination() == null
+			|| transport.getObjectId() != 29326 || !transport.isMembers()
+			|| transport.isConsumable() || transport.getCurrencyAmount() != 0
+			|| !transport.getItemIdRequirements().isEmpty() || transport.isQuestLocked()
+			|| !transport.getVarbits().isEmpty() || !transport.getVarplayers().isEmpty()
+			|| transport.getDuration() != 2
+			|| !hasOnlySkill(transport, net.runelite.api.Skill.AGILITY, 60))
+		{
+			return false;
+		}
+		return WINTERTODT_GAP_ROUTES.contains(routeKey(transport,
+			normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
+	}
+
+	static boolean isWintertodtGapObject(int objectId)
+	{
+		return objectId == 29326;
 	}
 
 	static boolean isLithkrenBrokenDoor(Transport transport)
@@ -1346,6 +1384,19 @@ public final class CatalogTransitionPolicy
 			&& transport.getVarbits().isEmpty() && transport.getVarplayers().isEmpty()
 			&& java.util.Arrays.stream(transport.getSkillLevels()).allMatch(level -> level == 0)
 			&& ENAKHRA_SECRET_ENTRANCE_ROUTES.contains(routeKey(transport,
+				normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
+	}
+
+	static boolean isEnakhraMagicBarrier(Transport transport)
+	{
+		return transport != null && transport.getType() == TransportType.TRANSPORT
+			&& transport.getOrigin() != null && transport.getDestination() != null
+			&& transport.isMembers() && !transport.isConsumable()
+			&& transport.getItemIdRequirements().isEmpty() && transport.getCurrencyAmount() == 0
+			&& transport.getQuests().equals(Map.of(Quest.ENAKHRAS_LAMENT, QuestState.FINISHED))
+			&& transport.getVarbits().isEmpty() && transport.getVarplayers().isEmpty()
+			&& java.util.Arrays.stream(transport.getSkillLevels()).allMatch(level -> level == 0)
+			&& ENAKHRA_MAGIC_BARRIER_ROUTES.contains(routeKey(transport,
 				normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
 	}
 

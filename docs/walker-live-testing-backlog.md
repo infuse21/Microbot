@@ -21,6 +21,15 @@ additive totals; source rows, generated edges and duplicated approaches must not
 
 ## Latest work versus earlier headless batches
 
+### Wintertodt gaps, Enakhra barriers, and ambiguous Kharazi cleanup - 2026-09-08
+
+- **Headless:** six level-60 Wintertodt pillar gaps and six completed-Enakhra magic barriers are
+  exact engine-owned transitions. Sixteen ambiguous Kharazi rows are runtime-disabled because each
+  source click claimed two different destinations; 76 deterministic jungle inputs remain loaded.
+- **Live pending:** cross the Wintertodt gap in both directions including one failed jump, and cross
+  an Enakhra barrier after quest completion, verifying exact landing and no legacy handoff.
+  Ambiguous Kharazi rows are removed coverage, not live-pending transitions.
+
 ### Ice Queen rock slides, Stronghold tunnel, and Weiss exits - 2026-09-08
 
 - **Headless:** six canonical Ice Queen rock slides are engine-owned with completed Heroes' Quest,

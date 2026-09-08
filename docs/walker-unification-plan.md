@@ -21,6 +21,21 @@ headless batches, outstanding branches of representative live passes, and contra
 implementation. As of 2026-09-06 the user requests headless-first progress; deferred physical tests
 remain open rather than blocking each batch or being silently marked complete.
 
+## Wintertodt gaps, Enakhra barriers, and ambiguous Kharazi cleanup - 2026-09-08
+
+All six Wintertodt pillar-gap routes now use exact catalogue/NavigationEngine ownership with 60
+Agility, members-only metadata, the agility-shortcut configuration gate, and failure-aware pending
+retention until the directed landing. Six members-only Enakhra magic barriers are also exact
+post-quest transitions gated by `Enakhra's Lament=FINISHED`; this deliberately excludes the
+quest-time four-puzzle/Lazim flow.
+
+Sixteen Kharazi jungle rows are now retained only as commented audit evidence and absent from the
+runtime graph. They represented eight identical origin/object inputs with two different declared
+destinations, so one Chop-down click could not prove which edge had been selected. The remaining
+76 jungle obstacles have one deterministic destination per input. Focused policy, source-shape,
+failure-retention, feature-toggle, classifier and route tests pass. The classifier floor is now
+**432 legacy entries**: 409 ordinary `TRANSPORT` and 23 `TELEPORTATION_ITEM` entries.
+
 ## Ice Queen rock slides, Stronghold tunnel, and Weiss exits - 2026-09-08
 
 Six canonical Ice Queen's Lair rock-slide routes now use exact catalogue/NavigationEngine

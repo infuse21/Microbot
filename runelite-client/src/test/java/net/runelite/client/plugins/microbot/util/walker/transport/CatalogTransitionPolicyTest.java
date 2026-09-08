@@ -721,6 +721,53 @@ public class CatalogTransitionPolicyTest
 	}
 
 	@Test
+	public void acceptsOnlyTheSixPostQuestEnakhraMagicBarriers()
+	{
+		java.util.List<Transport> rows = Transport.loadAllFromResources().values().stream()
+			.flatMap(java.util.Collection::stream)
+			.filter(row -> row.getObjectId() == 11005)
+			.collect(java.util.stream.Collectors.toList());
+		assertEquals(6, rows.size());
+		assertTrue(rows.stream().allMatch(row -> row.isMembers()
+			&& row.getDuration() == 1 && !row.isConsumable()
+			&& row.getItemIdRequirements().isEmpty() && row.getCurrencyAmount() == 0
+			&& row.getQuests().equals(Map.of(Quest.ENAKHRAS_LAMENT, QuestState.FINISHED))
+			&& row.getVarbits().isEmpty() && row.getVarplayers().isEmpty()
+			&& java.util.Arrays.stream(row.getSkillLevels()).allMatch(level -> level == 0)
+			&& CatalogTransitionPolicy.isEnakhraMagicBarrier(row)
+			&& CatalogTransitionPolicy.isEligible(row)));
+
+		WorldPoint north = new WorldPoint(3103, 9318, 1);
+		WorldPoint south = new WorldPoint(3103, 9320, 1);
+		Transport exact = new Transport(north, south, "test", TransportType.TRANSPORT,
+			true, "Pass-through", "Magic barrier", 11005);
+		exact.getQuests().put(Quest.ENAKHRAS_LAMENT, QuestState.FINISHED);
+		assertTrue(CatalogTransitionPolicy.isEnakhraMagicBarrier(exact));
+
+		Transport missingQuest = new Transport(north, south, "test", TransportType.TRANSPORT,
+			true, "Pass-through", "Magic barrier", 11005);
+		assertFalse(CatalogTransitionPolicy.isEnakhraMagicBarrier(missingQuest));
+		Transport nonMember = new Transport(north, south, "test", TransportType.TRANSPORT,
+			false, "Pass-through", "Magic barrier", 11005);
+		nonMember.getQuests().put(Quest.ENAKHRAS_LAMENT, QuestState.FINISHED);
+		assertFalse(CatalogTransitionPolicy.isEnakhraMagicBarrier(nonMember));
+
+		for (Transport malformed : java.util.List.of(
+			new Transport(north, new WorldPoint(3103, 9321, 1), "test", TransportType.TRANSPORT,
+				true, "Pass-through", "Magic barrier", 11005),
+			new Transport(north, south, "test", TransportType.TRANSPORT,
+				true, "Pass", "Magic barrier", 11005),
+			new Transport(north, south, "test", TransportType.TRANSPORT,
+				true, "Pass-through", "Magical barrier", 11005),
+			new Transport(north, south, "test", TransportType.TRANSPORT,
+				true, "Pass-through", "Magic barrier", 11006)))
+		{
+			malformed.getQuests().put(Quest.ENAKHRAS_LAMENT, QuestState.FINISHED);
+			assertFalse(CatalogTransitionPolicy.isEnakhraMagicBarrier(malformed));
+		}
+	}
+
+	@Test
 	public void acceptsOnlyTheExactEnakhrasTempleSandPileExitContract()
 	{
 		WorldPoint temple = new WorldPoint(3124, 9328, 1);

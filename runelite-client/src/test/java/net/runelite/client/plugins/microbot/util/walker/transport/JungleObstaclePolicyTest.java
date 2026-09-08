@@ -5,6 +5,10 @@ import net.runelite.client.plugins.microbot.shortestpath.Transport;
 import net.runelite.client.plugins.microbot.shortestpath.TransportType;
 import org.junit.Test;
 
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -14,6 +18,7 @@ import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 public class JungleObstaclePolicyTest
@@ -30,14 +35,46 @@ public class JungleObstaclePolicyTest
 			.collect(Collectors.groupingBy(JungleObstaclePolicyTest::inputKey,
 				Collectors.mapping(Transport::getDestination, Collectors.toSet())));
 
-		assertEquals(92, jungle.size());
+		assertEquals(76, jungle.size());
 		assertEquals(76, eligible.size());
-		assertEquals(16, ambiguous.size());
+		assertEquals(0, ambiguous.size());
 		assertEquals(76, destinationsByInput.size());
 		assertTrue(destinationsByInput.values().stream()
 			.allMatch(destinations -> destinations.size() == 1));
 		assertTrue(jungle.stream().allMatch(candidate ->
 			candidate.getItemIdRequirements().size() == 1));
+	}
+
+	@Test
+	public void ambiguousProductionRowsRemainPresentButRuntimeDisabled()
+		throws Exception
+	{
+		Set<String> expected = Set.of(
+			"2762 2936 0>2762 2938 0:2892", "2762 2936 0>2762 2934 0:2892",
+			"2791 2939 0>2791 2937 0:2893", "2791 2939 0>2791 2941 0:2893",
+			"2793 2939 0>2793 2941 0:2893", "2793 2939 0>2793 2937 0:2893",
+			"2799 2939 0>2799 2937 0:2893", "2799 2939 0>2799 2941 0:2893",
+			"2819 2938 0>2819 2940 0:2893", "2819 2938 0>2819 2936 0:2893",
+			"2866 2936 0>2866 2938 0:2892", "2866 2936 0>2866 2934 0:2892",
+			"2868 2936 0>2868 2934 0:2889", "2868 2936 0>2868 2938 0:2889",
+			"2933 2939 0>2933 2937 0:2893", "2933 2939 0>2933 2941 0:2893");
+		String resourcePath = "/net/runelite/client/plugins/microbot/shortestpath/transports.tsv";
+		InputStream resource = JungleObstaclePolicyTest.class.getResourceAsStream(resourcePath);
+		assertNotNull(resource);
+		try (BufferedReader reader = new BufferedReader(new InputStreamReader(resource,
+			StandardCharsets.UTF_8)))
+		{
+			Set<String> disabled = reader.lines()
+				.filter(line -> line.startsWith("# "))
+				.map(line -> line.substring(2).split("\\t"))
+				.filter(columns -> columns.length >= 3
+					&& columns[2].startsWith("Chop-down;"))
+				.map(columns -> columns[0] + ">" + columns[1] + ":"
+					+ columns[2].substring(columns[2].lastIndexOf(';') + 1))
+				.filter(expected::contains)
+				.collect(Collectors.toSet());
+			assertEquals(expected, disabled);
+		}
 	}
 
 	@Test
