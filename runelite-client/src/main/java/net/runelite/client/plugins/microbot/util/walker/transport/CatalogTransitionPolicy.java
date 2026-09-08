@@ -13,6 +13,265 @@ import java.util.Set;
 /** Conservative eligibility for direct object-backed scene transitions. */
 public final class CatalogTransitionPolicy
 {
+	private static final Set<String> AUDITED_AGILITY_TRAVERSALS = Set.of(
+		"3440,3331,0->3441,3329,0|3522|jump|bridge",
+		"3441,3329,0->3440,3331,0|3522|jump|bridge",
+		"3441,3331,0->3441,3329,0|3522|jump|bridge",
+		"3440,3329,0->3440,3331,0|3522|jump|bridge",
+		"3441,3328,0->3440,3331,0|3522|jump|bridge",
+		"3440,3332,0->3441,3329,0|3522|jump|bridge",
+		"3440,3328,0->3440,3331,0|3522|jump|bridge",
+		"3441,3332,0->3441,3329,0|3522|jump|bridge",
+		"3334,2829,0->3338,2829,0|11948|climb|climbing rocks",
+		"3338,2829,0->3334,2829,0|11948|climb|climbing rocks",
+		"3334,2828,0->3338,2828,0|11948|climb|climbing rocks",
+		"3338,2828,0->3334,2828,0|11948|climb|climbing rocks",
+		"3334,2827,0->3338,2827,0|11948|climb|climbing rocks",
+		"3338,2827,0->3334,2827,0|11948|climb|climbing rocks",
+		"3338,2826,0->3334,2826,0|11948|climb|climbing rocks",
+		"3334,2826,0->3338,2826,0|11948|climb|climbing rocks",
+		"3348,2829,0->3352,2829,0|11949|climb|climbing rocks",
+		"3352,2829,0->3348,2829,0|11949|climb|climbing rocks",
+		"3348,2828,0->3352,2828,0|11949|climb|climbing rocks",
+		"3352,2828,0->3348,2828,0|11949|climb|climbing rocks",
+		"3348,2827,0->3352,2827,0|11949|climb|climbing rocks",
+		"3352,2827,0->3348,2827,0|11949|climb|climbing rocks",
+		"2740,3830,1->2744,3830,1|19846|climb|rocky handholds",
+		"2744,3830,1->2740,3830,1|19847|climb|rocky handholds",
+		"2943,3769,0->2950,3767,0|26405|climb|rocky handholds",
+		"2943,3767,0->2950,3767,0|26405|climb|rocky handholds",
+		"2942,3768,0->2950,3767,0|26405|climb|rocky handholds");
+	private static final Set<String> ABYSS_EXIT_RIFT_ROUTES = Set.of(
+		"3044,4842,0->2269,4840,0|25382|exitthrough|chaos rift",
+		"3050,4837,0->2209,4834,0|25382|exitthrough|death rift",
+		"3051,4833,0->2714,4838,0|25382|exitthrough|water rift",
+		"3047,4825,0->2846,4836,0|25382|exitthrough|air rift",
+		"3044,4822,0->2784,4843,0|25382|exitthrough|mind rift",
+		"3039,4821,0->2520,4848,0|25382|exitthrough|body rift",
+		"3031,4825,0->2660,4843,0|25382|exitthrough|earth rift",
+		"3029,4830,0->2587,4836,0|25382|exitthrough|fire rift",
+		"3027,4834,0->3229,4834,0|25382|exitthrough|blood rift",
+		"3028,4837,0->2142,4836,0|25382|exitthrough|cosmic rift",
+		"3035,4842,0->2400,4844,0|25382|exitthrough|nature rift");
+	private static final Set<String> RUNECRAFTING_EXIT_PORTAL_ROUTES = Set.of(
+		"2793,4828,0->2980,3511,0|34749|use|portal",
+		"2726,4832,0->3182,3162,0|34750|use|portal",
+		"2521,4834,0->3052,3440,0|34753|use|portal",
+		"2575,4850,0->3310,3252,0|34752|use|portal",
+		"2655,4830,0->3302,3477,0|34751|use|portal",
+		"2281,4837,0->3056,3594,0|34757|use|portal",
+		"2275,4847,3->3060,3585,0|34757|use|portal",
+		"2273,4855,3->3066,3591,0|34757|use|portal",
+		"2575,4849,0->3310,3252,0|34752|use|portal",
+		"3240,4832,0->3559,9779,0|43478|use|portal",
+		"3224,4832,0->3559,9779,0|43478|use|portal",
+		"2122,4833,0->2405,4381,0|34754|use|portal",
+		"2142,4853,0->2405,4381,0|34754|use|portal",
+		"2162,4833,0->2405,4381,0|34754|use|portal",
+		"2142,4813,0->2405,4381,0|34754|use|portal",
+		"2400,4835,0->2865,3022,0|34756|use|portal");
+	private static final Set<String> ENAKHRA_SECRET_ENTRANCE_ROUTES = Set.of(
+		"3194,2926,0->3124,9328,1|11046|climbdown|secret entrance",
+		"3195,2925,0->3124,9328,1|11046|climbdown|secret entrance",
+		"3193,2925,0->3124,9328,1|11046|climbdown|secret entrance",
+		"3194,2924,0->3124,9328,1|11046|climbdown|secret entrance",
+		"3189,2889,0->3120,9288,1|11047|climbdown|secret entrance",
+		"3190,2888,0->3120,9288,1|11047|climbdown|secret entrance",
+		"3188,2888,0->3120,9288,1|11047|climbdown|secret entrance",
+		"3189,2887,0->3120,9288,1|11047|climbdown|secret entrance",
+		"3148,2938,0->3086,9333,1|11045|climbdown|secret entrance",
+		"3149,2937,0->3086,9333,1|11045|climbdown|secret entrance",
+		"3147,2937,0->3086,9333,1|11045|climbdown|secret entrance",
+		"3148,2936,0->3086,9333,1|11045|climbdown|secret entrance",
+		"3146,2909,0->3080,9306,1|11048|climbdown|secret entrance",
+		"3145,2908,0->3080,9306,1|11048|climbdown|secret entrance",
+		"3146,2907,0->3080,9306,1|11048|climbdown|secret entrance",
+		"3147,2908,0->3080,9306,1|11048|climbdown|secret entrance");
+	private static final Set<String> SWAN_SONG_HOLE_ROUTES = Set.of(
+		"2344,3650,0->2344,3655,0|12656|enter|hole",
+		"2344,3655,0->2344,3650,0|12656|enter|hole");
+	private static final Set<String> MOLCH_LIZARD_TEMPLE_ROUTES = Set.of(
+		"1313,3685,0->1312,10086,0|34405|enter|lizard dwelling",
+		"1312,3685,0->1312,10086,0|34405|enter|lizard dwelling",
+		"1293,3659,0->1292,10057,0|34402|enter|lizard dwelling",
+		"1292,3659,0->1292,10057,0|34402|enter|lizard dwelling",
+		"1315,3665,0->1314,10063,0|34403|enter|lizard dwelling",
+		"1314,3665,0->1314,10063,0|34403|enter|lizard dwelling",
+		"1329,3670,0->1330,10069,0|34403|enter|lizard dwelling",
+		"1329,3669,0->1330,10069,0|34403|enter|lizard dwelling",
+		"1294,10077,0->1292,3676,0|34422|jumpin|strange hole",
+		"1294,10078,0->1292,3676,0|34422|jumpin|strange hole",
+		"1293,10076,0->1292,3676,0|34422|jumpin|strange hole",
+		"1292,10076,0->1292,3676,0|34422|jumpin|strange hole",
+		"1291,10077,0->1292,3676,0|34422|jumpin|strange hole",
+		"1291,10078,0->1292,3676,0|34422|jumpin|strange hole",
+		"1292,10079,0->1292,3676,0|34422|jumpin|strange hole",
+		"1293,10079,0->1292,3676,0|34422|jumpin|strange hole");
+	private static final Set<String> MEIYERDITCH_FLOOR_ROUTES = Set.of(
+		"3605,3203,1->3605,3206,1|18129|walkacross|floor",
+		"3605,3206,1->3605,3203,1|18130|walkacross|floor",
+		"3604,3214,1->3601,3214,1|18132|walkacross|floor",
+		"3601,3214,1->3604,3214,1|18133|walkacross|floor",
+		"3623,3207,1->3623,3210,1|18135|walkacross|floor",
+		"3623,3210,1->3623,3207,1|18136|walkacross|floor");
+	private static final Set<String> MEIYERDITCH_COURSE_ROUTES = Set.of(
+		"3588,3180,0->3592,3180,0|18037|climbover|wall rubble",
+		"3592,3180,0->3588,3180,0|18038|climbover|wall rubble",
+		"3589,3179,0->3592,3180,0|18037|climbover|wall rubble",
+		"3601,3163,1->3605,3163,1|17960|climbdown|rock",
+		"3605,3163,1->3601,3163,1|17959|climbup|rock",
+		"3605,3161,1->3605,3163,1|17958|jumponto|rock",
+		"3606,3207,1->3606,3208,1|18078|crawlunder|wall",
+		"3606,3208,1->3606,3207,1|18078|crawlunder|wall",
+		"3594,3223,0->3595,3223,1|18086|climbup|shelf",
+		"3595,3223,1->3594,3223,0|18087|climbdown|shelf",
+		"3596,3223,1->3597,3223,1|18088|crawlunder|wall",
+		"3597,3223,1->3596,3223,1|18088|crawlunder|wall",
+		"3615,3210,1->3614,3210,2|18095|climbup|shelf",
+		"3614,3210,2->3615,3210,1|18096|climbdown|shelf",
+		"3616,3202,2->3622,3202,2|18099|walkacross|washing line",
+		"3622,3202,2->3616,3202,2|18100|walkacross|washing line",
+		"3623,3217,1->3623,3218,2|18105|climbup|shelf",
+		"3623,3218,2->3623,3217,1|18106|climbdown|shelf",
+		"3625,3221,2->3626,3221,1|18107|climbdown|shelf",
+		"3626,3221,1->3625,3221,2|18108|climbup|shelf");
+	private static final Set<String> MEIYERDITCH_PREPARED_FLOOR_ROUTES = Set.of(
+		"3590,3173,1->3588,3173,0|18122|climbdown|floor",
+		"3588,3173,0->3590,3173,1|18124|climbup|floor",
+		"3589,3174,1->3588,3173,0|18122|climbdown|floor",
+		"3589,3174,0->3590,3173,1|18124|climbup|floor",
+		"3589,3173,1->3588,3173,0|18122|climbdown|floor",
+		"3588,3173,1->3588,3173,0|18122|climbdown|floor",
+		"3589,3173,0->3590,3173,1|18124|climbup|floor");
+	private static final Set<String> MEIYERDITCH_TUNNEL_ROUTES = Set.of(
+		"3598,3215,0->3598,3220,0|18083|climbinto|trapdoor tunnel",
+		"3598,3220,0->3598,3215,0|18085|climbinto|tunnel",
+		"3597,3219,0->3598,3215,0|18085|climbinto|tunnel");
+	private static final Set<String> MEIYERDITCH_POST_QUEST_ROUTES = Set.of(
+		"3649,3220,0->3631,3219,0|32660|enter|door",
+		"3631,3219,0->3649,3219,0|32659|enter|door",
+		"3649,3219,0->3631,3219,0|32660|enter|door",
+		"3631,3220,0->3649,3219,0|32659|enter|door",
+		"3649,3218,0->3631,3219,0|32660|enter|door",
+		"3631,3218,0->3649,3219,0|32659|enter|door",
+		"3595,3310,1->3595,3312,0|39173|climbup|wall",
+		"3595,3312,0->3595,3310,1|39172|climbdown|wall",
+		"3640,3253,0->3640,3252,0|17980|push|wall",
+		"3640,3252,0->3640,3253,0|17980|push|wall");
+	private static final Map<String, Map<Quest, QuestState>> ABYSS_EXIT_RIFT_QUESTS = Map.of(
+		"death rift", Map.of(Quest.MOURNINGS_END_PART_II, QuestState.FINISHED),
+		"blood rift", Map.of(Quest.SINS_OF_THE_FATHER, QuestState.FINISHED),
+		"cosmic rift", Map.of(Quest.LOST_CITY, QuestState.FINISHED));
+	private static final Set<String> FREMENNIK_SURFACE_BRIDGES = Set.of(
+		"2314,3848,0->2314,3839,0|21311|walkacross|rope bridge",
+		"2314,3839,0->2314,3848,0|21310|walkacross|rope bridge",
+		"2355,3848,0->2355,3839,0|21313|walkacross|rope bridge",
+		"2355,3839,0->2355,3848,0|21312|walkacross|rope bridge",
+		"2378,3839,0->2378,3848,0|21314|walkacross|rope bridge",
+		"2378,3848,0->2378,3839,0|21315|walkacross|rope bridge",
+		"2343,3829,0->2343,3820,0|21309|walkacross|rope bridge",
+		"2343,3820,0->2343,3829,0|21308|walkacross|rope bridge",
+		"2317,3823,0->2317,3832,0|21306|walkacross|rope bridge",
+		"2317,3832,0->2317,3823,0|21307|walkacross|rope bridge");
+	private static final Set<String> ISAFDAR_CROSSINGS = Set.of(
+		"2215,3156,0->2215,3153,0|3921|stepover|tripwire",
+		"2220,3155,0->2220,3152,0|3921|stepover|tripwire",
+		"2215,3153,0->2215,3156,0|3921|stepover|tripwire",
+		"2220,3152,0->2220,3155,0|3921|stepover|tripwire",
+		"2284,3188,0->2287,3188,0|3921|stepover|tripwire",
+		"2287,3188,0->2284,3188,0|3921|stepover|tripwire",
+		"2202,3237,0->2196,3237,0|3931|cross|log balance",
+		"2196,3237,0->2202,3237,0|3931|cross|log balance",
+		"2290,3232,0->2290,3239,0|3933|cross|log balance",
+		"2290,3239,0->2290,3232,0|3933|cross|log balance",
+		"2294,3242,0->2294,3245,0|3921|stepover|tripwire",
+		"2294,3245,0->2294,3242,0|3921|stepover|tripwire",
+		"2264,3250,0->2258,3250,0|3932|cross|log balance",
+		"2258,3250,0->2264,3250,0|3932|cross|log balance");
+	private static final Set<String> TARNS_JUMP_ROUTES = Set.of(
+		"3144,4576,2->3144,4574,2|20557|jumpto|pillar",
+		"3144,4574,2->3144,4572,2|20568|jumpto|ledge",
+		"3144,4572,2->3144,4574,2|20557|jumpto|pillar",
+		"3144,4574,2->3144,4576,2|20569|jumpto|ledge",
+		"3184,4564,1->3184,4562,1|20541|jumpto|pillar",
+		"3184,4562,1->3184,4560,1|20540|jumpto|pillar",
+		"3184,4560,1->3184,4558,1|20558|jumpto|ledge",
+		"3184,4558,1->3184,4560,1|20540|jumpto|pillar",
+		"3184,4560,1->3184,4562,1|20541|jumpto|pillar",
+		"3184,4562,1->3184,4564,1|20559|jumpto|ledge",
+		"3150,4597,1->3148,4597,1|20542|jumpto|pillar",
+		"3148,4597,1->3150,4597,1|20560|jumpto|ledge",
+		"3148,4597,1->3148,4595,1|20543|jumpto|pillar",
+		"3148,4595,1->3148,4597,1|20542|jumpto|pillar",
+		"3148,4595,1->3146,4595,1|20544|jumpto|pillar",
+		"3146,4595,1->3148,4595,1|20543|jumpto|pillar",
+		"3146,4595,1->3144,4595,1|20545|jumpto|pillar",
+		"3144,4595,1->3146,4595,1|20544|jumpto|pillar",
+		"3144,4595,1->3142,4595,1|20546|jumpto|pillar",
+		"3142,4595,1->3144,4595,1|20545|jumpto|pillar",
+		"3142,4595,1->3140,4595,1|20562|jumpto|ledge",
+		"3140,4595,1->3142,4595,1|20546|jumpto|pillar",
+		"3144,4595,1->3144,4597,1|20547|jumpto|pillar",
+		"3144,4597,1->3144,4599,1|20548|jumpto|pillar",
+		"3144,4599,1->3144,4601,1|20563|jumpto|ledge",
+		"3144,4601,1->3144,4599,1|20548|jumpto|pillar",
+		"3144,4599,1->3144,4597,1|20547|jumpto|pillar",
+		"3144,4597,1->3144,4595,1|20545|jumpto|pillar",
+		"3180,4596,1->3182,4596,1|20549|jumpto|pillar",
+		"3182,4596,1->3180,4596,1|20564|jumpto|ledge",
+		"3180,4600,1->3182,4600,1|20550|jumpto|pillar",
+		"3182,4600,1->3180,4600,1|20565|jumpto|ledge",
+		"3184,4600,1->3182,4600,1|20550|jumpto|pillar",
+		"3182,4600,1->3184,4600,1|20551|jumpto|pillar",
+		"3184,4600,1->3184,4598,1|20552|jumpto|pillar",
+		"3184,4598,1->3184,4600,1|20551|jumpto|pillar",
+		"3184,4598,1->3186,4598,1|20553|jumpto|pillar",
+		"3186,4598,1->3184,4598,1|20552|jumpto|pillar",
+		"3186,4598,1->3186,4596,1|20554|jumpto|pillar",
+		"3186,4596,1->3186,4598,1|20553|jumpto|pillar",
+		"3186,4596,1->3188,4596,1|20555|jumpto|pillar",
+		"3188,4596,1->3186,4596,1|20554|jumpto|pillar",
+		"3188,4596,1->3190,4596,1|20566|jumpto|ledge",
+		"3190,4596,1->3188,4596,1|20555|jumpto|pillar",
+		"3190,4600,1->3188,4600,1|20556|jumpto|pillar",
+		"3188,4600,1->3190,4600,1|20567|jumpto|ledge");
+	private static final Set<String> FLOORBOARD_JUMP_ROUTES = Set.of(
+		"3598,3203,1->3598,3201,1|18070|jumpto|floorboards",
+		"3598,3201,1->3598,3203,1|18071|jumpto|floorboards",
+		"3599,3200,1->3601,3200,1|18072|jumpto|floorboards",
+		"3601,3200,1->3599,3200,1|18073|jumpto|floorboards",
+		"3598,3222,1->3601,3222,1|18089|jumpto|floorboards",
+		"3601,3222,1->3598,3222,1|18090|jumpto|floorboards",
+		"3615,3218,1->3615,3216,1|18093|jumpto|floorboards",
+		"3615,3216,1->3615,3218,1|18094|jumpto|floorboards",
+		"3613,3208,3->3613,3205,3|18097|jumpto|floorboards",
+		"3613,3205,3->3613,3208,3|18098|jumpto|floorboards",
+		"3623,3223,1->3623,3226,1|18109|jumpto|floorboards",
+		"3623,3226,1->3623,3223,1|18110|jumpto|floorboards",
+		"3622,3230,1->3622,3232,1|18111|jumpto|floorboards",
+		"3622,3232,1->3622,3230,1|18112|jumpto|floorboards",
+		"3624,3240,1->3626,3240,1|18113|jumpto|floorboards",
+		"3626,3240,1->3624,3240,1|18114|jumpto|floorboards",
+		"3633,3256,1->3636,3256,1|18117|jumpto|floorboards",
+		"3636,3256,1->3633,3256,1|18118|jumpto|floorboards");
+	static final Set<Integer> VISIBILITY_RING_IDS = Set.of(4657, 28327, 28329);
+	static final String VISIBILITY_RING_OPEN = "visibility-ring-open-inventory";
+	static final String VISIBILITY_RING_WEAR = "visibility-ring-wear";
+	private static final Set<String> WATERFALL_THRONE_DOOR_ROUTE_KEYS = Set.of(
+		"2566,9901,0->2604,9901,0|2002|open|door",
+		"2604,9901,0->2566,9901,0|2002|open|door");
+	private static final Set<String> DIRECT_DOOR_ROUTE_KEYS = Set.of(
+		"2575,9861,0->2511,3463,0|2000|open|door",
+		"2511,3463,0->2575,9861,0|2010|open|door",
+		"2451,4645,0->2090,3930,0|16774|open|door",
+		"3318,9602,0->2748,5374,0|6919|open|door",
+		"3317,9602,0->2747,5374,0|6919|open|door",
+		"3317,9603,0->2748,5374,0|6919|open|door");
+	private static final Set<String> SHADOW_LADDER_ROUTE_KEYS = Set.of(
+		"2547,3422,0->2630,5071,0|6560|climbdown|ladder",
+		"2546,3421,0->2630,5071,0|6560|climbdown|ladder",
+		"2548,3421,0->2630,5071,0|6560|climbdown|ladder",
+		"2547,3420,0->2630,5071,0|6560|climbdown|ladder");
 	private static final Set<String> DIRECT_ACTIONS = Set.of(
 		"climb-up", "climb-down", "climb", "climb up", "climb down",
 		"walk-up", "walk-down", "ascend", "descend", "top-floor", "bottom-floor",
@@ -186,10 +445,17 @@ public final class CatalogTransitionPolicy
 		{
 			return isKalphiteRopeSetup(transport) || isKalphiteInstalledDescent(transport);
 		}
+		if (isShadowDungeonLadder(transport) || ZanarisEntrancePolicy.isEligible(transport)
+			|| isWaterfallThroneDoor(transport))
+		{
+			return true;
+		}
 		if (!transport.getItemIdRequirements().isEmpty())
 		{
 			return false;
 		}
+		if (isShortAgilityCrossing(transport) || isMeiyerditchCourseTraversal(transport)
+			|| isMeiyerditchPreparedFloor(transport) || isMeiyerditchPostQuestAccess(transport)) return true;
 		boolean changesScene = transport.getOrigin().getPlane() != transport.getDestination().getPlane()
 			|| transport.getOrigin().distanceTo2D(transport.getDestination()) > 1;
 		if (!changesScene)
@@ -228,7 +494,23 @@ public final class CatalogTransitionPolicy
 		}
 		String action = normalizeDirectAction(transport.getAction());
 		String name = normalize(transport.getName());
-		return AUDITED_DIRECT_ROUTE_KEYS.contains(routeKey(transport, action, name))
+		return isAuditedDirectDoor(transport)
+			|| isAbyssExitRift(transport)
+			|| isRunecraftingExitPortal(transport)
+			|| isEnakhraSecretEntrance(transport)
+			|| isSwanSongHole(transport)
+			|| isMolchLizardTempleTransition(transport)
+			|| isMeiyerditchFloor(transport)
+			|| isMeiyerditchCourseTraversal(transport)
+			|| isMeiyerditchPreparedFloor(transport)
+			|| isMeiyerditchTunnel(transport)
+			|| isMeiyerditchPostQuestAccess(transport)
+			|| isFloorboardJump(transport)
+			|| isTarnsJump(transport)
+			|| isIsafdarCrossing(transport)
+			|| isFremennikSurfaceBridge(transport)
+			|| isAuditedAgilityTraversal(transport)
+			|| AUDITED_DIRECT_ROUTE_KEYS.contains(routeKey(transport, action, name))
 			|| NEYPOTZLI_ENTRANCE_ROUTE_KEYS.contains(routeKey(transport, action, name))
 			|| DIRECT_CLIMB_UP_ROPE_ROUTE_KEYS.contains(routeKey(transport, action, name))
 			|| DIRECT_CLIMB_DOWN_HOLE_ROUTE_KEYS.contains(routeKey(transport, action, name))
@@ -271,6 +553,301 @@ public final class CatalogTransitionPolicy
 					|| transport.getOrigin().distanceTo2D(transport.getDestination()) > 2)
 			|| "jumpto".equals(action) && "pillar".equals(name)
 				&& isEasyRevenantCavesPillar(transport);
+	}
+
+	static boolean isFremennikSurfaceBridge(Transport transport)
+	{
+		if (transport == null || transport.getType() != TransportType.TRANSPORT
+			|| transport.getOrigin() == null || transport.getDestination() == null
+			|| transport.isConsumable() || transport.getCurrencyAmount() != 0
+			|| !transport.getItemIdRequirements().isEmpty()) return false;
+		return FREMENNIK_SURFACE_BRIDGES.contains(routeKey(transport,
+			normalizeDirectAction(transport.getAction()), normalize(transport.getName())))
+			&& (transport.getObjectId() < 21314
+				|| transport.getSkillLevels()[net.runelite.api.Skill.AGILITY.ordinal()] == 40);
+	}
+
+	static boolean isAuditedAgilityTraversal(Transport transport)
+	{
+		if (transport == null || transport.getType() != TransportType.TRANSPORT
+			|| transport.getOrigin() == null || transport.getDestination() == null
+			|| transport.isConsumable() || transport.getCurrencyAmount() != 0
+			|| !transport.getItemIdRequirements().isEmpty()
+			|| !transport.getVarbits().isEmpty() || !transport.getVarplayers().isEmpty()) return false;
+		if (!AUDITED_AGILITY_TRAVERSALS.contains(routeKey(transport,
+			normalizeDirectAction(transport.getAction()), normalize(transport.getName())))) return false;
+		int level = transport.getSkillLevels()[net.runelite.api.Skill.AGILITY.ordinal()];
+		if (transport.getObjectId() == 26405)
+		{
+			return level == 60
+				&& transport.getQuests().equals(Map.of(Quest.TROLL_STRONGHOLD, QuestState.IN_PROGRESS));
+		}
+		int expected = transport.getObjectId() == 3522 ? 1
+			: transport.getObjectId() == 11948 ? 0
+			: transport.getObjectId() == 11949 ? 30 : 35;
+		return level == expected && transport.getQuests().isEmpty();
+	}
+
+	static boolean isAuditedAgilityTraversalObject(int objectId)
+	{
+		return objectId == 3522 || objectId == 11948 || objectId == 11949
+			|| objectId == 19846 || objectId == 19847 || objectId == 26405;
+	}
+
+	static boolean isFremennikSurfaceBridgeObject(int objectId)
+	{
+		return objectId >= 21306 && objectId <= 21315;
+	}
+
+	static boolean isIsafdarCrossing(Transport transport)
+	{
+		if (transport == null || transport.getType() != TransportType.TRANSPORT
+			|| transport.getOrigin() == null || transport.getDestination() == null
+			|| transport.isConsumable() || transport.getCurrencyAmount() != 0
+			|| !transport.getItemIdRequirements().isEmpty()) return false;
+		return ISAFDAR_CROSSINGS.contains(routeKey(transport,
+			normalizeDirectAction(transport.getAction()), normalize(transport.getName())))
+			&& (transport.getObjectId() == 3921
+				|| transport.getSkillLevels()[net.runelite.api.Skill.AGILITY.ordinal()] == 45
+					&& transport.getQuests().equals(Map.of(Quest.REGICIDE, QuestState.IN_PROGRESS)));
+	}
+
+	static boolean isIsafdarCrossingObject(int objectId)
+	{
+		return objectId == 3921 || objectId >= 3931 && objectId <= 3933;
+	}
+
+	static boolean isShortAgilityCrossing(Transport transport)
+	{
+		if (transport == null || transport.getType() != TransportType.AGILITY_SHORTCUT
+			|| transport.getOrigin() == null || transport.getDestination() == null
+			|| transport.isConsumable() || !transport.getItemIdRequirements().isEmpty()
+			|| transport.getCurrencyAmount() != 0 || !transport.getVarbits().isEmpty()
+			|| !transport.getVarplayers().isEmpty()) return false;
+		boolean trellis = transport.getObjectId() == 2149;
+		return transport.getSkillLevels()[net.runelite.api.Skill.AGILITY.ordinal()] == (trellis ? 35 : 50)
+			&& transport.getQuests().equals(Map.of(trellis ? Quest.GARDEN_OF_TRANQUILLITY
+				: Quest.LEGENDS_QUEST, QuestState.FINISHED))
+			&& Set.of("3228,3470,0->3228,3471,0|2149|climb|trellis",
+				"3228,3471,0->3228,3470,0|2149|climb|trellis",
+				"2790,9295,0->2789,9296,0|2926|jumpover|jagged wall",
+				"2789,9296,0->2790,9295,0|2926|jumpover|jagged wall")
+				.contains(routeKey(transport, normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
+	}
+
+	static boolean isAbyssExitRift(Transport transport)
+	{
+		if (transport == null || transport.getType() != TransportType.TRANSPORT
+			|| transport.getOrigin() == null || transport.getDestination() == null
+			|| transport.getObjectId() != 25382 || transport.isConsumable()
+			|| !transport.getItemIdRequirements().isEmpty() || transport.getCurrencyAmount() != 0
+			|| !transport.getVarbits().isEmpty() || !transport.getVarplayers().isEmpty())
+		{
+			return false;
+		}
+		String name = normalize(transport.getName());
+		return ABYSS_EXIT_RIFT_ROUTES.contains(routeKey(transport,
+			normalizeDirectAction(transport.getAction()), name))
+			&& transport.getQuests().equals(ABYSS_EXIT_RIFT_QUESTS.getOrDefault(name, Map.of()));
+	}
+
+	static boolean isRunecraftingExitPortal(Transport transport)
+	{
+		return transport != null && transport.getType() == TransportType.TRANSPORT
+			&& transport.getOrigin() != null && transport.getDestination() != null
+			&& !transport.isConsumable() && transport.getItemIdRequirements().isEmpty()
+			&& transport.getCurrencyAmount() == 0 && transport.getQuests().isEmpty()
+			&& transport.getVarbits().isEmpty() && transport.getVarplayers().isEmpty()
+			&& java.util.Arrays.stream(transport.getSkillLevels()).allMatch(level -> level == 0)
+			&& RUNECRAFTING_EXIT_PORTAL_ROUTES.contains(routeKey(transport,
+				normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
+	}
+
+	static boolean isEnakhraSecretEntrance(Transport transport)
+	{
+		return transport != null && transport.getType() == TransportType.TRANSPORT
+			&& transport.getOrigin() != null && transport.getDestination() != null
+			&& !transport.isConsumable() && transport.getItemIdRequirements().isEmpty()
+			&& transport.getCurrencyAmount() == 0
+			&& transport.getQuests().equals(Map.of(Quest.ENAKHRAS_LAMENT, QuestState.FINISHED))
+			&& transport.getVarbits().isEmpty() && transport.getVarplayers().isEmpty()
+			&& java.util.Arrays.stream(transport.getSkillLevels()).allMatch(level -> level == 0)
+			&& ENAKHRA_SECRET_ENTRANCE_ROUTES.contains(routeKey(transport,
+				normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
+	}
+
+	static boolean isSwanSongHole(Transport transport)
+	{
+		return transport != null && transport.getType() == TransportType.TRANSPORT
+			&& transport.getOrigin() != null && transport.getDestination() != null
+			&& !transport.isConsumable() && transport.getItemIdRequirements().isEmpty()
+			&& transport.getCurrencyAmount() == 0
+			&& transport.getQuests().equals(Map.of(Quest.SWAN_SONG, QuestState.FINISHED))
+			&& transport.getVarbits().isEmpty() && transport.getVarplayers().isEmpty()
+			&& java.util.Arrays.stream(transport.getSkillLevels()).allMatch(level -> level == 0)
+			&& SWAN_SONG_HOLE_ROUTES.contains(routeKey(transport,
+				normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
+	}
+
+	static boolean isMolchLizardTempleTransition(Transport transport)
+	{
+		return transport != null && transport.getType() == TransportType.TRANSPORT
+			&& transport.getOrigin() != null && transport.getDestination() != null
+			&& !transport.isConsumable() && transport.getItemIdRequirements().isEmpty()
+			&& transport.getCurrencyAmount() == 0 && transport.getQuests().isEmpty()
+			&& transport.getVarbits().isEmpty() && transport.getVarplayers().isEmpty()
+			&& java.util.Arrays.stream(transport.getSkillLevels()).allMatch(level -> level == 0)
+			&& MOLCH_LIZARD_TEMPLE_ROUTES.contains(routeKey(transport,
+				normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
+	}
+
+	static boolean isMeiyerditchFloor(Transport transport)
+	{
+		return transport != null && transport.getType() == TransportType.TRANSPORT
+			&& transport.getOrigin() != null && transport.getDestination() != null
+			&& !transport.isConsumable() && transport.getItemIdRequirements().isEmpty()
+			&& transport.getCurrencyAmount() == 0 && hasMeiyerditchCourseRequirements(transport)
+			&& transport.getVarbits().isEmpty() && transport.getVarplayers().isEmpty()
+			&& MEIYERDITCH_FLOOR_ROUTES.contains(routeKey(transport,
+				normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
+	}
+
+	static boolean isMeiyerditchFloorObject(int objectId)
+	{
+		return objectId == 18129 || objectId == 18130 || objectId == 18132
+			|| objectId == 18133 || objectId == 18135 || objectId == 18136;
+	}
+
+	static boolean isMeiyerditchCourseTraversal(Transport transport)
+	{
+		return transport != null && transport.getType() == TransportType.TRANSPORT
+			&& transport.getOrigin() != null && transport.getDestination() != null
+			&& !transport.isConsumable() && transport.getItemIdRequirements().isEmpty()
+			&& transport.getCurrencyAmount() == 0 && hasMeiyerditchCourseRequirements(transport)
+			&& transport.getVarbits().isEmpty() && transport.getVarplayers().isEmpty()
+			&& MEIYERDITCH_COURSE_ROUTES.contains(routeKey(transport,
+				normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
+	}
+
+	static boolean isMeiyerditchCourseObject(int objectId)
+	{
+		return objectId == 17958 || objectId == 17959 || objectId == 17960
+			|| objectId == 18037 || objectId == 18038 || objectId == 18078
+			|| objectId == 18086 || objectId == 18087 || objectId == 18088
+			|| objectId == 18095 || objectId == 18096 || objectId == 18099
+			|| objectId == 18100 || objectId == 18105 || objectId == 18106
+			|| objectId == 18107 || objectId == 18108;
+	}
+
+	static boolean isMeiyerditchPreparedFloor(Transport transport)
+	{
+		return transport != null && transport.getType() == TransportType.TRANSPORT
+			&& transport.getOrigin() != null && transport.getDestination() != null
+			&& !transport.isConsumable() && transport.getItemIdRequirements().isEmpty()
+			&& transport.getCurrencyAmount() == 0 && hasMeiyerditchCourseRequirements(transport)
+			&& hasExactVarbit(transport, 2589, 1) && transport.getVarplayers().isEmpty()
+			&& MEIYERDITCH_PREPARED_FLOOR_ROUTES.contains(routeKey(transport,
+				normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
+	}
+
+	static boolean isMeiyerditchPreparedFloorObject(int objectId)
+	{
+		return objectId == 18122 || objectId == 18124;
+	}
+
+	private static boolean hasExactVarbit(Transport transport, int id, int value)
+	{
+		if (transport.getVarbits().size() != 1)
+		{
+			return false;
+		}
+		TransportVarbit requirement = transport.getVarbits().iterator().next();
+		return requirement.getVarbitId() == id && requirement.getValue() == value
+			&& requirement.getOperator() == TransportVarbit.Operator.EQUAL;
+	}
+
+	static boolean isMeiyerditchTunnel(Transport transport)
+	{
+		return transport != null && transport.getType() == TransportType.TRANSPORT
+			&& transport.getOrigin() != null && transport.getDestination() != null
+			&& !transport.isConsumable() && transport.getItemIdRequirements().isEmpty()
+			&& transport.getCurrencyAmount() == 0 && hasMeiyerditchCourseRequirements(transport)
+			&& transport.getVarbits().isEmpty() && transport.getVarplayers().isEmpty()
+			&& MEIYERDITCH_TUNNEL_ROUTES.contains(routeKey(transport,
+				normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
+	}
+
+	static boolean isMeiyerditchTunnelObject(int objectId)
+	{
+		return objectId == 18083 || objectId == 18085;
+	}
+
+	static boolean isMeiyerditchPostQuestAccess(Transport transport)
+	{
+		return transport != null && transport.getType() == TransportType.TRANSPORT
+			&& transport.getOrigin() != null && transport.getDestination() != null
+			&& !transport.isConsumable() && transport.getItemIdRequirements().isEmpty()
+			&& transport.getCurrencyAmount() == 0 && hasNoSkillRequirements(transport)
+			&& transport.getQuests().equals(Map.of(
+				Quest.DARKNESS_OF_HALLOWVALE, QuestState.FINISHED))
+			&& transport.getVarbits().isEmpty() && transport.getVarplayers().isEmpty()
+			&& MEIYERDITCH_POST_QUEST_ROUTES.contains(routeKey(transport,
+				normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
+	}
+
+	static boolean isMeiyerditchPostQuestObject(int objectId)
+	{
+		return objectId == 17980 || objectId == 32659 || objectId == 32660
+			|| objectId == 39172 || objectId == 39173;
+	}
+
+	private static boolean hasNoSkillRequirements(Transport transport)
+	{
+		for (int level : transport.getSkillLevels())
+		{
+			if (level != 0)
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+	static boolean isFloorboardJump(Transport transport)
+	{
+		return transport != null && transport.getType() == TransportType.TRANSPORT
+			&& transport.getOrigin() != null && transport.getDestination() != null
+			&& FLOORBOARD_JUMP_ROUTES.contains(routeKey(transport,
+				normalizeDirectAction(transport.getAction()), normalize(transport.getName())))
+			&& hasMeiyerditchCourseRequirements(transport);
+	}
+
+	private static boolean hasMeiyerditchCourseRequirements(Transport transport)
+	{
+		int[] levels = transport.getSkillLevels();
+		for (int i = 0; i < levels.length; i++)
+		{
+			int expected = i == net.runelite.api.Skill.AGILITY.ordinal() ? 26 : 0;
+			if (levels[i] != expected)
+			{
+				return false;
+			}
+		}
+		return transport.getQuests().equals(Map.of(
+			Quest.DARKNESS_OF_HALLOWVALE, QuestState.IN_PROGRESS));
+	}
+
+	static boolean isTarnsJump(Transport transport)
+	{
+		return transport != null && transport.getType() == TransportType.TRANSPORT
+			&& transport.getOrigin() != null && transport.getDestination() != null
+			&& TARNS_JUMP_ROUTES.contains(routeKey(transport,
+				normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
+	}
+
+	static boolean isTarnsJumpObject(int objectId)
+	{
+		return objectId >= 20540 && objectId <= 20569;
 	}
 
 	static boolean isKalphiteRopeSetup(Transport transport)
@@ -411,6 +988,44 @@ public final class CatalogTransitionPolicy
 		}
 		String action = normalize(transport.getAction());
 		return "home".equals(action) || "enter".equals(action);
+	}
+
+	static boolean isShadowDungeonLadder(Transport transport)
+	{
+		return transport != null && transport.getType() == TransportType.TRANSPORT
+			&& transport.getOrigin() != null && transport.getDestination() != null
+			&& transport.getCurrencyAmount() == 0 && !transport.isConsumable()
+			&& transport.getItemIdRequirements().equals(Set.of(VISIBILITY_RING_IDS))
+			&& transport.getQuests().equals(Map.of(Quest.DESERT_TREASURE_I, QuestState.FINISHED))
+			&& SHADOW_LADDER_ROUTE_KEYS.contains(routeKey(transport,
+				normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
+	}
+
+	static boolean isWaterfallThroneDoor(Transport transport)
+	{
+		return transport != null && transport.getType() == TransportType.TRANSPORT
+			&& transport.getOrigin() != null && transport.getDestination() != null
+			&& transport.getCurrencyAmount() == 0 && !transport.isConsumable()
+			&& transport.getItemIdRequirements().equals(Set.of(Set.of(298)))
+			&& transport.getQuests().equals(Map.of(Quest.WATERFALL_QUEST, QuestState.FINISHED))
+			&& transport.getVarbits().isEmpty() && transport.getVarplayers().isEmpty()
+			&& WATERFALL_THRONE_DOOR_ROUTE_KEYS.contains(routeKey(transport,
+				normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
+	}
+
+	private static boolean isAuditedDirectDoor(Transport transport)
+	{
+		if (!DIRECT_DOOR_ROUTE_KEYS.contains(routeKey(transport,
+			normalizeDirectAction(transport.getAction()), normalize(transport.getName()))))
+		{
+			return false;
+		}
+		if (transport.getObjectId() == 2010)
+		{
+			return transport.getQuests().equals(Map.of(Quest.WATERFALL_QUEST, QuestState.FINISHED));
+		}
+		return transport.getObjectId() != 6919 || transport.getQuests().equals(
+			Map.of(Quest.DEATH_TO_THE_DORGESHUUN, QuestState.FINISHED));
 	}
 
 	public static boolean supportsClosedVariant(String action)

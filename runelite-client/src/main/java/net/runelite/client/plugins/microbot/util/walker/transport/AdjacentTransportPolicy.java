@@ -11,6 +11,33 @@ import java.util.Set;
 public final class AdjacentTransportPolicy
 {
 	private static final int ADJACENT_DISTANCE = 1;
+	private static final Set<String> WIDE_GATE_ROUTES = Set.of(
+		"2461,3385,0->2461,3382,0|190", "2461,3382,0->2461,3385,0|190",
+		"2462,3385,0->2461,3382,0|190", "2460,3382,0->2461,3385,0|190",
+		"2460,3385,0->2461,3382,0|190", "2462,3382,0->2461,3385,0|190",
+		"2343,3661,0->2343,3663,0|12723", "2343,3663,0->2343,3661,0|12723",
+		"2344,3661,0->2344,3663,0|12725", "2344,3663,0->2344,3661,0|12725",
+		"2559,3300,0->2556,3300,0|8739", "2556,3300,0->2559,3300,0|8738",
+		"2559,3299,0->2556,3299,0|8738", "2556,3299,0->2559,3299,0|8739");
+	private static final Set<String> DRAYNOR_DOOR_CONTRACTS = Set.of(
+		"3108,9757,0->3108,9759,0|144|1788=1;1789=1;1790=0;1793=0",
+		"3108,9759,0->3108,9757,0|144|1788=1;1789=1;1790=0;1793=0",
+		"3104,9760,0->3106,9760,0|139|1788=1;1790=0;1792=0;1793=0",
+		"3106,9760,0->3104,9760,0|139|1788=1;1790=0;1792=0;1793=0",
+		"3102,9757,0->3102,9759,0|145|1791=1;1792=0",
+		"3102,9759,0->3102,9757,0|145|1791=1;1792=0",
+		"3099,9760,0->3101,9760,0|140|1791=1;1792=0",
+		"3101,9760,0->3099,9760,0|140|1791=1;1792=0",
+		"3097,9762,0->3097,9764,0|143|1789=0;1791=1;1793=0",
+		"3097,9764,0->3097,9762,0|143|1789=0;1791=1;1793=0",
+		"3099,9765,0->3101,9765,0|138|1789=0;1791=1;1793=1",
+		"3101,9765,0->3099,9765,0|138|1789=0;1791=1;1793=1",
+		"3104,9765,0->3106,9765,0|137|1788=0;1792=1;1793=1",
+		"3106,9765,0->3104,9765,0|137|1788=0;1792=1;1793=1",
+		"3102,9762,0->3102,9764,0|142|1792=0;1793=1",
+		"3102,9764,0->3102,9762,0|142|1792=0;1793=1",
+		"3099,9755,0->3101,9755,0|141|1790=1;1791=1;1793=1",
+		"3101,9755,0->3099,9755,0|141|1790=1;1791=1;1793=1");
 	private static final int SHORT_PORTAL_DISTANCE = 2;
 	private static final int FEROX_BARRIER = 39652;
 	private static final int FEROX_BARRIER_MIRRORED = 39653;
@@ -47,7 +74,13 @@ public final class AdjacentTransportPolicy
 		{
 			return false;
 		}
+		if (transport.getObjectId() >= 137 && transport.getObjectId() <= 145)
+		{
+			return isDraynorBasementDoor(transport);
+		}
 		String action = transport.getAction().toLowerCase(Locale.ROOT);
+		if ("pick-lock".equals(action)) return isYanillePickLockDoor(transport);
+		if (isWideGate(transport)) return true;
 		boolean directRocks = type == TransportType.TRANSPORT
 			&& "climb".equals(action) && "rocks".equals(normalize(transport.getName()))
 			&& transport.getItemIdRequirements().isEmpty();
@@ -70,6 +103,74 @@ public final class AdjacentTransportPolicy
 		return distance <= ADJACENT_DISTANCE || isStrongholdTreeDoor(transport, action, distance)
 			|| slashableWeb && distance <= SHORT_PORTAL_DISTANCE
 			|| molchMysticalBarrier && distance <= SHORT_PORTAL_DISTANCE;
+	}
+
+	static boolean isWideGate(Transport transport)
+	{
+		if (transport == null || transport.getOrigin() == null || transport.getDestination() == null
+			|| transport.getType() != TransportType.TRANSPORT || !"open".equals(normalize(transport.getAction()))
+			|| transport.isConsumable() || transport.getCurrencyAmount() != 0
+			|| !transport.getItemIdRequirements().isEmpty() || !transport.getVarbits().isEmpty()
+			|| !transport.getVarplayers().isEmpty()) return false;
+		boolean stronghold = transport.getObjectId() == 190;
+		boolean ardougne = transport.getObjectId() == 8738 || transport.getObjectId() == 8739;
+		return (stronghold ? "gate" : ardougne ? "ardougne wall door" : "colony gate")
+			.equals(normalize(transport.getName()))
+			&& transport.getQuests().equals(stronghold ? java.util.Collections.emptyMap()
+				: java.util.Map.of(ardougne ? net.runelite.api.Quest.BIOHAZARD : net.runelite.api.Quest.SWAN_SONG,
+					net.runelite.api.QuestState.FINISHED))
+			&& WIDE_GATE_ROUTES.contains(pointKey(transport.getOrigin()) + "->"
+				+ pointKey(transport.getDestination()) + "|" + transport.getObjectId());
+	}
+
+	static boolean isYanillePickLockDoor(Transport transport)
+	{
+		if (transport == null || transport.getOrigin() == null || transport.getDestination() == null)
+		{
+			return false;
+		}
+		return transport.getType() == TransportType.TRANSPORT && transport.getObjectId() == 11728
+			&& "pick-lock".equals(normalize(transport.getAction()))
+			&& "door".equals(normalize(transport.getName())) && !transport.isConsumable()
+			&& transport.getCurrencyAmount() == 0 && transport.getDuration() == 10
+			&& transport.getSkillLevels()[net.runelite.api.Skill.THIEVING.ordinal()] == 82
+			&& transport.getItemIdRequirements().equals(Set.of(Set.of(1523)))
+			&& transport.getQuests().isEmpty() && transport.getVarbits().isEmpty()
+			&& transport.getVarplayers().isEmpty()
+			&& Set.of("2601,9481,0->2601,9482,0", "2601,9482,0->2601,9481,0")
+				.contains(pointKey(transport.getOrigin()) + "->" + pointKey(transport.getDestination()));
+	}
+
+	static boolean hasRequiredYanillePickLockItemsAndLevel(Transport transport, int thieving, boolean lockpick)
+	{
+		return isYanillePickLockDoor(transport) && thieving >= 82 && lockpick;
+	}
+
+	static boolean isDraynorBasementDoor(Transport transport)
+	{
+		if (transport == null || transport.getOrigin() == null || transport.getDestination() == null
+			|| transport.getType() != TransportType.TRANSPORT || !"open".equals(normalize(transport.getAction()))
+			|| !"door".equals(normalize(transport.getName())) || transport.getCurrencyAmount() != 0
+			|| transport.isConsumable() || !transport.getItemIdRequirements().isEmpty()
+			|| !transport.getQuests().isEmpty() || !transport.getVarplayers().isEmpty()
+			|| transport.getDuration() != 1
+			|| !"Draynor basement puzzle door".equals(transport.getDisplayInfo())
+			|| transport.getVarbits().stream().anyMatch(gate -> gate.getOperator()
+				!= net.runelite.client.plugins.microbot.shortestpath.TransportVarbit.Operator.EQUAL))
+		{
+			return false;
+		}
+		String gates = transport.getVarbits().stream()
+			.map(gate -> gate.getVarbitId() + "=" + gate.getValue()).sorted()
+			.collect(java.util.stream.Collectors.joining(";"));
+		return DRAYNOR_DOOR_CONTRACTS.contains(pointKey(transport.getOrigin()) + "->"
+			+ pointKey(transport.getDestination()) + "|" + transport.getObjectId() + "|" + gates);
+	}
+
+	static boolean hasRequiredDraynorLevers(Transport transport, java.util.function.IntUnaryOperator values)
+	{
+		return isDraynorBasementDoor(transport) && transport.getVarbits().stream()
+			.allMatch(gate -> gate.matches(values.applyAsInt(gate.getVarbitId())));
 	}
 
 	private static boolean isAlKharidTollGate(Transport transport)
@@ -138,7 +239,7 @@ public final class AdjacentTransportPolicy
 		String normalized = action.toLowerCase(Locale.ROOT);
 		return normalized.equals("open") || normalized.equals("pass")
 			|| normalized.equals("walk-through") || normalized.equals("go-through")
-			|| normalized.equals("slash");
+			|| normalized.equals("slash") || normalized.equals("pick-lock");
 	}
 
 	private static boolean isBlank(String value)

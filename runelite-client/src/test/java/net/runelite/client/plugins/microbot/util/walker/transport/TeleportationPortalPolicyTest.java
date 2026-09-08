@@ -16,7 +16,7 @@ import static org.junit.Assert.assertTrue;
 public class TeleportationPortalPolicyTest
 {
 	@Test
-	public void acceptsEveryDeterministicCatalogRowAndRejectsAmbiguousGuthixRows()
+	public void catalogContainsOnlyDeterministicPortalRows()
 	{
 		List<Transport> portals = portals();
 		List<Transport> eligible = portals.stream()
@@ -26,12 +26,13 @@ public class TeleportationPortalPolicyTest
 			.filter(candidate -> !TeleportationPortalPolicy.isEligible(candidate))
 			.collect(Collectors.toList());
 
-		assertEquals(100, portals.size());
+		assertEquals(88, portals.size());
 		assertEquals(88, eligible.size());
-		assertEquals(12, unsupported.size());
-		assertTrue(unsupported.stream().allMatch(candidate ->
-			candidate.getObjectId() == 4408
-				&& "Guthix Portal".equals(candidate.getName())));
+		assertTrue(unsupported.isEmpty());
+		assertFalse(portals.stream().anyMatch(candidate -> candidate.getObjectId() == 4408));
+		assertEquals(java.util.Set.of(2376, 2416), portals.stream()
+			.filter(candidate -> candidate.getObjectId() == 4387 || candidate.getObjectId() == 4388)
+			.map(candidate -> candidate.getDestination().getX()).collect(Collectors.toSet()));
 		assertEquals(Map.of("Enter", 39L, "Exit", 18L, "Use", 13L,
 			"Ferox Enclave", 8L, "Edgeville", 8L, "Enter-member", 1L,
 			"Leave", 1L), eligible.stream().collect(Collectors.groupingBy(

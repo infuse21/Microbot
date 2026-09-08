@@ -49,7 +49,12 @@ public final class AdjacentTransportRouteScanner
 		{
 			return pending.withStatus(RouteInteraction.Status.CLEARED, false);
 		}
-		AdjacentTransport transport = scene.find(new PlannedEdge(pending.getFrom(), pending.getTo()));
+		PlannedEdge plannedEdge = new PlannedEdge(pending.getFrom(), pending.getTo());
+		if (!scene.isEnabled(plannedEdge, pending.getObjectId()))
+		{
+			return pending.withStatus(RouteInteraction.Status.UNAVAILABLE, false);
+		}
+		AdjacentTransport transport = scene.find(plannedEdge);
 		if (transport == null || transport.getObjectId() != pending.getObjectId())
 		{
 			return pending.withStatus(AdjacentTransportPolicy.actionClearsObject(pending.getAction())
@@ -72,7 +77,7 @@ public final class AdjacentTransportRouteScanner
 			transport.getDestination() == null ? edge.getTo() : transport.getDestination());
 	}
 
-	private static boolean hasCrossedCatalogBoundary(RouteInteraction pending, WorldPoint player)
+	public static boolean hasCrossedCatalogBoundary(RouteInteraction pending, WorldPoint player)
 	{
 		if (player == null || player.getPlane() != pending.getCrossingTo().getPlane()
 			|| player.distanceTo2D(pending.getCrossingTo()) > 2)
@@ -83,6 +88,12 @@ public final class AdjacentTransportRouteScanner
 		WorldPoint to = pending.getCrossingTo();
 		int dx = Integer.compare(to.getX(), from.getX());
 		int dy = Integer.compare(to.getY(), from.getY());
+		// Stronghold approaches have a one-tile lateral offset; only crossing the
+		// north/south gate boundary counts, not aligning with the destination X.
+		if (pending.getObjectId() == 190)
+		{
+			return dy != 0 && (player.getY() - to.getY()) * dy >= 0;
+		}
 		return (dx != 0 && (player.getX() - to.getX()) * dx >= 0)
 			|| (dy != 0 && (player.getY() - to.getY()) * dy >= 0);
 	}

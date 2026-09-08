@@ -171,6 +171,16 @@ public class BankedTransportItemPlanningTest {
     }
 
 	@Test
+	public void repeatedPohOutsideEdgesWithdrawOneTabletPerUse()
+	{
+		Transport tablet = teleport("Teleport to House tablet: Outside");
+		Map<Integer, Integer> requirements =
+			Rs2WalkerBankingPlanner.getMissingTransportItemIdsWithQuantities(List.of(tablet, tablet));
+
+		assertEquals(2, requirements.getOrDefault(8013, 0).intValue());
+	}
+
+	@Test
 	public void repeatedMasterScrollBookEdgesWithdrawOneReusableBook()
 	{
 		Transport book = teleport("Master Scroll Book: Nardah");
@@ -242,6 +252,18 @@ public class BankedTransportItemPlanningTest {
         assertEquals(2, requirements.getOrDefault(ItemID.FIRERUNE, 0).intValue());
         assertEquals(2, requirements.getOrDefault(ItemID.LAWRUNE, 0).intValue());
     }
+
+	@Test
+	public void repeatedHouseOutsideSpellsAggregateTheirRunes()
+	{
+		Transport spell = teleport("Teleport to House: Outside");
+		Map<Integer, Integer> requirements =
+			Rs2WalkerBankingPlanner.getMissingTransportItemIdsWithQuantities(List.of(spell, spell));
+
+		assertEquals(2, requirements.getOrDefault(ItemID.AIRRUNE, 0).intValue());
+		assertEquals(2, requirements.getOrDefault(ItemID.EARTHRUNE, 0).intValue());
+		assertEquals(2, requirements.getOrDefault(ItemID.LAWRUNE, 0).intValue());
+	}
 
     @Test
     public void combinationRunesCanCoverBothElementalRequirements() {
@@ -397,6 +419,10 @@ public class BankedTransportItemPlanningTest {
                 5, map.getOrDefault(net.runelite.api.gameval.ItemID.COINS, 0).intValue());
         assertFalse("the unbankable ticket itself must not be requested",
                 map.containsKey(1854));
+        java.util.Map<Integer, Integer> repeated = Rs2WalkerBankingPlanner
+                .getMissingTransportItemIdsWithQuantities(java.util.List.of(ticketRow, ticketRow, ticketRow));
+        assertEquals("three consumed passes need three purchase fares", 15,
+                repeated.getOrDefault(net.runelite.api.gameval.ItemID.COINS, 0).intValue());
     }
 
     /** Currency-bearing transports kept their existing eligibility. */
@@ -486,6 +512,26 @@ public class BankedTransportItemPlanningTest {
                 requirements.entrySet().stream()
                         .filter(entry -> wildernessSwords.contains(entry.getKey()))
                         .mapToInt(Map.Entry::getValue).sum());
+    }
+
+    @Test
+    public void shadowLaddersNeedOneReusableRingAndCompletedWaterfallNeedsNoAmulet() {
+        List<Transport> ladders = all.stream()
+                .filter(t -> t.getType() == TransportType.TRANSPORT && t.getObjectId() == 6560)
+                .collect(Collectors.toList());
+        assertEquals(4, ladders.size());
+        assertTrue(ladders.stream().allMatch(Rs2WalkerBankingPlanner::requiresBankPlanning));
+        Map<Integer, Integer> requirements =
+                Rs2WalkerBankingPlanner.getMissingTransportItemIdsWithQuantities(ladders);
+        assertEquals(1, requirements.values().stream().mapToInt(Integer::intValue).sum());
+        assertTrue(Set.of(4657, 28327, 28329).containsAll(requirements.keySet()));
+
+        Transport waterfall = all.stream()
+                .filter(t -> t.getType() == TransportType.TRANSPORT && t.getObjectId() == 2010)
+                .findFirst().orElseThrow(() -> new AssertionError("Waterfall entrance missing"));
+        assertFalse(Rs2WalkerBankingPlanner.requiresBankPlanning(waterfall));
+        assertTrue(Rs2WalkerBankingPlanner.getMissingTransportItemIdsWithQuantities(
+                List.of(waterfall)).isEmpty());
     }
 
     @Test

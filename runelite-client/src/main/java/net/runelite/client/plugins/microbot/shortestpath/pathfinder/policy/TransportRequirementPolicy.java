@@ -52,6 +52,7 @@ public final class TransportRequirementPolicy {
      * closed to the toll so routing never assumes a free crossing from a stale player snapshot.
      */
     public static int currencyAmount(Transport transport) {
+        if (freeShantayEntry(transport)) return 0;
         if (!isEctoBarrier(transport)) {
             return transport == null ? 0 : transport.getCurrencyAmount();
         }
@@ -80,6 +81,7 @@ public final class TransportRequirementPolicy {
      * shared transport object so post-quest copies of the same row remain free and itemless.
      */
     public static Set<Set<Integer>> itemIdRequirements(Transport transport) {
+        if (freeShantayEntry(transport)) return Collections.emptySet();
         QuestState questState = Microbot.getRs2PlayerStateCache() == null
                 ? null : Rs2Player.getQuestState(Quest.GHOSTS_AHOY);
         return itemIdRequirements(transport, questState);
@@ -95,6 +97,11 @@ public final class TransportRequirementPolicy {
 
     /** The duration-two barrier rows describe the paid pre-quest landing only. */
     public static boolean questVariantAvailable(Transport transport) {
+        if (isAlKharidPaidGate(transport)) {
+            QuestState state = Microbot.getRs2PlayerStateCache() == null
+                    ? null : Rs2Player.getQuestState(Quest.PRINCE_ALI_RESCUE);
+            return alKharidPaidVariantAvailable(transport, state);
+        }
         QuestState questState = Microbot.getRs2PlayerStateCache() == null
                 ? null : Rs2Player.getQuestState(Quest.GHOSTS_AHOY);
         return questVariantAvailable(transport, questState);
@@ -107,6 +114,62 @@ public final class TransportRequirementPolicy {
 
     public static Set<Integer> ghostspeakItemIds() {
         return GHOSTSPEAK_ITEMS;
+    }
+
+    static boolean isAlKharidPaidGate(Transport transport) {
+        return transport != null && transport.getObjectId() >= 2786 && transport.getObjectId() <= 2789
+                && "Gate".equalsIgnoreCase(transport.getName())
+                && "Pay-toll(10gp)".equalsIgnoreCase(transport.getAction());
+    }
+
+    static boolean alKharidPaidVariantAvailable(Transport transport, QuestState state) {
+        return !isAlKharidPaidGate(transport) || state != QuestState.FINISHED;
+    }
+
+    public static boolean isShantayEntry(Transport transport) {
+        return transport != null && (transport.getObjectId() == 4031 || transport.getObjectId() == 41326)
+                && "Shantay pass".equalsIgnoreCase(transport.getName())
+                && "Go-through".equalsIgnoreCase(transport.getAction())
+                && (transport.getItemIdRequirements().equals(Set.of(Set.of(1854)))
+                    || transport.getCurrencyAmount() == 5 && "Coins".equalsIgnoreCase(transport.getCurrencyName()));
+    }
+
+    public static boolean desertPassExempt() {
+        return Microbot.getClient() != null && Microbot.getClientThread().runOnClientThreadOptional(
+                () -> Microbot.getVarbitValue(net.runelite.api.gameval.VarbitID.DESERT_DIARY_ELITE_COMPLETE) == 1)
+                .orElse(false);
+    }
+
+    public static boolean freeShantayEntry(Transport transport) {
+        return isShantayEntry(transport) && freeShantayEntry(transport, desertPassExempt());
+    }
+
+    static boolean freeShantayEntry(Transport transport, boolean eliteDiary) {
+        return eliteDiary && isShantayEntry(transport);
+    }
+
+    public static boolean isBrokenRaft(Transport transport) {
+        return transport != null && transport.getObjectId() == 17068
+                && "Broken Raft".equalsIgnoreCase(transport.getName())
+                && "Grapple".equalsIgnoreCase(transport.getAction());
+    }
+
+    public static boolean brokenRaftEquipmentReady() {
+        if (Microbot.getClient() == null) return false;
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            var weapon = net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment.get(
+                    net.runelite.api.EquipmentInventorySlot.WEAPON);
+            var ammo = net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment.get(
+                    net.runelite.api.EquipmentInventorySlot.AMMO);
+            return brokenRaftEquipmentReady(ammo == null ? -1 : ammo.getId(),
+                    weapon == null ? null : weapon.getName());
+        }).orElse(false);
+    }
+
+    static boolean brokenRaftEquipmentReady(int ammoId, String weaponName) {
+        if (ammoId != 9419 || weaponName == null) return false;
+        String name = weaponName.toLowerCase(java.util.Locale.ROOT);
+        return !name.equals("love crossbow") && (name.equals("crossbow") || name.endsWith(" crossbow"));
     }
 
     private static boolean isEctoBarrier(Transport transport) {

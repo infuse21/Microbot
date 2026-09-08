@@ -8,4 +8,9 @@ import net.runelite.client.plugins.microbot.util.walker.transport.model.CatalogT
 public interface CatalogTransitionScene
 {
 	CatalogTransition find(PlannedEdge edge);
+
+	default CatalogTransition observe(PlannedEdge edge, String pendingAction)
+	{
+		return find(edge);
+	}
 }

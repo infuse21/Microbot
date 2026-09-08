@@ -97,6 +97,7 @@ public final class NavigationEngine
 		if (session.routePlan == null || observedPlan.getGeneration() > session.generation)
 		{
 			session.install(observedPlan);
+			session.lastObservedDestination = observation.getMovementDestination();
 			if (session.executionMode == NavigationExecutionMode.ENGINE_SUPPORTED
 				&& !observedPlan.isEngineSupported())
 			{
@@ -161,7 +162,7 @@ public final class NavigationEngine
 			}
 		}
 		WorldPoint movementDestination = observation.getMovementDestination();
-		if (movementDestination != null && session.commandTarget != null
+		if (!session.commandPending && movementDestination != null && session.commandTarget != null
 			&& isDivergentCommandDestination(movementDestination))
 		{
 			return requestDestinationMismatch(movementDestination, observation);
@@ -216,6 +217,12 @@ public final class NavigationEngine
 		}
 
 		boolean proximityHandoff = isProximityHandoff(observation);
+		if (observation.isMoving() && session.commandTarget == null && movementDestination != null)
+		{
+			NavigationDecision rejoin = tryRouteRejoin(observation, 0, 0L);
+			return rejoin != null ? rejoin : requestReplan(RecoveryCause.OFF_ROUTE,
+				"unowned-movement-cannot-rejoin", observation);
+		}
 		if (observation.isMoving() && !proximityHandoff)
 		{
 			session.transitionTo(NavigationPhase.FOLLOWING_ROUTE, "movement-in-flight");
@@ -359,6 +366,11 @@ public final class NavigationEngine
 		long ageMs = Math.max(0L, observation.getObservedAtMs() - session.lastCommandAtMs);
 		clearCommandTarget();
 		int attempts = session.incrementRecovery(RecoveryCause.COMMAND_DESTINATION_MISMATCH);
+		if (attempts == 1)
+		{
+			NavigationDecision rejoin = tryRouteRejoin(observation, attempts, ageMs);
+			if (rejoin != null) return rejoin;
+		}
 		if (session.executionMode == NavigationExecutionMode.ENGINE_SUPPORTED
 			&& attempts > MAX_COMMAND_DESTINATION_MISMATCH_ATTEMPTS)
 		{
@@ -374,6 +386,29 @@ public final class NavigationEngine
 			NavigationDecision.Type.REQUEST_REPLAN, attempts,
 			MAX_COMMAND_DESTINATION_MISMATCH_ATTEMPTS, ageMs, expectedTarget,
 			movementDestination, reason), observation);
+	}
+
+	private NavigationDecision tryRouteRejoin(NavigationObservation observation, int attempts, long ageMs)
+	{
+		if (hasUnresolvedRouteInteraction(observation) || observation.isInteractionFrontier()
+			|| observation.isInteractionCommandInFlight()) return null;
+		RouteClickSelection selected = RouteClickSelector.select(session.routePlan,
+			observation.getPlayerLocation(), session.rawProgressIndex, 6, MAX_ROUTE_CLICK_REACH);
+		if (selected == null) return null;
+		for (RouteEdge edge : session.routePlan.getRouteEdges())
+		{
+			if (edge.getRawIndex() >= session.rawProgressIndex
+				&& edge.getRawIndex() < selected.getRawIndex() && edge.getKind() != RouteEdge.Kind.WALK)
+			{
+				return null;
+			}
+		}
+		RouteClickSelection correction = new RouteClickSelection(selected.getTarget(), selected.getRawIndex(),
+			selected.getSmoothedIndex(), selected.getDistance(), selected.getReach(), "route-rejoin");
+		session.transitionTo(NavigationPhase.FOLLOWING_ROUTE, "correcting-unowned-movement");
+		return publish(NavigationDecision.recoveryClick(correction, 1,
+			RecoveryCause.COMMAND_DESTINATION_MISMATCH, attempts,
+			MAX_COMMAND_DESTINATION_MISMATCH_ATTEMPTS, ageMs, "correcting-unowned-movement"), observation);
 	}
 
 	private NavigationDecision requestReplan(RecoveryCause cause, String reason,
@@ -541,7 +576,7 @@ public final class NavigationEngine
 			{
 				return null;
 			}
-			if (observation.isInteractionCommandInFlight() || observation.isInteracting())
+			if (observation.isInteractionCommandInFlight())
 			{
 				session.transitionTo(NavigationPhase.VERIFYING_INTERACTION,
 					"interaction-command-in-flight");
@@ -590,6 +625,13 @@ public final class NavigationEngine
 			|| pending.getKind() == RouteInteraction.Kind.HOT_AIR_BALLOON
 			|| pending.getKind() == RouteInteraction.Kind.CATALOG_TRANSITION)
 			&& pending.getStatus() != RouteInteraction.Status.CLEARED;
+		if (pending.getKind() == RouteInteraction.Kind.ADJACENT_TRANSPORT
+			&& (pending.getObjectId() == 190 || pending.getObjectId() == 12723 || pending.getObjectId() == 12725
+				|| pending.getObjectId() == 8738 || pending.getObjectId() == 8739))
+		{
+			remoteLandingRequired = !net.runelite.client.plugins.microbot.util.walker.transport
+				.AdjacentTransportRouteScanner.hasCrossedCatalogBoundary(pending, observation.getPlayerLocation());
+		}
 		if (session.rawProgressIndex > pending.getRawEdgeIndex() && !remoteLandingRequired)
 		{
 			clearPendingInteraction();
@@ -665,10 +707,10 @@ public final class NavigationEngine
 		}
 
 		session.interactionClearedObserved = false;
-		if (session.interactionCommandPending || observation.isInteracting())
+		// An actor interaction may be combat, not a command issued by this walker.
+		if (session.interactionCommandPending)
 		{
-			if (session.interactionCommandPending
-				&& !observation.isMoving() && !observation.isInteracting()
+			if (!observation.isMoving()
 				&& observation.getObservedAtMs() >= session.interactionCommandDeadlineMs)
 			{
 				session.interactionCommandPending = false;
@@ -1109,8 +1151,10 @@ public final class NavigationEngine
 			return false;
 		}
 		return session.routePlan == null
-			|| closestDistance(session.routePlan.getRawPath(), destination)
-			> DESTINATION_ROUTE_TOLERANCE;
+			|| closestDistance(session.routePlan.getRawPath().subList(
+				Math.min(session.routePlan.getRawPath().size(), Math.max(0, session.rawProgressIndex)),
+				session.routePlan.getRawPath().size()), destination)
+				> DESTINATION_ROUTE_TOLERANCE;
 	}
 
 	private void clearCommandTarget()

@@ -661,10 +661,10 @@
 2323 5104 0	2700 9688 0	Enter;Passage;18412								2
 											
 # West Ardougne											
-2559 3300 0	2556 3300 0	Open;Ardougne Wall Door;8739									
-2556 3300 0	2559 3300 0	Open;Ardougne Wall Door;8738									
-2559 3299 0	2556 3299 0	Open;Ardougne Wall Door;8738									
-2556 3299 0	2559 3299 0	Open;Ardougne Wall Door;8739									
+2559 3300 0	2556 3300 0	Open;Ardougne Wall Door;8739				Biohazard
+2556 3300 0	2559 3300 0	Open;Ardougne Wall Door;8738				Biohazard
+2559 3299 0	2556 3299 0	Open;Ardougne Wall Door;8738				Biohazard
+2556 3299 0	2559 3299 0	Open;Ardougne Wall Door;8739				Biohazard
 2542 3331 0	2541 3331 0	Squeeze-through;Fence;2068									
 2541 3331 0	2542 3331 0	Squeeze-through;Fence;2068									
 2531 3328 0	2531 3329 0	Open;Door;2537								1	
@@ -1028,18 +1028,18 @@
 3268 3228 0	3267 3228 0	Open;Gate;2789				Prince Ali Rescue				1
 3298 3124 0	3297 3124 0	Open;Prison door;2692									
 3297 3124 0	3298 3124 0	Open;Prison door;2692									
-3303 3117 0	3304 3115 0	Go-through;Shantay pass;4031		1854						2	
-3304 3117 0	3304 3115 0	Go-through;Shantay pass;4031		1854						2	
+3303 3117 0	3304 3115 0	Go-through;Shantay pass;4031		1854						2		T
+3304 3117 0	3304 3115 0	Go-through;Shantay pass;4031		1854						2		T
 3303 3117 0	3304 3115 0	Go-through;Shantay pass;4031			5 Coins					2	
 3304 3117 0	3304 3115 0	Go-through;Shantay pass;4031			5 Coins					2	
 3304 3115 0	3304 3117 0	Go-through;Shantay pass;4031								2	
 3303 3115 0	3304 3117 0	Go-through;Shantay pass;4031								2	
-3193 2843 0	3196 2843 0	Go-through;Shantay pass;41326		1854						3	
-3193 2842 0	3196 2842 0	Go-through;Shantay pass;41326		1854						3	
+3193 2843 0	3196 2843 0	Go-through;Shantay pass;41326		1854						3		T
+3193 2842 0	3196 2842 0	Go-through;Shantay pass;41326		1854						3		T
 3196 2843 0	3193 2843 0	Go-through;Shantay pass;41326								3	
 3196 2842 0	3193 2842 0	Go-through;Shantay pass;41326								3	
-3167 2819 0	3167 2816 0	Go-through;Shantay pass;41326		1854						3	
-3168 2819 0	3168 2816 0	Go-through;Shantay pass;41326		1854						3	
+3167 2819 0	3167 2816 0	Go-through;Shantay pass;41326		1854						3		T
+3168 2819 0	3168 2816 0	Go-through;Shantay pass;41326		1854						3		T
 3167 2816 0	3167 2819 0	Go-through;Shantay pass;41326								3	
 3168 2816 0	3168 2819 0	Go-through;Shantay pass;41326								3	
 3322 3138 0	3322 3138 1	Climb-up;Ladder;21781									
@@ -1384,12 +1384,12 @@
 2511 3463 0	2527 3413 0	Get in;Barrel;2022									
 2512 3466 0	2527 3413 0	Climb;Dead Tree;2020									
 2512 3476 0	2527 3413 0	Swim to;Rock;1996									
-2511 3463 0	2575 9861 0	Open;Door;2010		295		Waterfall Quest
+2511 3463 0	2575 9861 0	Open;Door;2010				Waterfall Quest
 2575 9861 0	2511 3463 0	Open;Door;2000									
-2568 9893 0	2568 9894 0	Open;Door;2002									
-2568 9894 0	2568 9893 0	Open;Door;2002									
-2566 9901 0	2604 9901 0	Open;Door;2002									
-2604 9901 0	2566 9901 0	Open;Door;2002									
+2568 9893 0	2568 9894 0	Open;Door;2002		298
+2568 9894 0	2568 9893 0	Open;Door;2002		298
+2566 9901 0	2604 9901 0	Open;Door;2002		298		Waterfall Quest
+2604 9901 0	2566 9901 0	Open;Door;2002		298		Waterfall Quest
 											
 # Glarial's Tomb											
 2557 9844 0	2557 3444 0	Climb-up;Ladder;17387								2	
@@ -2006,104 +2006,104 @@
 1507 3592 2	1511 3592 1	Climb;Stairs;27200									
 											
 # Meyerditch											
-3649 3220 0	3631 3219 0	Enter;Door;32660				Darkness of Hallowvale
-3631 3219 0	3649 3219 0	Enter;Door;32659				Darkness of Hallowvale
-3649 3219 0	3631 3219 0	Enter;Door;32660				Darkness of Hallowvale
-3631 3220 0	3649 3219 0	Enter;Door;32659				Darkness of Hallowvale
-3649 3218 0	3631 3219 0	Enter;Door;32660				Darkness of Hallowvale
-3631 3218 0	3649 3219 0	Enter;Door;32659				Darkness of Hallowvale
+3649 3220 0	3631 3219 0	Enter;Door;32660				Darkness of Hallowvale=FINISHED
+3631 3219 0	3649 3219 0	Enter;Door;32659				Darkness of Hallowvale=FINISHED
+3649 3219 0	3631 3219 0	Enter;Door;32660				Darkness of Hallowvale=FINISHED
+3631 3220 0	3649 3219 0	Enter;Door;32659				Darkness of Hallowvale=FINISHED
+3649 3218 0	3631 3219 0	Enter;Door;32660				Darkness of Hallowvale=FINISHED
+3631 3218 0	3649 3219 0	Enter;Door;32659				Darkness of Hallowvale=FINISHED
 3632 3205 0	3632 3202 1	Climb-up;Stairs up;17976									
 3632 3202 1	3632 3205 0	Climb-down;Stairs down;17978									
 3604 3202 0	3602 3202 1	Climb-up;Ladder;17974									
 3602 3202 1	3604 3202 0	Climb-down;Ladder;17975									
-3588 3180 0	3592 3180 0	Climb-over;Wall rubble;18037									
-3592 3180 0	3588 3180 0	Climb-over;Wall rubble;18038									
-3589 3179 0	3592 3180 0	Climb-over;Wall rubble;18037									
-3590 3173 1	3588 3173 0	Climb-down;Floor;18122									
-3588 3173 0	3590 3173 1	Climb-up;Floor;18124									
-3589 3174 1	3588 3173 0	Climb-down;Floor;18122									
-3589 3174 0	3590 3173 1	Climb-up;Floor;18124									
-3589 3173 1	3588 3173 0	Climb-down;Floor;18122									
-3588 3173 1	3588 3173 0	Climb-down;Floor;18122									
-3589 3173 0	3590 3173 1	Climb-up;Floor;18124									
+3588 3180 0	3592 3180 0	Climb-over;Wall rubble;18037	26 Agility			Darkness of Hallowvale=IN_PROGRESS
+3592 3180 0	3588 3180 0	Climb-over;Wall rubble;18038	26 Agility			Darkness of Hallowvale=IN_PROGRESS
+3589 3179 0	3592 3180 0	Climb-over;Wall rubble;18037	26 Agility			Darkness of Hallowvale=IN_PROGRESS
+3590 3173 1	3588 3173 0	Climb-down;Floor;18122	26 Agility			Darkness of Hallowvale=IN_PROGRESS	2589=1
+3588 3173 0	3590 3173 1	Climb-up;Floor;18124	26 Agility			Darkness of Hallowvale=IN_PROGRESS	2589=1
+3589 3174 1	3588 3173 0	Climb-down;Floor;18122	26 Agility			Darkness of Hallowvale=IN_PROGRESS	2589=1
+3589 3174 0	3590 3173 1	Climb-up;Floor;18124	26 Agility			Darkness of Hallowvale=IN_PROGRESS	2589=1
+3589 3173 1	3588 3173 0	Climb-down;Floor;18122	26 Agility			Darkness of Hallowvale=IN_PROGRESS	2589=1
+3588 3173 1	3588 3173 0	Climb-down;Floor;18122	26 Agility			Darkness of Hallowvale=IN_PROGRESS	2589=1
+3589 3173 0	3590 3173 1	Climb-up;Floor;18124	26 Agility			Darkness of Hallowvale=IN_PROGRESS	2589=1
 3588 3211 0	3588 3209 1	Climb-up;Ladder;18000									
 3588 3209 1	3588 3211 0	Climb-down;Ladder;17999									
-3589 3214 0	3589 3215 0	Open;Barricade;18054									
-3589 3215 0	3589 3214 0	Open;Barricade;18054									
+3589 3214 0	3589 3215 0	Open;Barricade;18054	26 Agility			Darkness of Hallowvale=IN_PROGRESS
+3589 3215 0	3589 3214 0	Open;Barricade;18054	26 Agility			Darkness of Hallowvale=IN_PROGRESS
 3592 3230 0	3594 3230 1	Climb-up;Ladder;18000									
 3594 3230 1	3592 3230 0	Climb-down;Ladder;17999									
 3588 3250 1	3588 3252 2	Climb-up;Ladder;18002									
 3588 3252 2	3588 3250 1	Climb-down;Ladder;18001									
 3588 3258 2	3588 3260 1	Climb-down;Ladder;18001									
 3588 3260 1	3588 3258 2	Climb-up;Ladder;18002									
-3595 3310 1	3595 3312 0	Climb-up;Wall;39173									
-3595 3312 0	3595 3310 1	Climb-down;Wall;39172									
-3601 3163 1	3605 3163 1	Climb-down;Rock;17960									
-3605 3163 1	3601 3163 1	Climb-up;Rock;17959									
-3605 3161 1	3605 3163 1	Jump-onto;Rock;17958									
+3595 3310 1	3595 3312 0	Climb-up;Wall;39173				Darkness of Hallowvale=FINISHED
+3595 3312 0	3595 3310 1	Climb-down;Wall;39172				Darkness of Hallowvale=FINISHED
+3601 3163 1	3605 3163 1	Climb-down;Rock;17960	26 Agility			Darkness of Hallowvale=IN_PROGRESS
+3605 3163 1	3601 3163 1	Climb-up;Rock;17959	26 Agility			Darkness of Hallowvale=IN_PROGRESS
+3605 3161 1	3605 3163 1	Jump-onto;Rock;17958	26 Agility			Darkness of Hallowvale=IN_PROGRESS
 3595 3203 0	3595 3205 1	Climb-up;Ladder;17974									
 3595 3205 1	3595 3203 0	Climb-down;Ladder;17975									
-3598 3203 1	3598 3201 1	Jump-to;Floorboards;18070									
-3598 3201 1	3598 3203 1	Jump-to;Floorboards;18071									
-3599 3200 1	3601 3200 1	Jump-to;Floorboards;18072									
-3601 3200 1	3599 3200 1	Jump-to;Floorboards;18073									
-3605 3203 1	3605 3206 1	Walk-across;Floor;18129									
-3605 3206 1	3605 3203 1	Walk-across;Floor;18130									
-3606 3207 1	3606 3208 1	Crawl-under;Wall;18078									
-3606 3208 1	3606 3207 1	Crawl-under;Wall;18078									
-3604 3214 1	3601 3214 1	Walk-across;Floor;18132									
-3601 3214 1	3604 3214 1	Walk-across;Floor;18133									
+3598 3203 1	3598 3201 1	Jump-to;Floorboards;18070	26 Agility			Darkness of Hallowvale=IN_PROGRESS
+3598 3201 1	3598 3203 1	Jump-to;Floorboards;18071	26 Agility			Darkness of Hallowvale=IN_PROGRESS
+3599 3200 1	3601 3200 1	Jump-to;Floorboards;18072	26 Agility			Darkness of Hallowvale=IN_PROGRESS
+3601 3200 1	3599 3200 1	Jump-to;Floorboards;18073	26 Agility			Darkness of Hallowvale=IN_PROGRESS
+3605 3203 1	3605 3206 1	Walk-across;Floor;18129	26 Agility			Darkness of Hallowvale=IN_PROGRESS
+3605 3206 1	3605 3203 1	Walk-across;Floor;18130	26 Agility			Darkness of Hallowvale=IN_PROGRESS
+3606 3207 1	3606 3208 1	Crawl-under;Wall;18078	26 Agility			Darkness of Hallowvale=IN_PROGRESS
+3606 3208 1	3606 3207 1	Crawl-under;Wall;18078	26 Agility			Darkness of Hallowvale=IN_PROGRESS
+3604 3214 1	3601 3214 1	Walk-across;Floor;18132	26 Agility			Darkness of Hallowvale=IN_PROGRESS
+3601 3214 1	3604 3214 1	Walk-across;Floor;18133	26 Agility			Darkness of Hallowvale=IN_PROGRESS
 3601 3216 1	3601 3214 0	Climb-down;Ladder;17975									
 3601 3214 0	3601 3216 1	Climb-up;Ladder;17974									
-3598 3215 0	3598 3220 0	Climb-into;Trapdoor tunnel;18083									
-3598 3220 0	3598 3215 0	Climb-into;Tunnel;18085									
-3597 3219 0	3598 3215 0	Climb-into;Tunnel;18085									
-3594 3223 0	3595 3223 1	Climb-up;Shelf;18086									
-3595 3223 1	3594 3223 0	Climb-down;Shelf;18087									
-3596 3223 1	3597 3223 1	Crawl-under;Wall;18088									
-3597 3223 1	3596 3223 1	Crawl-under;Wall;18088									
-3598 3222 1	3601 3222 1	Jump-to;Floorboards;18089									
-3601 3222 1	3598 3222 1	Jump-to;Floorboards;18090									
+3598 3215 0	3598 3220 0	Climb-into;Trapdoor tunnel;18083	26 Agility			Darkness of Hallowvale=IN_PROGRESS
+3598 3220 0	3598 3215 0	Climb-into;Tunnel;18085	26 Agility			Darkness of Hallowvale=IN_PROGRESS
+3597 3219 0	3598 3215 0	Climb-into;Tunnel;18085	26 Agility			Darkness of Hallowvale=IN_PROGRESS
+3594 3223 0	3595 3223 1	Climb-up;Shelf;18086	26 Agility			Darkness of Hallowvale=IN_PROGRESS
+3595 3223 1	3594 3223 0	Climb-down;Shelf;18087	26 Agility			Darkness of Hallowvale=IN_PROGRESS
+3596 3223 1	3597 3223 1	Crawl-under;Wall;18088	26 Agility			Darkness of Hallowvale=IN_PROGRESS
+3597 3223 1	3596 3223 1	Crawl-under;Wall;18088	26 Agility			Darkness of Hallowvale=IN_PROGRESS
+3598 3222 1	3601 3222 1	Jump-to;Floorboards;18089	26 Agility			Darkness of Hallowvale=IN_PROGRESS
+3601 3222 1	3598 3222 1	Jump-to;Floorboards;18090	26 Agility			Darkness of Hallowvale=IN_PROGRESS
 3603 3223 1	3603 3221 0	Climb-down;Ladder;17975									
 3603 3221 0	3603 3223 1	Climb-up;Ladder;17974									
 3608 3221 0	3609 3221 0	Open;Door;18091									
 3609 3221 0	3608 3221 0	Open;Door;18091									
 3619 3219 0	3617 3219 1	Climb-up;Ladder;17974									
 3617 3219 1	3619 3219 0	Climb-down;Ladder;17975									
-3615 3218 1	3615 3216 1	Jump-to;Floorboards;18093									
-3615 3216 1	3615 3218 1	Jump-to;Floorboards;18094									
-3615 3210 1	3614 3210 2	Climb-up;Shelf;18095									
-3614 3210 2	3615 3210 1	Climb-down;Shelf;18096									
+3615 3218 1	3615 3216 1	Jump-to;Floorboards;18093	26 Agility			Darkness of Hallowvale=IN_PROGRESS
+3615 3216 1	3615 3218 1	Jump-to;Floorboards;18094	26 Agility			Darkness of Hallowvale=IN_PROGRESS
+3615 3210 1	3614 3210 2	Climb-up;Shelf;18095	26 Agility			Darkness of Hallowvale=IN_PROGRESS
+3614 3210 2	3615 3210 1	Climb-down;Shelf;18096	26 Agility			Darkness of Hallowvale=IN_PROGRESS
 3610 3211 2	3610 3209 3	Climb-up;Ladder;17974									
 3610 3209 3	3610 3211 2	Climb-down;Ladder;17975									
-3613 3208 3	3613 3205 3	Jump-to;Floorboards;18097									
-3613 3205 3	3613 3208 3	Jump-to;Floorboards;18098									
+3613 3208 3	3613 3205 3	Jump-to;Floorboards;18097	26 Agility			Darkness of Hallowvale=IN_PROGRESS
+3613 3205 3	3613 3208 3	Jump-to;Floorboards;18098	26 Agility			Darkness of Hallowvale=IN_PROGRESS
 3613 3203 3	3611 3203 2	Climb-down;Ladder;17975									
 3611 3203 2	3613 3203 3	Climb-up;Ladder;17974									
 3612 3201 2	3610 3201 1	Climb-down;Ladder;17975									
 3610 3201 1	3612 3201 2	Climb-up;Ladder;17974									
 3611 3199 1	3611 3201 0	Climb-down;Ladder;17975									
 3611 3201 0	3611 3199 1	Climb-up;Ladder;17974									
-3616 3202 2	3622 3202 2	Walk-across;Washing line;18099									
-3622 3202 2	3616 3202 2	Walk-across;Washing line;18100									
+3616 3202 2	3622 3202 2	Walk-across;Washing line;18099	26 Agility			Darkness of Hallowvale=IN_PROGRESS
+3622 3202 2	3616 3202 2	Walk-across;Washing line;18100	26 Agility			Darkness of Hallowvale=IN_PROGRESS
 3625 3202 2	3625 3204 1	Climb-down;Ladder;17975									
 3625 3204 1	3625 3202 2	Climb-up;Ladder;17974									
-3623 3207 1	3623 3210 1	Walk-across;Floor;18135									
-3623 3210 1	3623 3207 1	Walk-across;Floor;18136									
-3623 3217 1	3623 3218 2	Climb-up;Shelf;18105									
-3623 3218 2	3623 3217 1	Climb-down;Shelf;18106									
+3623 3207 1	3623 3210 1	Walk-across;Floor;18135	26 Agility			Darkness of Hallowvale=IN_PROGRESS
+3623 3210 1	3623 3207 1	Walk-across;Floor;18136	26 Agility			Darkness of Hallowvale=IN_PROGRESS
+3623 3217 1	3623 3218 2	Climb-up;Shelf;18105	26 Agility			Darkness of Hallowvale=IN_PROGRESS
+3623 3218 2	3623 3217 1	Climb-down;Shelf;18106	26 Agility			Darkness of Hallowvale=IN_PROGRESS
 3623 3218 0	3621 3218 1	Climb-up;Ladder;17974									
 3621 3218 1	3623 3218 0	Climb-down;Ladder;17975									
 3625 3223 0	3625 3224 0	Open;Door;18057									
 3625 3224 0	3625 3223 0	Open;Door;18057									
-3625 3221 2	3626 3221 1	Climb-down;Shelf;18107									
-3626 3221 1	3625 3221 2	Climb-up;Shelf;18108									
-3623 3223 1	3623 3226 1	Jump-to;Floorboards;18109									
-3623 3226 1	3623 3223 1	Jump-to;Floorboards;18110									
-3622 3230 1	3622 3232 1	Jump-to;Floorboards;18111									
-3622 3232 1	3622 3230 1	Jump-to;Floorboards;18112									
-3624 3240 1	3626 3240 1	Jump-to;Floorboards;18113									
-3626 3240 1	3624 3240 1	Jump-to;Floorboards;18114									
+3625 3221 2	3626 3221 1	Climb-down;Shelf;18107	26 Agility			Darkness of Hallowvale=IN_PROGRESS
+3626 3221 1	3625 3221 2	Climb-up;Shelf;18108	26 Agility			Darkness of Hallowvale=IN_PROGRESS
+3623 3223 1	3623 3226 1	Jump-to;Floorboards;18109	26 Agility			Darkness of Hallowvale=IN_PROGRESS
+3623 3226 1	3623 3223 1	Jump-to;Floorboards;18110	26 Agility			Darkness of Hallowvale=IN_PROGRESS
+3622 3230 1	3622 3232 1	Jump-to;Floorboards;18111	26 Agility			Darkness of Hallowvale=IN_PROGRESS
+3622 3232 1	3622 3230 1	Jump-to;Floorboards;18112	26 Agility			Darkness of Hallowvale=IN_PROGRESS
+3624 3240 1	3626 3240 1	Jump-to;Floorboards;18113	26 Agility			Darkness of Hallowvale=IN_PROGRESS
+3626 3240 1	3624 3240 1	Jump-to;Floorboards;18114	26 Agility			Darkness of Hallowvale=IN_PROGRESS
 3631 3239 2	3629 3239 1	Climb-down;Ladder;17975									
 3629 3239 1	3631 3239 2	Climb-up;Ladder;17974									
 3628 3240 1	3630 3240 0	Climb-down;Ladder;18116									
@@ -2112,12 +2112,12 @@
 3627 3251 1	3625 3251 0	Climb-down;Ladder;17975									
 3632 3258 0	3630 3258 1	Climb-up;Ladder;17974									
 3630 3258 1	3632 3258 0	Climb-down;Ladder;17975									
-3633 3256 1	3636 3256 1	Jump-to;Floorboards;18117									
-3636 3256 1	3633 3256 1	Jump-to;Floorboards;18118									
+3633 3256 1	3636 3256 1	Jump-to;Floorboards;18117	26 Agility			Darkness of Hallowvale=IN_PROGRESS
+3636 3256 1	3633 3256 1	Jump-to;Floorboards;18118	26 Agility			Darkness of Hallowvale=IN_PROGRESS
 3639 3255 1	3639 3258 0	Climb-down;Stairs down;17978									
 3639 3258 0	3639 3255 1	Climb-up;Stairs up;17976									
-3640 3253 0	3640 3252 0	Push;Wall;17980									
-3640 3252 0	3640 3253 0	Push;Wall;17980									
+3640 3253 0	3640 3252 0	Push;Wall;17980				Darkness of Hallowvale=FINISHED
+3640 3252 0	3640 3253 0	Push;Wall;17980				Darkness of Hallowvale=FINISHED
 3627 3269 0	3624 3269 1	Climb-up;Stairs up;17976									
 3624 3269 1	3627 3269 0	Climb-down;Stairs down;17978									
 3632 3270 1	3629 3270 0	Climb-down;Stairs down;17978									
@@ -3340,12 +3340,12 @@
 3338 2827 0	3334 2827 0	Climb;Climbing rocks;11948									
 3338 2826 0	3334 2826 0	Climb;Climbing rocks;11948									
 3334 2826 0	3338 2826 0	Climb;Climbing rocks;11948									
-3348 2829 0	3352 2829 0	Climb;Climbing rocks;11949									
-3352 2829 0	3348 2829 0	Climb;Climbing rocks;11949									
-3348 2828 0	3352 2828 0	Climb;Climbing rocks;11949									
-3352 2828 0	3348 2828 0	Climb;Climbing rocks;11949									
-3348 2827 0	3352 2827 0	Climb;Climbing rocks;11949									
-3352 2827 0	3348 2827 0	Climb;Climbing rocks;11949									
+3348 2829 0	3352 2829 0	Climb;Climbing rocks;11949	30 Agility
+3352 2829 0	3348 2829 0	Climb;Climbing rocks;11949	30 Agility
+3348 2828 0	3352 2828 0	Climb;Climbing rocks;11949	30 Agility
+3352 2828 0	3348 2828 0	Climb;Climbing rocks;11949	30 Agility
+3348 2827 0	3352 2827 0	Climb;Climbing rocks;11949	30 Agility
+3352 2827 0	3348 2827 0	Climb;Climbing rocks;11949	30 Agility
 											
 # Sophanem											
 3284 2810 0	3283 2809 0	Open;Gate;20391								1	
@@ -3605,8 +3605,8 @@
 # Harmony Island											
 3794 2844 0	3785 9254 0	Climb-down;Statue;22355									
 3785 9254 0	3796 2843 0	Climb;Ladder;22371								2	
-3804 2844 0	3806 2844 0	Open;Door;22119								1	
-3806 2844 0	3804 2844 0	Open;Door;22119								1	
+3804 2844 0	3806 2844 0	Open;Door;22119					3393>4			1
+3806 2844 0	3804 2844 0	Open;Door;22119					3393>4			1
 3816 2847 0	3817 2847 0	Open;Door;22007								1	
 3817 2847 0	3816 2847 0	Open;Door;22007								1	
 3818 2853 1	3818 2851 0	Climb-down;Ladder;22122								2	
@@ -3886,14 +3886,14 @@
 3149 4644 0	3185 4601 0	Enter;Passageway;15771									
 											
 # Mort Myre											
-3440 3331 0	3441 3329 0	Jump;Bridge;3522									
-3441 3329 0	3440 3331 0	Jump;Bridge;3522									
-3441 3331 0	3441 3329 0	Jump;Bridge;3522									
-3440 3329 0	3440 3331 0	Jump;Bridge;3522									
-3441 3328 0	3440 3331 0	Jump;Bridge;3522									
-3440 3332 0	3441 3329 0	Jump;Bridge;3522									
-3440 3328 0	3440 3331 0	Jump;Bridge;3522									
-3441 3332 0	3441 3329 0	Jump;Bridge;3522									
+3440 3331 0	3441 3329 0	Jump;Bridge;3522	1 Agility
+3441 3329 0	3440 3331 0	Jump;Bridge;3522	1 Agility
+3441 3331 0	3441 3329 0	Jump;Bridge;3522	1 Agility
+3440 3329 0	3440 3331 0	Jump;Bridge;3522	1 Agility
+3441 3328 0	3440 3331 0	Jump;Bridge;3522	1 Agility
+3440 3332 0	3441 3329 0	Jump;Bridge;3522	1 Agility
+3440 3328 0	3440 3331 0	Jump;Bridge;3522	1 Agility
+3441 3332 0	3441 3329 0	Jump;Bridge;3522	1 Agility
 3440 3337 0	3442 9734 1	Enter;Grotto;3516									
 3442 9734 1	3440 3337 0	Exit;Grotto;3526									
 3439 3337 0	3442 9734 1	Enter;Grotto;3516									
@@ -3943,13 +3943,13 @@
 3416 3489 2	3415 3489 2	Open;Cell door;3463									
 											
 # Enakhra's Lament											
-3194 2926 0	3124 9328 1	Climb-down;Secret entrance;11046									
+3194 2926 0	3124 9328 1	Climb-down;Secret entrance;11046				Enakhra's Lament
 3124 9328 1	3194 2926 0	Climb;Sand pile;10950									
-3195 2925 0	3124 9328 1	Climb-down;Secret entrance;11046									
+3195 2925 0	3124 9328 1	Climb-down;Secret entrance;11046				Enakhra's Lament
 3125 9328 1	3194 2926 0	Climb;Sand pile;10950									
-3193 2925 0	3124 9328 1	Climb-down;Secret entrance;11046									
+3193 2925 0	3124 9328 1	Climb-down;Secret entrance;11046				Enakhra's Lament
 3126 9329 1	3194 2926 0	Climb;Sand pile;10950									
-3194 2924 0	3124 9328 1	Climb-down;Secret entrance;11046									
+3194 2924 0	3124 9328 1	Climb-down;Secret entrance;11046				Enakhra's Lament
 3126 9330 1	3194 2926 0	Climb;Sand pile;10950									
 3127 9328 1	3127 9330 0	Climb-down;Ladder;11042								2	
 3127 9330 0	3127 9330 1	Climb-up;Ladder;11041								2	
@@ -3964,13 +3964,13 @@
 3120 9286 1	3122 9286 0	Climb-down;Ladder;11042								2	
 3121 9285 1	3122 9286 0	Climb-down;Ladder;11042								2	
 3121 9288 1	3189 2889 0	Climb;Sand pile;10950									
-3189 2889 0	3120 9288 1	Climb-down;Secret entrance;11047									
+3189 2889 0	3120 9288 1	Climb-down;Secret entrance;11047				Enakhra's Lament
 3120 9288 1	3189 2889 0	Climb;Sand pile;10950									
-3190 2888 0	3120 9288 1	Climb-down;Secret entrance;11047									
+3190 2888 0	3120 9288 1	Climb-down;Secret entrance;11047				Enakhra's Lament
 3122 9289 1	3189 2889 0	Climb;Sand pile;10950									
-3188 2888 0	3120 9288 1	Climb-down;Secret entrance;11047									
+3188 2888 0	3120 9288 1	Climb-down;Secret entrance;11047				Enakhra's Lament
 3122 9290 1	3189 2889 0	Climb;Sand pile;10950									
-3189 2887 0	3120 9288 1	Climb-down;Secret entrance;11047									
+3189 2887 0	3120 9288 1	Climb-down;Secret entrance;11047				Enakhra's Lament
 3104 9305 0	3104 9306 0	Open;Door;11051								1	
 3104 9306 0	3104 9305 0	Open;Door;11051								1	
 3110 9312 0	3111 9312 0	Open;Door;11057								1	
@@ -3983,13 +3983,13 @@
 3086 9336 1	3088 9336 0	Climb-down;Ladder;11042								2	
 3087 9335 1	3088 9336 0	Climb-down;Ladder;11042								2	
 3088 9335 1	3148 2938 0	Climb;Sand pile;10950									
-3148 2938 0	3086 9333 1	Climb-down;Secret entrance;11045									
+3148 2938 0	3086 9333 1	Climb-down;Secret entrance;11045				Enakhra's Lament
 3086 9333 1	3148 2938 0	Climb;Sand pile;10950									
-3149 2937 0	3086 9333 1	Climb-down;Secret entrance;11045									
+3149 2937 0	3086 9333 1	Climb-down;Secret entrance;11045				Enakhra's Lament
 3086 9334 1	3148 2938 0	Climb;Sand pile;10950									
-3147 2937 0	3086 9333 1	Climb-down;Secret entrance;11045									
+3147 2937 0	3086 9333 1	Climb-down;Secret entrance;11045				Enakhra's Lament
 3087 9335 1	3148 2938 0	Climb;Sand pile;10950									
-3148 2936 0	3086 9333 1	Climb-down;Secret entrance;11045									
+3148 2936 0	3086 9333 1	Climb-down;Secret entrance;11045				Enakhra's Lament
 3079 9335 0	3079 9334 0	Open;Door;11068								1	
 3079 9334 0	3079 9335 0	Open;Door;11068								1	
 3079 9307 1	3079 9307 0	Climb-down;Ladder;11042								2	
@@ -3998,13 +3998,13 @@
 3079 9305 1	3079 9307 0	Climb-down;Ladder;11042								2	
 3080 9306 1	3079 9307 0	Climb-down;Ladder;11042								2	
 3080 9306 1	3146 2909 0	Climb;Sand pile;10950									
-3146 2909 0	3080 9306 1	Climb-down;Secret entrance;11048									
+3146 2909 0	3080 9306 1	Climb-down;Secret entrance;11048				Enakhra's Lament
 3080 9307 1	3146 2909 0	Climb;Sand pile;10950									
-3145 2908 0	3080 9306 1	Climb-down;Secret entrance;11048									
+3145 2908 0	3080 9306 1	Climb-down;Secret entrance;11048				Enakhra's Lament
 3081 9305 1	3146 2909 0	Climb;Sand pile;10950									
-3146 2907 0	3080 9306 1	Climb-down;Secret entrance;11048									
+3146 2907 0	3080 9306 1	Climb-down;Secret entrance;11048				Enakhra's Lament
 3082 9305 1	3146 2909 0	Climb;Sand pile;10950									
-3147 2908 0	3080 9306 1	Climb-down;Secret entrance;11048									
+3147 2908 0	3080 9306 1	Climb-down;Secret entrance;11048				Enakhra's Lament
 3081 9287 0	3082 9287 0	Open;Door;11064								1	
 3082 9287 0	3081 9287 0	Open;Door;11064								1	
 3097 9312 0	3098 9312 0	Open;Door;11053								1	
@@ -4211,8 +4211,8 @@
 2314 3839 0	2314 3848 0	Walk-across;Rope bridge;21310									
 2355 3848 0	2355 3839 0	Walk-across;Rope bridge;21313									
 2355 3839 0	2355 3848 0	Walk-across;Rope bridge;21312									
-2378 3839 0	2378 3848 0	Cross-bridge;Rope bridge;21314									
-2378 3848 0	2378 3839 0	Walk-across;Rope bridge;21315									
+2378 3839 0	2378 3848 0	Walk-across;Rope bridge;21314	40 Agility
+2378 3848 0	2378 3839 0	Walk-across;Rope bridge;21315	40 Agility
 2343 3829 0	2343 3820 0	Walk-across;Rope bridge;21309									
 2343 3820 0	2343 3829 0	Walk-across;Rope bridge;21308									
 2317 3823 0	2317 3832 0	Walk-across;Rope bridge;21306									
@@ -4268,8 +4268,8 @@
 2726 3801 0	2726 3805 1	Ascend;Steps;19690									
 2727 3805 1	2727 3801 0	Descend;Steps;19691									
 2727 3801 0	2727 3805 1	Ascend;Steps;19690									
-2740 3830 1	2744 3830 1	Climb;Rocky handholds;19846									
-2744 3830 1	2740 3830 1	Climb;Rocky handholds;19847									
+2740 3830 1	2744 3830 1	Climb;Rocky handholds;19846	35 Agility
+2744 3830 1	2740 3830 1	Climb;Rocky handholds;19847	35 Agility
 2744 3830 1	2707 10205 0	Enter;Cave;19762									
 2707 10205 0	2744 3830 1	Exit;Cave;19764									
 2707 10206 0	2744 3830 1	Exit;Cave;19764									
@@ -4519,10 +4519,10 @@
 2911 3686 0	2909 3686 0	Climb;Rocks;3748									
 2909 3687 0	2911 3687 0	Climb;Rocks;3748									
 2911 3687 0	2909 3687 0	Climb;Rocks;3748									
-2943 3769 0	2950 3767 0	Climb;Rocky handholds;26405									
-2943 3769 0	2950 3767 0	Climb;Rocky handholds;26405									
-2943 3767 0	2950 3767 0	Climb;Rocky handholds;26405									
-2942 3768 0	2950 3767 0	Climb;Rocky handholds;26405									
+2943 3769 0	2950 3767 0	Climb;Rocky handholds;26405	60 Agility			Troll Stronghold=IN_PROGRESS
+2943 3769 0	2950 3767 0	Climb;Rocky handholds;26405	60 Agility			Troll Stronghold=IN_PROGRESS
+2943 3767 0	2950 3767 0	Climb;Rocky handholds;26405	60 Agility			Troll Stronghold=IN_PROGRESS
+2942 3768 0	2950 3767 0	Climb;Rocky handholds;26405	60 Agility			Troll Stronghold=IN_PROGRESS
 											
 # Hemenster											
 2661 3500 0	2662 3500 0	Squeeze-through;Loose Railing;51									
@@ -4541,8 +4541,8 @@
 2641 3428 1	2641 3428 0	Climb-down;Ladder;16679								2	
 2657 3438 0	2659 3437 0	Open;Guild door;11665									
 2658 3439 0	2659 3437 0	Open;Guild door;11665									
-2658 3437 0	2657 3439 0	Open;Guild door;11665									
-2659 3438 0	2657 3439 0	Open;Guild door;11665									
+2658 3437 0	2657 3439 0	Open;Guild door;11665	40 Ranged
+2659 3438 0	2657 3439 0	Open;Guild door;11665	40 Ranged
 2668 3429 0	2668 3429 2	Climb-up;Tower ladder;11661									
 2667 3428 0	2668 3429 2	Climb-up;Tower ladder;11661									
 2668 3427 0	2668 3429 2	Climb-up;Tower ladder;11661									
@@ -4663,7 +4663,9 @@
 											
 # Zanaris											
 2452 4473 0	3201 3169 0	Use;Fairy ring;12094								6	
-3202 3169 0	2452 4473 0	Open;Door;2406								6	
+3202 3169 0	2452 4473 0	Open;Door;2406		772		Lost City	4498=0			6
+3202 3169 0	2452 4473 0	Open;Door;2406	65 Magic;40 Defence	9084		Lost City	4498=0			6
+3202 3169 0	2452 4473 0	Open;Door;2406				Lost City	4498=1			6
 2486 4471 0	3260 3171 0	Use;Fairy ring;12003								6	
 											
 # Wintertodt											
@@ -4978,8 +4980,8 @@
 2306 3195 0	2304 3195 0	Pass;Tree;8742									
 2304 3194 0	2306 3195 0	Pass;Tree;8742									
 2304 3195 0	2306 3195 0	Pass;Tree;8742									
-2202 3237 0	2196 3237 0	Cross;Log balance;3931									
-2196 3237 0	2202 3237 0	Cross;Log balance;3931									
+2202 3237 0	2196 3237 0	Cross;Log balance;3931	45 Agility			Regicide=IN_PROGRESS
+2196 3237 0	2202 3237 0	Cross;Log balance;3931	45 Agility			Regicide=IN_PROGRESS
 2303 3213 0	2303 3216 0	Enter;Dense forest;3937									
 2303 3216 0	2303 3219 0	Enter;Dense forest;3938									
 2303 3219 0	2303 3222 0	Enter;Dense forest;3939									
@@ -4988,8 +4990,8 @@
 2303 3219 0	2303 3216 0	Enter;Dense forest;3938									
 2303 3222 0	2303 3219 0	Enter;Dense forest;3939									
 2303 3225 0	2303 3222 0	Enter;Dense forest;3938									
-2290 3232 0	2290 3239 0	Cross;Log balance;3933									
-2290 3239 0	2290 3232 0	Cross;Log balance;3933									
+2290 3232 0	2290 3239 0	Cross;Log balance;3933	45 Agility			Regicide=IN_PROGRESS
+2290 3239 0	2290 3232 0	Cross;Log balance;3933	45 Agility			Regicide=IN_PROGRESS
 2294 3242 0	2294 3245 0	Step-over;Tripwire;3921									
 2294 3245 0	2294 3242 0	Step-over;Tripwire;3921									
 2295 3215 0	2295 3217 0	Pass;Sticks;3922									
@@ -5000,8 +5002,8 @@
 2279 3225 0	2279 3221 0	Enter;Dense forest;3938									
 2279 3228 0	2279 3225 0	Enter;Dense forest;3937									
 2279 3231 0	2279 3228 0	Enter;Dense forest;3939									
-2264 3250 0	2258 3250 0	Cross;Log balance;3932									
-2258 3250 0	2264 3250 0	Cross;Log balance;3932									
+2264 3250 0	2258 3250 0	Cross;Log balance;3932	45 Agility			Regicide=IN_PROGRESS
+2258 3250 0	2264 3250 0	Cross;Log balance;3932	45 Agility			Regicide=IN_PROGRESS
 2312 3216 0	2314 9624 0	Enter;Cave entrance;4006									
 2314 9624 0	2312 3216 0	Leave;Cave exit;4007									
 2385 3335 0	2385 3333 0	Enter;Huge Gate;3945									
@@ -5451,14 +5453,6 @@
 3407 10145 0	3294 3749 0	Exit;Opening;40391								2	
 3067 3739 0	3187 10127 0	Jump-down;Crevice;40386								2	
 3068 3739 0	3187 10127 0	Jump-down;Crevice;40386								2	
-3220 10088 0	3220 10084 0	Jump-to;Pillar;31561	65 Agility							4	
-3220 10084 0	3220 10088 0	Jump-to;Pillar;31561	65 Agility							4	
-3198 10136 0	3202 10132 0	Jump-to;Pillar;31562								4	
-3202 10132 0	3198 10136 0	Jump-to;Pillar;31562								4	
-3200 10196 0	3204 10196 0	Jump-to;Pillar;31561								4	
-3204 10196 0	3200 10196 0	Jump-to;Pillar;31561								4	
-3180 10211 0	3180 10207 0	Jump-to;Pillar;31561								4	
-3180 10207 0	3180 10211 0	Jump-to;Pillar;31561								4	
 3217 10058 0	3102 3655 0	Climb-up;Stairs;31558								2	
 3246 10215 0	3124 3805 0	Climb-up;Stairs;43868								2	
 3184 3944 0	3184 3945 0	Open;Gate;26760								2	

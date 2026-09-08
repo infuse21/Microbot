@@ -8695,6 +8695,10 @@ public class Rs2Walker {
 
 		@Override
 		public boolean clickTile(WorldPoint target, String selection) {
+			if ("route-rejoin".equals(selection) && !Rs2Tile.isTileReachable(target)) {
+				lastActionType = "route-rejoin-unreachable";
+				return false;
+			}
 			if ("interaction-edge-crossing".equals(selection) || "route-end-approach".equals(selection)) {
 				if (walkFastCanvasOnScreenOnly(target, true)) {
 					lastActionType = "canvas-" + selection;
@@ -10348,6 +10352,10 @@ public class Rs2Walker {
     }
 
     private static boolean handleObject(Transport transport, TileObject tileObject, String action) {
+        if (net.runelite.client.plugins.microbot.shortestpath.pathfinder.policy.TransportRequirementPolicy
+                .isBrokenRaft(transport)
+                && !net.runelite.client.plugins.microbot.shortestpath.pathfinder.policy.TransportRequirementPolicy
+                    .brokenRaftEquipmentReady()) return false;
         ensureRequiredItemBeforeTransport(transport);
         WorldPoint before = Rs2Player.getWorldLocation();
         Rs2GameObject.interact(tileObject, action);
@@ -11166,21 +11174,13 @@ public class Rs2Walker {
 
     private static boolean handleTeleportSpell(Transport transport) {
         if (Rs2Pvp.isInWilderness() && (Rs2Pvp.getWildernessLevelFrom(Rs2Player.getWorldLocation()) > (transport.getMaxWildernessLevel() + 1))) return false;
-        boolean hasMultipleDestination = transport.getDisplayInfo().contains(":");
+		String spellName = SimpleTeleportPolicy.spellName(transport);
+		String option = SimpleTeleportPolicy.spellOption(transport);
+		int identifier = SimpleTeleportPolicy.spellIdentifier(transport);
 
-        String spellName = hasMultipleDestination
-                ? transport.getDisplayInfo().split(":")[0].trim().toLowerCase()
-                : transport.getDisplayInfo().toLowerCase();
-
-        String option = hasMultipleDestination
-                ? transport.getDisplayInfo().split(":")[1].trim().toLowerCase()
-                : "cast";
-
-        int identifier = hasMultipleDestination
-                ? 2
-                : 1;
-
-        MagicAction magicSpell = Arrays.stream(MagicAction.values()).filter(x -> x.getName().toLowerCase().contains(spellName)).findFirst().orElse(null);
+		MagicAction magicSpell = Arrays.stream(MagicAction.values())
+				.filter(action -> action.getName().equalsIgnoreCase(spellName))
+				.findFirst().orElse(null);
         if (magicSpell != null) {
             if (magicSpell == MagicAction.LUMBRIDGE_HOME_TELEPORT) {
                 return Rs2Magic.quickCast(magicSpell);

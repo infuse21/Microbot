@@ -7,9 +7,12 @@ import net.runelite.client.plugins.microbot.shortestpath.TransportType;
 import org.junit.Test;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -32,6 +35,39 @@ public class SimpleTeleportPolicyTest
 		assertFalse(SimpleTeleportPolicy.isEligible(item("Games necklace: Burthorpe")));
 		assertFalse(SimpleTeleportPolicy.isEligible(new Transport(null, DESTINATION,
 			"walk", TransportType.TRANSPORT, false, 1)));
+	}
+
+	@Test
+	public void acceptsOnlyTheTenPackagedAlternateDestinationSpells()
+	{
+		List<Transport> alternateSpells = Transport.loadAllFromResources().values().stream()
+			.flatMap(java.util.Collection::stream)
+			.filter(row -> row.getType() == TransportType.TELEPORTATION_SPELL)
+			.filter(row -> row.getDisplayInfo().contains(":"))
+			.collect(Collectors.toList());
+		assertEquals(10, alternateSpells.size());
+		assertTrue(alternateSpells.stream().allMatch(SimpleTeleportPolicy::isEligible));
+		assertEquals(Map.of("Teleport to House: Outside", 8L,
+			"Varrock Teleport: Grand Exchange", 1L,
+			"Watchtower Teleport: Yanille", 1L), alternateSpells.stream()
+			.collect(Collectors.groupingBy(Transport::getDisplayInfo, Collectors.counting())));
+		for (Transport row : alternateSpells)
+		{
+			assertEquals(2, SimpleTeleportPolicy.spellIdentifier(row));
+			String display = row.getDisplayInfo();
+			assertEquals(display.substring(0, display.indexOf(':')),
+				SimpleTeleportPolicy.spellName(row));
+			assertEquals(display.substring(display.indexOf(':') + 1).trim().toLowerCase(),
+				SimpleTeleportPolicy.spellOption(row));
+		}
+		assertFalse(SimpleTeleportPolicy.isEligible(new Transport(
+			new WorldPoint(2952, 3224, 0), "Teleport to House: Outside",
+			TransportType.TELEPORTATION_SPELL, true, 19, Map.of(Skill.MAGIC, 40))));
+		Transport missingGate = alternateSpells.stream()
+			.filter(row -> "Varrock Teleport: Grand Exchange".equals(row.getDisplayInfo()))
+			.findFirst().orElseThrow();
+		missingGate.getVarbits().clear();
+		assertFalse(SimpleTeleportPolicy.isEligible(missingGate));
 	}
 
 	@Test

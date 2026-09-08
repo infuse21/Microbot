@@ -65,6 +65,16 @@ public class PathfinderConfig {
 	private static final WorldPoint SPIRIT_TREE_PORT_SARIM = new WorldPoint(3058, 3257, 0);
 	private static final WorldPoint SPIRIT_TREE_HOSIDIUS = new WorldPoint(1693, 3540, 0);
 	private static final WorldPoint SPIRIT_TREE_FARMING_GUILD = new WorldPoint(1251, 3750, 0);
+	private static final Set<Integer> MEIYERDITCH_FLOORBOARD_IDS = Set.of(
+		18070, 18071, 18072, 18073, 18089, 18090, 18093, 18094, 18097, 18098,
+		18109, 18110, 18111, 18112, 18113, 18114, 18117, 18118);
+	private static final Set<Integer> MEIYERDITCH_FLOOR_IDS = Set.of(
+		18129, 18130, 18132, 18133, 18135, 18136);
+	private static final Set<Integer> MEIYERDITCH_COURSE_IDS = Set.of(
+		17958, 17959, 17960, 18037, 18038, 18078, 18086, 18087, 18088,
+		18095, 18096, 18099, 18100, 18105, 18106, 18107, 18108);
+	private static final Set<Integer> MEIYERDITCH_PREPARED_FLOOR_IDS = Set.of(18122, 18124);
+	private static final Set<Integer> MEIYERDITCH_TUNNEL_IDS = Set.of(18083, 18085);
 	private final Set<WorldPoint> unavailableSpiritTreeDestinations = ConcurrentHashMap.newKeySet();
 	private final Set<WorldPoint> unavailableGnomeGliderDestinations = ConcurrentHashMap.newKeySet();
 	private final Set<WorldPoint> unavailableMagicMushtreeDestinations = ConcurrentHashMap.newKeySet();
@@ -1307,6 +1317,8 @@ public class PathfinderConfig {
     }
 
     private boolean useTransport(Transport transport) {
+        if (TransportRequirementPolicy.isBrokenRaft(transport)
+                && !TransportRequirementPolicy.brokenRaftEquipmentReady()) return false;
         if (!TransportRequirementPolicy.questVariantAvailable(transport)) {
             return false;
         }
@@ -1541,6 +1553,27 @@ public class PathfinderConfig {
 				&& "Use".equalsIgnoreCase(transport.getAction()));
 	}
 
+	private static boolean isMeiyerditchCourseTransport(Transport transport) {
+		int objectId = transport.getObjectId();
+		if (!MEIYERDITCH_COURSE_IDS.contains(objectId)) return false;
+		String action = transport.getAction();
+		String name = transport.getName();
+		if (objectId == 17958) return "Jump-onto".equalsIgnoreCase(action)
+			&& "Rock".equalsIgnoreCase(name);
+		if (objectId == 17959) return "Climb-up".equalsIgnoreCase(action)
+			&& "Rock".equalsIgnoreCase(name);
+		if (objectId == 17960) return "Climb-down".equalsIgnoreCase(action)
+			&& "Rock".equalsIgnoreCase(name);
+		if (objectId == 18037 || objectId == 18038) return "Climb-over".equalsIgnoreCase(action)
+			&& "Wall rubble".equalsIgnoreCase(name);
+		if (objectId == 18078 || objectId == 18088) return "Crawl-under".equalsIgnoreCase(action)
+			&& "Wall".equalsIgnoreCase(name);
+		if (objectId == 18099 || objectId == 18100) return "Walk-across".equalsIgnoreCase(action)
+			&& "Washing line".equalsIgnoreCase(name);
+		return (objectId == 18086 || objectId == 18095 || objectId == 18105 || objectId == 18108
+			? "Climb-up" : "Climb-down").equalsIgnoreCase(action) && "Shelf".equalsIgnoreCase(name);
+	}
+
     private boolean isFeatureEnabled(Transport transport) {
         TransportType type = transport.getType();
 		// Ordinary TSV shadow rows still belong to their network's feature switch.
@@ -1552,6 +1585,60 @@ public class PathfinderConfig {
 				&& "Fairy ring".equalsIgnoreCase(transport.getName())
 				&& "Use".equalsIgnoreCase(transport.getAction())) {
 			type = TransportType.FAIRY_RING;
+		} else if (type == TransportType.TRANSPORT
+				&& transport.getObjectId() >= 3931 && transport.getObjectId() <= 3933
+				&& "Log balance".equalsIgnoreCase(transport.getName())
+				&& "Cross".equalsIgnoreCase(transport.getAction())) {
+			type = TransportType.AGILITY_SHORTCUT;
+		} else if (type == TransportType.TRANSPORT
+				&& (transport.getObjectId() == 21314 || transport.getObjectId() == 21315)
+				&& "Rope bridge".equalsIgnoreCase(transport.getName())
+				&& "Walk-across".equalsIgnoreCase(transport.getAction())) {
+				type = TransportType.AGILITY_SHORTCUT;
+		} else if (type == TransportType.TRANSPORT
+				&& ((MEIYERDITCH_FLOORBOARD_IDS.contains(transport.getObjectId())
+						&& "Floorboards".equalsIgnoreCase(transport.getName())
+						&& "Jump-to".equalsIgnoreCase(transport.getAction()))
+					|| (MEIYERDITCH_FLOOR_IDS.contains(transport.getObjectId())
+						&& "Floor".equalsIgnoreCase(transport.getName())
+					&& "Walk-across".equalsIgnoreCase(transport.getAction())))) {
+			type = TransportType.AGILITY_SHORTCUT;
+		} else if (type == TransportType.TRANSPORT && isMeiyerditchCourseTransport(transport)) {
+			type = TransportType.AGILITY_SHORTCUT;
+		} else if (type == TransportType.TRANSPORT
+				&& MEIYERDITCH_PREPARED_FLOOR_IDS.contains(transport.getObjectId())
+				&& "Floor".equalsIgnoreCase(transport.getName())
+				&& ("Climb-up".equalsIgnoreCase(transport.getAction())
+					|| "Climb-down".equalsIgnoreCase(transport.getAction()))) {
+			type = TransportType.AGILITY_SHORTCUT;
+		} else if (type == TransportType.TRANSPORT
+				&& MEIYERDITCH_TUNNEL_IDS.contains(transport.getObjectId())
+				&& ("Tunnel".equalsIgnoreCase(transport.getName())
+					|| "Trapdoor tunnel".equalsIgnoreCase(transport.getName()))
+				&& "Climb-into".equalsIgnoreCase(transport.getAction())) {
+			type = TransportType.AGILITY_SHORTCUT;
+		} else if (type == TransportType.TRANSPORT && transport.getObjectId() == 18054
+				&& "Barricade".equalsIgnoreCase(transport.getName())
+				&& "Open".equalsIgnoreCase(transport.getAction())) {
+				type = TransportType.AGILITY_SHORTCUT;
+		} else if (type == TransportType.TRANSPORT
+				&& (transport.getObjectId() == 39172 || transport.getObjectId() == 39173)
+				&& "Wall".equalsIgnoreCase(transport.getName())
+				&& ("Climb-up".equalsIgnoreCase(transport.getAction())
+					|| "Climb-down".equalsIgnoreCase(transport.getAction()))) {
+			type = TransportType.AGILITY_SHORTCUT;
+		} else if (type == TransportType.TRANSPORT
+				&& ((transport.getObjectId() == 3522
+						&& "Bridge".equalsIgnoreCase(transport.getName())
+						&& "Jump".equalsIgnoreCase(transport.getAction()))
+					|| ((transport.getObjectId() == 11948 || transport.getObjectId() == 11949)
+						&& "Climbing rocks".equalsIgnoreCase(transport.getName())
+						&& "Climb".equalsIgnoreCase(transport.getAction()))
+					|| ((transport.getObjectId() == 19846 || transport.getObjectId() == 19847
+						|| transport.getObjectId() == 26405)
+						&& "Rocky handholds".equalsIgnoreCase(transport.getName())
+						&& "Climb".equalsIgnoreCase(transport.getAction())))) {
+			type = TransportType.AGILITY_SHORTCUT;
 		}
 
         if (!client.getWorldType().contains(WorldType.MEMBERS)) {
@@ -2001,6 +2088,8 @@ public class PathfinderConfig {
         int maxSimilar = config != null ? config.maxSimilarTransportDistance() : 0;
         return Objects.hash(
                 packTransportRefreshToggleBits(),
+                TransportRequirementPolicy.brokenRaftEquipmentReady(),
+                TransportRequirementPolicy.desertPassExempt(),
                 useTeleportationItems,
                 ignoreTeleportAndItems,
                 useBankItems,

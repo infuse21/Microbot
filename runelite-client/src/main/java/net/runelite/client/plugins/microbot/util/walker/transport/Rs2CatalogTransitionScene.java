@@ -2,13 +2,18 @@ package net.runelite.client.plugins.microbot.util.walker.transport;
 
 import net.runelite.api.ObjectComposition;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.api.widgets.ComponentID;
+import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.globval.enums.InterfaceTab;
 import net.runelite.client.plugins.microbot.api.tileobject.models.Rs2TileObjectModel;
 import net.runelite.client.plugins.microbot.shortestpath.Transport;
 import net.runelite.client.plugins.microbot.shortestpath.TransportEdgeMatcher;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.policy.TransportRequirementPolicy;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
+import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
+import net.runelite.client.plugins.microbot.util.tabs.Rs2Tab;
 import net.runelite.client.plugins.microbot.util.walker.Rs2PathApi;
 import net.runelite.client.plugins.microbot.util.walker.obstacle.PlannedEdge;
 import net.runelite.client.plugins.microbot.util.walker.transport.model.CatalogTransition;
@@ -30,6 +35,12 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 	@Override
 	public CatalogTransition find(PlannedEdge edge)
 	{
+		return observe(edge, null);
+	}
+
+	@Override
+	public CatalogTransition observe(PlannedEdge edge, String pendingAction)
+	{
 		if (edge == null || edge.from() == null || edge.to() == null)
 		{
 			return null;
@@ -41,7 +52,7 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 			{
 				continue;
 			}
-			CatalogTransition transition = find(transport);
+			CatalogTransition transition = find(transport, pendingAction);
 			if (transition != null)
 			{
 				return transition;
@@ -52,11 +63,53 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 
 	private static CatalogTransition find(Transport transport)
 	{
+		return find(transport, null);
+	}
+
+	private static CatalogTransition find(Transport transport, String pendingAction)
+	{
+		if (ZanarisEntrancePolicy.isEligible(transport))
+		{
+			String action = zanarisAction(transport, pendingAction);
+			if (action == null) return null;
+			if (!"Open".equals(action))
+			{
+				return new CatalogTransition(null, transport.getOrigin(), transport.getObjectId(),
+					action, transport.getAction(), transport.getOrigin(), transport.getDestination());
+			}
+		}
+		if (CatalogTransitionPolicy.isShadowDungeonLadder(transport))
+		{
+			CatalogTransition preparation = Microbot.getClientThread().runOnClientThreadOptional(() ->
+				visibilityRingPreparation(transport, hasVisibilityRingEquipped(), inventoryReady())).orElse(null);
+			if (preparation != null)
+			{
+				return preparation;
+			}
+		}
 		boolean pohPortal = CatalogTransitionPolicy.isPohPortal(transport);
+		boolean floorboardJump = CatalogTransitionPolicy.isFloorboardJump(transport);
+		boolean tarnsJump = CatalogTransitionPolicy.isTarnsJump(transport);
 		List<Rs2TileObjectModel> candidates = pohPortal
 			? Microbot.getRs2TileObjectCache().query().withId(transport.getObjectId()).toList()
-			: Microbot.getRs2TileObjectCache().query().within(transport.getOrigin(), 2).toList();
+			: Microbot.getRs2TileObjectCache().query().within(transport.getOrigin(), floorboardJump ? 5 : 2).toList();
 		Rs2TileObjectModel direct = candidates.stream()
+			.filter(candidate -> !(floorboardJump || tarnsJump || CatalogTransitionPolicy.isShortAgilityCrossing(transport)
+				|| CatalogTransitionPolicy.isIsafdarCrossing(transport)
+				|| CatalogTransitionPolicy.isFremennikSurfaceBridge(transport)
+				|| CatalogTransitionPolicy.isAuditedAgilityTraversal(transport)
+				|| CatalogTransitionPolicy.isMeiyerditchFloor(transport)
+				|| CatalogTransitionPolicy.isMeiyerditchCourseTraversal(transport)
+				|| CatalogTransitionPolicy.isMeiyerditchPreparedFloor(transport)
+				|| CatalogTransitionPolicy.isMeiyerditchTunnel(transport)
+				|| CatalogTransitionPolicy.isMeiyerditchPostQuestAccess(transport)
+				|| CatalogTransitionPolicy.isRunecraftingExitPortal(transport)
+				|| CatalogTransitionPolicy.isEnakhraSecretEntrance(transport)
+				|| CatalogTransitionPolicy.isSwanSongHole(transport)
+				|| CatalogTransitionPolicy.isMolchLizardTempleTransition(transport)
+				|| ZanarisEntrancePolicy.isEligible(transport)
+				|| CatalogTransitionPolicy.isWaterfallThroneDoor(transport))
+				|| candidate.getId() == transport.getObjectId())
 			.filter(candidate -> candidate.getWorldLocation().getPlane()
 				== transport.getOrigin().getPlane())
 			.filter(candidate -> candidate.getId() == transport.getObjectId()
@@ -113,6 +166,42 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 		{
 			return DispatchResult.REJECTED;
 		}
+		if (ZanarisEntrancePolicy.isEligible(transport))
+		{
+			String expected = zanarisAction(transport, null);
+			if (!java.util.Objects.equals(action, expected) || expected == null)
+			{
+				return DispatchResult.REJECTED;
+			}
+			if (ZanarisEntrancePolicy.OPEN_INVENTORY.equals(action))
+			{
+				return Microbot.getClientThread().runOnClientThreadOptional(() ->
+				{
+					Microbot.getClient().runScript(915, InterfaceTab.INVENTORY.getVarcIntIndex());
+					return DispatchResult.ISSUED;
+				}).orElse(DispatchResult.REJECTED);
+			}
+			if (ZanarisEntrancePolicy.WIELD_STAFF.equals(action))
+			{
+				return Rs2Inventory.interact(staffIds(transport), "Wield")
+					? DispatchResult.ISSUED : DispatchResult.REJECTED;
+			}
+			if (ZanarisEntrancePolicy.SELECT_DESTINATION.equals(action))
+			{
+				int index = Microbot.getClientThread().runOnClientThreadOptional(() ->
+					ZanarisEntrancePolicy.destinationIndex(zanarisOptions())).orElse(-1);
+				return index >= 0 && Rs2Dialogue.keyPressForDialogueOption(index + 1)
+					? DispatchResult.ISSUED : DispatchResult.REJECTED;
+			}
+		}
+		if (CatalogTransitionPolicy.isShadowDungeonLadder(transport))
+		{
+			DispatchResult preparation = dispatchVisibilityRing(transport, action);
+			if (preparation != null)
+			{
+				return preparation;
+			}
+		}
 		if (EnergyBarrierPolicy.isEligible(transport)
 			&& !TransportRequirementPolicy.itemIdRequirements(transport).isEmpty()
 			&& !Rs2Equipment.isWearing(TransportRequirementPolicy.ghostspeakItemIds().stream()
@@ -165,6 +254,88 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 			.filter(candidate -> !CatalogTransitionPolicy.ATTACH_ROPE_ACTION.equalsIgnoreCase(action)
 				|| requiresRopePreparation(candidate, action))
 			.findFirst().orElse(null);
+	}
+
+	static CatalogTransition visibilityRingPreparation(Transport transport, boolean equipped,
+		boolean inventoryVisible)
+	{
+		if (!CatalogTransitionPolicy.isShadowDungeonLadder(transport) || equipped)
+		{
+			return null;
+		}
+		return new CatalogTransition(null, transport.getOrigin(), transport.getObjectId(),
+			inventoryVisible ? CatalogTransitionPolicy.VISIBILITY_RING_WEAR
+				: CatalogTransitionPolicy.VISIBILITY_RING_OPEN,
+			transport.getAction(), transport.getOrigin(), transport.getDestination());
+	}
+
+	private static int[] staffIds(Transport transport)
+	{
+		return transport.getItemIdRequirements().stream().flatMap(java.util.Collection::stream)
+			.mapToInt(Integer::intValue).toArray();
+	}
+
+	private static List<String> zanarisOptions()
+	{
+		List<Widget> options = Rs2Dialogue.getDialogueOptions();
+		return options == null ? java.util.Collections.emptyList() : options.stream()
+			.map(option -> option == null ? "" : option.getText())
+			.collect(java.util.stream.Collectors.toList());
+	}
+
+	private static String zanarisAction(Transport transport, String pendingAction)
+	{
+		return Microbot.getClientThread().runOnClientThreadOptional(() ->
+			ZanarisEntrancePolicy.nextAction(!transport.getItemIdRequirements().isEmpty(),
+				Rs2Equipment.isWearing(staffIds(transport)), inventoryReady(),
+				Rs2Dialogue.hasSelectAnOption() || Rs2Dialogue.hasContinue(),
+				zanarisOptions(), pendingAction)).orElse(null);
+	}
+
+	private static boolean hasVisibilityRingEquipped()
+	{
+		return Rs2Equipment.isWearing(CatalogTransitionPolicy.VISIBILITY_RING_IDS.stream()
+			.mapToInt(Integer::intValue).toArray());
+	}
+
+	private static boolean inventoryReady()
+	{
+		Widget inventory = Microbot.getClient().getWidget(ComponentID.INVENTORY_CONTAINER);
+		return Rs2Tab.isCurrentTab(InterfaceTab.INVENTORY) && inventory != null
+			&& !inventory.isHidden() && inventory.getChildren() != null;
+	}
+
+	private static DispatchResult dispatchVisibilityRing(Transport transport, String action)
+	{
+		String expected = Microbot.getClientThread().runOnClientThreadOptional(() ->
+		{
+			CatalogTransition preparation = visibilityRingPreparation(transport,
+				hasVisibilityRingEquipped(), inventoryReady());
+			return preparation == null ? "" : preparation.getAction();
+		}).orElse(null);
+		if (expected == null)
+		{
+			return DispatchResult.REJECTED;
+		}
+		if (expected.isEmpty())
+		{
+			return null;
+		}
+		if (!expected.equals(action))
+		{
+			return DispatchResult.REJECTED;
+		}
+		if (CatalogTransitionPolicy.VISIBILITY_RING_OPEN.equals(action))
+		{
+			return Microbot.getClientThread().runOnClientThreadOptional(() ->
+			{
+				Microbot.getClient().runScript(915, InterfaceTab.INVENTORY.getVarcIntIndex());
+				return DispatchResult.ISSUED;
+			}).orElse(DispatchResult.REJECTED);
+		}
+		return Rs2Inventory.interact(CatalogTransitionPolicy.VISIBILITY_RING_IDS.stream()
+			.mapToInt(Integer::intValue).toArray(), "Wear")
+			? DispatchResult.ISSUED : DispatchResult.REJECTED;
 	}
 
 	static boolean requiresRopePreparation(Transport transport, String action)

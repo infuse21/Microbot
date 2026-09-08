@@ -4,6 +4,7 @@ import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.client.plugins.microbot.shortestpath.Transport;
 import net.runelite.client.plugins.microbot.shortestpath.TransportType;
+import net.runelite.client.plugins.microbot.shortestpath.TransportVarbit;
 
 import java.util.Map;
 import java.util.Set;
@@ -26,6 +27,7 @@ public final class ItemTeleportPolicy
 		Map.entry("Pharaoh's sceptre", Set.of(26948)),
 		Map.entry("Rada's blessing", Set.of(22941, 22943, 22945, 22947)),
 		Map.entry("Stony basalt", Set.of(22601)),
+		Map.entry("Teleport to House tablet", Set.of(8013)),
 		Map.entry("Teleport crystal", Set.of(6099, 6100, 6101, 6102, 13102)),
 		Map.entry("Varrock tablet", Set.of(8007)),
 		Map.entry("Watchtower tablet", Set.of(8012)),
@@ -91,6 +93,7 @@ public final class ItemTeleportPolicy
 		Map.entry("Rada's blessing: Kourend Woodland", "Kourend Woodland"),
 		Map.entry("Rada's blessing: Mount Karuulm", "Mount Karuulm"),
 		Map.entry("Stony basalt: Troll Stronghold", "Troll Stronghold"),
+		Map.entry("Teleport to House tablet: Outside", "Outside"),
 		Map.entry("Teleport crystal: Lletya", "Lletya"),
 		Map.entry("Teleport crystal: Prifddinas", "Prifddinas"),
 		Map.entry("Varrock tablet: Grand exchange", "Grand Exchange"),
@@ -211,6 +214,15 @@ public final class ItemTeleportPolicy
 		Map.entry("Master Scroll Book: Spider cave", InterfaceID.Bookofscrolls.TELEPORTSCROLL_SPIDERCAVE),
 		Map.entry("Master Scroll Book: Colossal wyrm", InterfaceID.Bookofscrolls.TELEPORTSCROLL_COLOSSAL_WYRM),
 		Map.entry("Master Scroll Book: Chasm of fire", InterfaceID.Bookofscrolls.TELEPORTSCROLL_CHASMOFFIRE));
+	private static final Map<Integer, WorldPoint> HOUSE_EXTERIORS = Map.of(
+		1, new WorldPoint(2952, 3224, 0),
+		2, new WorldPoint(2892, 3465, 0),
+		3, new WorldPoint(3339, 3001, 0),
+		4, new WorldPoint(2669, 3629, 0),
+		5, new WorldPoint(2756, 3176, 0),
+		6, new WorldPoint(2545, 3097, 0),
+		7, new WorldPoint(3239, 6077, 0),
+		8, new WorldPoint(1740, 3517, 0));
 
 	private ItemTeleportPolicy()
 	{
@@ -227,6 +239,11 @@ public final class ItemTeleportPolicy
 			return false;
 		}
 		Set<Integer> ids = ITEMS.get(transport.getDisplayInfo().split(":", 2)[0]);
+		if ("Teleport to House tablet: Outside".equals(transport.getDisplayInfo())
+			&& !isPohOutsideTablet(transport))
+		{
+			return false;
+		}
 		if ("Stony basalt: Troll Stronghold".equals(transport.getDisplayInfo())
 			&& !transport.getDestination().equals(new WorldPoint(2845, 3694, 0))
 			&& !transport.getDestination().equals(new WorldPoint(2837, 3695, 0)))
@@ -235,6 +252,22 @@ public final class ItemTeleportPolicy
 		}
 		return transport.getItemIdRequirements().stream()
 			.allMatch(group -> !group.isEmpty() && ids.containsAll(group));
+	}
+
+	private static boolean isPohOutsideTablet(Transport transport)
+	{
+		if (!transport.isMembers() || !transport.isConsumable()
+			|| transport.getDuration() != 4 || transport.getMaxWildernessLevel() != 19
+			|| !transport.getQuests().isEmpty() || !transport.getVarplayers().isEmpty()
+			|| java.util.Arrays.stream(transport.getSkillLevels()).anyMatch(level -> level != 0)
+			|| !transport.getItemIdRequirements().equals(Set.of(Set.of(8013)))
+			|| transport.getVarbits().size() != 1)
+		{
+			return false;
+		}
+		TransportVarbit gate = transport.getVarbits().iterator().next();
+		return gate.getVarbitId() == 2187 && gate.getOperator() == TransportVarbit.Operator.EQUAL
+			&& transport.getDestination().equals(HOUSE_EXTERIORS.get(gate.getValue()));
 	}
 
 	public static String inventoryAction(Transport transport)
@@ -289,6 +322,7 @@ public final class ItemTeleportPolicy
 			case "Eternal teleport crystal":
 			case "Icy basalt":
 			case "Stony basalt":
+			case "Teleport to House tablet":
 			case "Varrock tablet":
 			case "Watchtower tablet":
 				return null;

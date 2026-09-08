@@ -98,6 +98,8 @@ public final class PurchasableItemCatalog {
      * direction without any coordinate special-casing.
      */
     public static PurchasableItem forTransport(Transport transport) {
+        if (net.runelite.client.plugins.microbot.shortestpath.pathfinder.policy.TransportRequirementPolicy
+                .freeShantayEntry(transport)) return null;
         if (transport == null || transport.getOrigin() == null) {
             return null;
         }

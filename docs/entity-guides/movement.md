@@ -1190,12 +1190,14 @@ the concrete case: six identical object inputs each declare both alliance waitin
 **Pattern to follow:** Before migrating a direct-action remote family, group rows by the complete
 live input identity and require one destination per group. Resolve the exact object through
 `Microbot.getRs2TileObjectCache()`, issue only the catalog action, and retain the interaction until
-the directed landing is observed. Leave ambiguous groups legacy-owned unless the executor explicitly
-models every valid outcome and replans from the observed landing.
+the directed landing is observed. Remove redundant ambiguous edges when deterministic inputs already
+reach every destination; otherwise leave them unsupported unless the executor explicitly models every
+valid outcome and replans from the observed landing.
 
-**Defensive check:** Of the 100 packaged generic portal rows, the 88 deterministic rows publish as
-`TELEPORTATION_PORTAL`; all 12 object-`4408` Guthix rows remain `TRANSPORT` / `LEGACY_LOCKED`.
-Unknown object/action/name/display shapes also remain unsupported.
+**Defensive check:** The packaged generic portal corpus now contains only the 88 deterministic rows,
+all published as `TELEPORTATION_PORTAL`. The 12 object-`4408` Guthix rows were removed because their
+six live inputs each declared both team rooms; 4387/4388 retain both destinations. Unknown
+object/action/name/display shapes remain unsupported.
 
 ## 54. Staged widget transports must model their parent tab and loading state
 
@@ -1614,3 +1616,288 @@ After installation, the live object may expose its climb action before the filte
 refreshed. Allow that observed climb through the retained setup row, and choose item preparation
 only for the explicit `Use rope` stage. Requiring an installed catalogue variant at dispatch can
 otherwise reject the very stage the scene scanner just published.
+
+## 75. Prepare visibility equipment before resolving an invisible entrance
+
+Shadow Dungeon's ladder wrapper is invisible until appropriate visibility equipment is worn.
+Looking for the ladder before equipping its ring leaves an otherwise valid bank-funded route stuck.
+Publish explicit inventory-open and wear stages using the exact directed catalog origin, then
+observe equipment before resolving the transformed ladder. Issuing Wear is not evidence of either
+successful equipment or arrival. Keep the required ring worn while it provides dungeon visibility.
+
+**Defensive check:** Preserve quest and alternative-item requirements, reject foreign geometry,
+count one reusable ring across repeated edges, and test preparation-to-traversal stage changes and
+the final directed landing independently. Do not broadly classify equipment-gated puzzle or dialogue
+doors as direct scene transitions.
+
+## 76. A never-opening shed door can be equipment-gated teleportation
+
+Lumbridge Swamp's shed door (`2406`) never visually opens. Post-Lost City travel requires an
+equipped Dramen/Lunar staff unless elite Lumbridge diary varbit `4498` is complete; the Lunar
+alternative also has wielding levels. An easy clue can insert a choice between the shed and Zanaris.
+
+**Pattern to follow:** Publish independently gated staff/diary variants, let banking fetch the
+reusable staff, observe equipment before clicking, and match the complete two-option clue menu
+exactly. Keep the pending destination-selection stage through menu disappearance, so it cannot
+regress to another Open command. Only the remote landing proves completion. Do not interpret an
+unchanged door model as failure, answer unrelated Continue pages, or complete the quest implicitly.
+
+**Defensive check:** Test both diary states, staff-specific wield requirements, repeated banking
+quantities, exact/foreign/duplicate menus, equipment-stage progression, menu disappearance and
+landing. The post-quest entrance contract leaves the staff worn; do not imply weapon restoration.
+
+## 77. A remote door can lead to a copied room rather than bad coordinates
+
+Waterfall's throne-room door links span 38 tiles on the same plane. The bundled Waterfall,
+Roving Elves and Song of the Elves helpers identify separate room copies, so shortening those links
+to adjacent tiles would erase the actual landing contract. Quest-state-dependent room copies must
+be audited separately; the migrated remote links are deliberately post-Waterfall-Quest only.
+
+**Pattern to follow:** Corroborate both room locations before changing suspicious geometry. Keep
+the exact directed manifest and object identity, encode reusable access keys on every affected
+door direction, and let the common lifecycle wait for the destination room. Do not count an opened
+or missing source object as remote arrival, or assume quest completion removes a door's key gate.
+
+**Defensive check:** All four Waterfall internal-door rows require key `298`; repeated crossings
+need one banked key, not multiple keys or a steel key ring. Both remote directions reject source
+and intermediate positions as arrival, while missing quest metadata and foreign geometry cannot
+gain remote ownership. Runtime action checks and physical crossings remain distinct live gates.
+
+## 78. A destroyed quest door does not prove safe ordinary access
+
+Harmony monastery's entrance wrapper `22119` spans barred, explosive-setup and collapsed states.
+The quest helper identifies `BRAIN_BARREL_SETUP` (`3393`) at five or above as the door destroyed;
+an unconditional Open transport can otherwise route to a barrier that requires quest demolition.
+Later quest states add island-wide gas and a boss-instance entrance, so this one gate is necessary
+but insufficient to claim a safe normal crossing.
+
+**Pattern to follow:** Encode verified setup prerequisites separately from execution ownership.
+Keep both directions gated on demolition, but do not infer a post-quest action from the wrapper's
+catalogue label, add explosives to banking, or conflate carried breathing gear with equipped
+protection. Verify transformed actions, collision and instance/landing behaviour before migration.
+
+**Defensive check:** Both Harmony rows reject setup values zero through four and retain legacy
+ownership at five and above. The gate correction alone must not be described as gas protection,
+quest solving, boss handling or live acceptance.
+
+## 79. Distinguish an unlocked puzzle crossing from solving the puzzle
+
+The Draynor basement already publishes 18 directed doors with explicit A-F lever predicates.
+Crossing a currently unlocked two-tile door can use adjacent clearance and forward crossing without
+moving lever-solving logic into the interaction handler. The exact coordinates, ID and requirements
+remain the contract; even a shorter synthetic row using those IDs must not bypass its gates.
+
+**Pattern to follow:** Recheck the current lever values during scene resolution and pending
+observation. If the row disappears because a lever relocked it, report unavailable rather than
+treating absence as an opened door. A player already across the directed boundary may retire the
+edge. Preserve the existing solver separately until its ownership is deliberately migrated.
+
+**Defensive check:** Test every one of 64 lever combinations for all 18 rows, missing predicates,
+foreign geometry, source/midpoint/destination positions and a relock during a pending Open. Do not
+claim that headless crossing support proves the whole puzzle or its reset/re-entry behaviour.
+
+## 80. Recheck pick-lock requirements before interpreting a missing door
+
+Picking can temporarily drain Thieving. Yanille door 11728 requires current level 82 and
+inventory lockpick 1523; the strange old lockpick is not equivalent. Preserve those exact
+resource gates and bank-plan the ordinary lockpick as reusable, not one per attempt/edge.
+
+**Pattern to follow:** Recheck current requirements on the client thread during resolution
+and pending observation. A lost requirement is unavailable, not opened-object clearance.
+A failed pick with the door still present retains the interaction; opening permits the
+engine's directed forward crossing and must not be equated with arrival. Reuse bounded
+acknowledgement/recovery rather than adding a separate pick retry loop.
+
+**Defensive check:** Test both directions, level 81 versus 82, missing/wrong lockpick metadata,
+repeated reusable banking, failed picks, disappearance and requirement loss. Do not enable
+unreviewed Pick-lock doors solely because they share the action name.
+
+## 81. Equipment-free access does not prove that an existing grapple action is equipment-free
+
+The Broken Raft repeatedly requested a finished grapple despite the player's high Agility.
+Its old Grapple rows listed only skill requirements. Require both the equipped finished
+grapple and compatible crossbow for that action; an inventory/bank item is not equipped,
+and a newer barehanded variant needs its own verified interaction. Recheck before dispatch
+and include equipment readiness in memo invalidation so removal or breakage cannot retain
+the old route. Do not broaden existing OR-style item alternatives to express an AND requirement.
+
+Shantay tickets are consumed per desert entry, while returning is free. Desert Elite removes
+both the requirement and the vendor purchase, not merely the fare during pathfinding.
+Al Kharid's paid action disappears after Prince Ali Rescue; keep its free Open variant separate.
+
+## 82. Offset gate approaches must cross the gate axis, not merely align laterally
+
+The six Stronghold gate-190 routes span three north/south tiles, with some approaches offset
+one tile east/west. An X-or-Y destination-side test can mark a player on the near side as
+across the gate just because X aligned. Require the directed Y boundary for this exact family.
+Near-side raw-route progress must not retire a pending wide gate either; retain engine-owned
+forward crossing until the player crosses, including after the object opens/disappears.
+
+**Defensive check:** Cover both directions and every offset origin, a near-side tile aligned
+with destination X, actual destination, and opened-object clearance. Keep Femi/quest dialogue
+protocols separate from normal direct crossing and do not broaden every multi-tile Open gate.
+
+## 83. Missing wall-door quest metadata does not mean unrestricted access
+
+The four Ardougne Wall Door rows (8738/8739) lacked requirements. The object-specific wiki
+documents post-Biohazard access, while the city page gives an earlier Plague City unlock.
+Use the conservative verified-source contract for the migration and record this discrepancy
+for runtime verification; do not claim the earliest unlock is established. Preserve exact
+east/west geometry and actual-boundary retirement, and test missing/in-progress quest metadata.
+
+## 84. Match the directed jump object, not another floorboard with the same action
+
+Meiyerditch's 18 floorboard links use distinct directional IDs across two- and three-tile gaps.
+The clicked floorboard can lie beyond the normal two-tile origin lookup. Keep the expanded lookup
+bounded to the audited family and require the exact ID; generic name/action substitution can
+select another jump. A mid-gap position, lower-plane fall or missing object is not arrival.
+Use catalogue destination-side confirmation and retain the pending edge until landing or bounded
+recovery. Do not migrate nearby quest-repair interactions merely because they share the course.
+
+## 85. Neighbouring pillars are not interchangeable landing areas
+
+Tarn's two-tile jumps place other pillars inside the generic two-tile landing tolerance. A
+headless neighbourhood test reproduced premature clearance on a different nearby tile. Require
+the exact catalogue destination for this family and the exact directional object ID. A fall to
+a lower plane or object disappearance remains unavailable, not arrived; trap disarming is a
+separate protocol and must not be claimed by migrating the direct Jump-to action.
+
+## 86. One-tile agility edges still require a landing, and shadow rows retain their own gates
+
+A one-tile Climb or Jump-over is not an opened-door clearance. Use the exact directed catalogue
+landing for audited short agility crossings, preserve quest/level predicates, and reject missing
+requirements rather than widening the generic adjacent action set. Audit the full resource corpus:
+ordinary duplicate rows can bypass the skill gate and config toggle of a correct AGILITY_SHORTCUT
+row. Newer shortcut geometry also makes old intermediate stepping-stone rows unsafe to bulk-enable.
+
+## 87. Hazard damage and near-end log positions are not arrival
+
+Isafdar's longer log crossings can satisfy generic destination tolerance before reaching the end.
+Use exact directed landing for the audited log/tripwire family; disappearance, movement or damage
+alone must not retire the pending edge. Ordinary log rows still need their Agility/quest gates and
+agility feature toggle. Leaf-pit failures require a separate verified climb-out protocol: do not
+bulk-enable Jump merely because tripwire Step-over and log Cross already have catalogue ownership.
+
+## 88. Split bridge shortcuts, surface travel and encounter boundaries
+
+Fremennik rope bridges share a name but not an access contract. The mine shortcut requires
+40 Agility and must honour the agility toggle even as an ordinary TRANSPORT row; other surface
+bridges are not agility shortcuts. Quest repair is separate from crossing, and underground bridges
+include a boss-entry boundary. Match directional support IDs and confirm the actual landing rather
+than a position inside a long bridge's two-tile destination tolerance.
+
+## 89. Actor interaction is not walker command ownership
+
+The local player's interacting flag also represents fighting an NPC. It must not block a new
+route interaction or keep an expired walker command pending indefinitely. Only walker-issued
+command state owns the acknowledgement window; retain its deadline, movement settling and
+destination checks without requiring unrelated combat to end. Headless regressions cover combat
+before dispatch, combat past the deadline and preservation of the actual command wait.
+
+## 90. Rejoin the forward route before recalculating a misclick
+
+A changed off-route movement destination does not necessarily invalidate the published route.
+Try one nearby forward raw-route correction before the destination-mismatch replan fallback;
+reject the correction if local collision reachability fails or an unresolved interaction would
+be bypassed. While a correction awaits acknowledgement, the old misclick destination is expected
+and must not trigger another recovery immediately. Fresh plans must not wait indefinitely on
+movement for which they have no command target. Keep genuine interaction waits separate.
+
+## 91. Shared agility names do not imply shared geometry, requirements or outcomes
+
+Climbing rocks and rocky handholds can expose several adjacent lanes, transformed IDs, different
+level gates and one-way routes under the same action. Freeze each reviewed directed origin,
+destination and object ID, then require the exact name/action and final tile; do not widen support
+by verb or proximity. Ordinary catalogue rows that represent agility must also honour the agility
+feature toggle and retain their current skill and quest requirements.
+
+Failure semantics remain route-specific. The Nature Grotto bridge can damage the player while
+still placing them on the opposite bank, so successful arrival is the directed landing rather than
+an animation or a damage-free interaction. Conversely, disappearance or movement near an adjacent
+lane is not arrival. Treat local shortcut tables as discovery evidence when they conflict with
+current object-specific sources, choose the conservative gate, and leave the discrepancy visible
+for live level-boundary verification.
+
+## 92. A destination-shaped portal row can still omit a distinct access protocol
+
+The inner Abyss exposes many same-ID rifts with the same `Exit-through` action, but they do not all
+share one availability contract. Freeze each directed rift and preserve its quest gate. Keep Law
+locked until Entrana prohibited-equipment restrictions are modelled, and keep Soul locked until
+its dark-essence item-on-object interaction and consumption are represented; a route row naming an
+altar is not evidence that a direct click can enter it.
+
+For the deterministic rifts, retain ownership through the remote altar landing and do not treat
+source-object disappearance as arrival. Audit every superficially uniform portal family for item,
+equipment, quest, selected-destination and alternate-landing requirements before bulk migration.
+
+## 93. Split course traversal from course preparation and unlock state
+
+Meiyerditch uses visually similar floors and walls for direct crossing, one-time floor preparation,
+barricade discovery, unlock transitions and adjacent crawls. Course/tunnel rows still require the
+course-wide 26 Agility and partial Darkness of Hallowvale gates, and agility-style ordinary TSV
+rows must honour the toggle. Migrate only frozen directed identities with exact landing. A
+persistent setup varbit can gate later prepared-floor traversal without making the walker perform
+the quest-time kick-down action.
+
+Separate a setup-time item from the reusable traversal contract. Local quest evidence uses a knife
+to open the push wall initially, but the later `Push` crossing consumes or requires no knife; adding
+one would create a false banking dependency. Likewise, the western Meiyerditch wall IDs in this
+catalogue are not the modern rope-built Darkmeyer shortcut IDs, so do not copy that shortcut's
+level or rope requirements by name. Use the local quest path to establish preparation ordering and
+conservative quest state, while object presence supplies runtime availability where no proven
+persistent varbit exists. A headless post-setup crossing is not a working quest sequence or complete
+agility course.
+
+## 94. A shared portal ID can still have multiple fixed exits
+
+Rune Temple exit portals are direct, unlimited-use object interactions, but the resource can carry
+several origin rows for one object ID. In particular, Chaos portal ID 34757 has three distinct
+origins and three distinct surface landings. Freeze the full origin, destination, object ID, action
+and name tuple; do not classify generic `Use;Portal` or let a different row's landing acknowledge
+the pending edge. Resolve the exact object ID near the selected origin and retain NavigationEngine
+ownership through the directed surface arrival. Exit support neither grants altar entry nor proves
+the corresponding altar-access prerequisites.
+
+## 95. A POH exterior teleport is not a house-instance transport
+
+The Teleport to House tablet exposes separate `Inside` and `Outside` actions. An exterior route can
+reuse the normal consumable item lifecycle only when the house-location varbit maps to the exact
+surface destination; selecting `Break`, `Inside` or `Group` would be a different protocol. Require
+the exact inventory-only action and retain ownership after the consumed tablet disappears until the
+directed exterior landing. This does not prove house entry, instance mapping, portal chambers,
+nexus, jewellery box, mounted teleports, POH fairy rings or POH spirit trees.
+
+## 96. Gate a post-quest entrance without trapping the quest-time exit
+
+When an exterior secret entrance has no encoded unlock state, a conservative completion gate is
+safer than treating a blank requirement as unrestricted. Apply that gate directionally: Enakhra's
+four boulder entrances require the finished quest, while their interior sand-pile exits remain free.
+This prevents premature routing into unopened content without trapping a player who is already
+inside during quest progression. Exact boulder orientation, approach and remote landing still need
+their own manifest; quest completion is an availability gate, not object identity or arrival proof.
+
+## 97. Do not widen a familiar object name across unrelated quest routes
+
+An object/action pair such as `Enter;Hole` is not a safe ownership boundary by itself. Freeze the
+directed coordinates, object ID and complete prerequisite shape together: the two Swan Song island
+rows for object 12656 require the finished quest, while the nearby catalogue family also contains
+12 Dragon Slayer quest-in-progress ruin entrances with a different object and access lifecycle.
+Exact route contracts let NavigationEngine own the known crossing without silently admitting the
+other quest protocol.
+
+## 98. Shared object IDs still require exact directed route keys
+
+An object ID can back several physical entrances without making their destinations interchangeable.
+Molch dwelling ID 34403 has two separate surface approach pairs leading to two different temple
+landings. Allowlist the complete origin, destination, ID, action and name tuple, and require the live
+object near that selected origin. This also prevents sibling IDs found in game metadata—but absent
+from routing data—from being admitted by a broad numeric or name-based rule.
+
+## 99. Alternate spell labels are executable contracts, not generic text to split
+
+A `Spell: Destination` display label is safe only when the destination, unlock state and menu input
+are known together. Freeze the exact base spell, alternate option and widget identifier, and retain
+all resource requirements that make that option valid. The current allowlist covers House `Outside`,
+Varrock `Grand Exchange` and Watchtower `Yanille`; it does not make future colon-labelled spells
+engine-owned. Banking may normalize the label to the base spell for rune aggregation, but execution
+must still issue the exact alternate input and wait for the declared landing.

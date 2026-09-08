@@ -18,6 +18,47 @@ public class TransportRequirementPolicyTest {
     private static final WorldPoint B = new WorldPoint(3653, 3486, 0);
 
     @Test
+    public void raftRequiresBothEquippedToolsNotHighAgilityOrAnUnfinishedGrapple() {
+        assertFalse(TransportRequirementPolicy.brokenRaftEquipmentReady(-1, "Rune crossbow"));
+        assertFalse(TransportRequirementPolicy.brokenRaftEquipmentReady(9419, null));
+        assertFalse(TransportRequirementPolicy.brokenRaftEquipmentReady(9418, "Rune crossbow"));
+        assertFalse(TransportRequirementPolicy.brokenRaftEquipmentReady(9419, "Love crossbow"));
+        assertFalse(TransportRequirementPolicy.brokenRaftEquipmentReady(9419, "Heavy ballista"));
+        assertTrue(TransportRequirementPolicy.brokenRaftEquipmentReady(9419, "Rune crossbow"));
+        assertTrue(TransportRequirementPolicy.brokenRaftEquipmentReady(9419, "Crossbow"));
+        assertTrue(TransportRequirementPolicy.brokenRaftEquipmentReady(9419, "Dorgeshuun crossbow"));
+    }
+
+    @Test
+    public void alKharidPaidActionIsNotAvailableAfterQuest() {
+        var rows = Transport.loadAllFromResources().values().stream().flatMap(Set::stream)
+                .filter(TransportRequirementPolicy::isAlKharidPaidGate)
+                .collect(java.util.stream.Collectors.toList());
+        assertEquals(4, rows.size());
+        for (Transport row : rows) {
+            assertEquals(10, row.getCurrencyAmount());
+            assertTrue(TransportRequirementPolicy.alKharidPaidVariantAvailable(row, null));
+            assertTrue(TransportRequirementPolicy.alKharidPaidVariantAvailable(row, QuestState.NOT_STARTED));
+            assertFalse(TransportRequirementPolicy.alKharidPaidVariantAvailable(row, QuestState.FINISHED));
+        }
+    }
+
+    @Test
+    public void shantayTicketsAreConsumedAndEliteExemptionIsScopedToEntry() {
+        var rows = Transport.loadAllFromResources().values().stream().flatMap(Set::stream)
+                .filter(t -> "Shantay pass".equals(t.getName()))
+                .collect(java.util.stream.Collectors.toList());
+        assertEquals(14, rows.size());
+        assertEquals(6, rows.stream().filter(Transport::isConsumable).count());
+        for (Transport row : rows) {
+            boolean entry = !row.getItemIdRequirements().isEmpty() || row.getCurrencyAmount() > 0;
+            assertEquals(entry, TransportRequirementPolicy.freeShantayEntry(row, true));
+            assertFalse(TransportRequirementPolicy.freeShantayEntry(row, false));
+            if (!row.getItemIdRequirements().isEmpty()) assertTrue(row.isConsumable());
+        }
+    }
+
+    @Test
     public void ectoBarrierFareDependsOnGhostsAhoyCompletion() {
         Transport barrier = new Transport(A, B, "test", TransportType.TRANSPORT,
                 false, "Pay-toll(2-Ecto)", "Energy Barrier", 16105);

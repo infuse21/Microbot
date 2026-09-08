@@ -53,8 +53,8 @@ public final class CatalogTransitionRouteScanner
 		{
 			return pending.withStatus(RouteInteraction.Status.CLEARED, false);
 		}
-		CatalogTransition transition = scene.find(
-			new PlannedEdge(pending.getFrom(), pending.getTo()));
+		CatalogTransition transition = scene.observe(
+			new PlannedEdge(pending.getFrom(), pending.getTo()), pending.getAction());
 		if (transition == null || transition.getCatalogObjectId() != pending.getObjectId())
 		{
 			return pending.withStatus(RouteInteraction.Status.UNAVAILABLE, false);
@@ -80,6 +80,19 @@ public final class CatalogTransitionRouteScanner
 	private static boolean hasLanded(RouteInteraction pending, WorldPoint player)
 	{
 		WorldPoint destination = pending.getCrossingTo();
+		if (CatalogTransitionPolicy.isTarnsJumpObject(pending.getObjectId())
+			|| CatalogTransitionPolicy.isIsafdarCrossingObject(pending.getObjectId())
+			|| CatalogTransitionPolicy.isFremennikSurfaceBridgeObject(pending.getObjectId())
+			|| CatalogTransitionPolicy.isAuditedAgilityTraversalObject(pending.getObjectId())
+			|| CatalogTransitionPolicy.isMeiyerditchFloorObject(pending.getObjectId())
+			|| CatalogTransitionPolicy.isMeiyerditchCourseObject(pending.getObjectId())
+			|| CatalogTransitionPolicy.isMeiyerditchPreparedFloorObject(pending.getObjectId())
+			|| CatalogTransitionPolicy.isMeiyerditchTunnelObject(pending.getObjectId())
+			|| CatalogTransitionPolicy.isMeiyerditchPostQuestObject(pending.getObjectId())
+			|| pending.getObjectId() == 2149 || pending.getObjectId() == 2926)
+		{
+			return destination.equals(player);
+		}
 		if (player == null || player.getPlane() != destination.getPlane()
 			|| player.distanceTo2D(destination) > LANDING_TOLERANCE)
 		{

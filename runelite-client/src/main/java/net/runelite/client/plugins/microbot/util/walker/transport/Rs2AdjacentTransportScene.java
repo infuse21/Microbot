@@ -26,6 +26,28 @@ public final class Rs2AdjacentTransportScene implements AdjacentTransportScene
 			.orElse(null);
 	}
 
+	@Override
+	public boolean isEnabled(PlannedEdge edge, int catalogObjectId)
+	{
+		if ((catalogObjectId < 137 || catalogObjectId > 145) && catalogObjectId != 11728) return true;
+		return Microbot.getClientThread().runOnClientThreadOptional(() ->
+			TransportEdgeMatcher.find(Rs2PathApi.getTransports(), edge.from(), edge.to()).stream()
+				.anyMatch(transport -> transport.getObjectId() == catalogObjectId
+					&& requirementsMet(transport)))
+			.orElse(false);
+	}
+
+	private static boolean requirementsMet(Transport transport)
+	{
+		if (AdjacentTransportPolicy.isYanillePickLockDoor(transport))
+		{
+			return AdjacentTransportPolicy.hasRequiredYanillePickLockItemsAndLevel(transport,
+				Microbot.getClient().getBoostedSkillLevel(net.runelite.api.Skill.THIEVING),
+				net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory.contains(1523));
+		}
+		return AdjacentTransportPolicy.hasRequiredDraynorLevers(transport, Microbot::getVarbitValue);
+	}
+
 	private static AdjacentTransport findOnClientThread(PlannedEdge edge)
 	{
 		for (Transport transport : TransportEdgeMatcher.find(Rs2PathApi.getTransports(),
@@ -35,7 +57,15 @@ public final class Rs2AdjacentTransportScene implements AdjacentTransportScene
 			{
 				continue;
 			}
+			if ((AdjacentTransportPolicy.isDraynorBasementDoor(transport)
+				|| AdjacentTransportPolicy.isYanillePickLockDoor(transport)) && !requirementsMet(transport))
+			{
+				continue;
+			}
 			TileObject object = Rs2GameObject.getAll(candidate -> true, transport.getOrigin(), 2).stream()
+				.filter(candidate -> !(AdjacentTransportPolicy.isDraynorBasementDoor(transport)
+					|| AdjacentTransportPolicy.isYanillePickLockDoor(transport))
+					|| candidate.getId() == transport.getObjectId())
 				.filter(candidate -> candidate.getWorldLocation() != null
 					&& candidate.getWorldLocation().getPlane() == transport.getOrigin().getPlane()
 					&& candidate.getWorldLocation().distanceTo2D(transport.getOrigin()) <= 1)

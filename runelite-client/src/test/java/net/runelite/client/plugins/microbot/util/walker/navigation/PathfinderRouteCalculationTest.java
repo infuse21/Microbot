@@ -26,6 +26,55 @@ import static org.junit.Assert.fail;
 public class PathfinderRouteCalculationTest
 {
 	@Test
+	public void everyLoadedLadderIsEngineOwnedIncludingEquipmentPreparation()
+	{
+		int ladders = 0;
+		int equipmentGated = 0;
+		for (Set<Transport> group : Transport.loadAllFromResources().values())
+		{
+			for (Transport row : group)
+			{
+				if (row.getType() != TransportType.TRANSPORT || row.getName() == null
+					|| !row.getName().toLowerCase(java.util.Locale.ROOT).contains("ladder"))
+				{
+					continue;
+				}
+				ladders++;
+				RouteEdge.Kind kind = PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(row));
+				assertEquals("Unexpected legacy ladder: " + row, RouteEdge.Kind.CATALOG_TRANSITION, kind);
+				if (row.getObjectId() == 6560)
+				{
+					equipmentGated++;
+					assertEquals(Set.of(Set.of(4657, 28329, 28327)), row.getItemIdRequirements());
+					assertEquals(new WorldPoint(2630, 5071, 0), row.getDestination());
+				}
+			}
+		}
+		assertTrue("Ladder corpus was not loaded", ladders > 1000);
+		assertEquals(4, equipmentGated);
+	}
+
+	@Test
+	public void dwarvenMineTrapdoorsAreEngineOwnedAtBothApproaches()
+	{
+		java.util.List<Transport> trapdoors = Transport.loadAllFromResources().values().stream()
+			.flatMap(java.util.Collection::stream)
+			.filter(row -> row.getType() == TransportType.TRANSPORT && row.getObjectId() == 11867)
+			.collect(java.util.stream.Collectors.toList());
+		assertEquals(2, trapdoors.size());
+		assertEquals(Set.of(new WorldPoint(3018, 3450, 0), new WorldPoint(3020, 3450, 0)),
+			trapdoors.stream().map(Transport::getOrigin).collect(java.util.stream.Collectors.toSet()));
+		for (Transport row : trapdoors)
+		{
+			assertEquals("Climb-down", row.getAction());
+			assertEquals("Trapdoor", row.getName());
+			assertEquals(new WorldPoint(row.getOrigin().getX(), 9850, 0), row.getDestination());
+			assertEquals(RouteEdge.Kind.CATALOG_TRANSITION,
+				PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(row)));
+		}
+	}
+
+	@Test
 	public void auditedItemBatchPublishesNinetyNineRowsAndDefersTwentyNine()
 	{
 		int candidates = 0;
@@ -63,7 +112,7 @@ public class PathfinderRouteCalculationTest
 		}
 		assertEquals(128, candidates);
 		assertEquals(99, migrated);
-		assertEquals(1476, legacy);
+		assertEquals(1167, legacy);
 	}
 
 	private static SplitFlagMap collisionMap;
@@ -392,7 +441,7 @@ public class PathfinderRouteCalculationTest
 	}
 
 	@Test
-	public void deterministicPortalCatalogIsPublishedAndAmbiguousRowsStayLocked()
+	public void deterministicPortalCatalogContainsNoRandomDirectedEdges()
 	{
 		java.util.List<Transport> portals = Transport.loadAllFromResources().values()
 			.stream().flatMap(java.util.Collection::stream)
@@ -408,15 +457,13 @@ public class PathfinderRouteCalculationTest
 				.TeleportationPortalPolicy.isEligible(candidate))
 			.collect(java.util.stream.Collectors.toList());
 
-		assertEquals(100, portals.size());
+		assertEquals(88, portals.size());
 		assertEquals(88, deterministic.size());
-		assertEquals(12, ambiguous.size());
+		assertTrue(ambiguous.isEmpty());
+		assertFalse(portals.stream().anyMatch(candidate -> candidate.getObjectId() == 4408));
 		assertTrue(deterministic.stream().allMatch(candidate ->
 			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(candidate))
 				== RouteEdge.Kind.TELEPORTATION_PORTAL));
-		assertTrue(ambiguous.stream().allMatch(candidate ->
-			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(candidate))
-				== RouteEdge.Kind.TRANSPORT));
 		Transport portal = deterministic.get(0);
 		RoutePlan plan = new RoutePlan(49, 1, portal.getOrigin(),
 			Collections.singleton(portal.getDestination()),
@@ -516,8 +563,8 @@ public class PathfinderRouteCalculationTest
 
 		assertEquals(274, shortcuts.size());
 		assertEquals(12, adjacent);
-		assertEquals(248, transitions);
-		assertEquals(14, locked.size());
+		assertEquals(252, transitions);
+		assertEquals(10, locked.size());
 		assertEquals(8, locked.stream()
 			.filter(candidate -> "Jump-onto".equals(candidate.getAction())).count());
 		assertTrue(locked.stream().anyMatch(candidate ->
@@ -545,7 +592,7 @@ public class PathfinderRouteCalculationTest
 		assertEquals(50, stiles.stream().filter(candidate ->
 			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(candidate))
 				== RouteEdge.Kind.CATALOG_TRANSITION).count());
-		assertEquals(1000, ordinary.stream().filter(candidate ->
+		assertEquals(725, ordinary.stream().filter(candidate ->
 			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(candidate))
 				== RouteEdge.Kind.TRANSPORT).count());
 		java.util.Set<Integer> directManifestIds = new java.util.HashSet<>(java.util.Arrays.asList(
@@ -803,7 +850,7 @@ public class PathfinderRouteCalculationTest
 	}
 
 	@Test
-	public void exactEasyRevenantCavesPillarsUseDirectEngineOwnership()
+	public void remainingOrdinaryPillarsAreTarnAndEngineOwned()
 	{
 		java.util.List<Transport> pillars = Transport.loadAllFromResources().values()
 			.stream().flatMap(java.util.Collection::stream)
@@ -811,19 +858,17 @@ public class PathfinderRouteCalculationTest
 			.filter(candidate -> "Jump-to".equals(candidate.getAction()))
 			.filter(candidate -> "Pillar".equals(candidate.getName()))
 			.collect(java.util.stream.Collectors.toList());
-		assertEquals(43, pillars.size());
-		assertEquals(2, pillars.stream().filter(candidate ->
-			candidate.getSkillLevels()[Skill.AGILITY.ordinal()] == 65).count());
-		assertEquals(2, pillars.stream().filter(candidate ->
+		assertEquals(35, pillars.size());
+		assertEquals(35, pillars.stream().filter(candidate ->
 			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(candidate))
 				== RouteEdge.Kind.CATALOG_TRANSITION).count());
-		assertEquals(41, pillars.stream().filter(candidate ->
+		assertEquals(0, pillars.stream().filter(candidate ->
 			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(candidate))
 				== RouteEdge.Kind.TRANSPORT).count());
 	}
 
 	@Test
-	public void dorgeshKaanEntryDoorsRequireQuestCompletionAndRemainLegacyOwned()
+	public void dorgeshKaanEntryDoorsRequireQuestCompletionAndAreEngineOwned()
 	{
 		java.util.List<Transport> doors = Transport.loadAllFromResources().values()
 			.stream().flatMap(java.util.Collection::stream)
@@ -837,7 +882,7 @@ public class PathfinderRouteCalculationTest
 		{
 			assertEquals(Collections.singletonMap(Quest.DEATH_TO_THE_DORGESHUUN,
 				QuestState.FINISHED), door.getQuests());
-			assertEquals(RouteEdge.Kind.TRANSPORT,
+			assertEquals(RouteEdge.Kind.CATALOG_TRANSITION,
 				PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(door)));
 		}
 	}
@@ -1139,9 +1184,9 @@ public class PathfinderRouteCalculationTest
 	}
 
 	@Test
-	public void exactDirectHolesPublishWithoutMigratingQuestHoles()
+	public void exactDirectAndSwanSongHolesDoNotMigrateDragonSlayerHoles()
 	{
-		Set<Integer> supportedIds = Set.of(31791, 28915, 28919, 28920, 28921);
+		Set<Integer> supportedIds = Set.of(12656, 31791, 28915, 28919, 28920, 28921);
 		java.util.List<Transport> holes = Transport.loadAllFromResources().values().stream()
 			.flatMap(java.util.Collection::stream)
 			.filter(row -> row.getType() == TransportType.TRANSPORT)
@@ -1165,7 +1210,7 @@ public class PathfinderRouteCalculationTest
 				assertTrue(previous == null || previous.equals(hole.getDestination()));
 			}
 		}
-		assertEquals(13, supported);
+		assertEquals(15, supported);
 	}
 
 	@Test

@@ -313,6 +313,38 @@ public class NavigationEngineTest
 	}
 
 	@Test
+	public void zanarisEquipmentAndMenuStagesRetainOneOwnerThroughLanding()
+	{
+		NavigationEngine engine = engine();
+		RoutePlan plan = new RoutePlan(1, 1, START, Collections.singleton(TARGET),
+			Arrays.asList(START, TARGET), Arrays.asList(START, TARGET), true,
+			Collections.singletonList(new RouteEdge(0, START, TARGET, RouteEdge.Kind.CATALOG_TRANSITION)));
+		RouteInteraction pending = null;
+		for (String action : Arrays.asList("zanaris-open-inventory", "zanaris-wield-staff",
+			"Open", "zanaris-select-destination"))
+		{
+			pending = new RouteInteraction(1, 0, START, TARGET, START,
+				RouteInteraction.Kind.CATALOG_TRANSITION, RouteInteraction.Status.AVAILABLE,
+				action, true, 2406, START, TARGET);
+			NavigationDecision command = engine.observe(observation(plan, START, false, false, false)
+				.withRouteInteraction(pending));
+			assertEquals(NavigationDecision.Type.INTERACT, command.getType());
+			assertEquals(action, command.getInteraction().getAction());
+			engine.recordCommandResult(command, true, 1L);
+			assertEquals(NavigationDecision.Type.WAIT, engine.observe(
+				observation(plan, START, false, false, false).withRouteInteraction(pending)).getType());
+		}
+		assertEquals(NavigationDecision.Type.WAIT, engine.observe(
+			observation(plan, START, false, false, false).withRouteInteraction(
+				pending.withStatus(RouteInteraction.Status.UNAVAILABLE, false))).getType());
+		assertEquals("interaction-edge-crossed", engine.observe(
+			observation(plan, TARGET, false, false, false).withRouteInteraction(
+				pending.withStatus(RouteInteraction.Status.CLEARED, false))).getReason());
+		assertEquals(NavigationDecision.Type.COMPLETE,
+			engine.observe(observation(plan, TARGET, false, false, false)).getType());
+	}
+
+	@Test
 	public void catalogLandingCannotBeRetiredByNearbyRawProgress()
 	{
 		for (RouteInteraction.Status status : Arrays.asList(RouteInteraction.Status.AVAILABLE,
@@ -341,6 +373,32 @@ public class NavigationEngineTest
 			assertEquals(NavigationDecision.Type.COMPLETE,
 				engine.observe(observation(plan, TARGET, false, false, false)).getType());
 		}
+	}
+
+	@Test
+	public void wideGateCannotRetireFromNearSideRouteProgress()
+	{
+		NavigationEngine engine = engine();
+		WorldPoint from = new WorldPoint(3202, 3197, 0);
+		WorldPoint nearSide = new WorldPoint(3203, 3199, 0);
+		RoutePlan plan = new RoutePlan(1, 1, from, Collections.singleton(TARGET),
+			Arrays.asList(from, TARGET), Arrays.asList(from, TARGET), true,
+			Collections.singletonList(new RouteEdge(0, from, TARGET, RouteEdge.Kind.ADJACENT_TRANSPORT)));
+		RouteInteraction pending = new RouteInteraction(1, 0, from, TARGET, from,
+			RouteInteraction.Kind.ADJACENT_TRANSPORT, RouteInteraction.Status.AVAILABLE,
+			"Open", true, 190, from, TARGET);
+		NavigationDecision first = engine.observe(observation(plan, from, false, false, false)
+			.withRouteInteraction(pending));
+		assertEquals(NavigationDecision.Type.INTERACT, first.getType());
+		engine.recordCommandResult(first, true, 1);
+		NavigationDecision approach = engine.observe(observation(plan, nearSide, false, false, false)
+			.withRouteInteraction(pending));
+		assertEquals(1, engine.snapshot().getRawProgressIndex());
+		assertEquals("interaction-command-in-flight", approach.getReason());
+		assertTrue(engine.snapshot().getPendingInteraction() != null);
+		NavigationDecision landed = engine.observe(observation(plan, TARGET, false, false, false)
+			.withRouteInteraction(pending.withStatus(RouteInteraction.Status.CLEARED, false)));
+		assertEquals("interaction-edge-crossed", landed.getReason());
 	}
 
 	@Test
@@ -438,6 +496,93 @@ public class NavigationEngineTest
 		engine.start(new NavigationRequest(1, Collections.singleton(TARGET), 0,
 			NavigationRouteOptions.defaults(), "test"));
 		return engine;
+	}
+
+	@Test
+	public void newPlanDoesNotWaitForUnownedMovementToFinish()
+	{
+		NavigationEngine engine = engine();
+		assertEquals(NavigationDecision.Type.CLICK_TILE, engine.observe(NavigationObservation.route(
+			1, START, plan(1), true, false, false, false, false, false, null, "misclick")
+			.withMovementDestination(new WorldPoint(3210, 3210, 0))).getType());
+	}
+
+	@Test
+	public void unrelatedActorInteractionDoesNotBlockRouteInteraction()
+	{
+		NavigationEngine engine = engine();
+		NavigationObservation combat = NavigationObservation.route(1, MID, plan(1), false,
+			true, true, false, false, false, null, "combat")
+			.withRouteInteraction(interaction(RouteInteraction.Status.AVAILABLE, true));
+		assertEquals(NavigationDecision.Type.INTERACT, engine.observe(combat).getType());
+	}
+
+	@Test
+	public void rejectedRejoinFallsBackToReplan()
+	{
+		NavigationEngine engine = engine();
+		NavigationObservation moving = NavigationObservation.route(1, START, plan(1), true,
+			false, false, false, false, false, null, "misclick")
+			.withMovementDestination(new WorldPoint(3210, 3210, 0));
+		NavigationDecision correction = engine.observe(moving);
+		assertEquals("route-rejoin", correction.getTargetSelection());
+		engine.recordCommandResult(correction, false, 1L);
+		assertEquals(NavigationDecision.Type.REQUEST_REPLAN, engine.observe(moving).getType());
+	}
+
+	@Test
+	public void staleMisclickDestinationGetsAcknowledgementWindowThenReplan()
+	{
+		NavigationEngine engine = engine();
+		WorldPoint wrong = new WorldPoint(3210, 3210, 0);
+		NavigationDecision correction = engine.observe(NavigationObservation.route(1, START, plan(1), true,
+			false, false, false, false, false, null, "misclick").withMovementDestination(wrong));
+		engine.recordCommandResult(correction, true, 1L);
+		assertEquals(NavigationDecision.Type.WAIT, engine.observe(NavigationObservation.route(2, START,
+			plan(1), true, false, false, false, false, false, null, "stale-destination")
+			.withMovementDestination(wrong)).getType());
+		assertEquals(NavigationDecision.Type.REQUEST_REPLAN, engine.observe(NavigationObservation.route(2_000,
+			START, plan(1), true, false, false, false, false, false, null, "no-ack")
+			.withMovementDestination(wrong)).getType());
+	}
+
+	@Test
+	public void misclickCorrectionCannotSkipObservedObstacle()
+	{
+		NavigationEngine engine = engine();
+		NavigationDecision first = engine.observe(observation(plan(1), START, false, false, false));
+		engine.recordCommandResult(first, true, 1L);
+		NavigationDecision correction = engine.observe(NavigationObservation.route(2, START, plan(1), true,
+			false, false, false, false, false, null, "misclick")
+			.withMovementDestination(new WorldPoint(3210, 3210, 0))
+			.withRouteInteraction(interaction(RouteInteraction.Status.AVAILABLE, false)));
+		assertEquals(NavigationDecision.Type.REQUEST_REPLAN, correction.getType());
+	}
+
+	@Test
+	public void combatDoesNotExtendOwnedInteractionDeadline()
+	{
+		NavigationEngine engine = engine();
+		RouteInteraction available = interaction(RouteInteraction.Status.AVAILABLE, true);
+		NavigationDecision command = engine.observe(observation(plan(1), MID, false, false, false)
+			.withRouteInteraction(available));
+		engine.recordCommandResult(command, true, 1L);
+		assertEquals(NavigationDecision.Type.WAIT, engine.observe(NavigationObservation.route(
+			2_000L, MID, plan(1), false, true, true, false, false, false, null, "combat")
+			.withRouteInteraction(available)).getType());
+		assertEquals(NavigationDecision.Type.INTERACT, engine.observe(NavigationObservation.route(
+			60_000L, MID, plan(1), false, true, true, false, false, false, null, "combat")
+			.withRouteInteraction(available)).getType());
+	}
+
+	@Test
+	public void compatibilityFrontierOnlyWaitsForOwnedCommand()
+	{
+		NavigationEngine engine = engine();
+		assertEquals(NavigationDecision.Type.INTERACT, engine.observe(NavigationObservation.route(
+			1, MID, plan(1), false, true, true, true, false, false, null, "combat")).getType());
+		assertEquals(NavigationDecision.Type.WAIT, engine.observe(NavigationObservation.route(
+			2, MID, plan(1), false, true, true, true, true, false, null, "owned-command")).getType());
 	}
 
 	private static NavigationObservation observation(RoutePlan plan, WorldPoint player,

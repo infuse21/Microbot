@@ -1,7 +1,156 @@
 # Phase 6 behaviour-based batches
 
-Snapshot: 2026-09-03. This is the execution backlog for
+Latest classifier audit: 2026-09-08; older sections below retain their dated snapshots.
+This is the execution backlog for
 [walker unification](walker-unification-plan.md), not a new ownership policy.
+
+## September 8 alternate-spell follow-up
+
+The last ten spell rows—eight House `Outside`, Varrock GE and Watchtower Yanille—now reuse the simple
+teleport executor through an exact requirement/action allowlist. The bank planner sums their base
+spell runes, and no generic colon-labelled spell is admitted. Current baseline is **1,167 legacy**;
+the `TELEPORTATION_SPELL` remainder is zero. Representative alternate-input live tests remain open.
+
+## September 8 Molch/Lizardman Temple follow-up
+
+Sixteen exact one-way rows—eight Lizard dwelling entrances and eight Strange hole exits—now use the
+catalogue transition lifecycle. Shared ID 34403 is pinned by full route key because it reaches two
+different interiors; unlisted dwelling 34404 is excluded. Current baseline is **1,177 legacy / 725
+ordinary**. Physical acceptance remains deferred in the combat-adjacent temple area.
+
+## September 8 Castle Wars random-portal cleanup
+
+The 12 Guthix object-4408 rows are removed: six identical live inputs each declared both team-room
+landings, while the server may select either team. Deterministic 4387/4388 portals preserve both
+destinations, so the portal corpus is now 88/88 engine-owned without inventing a directed outcome.
+The current baseline is **1,193 legacy / 741 ordinary**.
+
+## September 8 Swan Song hole follow-up
+
+The two exact `Enter;Hole;12656` directions are implemented as completed-quest catalogue
+transitions; the other 12 remaining `Enter;Hole` rows are unrelated Dragon Slayer quest-in-progress
+aliases and stay legacy-owned. Its post-cutover baseline was **1,205 legacy / 741 ordinary** before
+the random-portal cleanup. An isolated client build passed the 84 focused tests without stopping the
+running client; physical bidirectional acceptance is still outstanding.
+
+## September 8 Enakhra secret-entrance follow-up
+
+Sixteen `Climb-down;Secret entrance` approaches for boulder IDs 11045-11048 are headless-migrated
+through an exact manifest. Entry now conservatively requires completed Enakhra's Lament because
+the resource was ungated and no reliable partial-quest unlock predicate was found; reverse
+sand-pile exits remain free. Pre-Swan baseline was **1,207 legacy / 743 ordinary**. Quest-time
+boulder opening and physical side-by-side acceptance are not claimed.
+
+## September 8 POH Outside-tablet follow-up
+
+The eight item-8013 `Outside` rows now use the existing item-teleport lifecycle under an exact
+house-location-varbit-to-exterior map. They remain inventory-only consumables, so repeated routes
+sum one tablet per use in bank planning; a disappearing consumed tablet does not surrender pending
+ownership before landing. No inside-house or advanced-facility support is claimed. The current
+classifier floor is **1,223 legacy / 759 ordinary**, with **49 item** rows still legacy-owned.
+
+## September 8 runecrafting exit-portal follow-up
+
+Sixteen fixed Rune Temple `Use;Portal` exits are headless-migrated through an exact directed
+manifest. The nine object IDs are the vendored Mind, Water, Earth, Fire, Body, Cosmic, Nature,
+Chaos and Blood exit portals; no generic portal action was enabled. Chaos ID 34757 retains three
+different origin/destination contracts, and tests prevent one landing from acknowledging another.
+Current baseline after this cutover is **1,231 legacy / 759 ordinary**; physical exits remain in
+the live ledger.
+
+## September 8 Meiyerditch course follow-up
+
+Sixty-six Meiyerditch/Ver Sinhaza rows are headless-owned with exact identities and landing: 18
+floorboards, six floors, 20 rubble/crawl-wall/rock/shelf/washing-line links, seven prepared-floor
+climbs, five tunnel/barricade rows and ten post-quest access rows. The course/tunnel slice enforces
+26 Agility and partial Darkness of Hallowvale; prepared floors also require persistent knockdown
+varbit 2589. The final ten require the quest finished. No row from this audited corpus remains
+legacy-owned, but one-time setup, discovery and quest-flow behavior are not implemented. The
+knife is not a recurring push-wall requirement, and these western-wall IDs are not the modern
+rope-built level-86 shortcut. Current baseline is **1,247 legacy / 775 ordinary**.
+
+## September 8 Abyss rift follow-up
+
+Eleven deterministic inner-Abyss rifts are headless-migrated with exact directed identities and
+retained quest gates. Law is excluded because the source row omits Entrana equipment restrictions;
+Soul is excluded because current access requires dark essence rather than an unrestricted click.
+Current baseline is **1,292 legacy / 820 ordinary**. Compilation, 435 focused tests, both
+Checkstyle tasks and the whitespace check passed; physical altar arrivals remain deferred.
+
+## September 8 audited agility follow-up
+
+Twenty-eight loaded rows across four static agility families are headless-migrated: Nature Grotto
+bridge, Agility Pyramid entrance rocks, Rellekka Hunter-area handholds and GWD/Wilderness
+handholds. The exact directed manifest has 27 keys because one GWD row is duplicated. Current
+baseline is **1,303 legacy / 831 ordinary**. Requirements, agility-toggle filtering, exact identity
+and exact landing are covered by regressions; physical crossings and hazard behavior remain in
+the live backlog. Compilation, 433 focused tests and both Checkstyle tasks passed.
+
+## September 7 remaining-family audit
+
+Latest Fremennik follow-up: ten surface rope-bridge crossings are headless-migrated with strict
+identity/exact landing; the two mine-shortcut rows now enforce 40 Agility and the agility toggle.
+Current baseline is **1,331 legacy / 859 ordinary**. Five cave bridge rows remain pending
+encounter/access review. Compilation, 423 focused tests and both checkstyle tasks passed.
+
+Latest Isafdar follow-up: six log balances and eight tripwires migrated headlessly; current
+baseline is **1,341 legacy / 869 ordinary**. Four leaf-pit rows remain pending a verified
+fall/climb-out protocol. Logs now carry 45 Agility/partial Regicide gates and honour the
+agility toggle. All fourteen require exact landing; physical acceptance remains deferred.
+
+Latest short-agility follow-up: four trellis/jagged-wall crossings migrated and eight obsolete
+ordinary Revenant variants removed in favour of ten typed, skill-gated shortcuts. Current legacy
+baseline is **1,355 total / 883 ordinary**. Champions' Guild's eight old stone-chain rows remain
+unmigrated pending verification of the newer single-stone geometry.
+
+Latest follow-up: 46 Tarn pillar/ledge rows are headless-migrated with exact landing; baseline is
+**1,365 legacy / 889 ordinary**. The expanded all-shortcuts/course inventory is owned by
+[walker-agility-coverage.md](walker-agility-coverage.md), including missing rooftop route data.
+
+Follow-up: the 18 exact Meiyerditch floorboard rows are now headless-migrated and Ranging Guild
+entry metadata has been corrected to 40 Ranged (exit remains free). Current baseline is **1,411
+legacy / 935 ordinary**; counts in the original audit below are the pre-batch snapshot. The 41
+pillar rows remain candidates, not migrated or live-complete.
+
+The production singleton-row classifier still reports **1,429 legacy entries**, including
+**953 ordinary TRANSPORT entries**. These are generated route entries, not unique interactions
+or account-accessible routes. No runtime transport eligibility changed in this audit.
+`LegacyTransportInventoryTest.reportRemainingBehaviourGroups` regenerates the remaining groups
+from the resource loader and production classifier; do not count already migrated TSV rows again.
+For example, the 48 Lithkren barrier rows are already catalogue-owned.
+
+### More missing or conflicting gate metadata
+
+| Family | Remaining rows | Finding and required follow-up |
+| --- | ---: | --- |
+| Ranging Guild door 11665 | 4 | Source rows have no skill gate. Wiki requires 40 Ranged. Add the directional requirement and denial tests before migrating the offset crossing. |
+| Ice gate 5043/5044 | 11 | Source rows have no quest/unlock gate. Entry requires starting Desert Treasure and speaking to the troll child; exit is unrestricted. Resolve the actual unlock state, not merely quest completion. Both halves route through the northern half, so object disappearance or incidental lateral movement cannot confirm arrival. |
+| Hot vent door 30266 | 11 | Source rows have no access metadata. Inner Mor Ul Rek requires showing a fire cape/fire max cape; verify persistent unlock versus carried-item handling and unrestricted exit before migration. |
+| Doors of Dinh 29322 | 16 | Fourteen newer rows include seven 50-Firemaking entries and seven ungated opposite destinations from the same origins; two older rows are also ungated. Resolve direction/endpoint ambiguity and the entry requirement before treating Enter as deterministic. |
+
+Sources: [Ranging Guild door](https://oldschool.runescape.wiki/w/Guild_door_(Ranging_Guild)),
+[Ice gate](https://oldschool.runescape.wiki/w/Ice_gate),
+[Hot vent door](https://oldschool.runescape.wiki/w/Hot_vent_door), and
+[Doors of Dinh](https://oldschool.runescape.wiki/w/Doors_of_Dinh).
+These are audit findings, **not repaired or live-accepted gates**.
+
+### Larger batch candidates
+
+| Candidate protocol | Remaining rows found | Review boundary |
+| --- | ---: | --- |
+| Directed jumps: Jump-to Pillar / Floorboards | 41 / 18 | Best next shared-protocol review: exact landing, failed-jump position, retry/replan, and skill/quest metadata. Pillars include different areas and must not share eligibility merely by name. All 59 are candidates, not an approved migration count. |
+| Direct entrances: Enter Tunnel / Door | 39 / 18 | Split direct clicks from dialogue, quest progress, warnings and multiple destinations; freeze an exact reviewed manifest. |
+| Vertical transitions: Secret entrance / Climbing rocks / Rope / Steps | 16 / 15 / 14 / 14 | Reuse the existing staged executor only after checking tools, setup state, direction and landing. Counts are review sizes, not blanket-safe additions. |
+| Wilderness obelisks | 318 | Large but separate random-destination protocol; do not count these as deterministic direct crossings. |
+
+Recommended order: repair verified access metadata, then audit and migrate the directed-jump
+protocol as one headless batch, with a representative live-test matrix added to the live backlog.
+Do not bulk-enable every Open, Enter or Jump-to action. This audit did not operate the live client,
+advance quests, or satisfy any outstanding live gate.
+
+Validation: all 65 inventory and route-classification tests passed headlessly, along with
+`checkstyleTest` and `git diff --check`. Corpus assertions retain the 1,429 total / 953 ordinary
+legacy baseline.
 
 ## Working method
 

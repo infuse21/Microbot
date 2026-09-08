@@ -14,6 +14,67 @@ import static org.junit.Assert.assertFalse;
 public class Rs2CatalogTransitionSceneTest
 {
 	@Test
+	public void invisibleShadowLadderPublishesEquipmentStagesBeforeObjectLookup()
+	{
+		int checked = 0;
+		for (java.util.Set<Transport> group : Transport.loadAllFromResources().values())
+		{
+			for (Transport row : group)
+			{
+				if (row.getObjectId() != 6560)
+				{
+					continue;
+				}
+				checked++;
+				assertTrue(CatalogTransitionPolicy.isEligible(row));
+				assertEquals(CatalogTransitionPolicy.VISIBILITY_RING_OPEN,
+					Rs2CatalogTransitionScene.visibilityRingPreparation(row, false, false).getAction());
+				assertEquals(CatalogTransitionPolicy.VISIBILITY_RING_WEAR,
+					Rs2CatalogTransitionScene.visibilityRingPreparation(row, false, true).getAction());
+				assertNull(Rs2CatalogTransitionScene.visibilityRingPreparation(row, true, false));
+				assertNull(Rs2CatalogTransitionScene.visibilityRingPreparation(row, true, true));
+				assertNull(Rs2CatalogTransitionScene.visibilityRingPreparation(row, false, true).getObject());
+				assertEquals(row.getDestination(),
+					Rs2CatalogTransitionScene.visibilityRingPreparation(row, false, true).getDestination());
+				Transport foreign = new Transport(new WorldPoint(100, 100, 0), row.getDestination(),
+					"", TransportType.TRANSPORT, true, "Climb-down", "Ladder", 6560);
+				foreign.setItemIdRequirements(row.getItemIdRequirements());
+				assertFalse(CatalogTransitionPolicy.isEligible(foreign));
+				assertNull(Rs2CatalogTransitionScene.visibilityRingPreparation(foreign, false, false));
+			}
+		}
+		assertEquals(4, checked);
+	}
+
+	@Test
+	public void auditedDoorsPreserveRequirementsAndRejectForeignGeometry()
+	{
+		int checked = 0;
+		for (java.util.Set<Transport> group : Transport.loadAllFromResources().values())
+		{
+			for (Transport row : group)
+			{
+				if (!java.util.Set.of(2000, 2010, 16774, 6919).contains(row.getObjectId()))
+				{
+					continue;
+				}
+				checked++;
+				assertTrue(CatalogTransitionPolicy.isEligible(row));
+				assertTrue(row.getItemIdRequirements().isEmpty());
+				if (row.getObjectId() == 2010)
+				{
+					assertEquals(java.util.Map.of(net.runelite.api.Quest.WATERFALL_QUEST,
+						net.runelite.api.QuestState.FINISHED), row.getQuests());
+				}
+				Transport foreign = new Transport(new WorldPoint(100, 100, 0), row.getDestination(),
+					"", TransportType.TRANSPORT, true, "Open", "Door", row.getObjectId());
+				assertFalse(CatalogTransitionPolicy.isEligible(foreign));
+			}
+		}
+		assertEquals(6, checked);
+	}
+
+	@Test
 	public void installedLiveActionContinuesWhileCatalogStillContainsOnlySetupVariant()
 	{
 		Transport setup = Transport.loadAllFromResources().values().stream()

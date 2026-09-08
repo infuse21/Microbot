@@ -14,6 +14,592 @@ working system in one cutover, and do not continue adding independent recovery p
 The migration is complete only when the old orchestration is deleted. Adapters that leave
 both systems permanently active are not completion.
 
+## Live acceptance ledger
+
+[walker-live-testing-backlog.md](walker-live-testing-backlog.md) consolidates earlier and current
+headless batches, outstanding branches of representative live passes, and contracts still needing
+implementation. As of 2026-09-06 the user requests headless-first progress; deferred physical tests
+remain open rather than blocking each batch or being silently marked complete.
+
+## Alternate-destination teleport spells - 2026-09-08
+
+All ten remaining `TELEPORTATION_SPELL` rows now use the engine-owned simple-teleport lifecycle:
+eight `Teleport to House: Outside` locations, `Varrock Teleport: Grand Exchange`, and `Watchtower
+Teleport: Yanille`. Admission is not a generic colon rule. It verifies each packaged destination,
+standard spellbook, exact Magic level, member/quest shape, diary/location/toggle varbits, Watchtower
+varplayer, duration and Wilderness limit. Dispatch maps each row to one canonical base spell, its
+exact alternate option, and widget identifier 2; arbitrary and requirement-damaged variants remain
+unsupported.
+
+NavigationEngine retains ownership after the spell input until the directed alternate landing.
+Bank planning continues to strip the suffix only for rune lookup: repeated House-Outside casts sum
+Air, Earth and Law runes per use, while existing staff and combination-rune supply logic remains
+shared. Focused policy, scanner, classifier and banking tests pass, reducing the classifier floor to
+1,167 with no remaining legacy `TELEPORTATION_SPELL` rows. Representative physical acceptance is
+deferred; House-Outside support proves only the surface destination, not a house instance or any
+facility.
+
+The integrated isolated-client validation covering banking, all walker transport and navigation
+tests, seasonal transports, feature toggles, POH panel, cost model and live collision passed **556**
+tests with zero failures, errors or skips. Main/test Checkstyle and `git diff --check` also pass; the
+only diff output is the repository's existing line-ending conversion notices. The temporary build
+output was removed after validation.
+
+## Molch/Lizardman Temple one-way links - 2026-09-08
+
+Eight `Enter;Lizard dwelling` approaches and eight `Jump-in;Strange hole` exits now use exact
+catalogue/NavigationEngine ownership. The manifest contains only object IDs 34402, 34403, 34405 and
+34422 at their 16 packaged directed routes; sibling dwelling 34404 is not admitted because it has no
+route row. Full route identity matters because ID 34403 serves two different temple interiors.
+
+The rows have no item, skill, quest, var, fare, dialogue or setup requirements, and the one-way
+dwelling/exit topology is retained rather than inventing reverse links. The fail-first regression
+reproduced legacy classification, then 85 focused classifier, scanner and cache-backed scene tests
+passed through the isolated client build. The floor is now 1,177 legacy entries, including 725
+ordinary `TRANSPORT` entries. Physical crossings remain deferred because the temple area is
+combat-adjacent; no shaman barrier acceptance is implied.
+
+## Castle Wars random Guthix portal removal - 2026-09-08
+
+The 12 object-4408 Guthix portal rows have been removed from routing data. They represented six
+identical live inputs twice, once for each Castle Wars team room, even though the server selects the
+smaller team and may choose randomly when team counts are equal. The current directed-edge model
+therefore could not truthfully promise either destination. This is not lost reachability: deterministic
+Saradomin object 4387 and Zamorak object 4388 still provide the same two waiting-room destinations.
+
+A fail-first corpus regression observed 100 portal rows and then passes with exactly 88, all
+engine-owned, no object-4408 route, and both deterministic destinations retained. Together with the
+Swan Song hole cutover, the classifier floor is now 1,193 legacy entries, including 741 ordinary
+`TRANSPORT` entries. Random-team support would require a new outcome-set interaction and immediate
+replan from the observed landing; Phase 6 does not fabricate a directed result from that click.
+
+## Swan Song island hole - 2026-09-08
+
+The two directed `Enter;Hole;12656` rows between `(2344,3650,0)` and `(2344,3655,0)` now use
+exact catalogue/NavigationEngine ownership. Eligibility retains the packaged `Swan Song=FINISHED`
+gate and rejects altered coordinates, requirements, identity or direction, so the other 12
+Dragon Slayer quest-in-progress hole aliases remain legacy-owned. The cache-backed scene resolver
+requires the exact hole object and NavigationEngine retains the interaction until the selected
+five-tile landing is reached.
+
+The fail-first regression reproduced legacy classification before the exact contract was added.
+An isolated client build then passed all 84 focused classifier, policy, scanner and cache-backed
+scene tests without disturbing the running client. The immediate post-cutover baseline was 1,205
+legacy entries, including 741 ordinary `TRANSPORT` entries; the subsequent Guthix-row removal lowers
+only the total floor. Physical crossing remains in the live backlog and is not claimed complete.
+
+## Enakhra temple secret entrances - 2026-09-08
+
+All 16 exterior `Climb-down;Secret entrance` approaches for the four directional Enakhra boulder
+objects (11045-11048) now use exact catalogue/NavigationEngine ownership. Vendored game-value
+metadata identifies them as the north/east/south/west secret-boulder multilocs, and the local quest
+helper uses the east object to enter the temple. Because the resource previously exposed every
+entrance without access metadata and no exact partial-quest unlock predicate was found, entry is
+conservatively gated on Enakhra's Lament `FINISHED`. The existing interior sand-pile exits remain
+unrestricted, so this correction cannot trap a player during the quest.
+
+The fail-first regression reproduced the missing quest requirement, then passed with all 16 exact
+approaches engine-owned, foreign geometry rejected, source loss unable to acknowledge travel, and
+the directed temple landing required. No boulder-opening quest action was added. Focused policy,
+scanner, cache-backed scene and classifier tests pass. The classifier floor is now 1,207 legacy
+entries, including 743 ordinary `TRANSPORT` entries. Physical entry from each side remains deferred.
+
+## POH Outside teleport tablets - 2026-09-08
+
+All eight `Teleport to House tablet: Outside` destination rows now publish through the existing
+engine-owned item-teleport lifecycle. Item 8013 has the exact inventory action `Outside` and no
+equipment action in the captured definition fixture. The policy admits only the eight audited
+`POH_HOUSE_LOCATION` varbit-2187 values and their matching exterior landings, with the original
+members, consumable, Wilderness-level and duration metadata intact; malformed gates or endpoints
+remain unsupported. This is an exterior teleport and does not enter a house or claim any advanced
+POH facility.
+
+The fail-first regression reproduced legacy ownership, then passed for all eight exact rows.
+Consumption retains NavigationEngine ownership while the final tablet disappears, a different
+house exterior cannot acknowledge the route, and only the directed exterior landing clears it.
+The action-definition fixture, focused item policy/scanner, classifier and bank-planning tests pass;
+two selected Outside edges withdraw two tablets. The classifier floor is now 1,223 legacy entries,
+including 49 item-teleport rows and 759 ordinary `TRANSPORT` entries. Physical and forced-bank
+acceptance for this exact action remains deferred.
+
+## Runecrafting altar exit portals - 2026-09-08
+
+All 16 remaining `Use;Portal` Rune Temple exit rows now use exact catalogue/NavigationEngine
+ownership. Vendored game-value metadata identifies IDs 34749-34754, 34756, 34757 and 43478 as
+the Mind, Water, Earth, Fire, Body, Cosmic, Nature, Chaos and Blood temple exit portals. Every row
+is item-, fare-, dialogue-, skill-, quest- and var-state-free. A frozen directed manifest is used
+rather than enabling generic `Use;Portal`; this is essential for Chaos ID 34757, whose three
+origins have three distinct surface landings. Runtime resolution requires the exact object ID near
+the recorded origin, and the pending interaction remains owned until its selected surface landing.
+
+The fail-first regression reproduced legacy ownership before the manifest was installed, then
+passed with all 16 rows engine-owned, foreign geometry rejected, source disappearance rejected,
+and another Chaos exit's landing unable to acknowledge the selected route. Focused classifier,
+policy, scanner and cache-backed scene tests pass. The classifier baseline is now 1,231 legacy
+entries, including 759 ordinary `TRANSPORT` entries. Physical altar-exit acceptance remains
+deferred; no gameplay input was issued.
+
+## Meiyerditch course traversals - 2026-09-08
+
+Sixty-six exact Meiyerditch/Ver Sinhaza rows now use NavigationEngine ownership: 18 floorboard
+jumps, six walk-across floors, 20 rubble/crawl-wall/rock/shelf/washing-line links, seven
+prepared-floor climbs, five tunnel/barricade rows, and ten post-quest access rows. The first 56
+require 26 Agility and Darkness of Hallowvale `IN_PROGRESS`; prepared floors additionally require
+`MYQ3_WALL_FLOORBOARDS_DOWN` varbit 2589 to equal 1. The final ten require Darkness of Hallowvale
+`FINISHED`: six Ver Sinhaza castle entrance/exit approaches, two reusable push-wall directions,
+and two western-wall climbs. Only the western-wall climbs are normalized to the agility feature
+switch in that post-quest slice; doors and the push wall are ordinary access transitions.
+
+Strict directed geometry, exact object identity and exact destination acknowledgement prevent a
+nearby course object, intermediate tile, failed obstacle or disappearing object from advancing the
+route. The earlier claim that fourteen special rows still needed ownership is superseded. Local
+quest evidence shows that the knife is used only for the one-time push-wall setup and that the
+western-wall IDs here are not the modern rope-built Darkmeyer shortcut, so neither a recurring
+knife nor a level-86/rope gate is imposed. Quest-time floor knockdown, initial push-wall setup,
+barricade discovery/search flow and other quest solving remain separate; this is traversal after
+the required persistent or quest state, not whole-course or quest completion. Fail-first
+regressions reproduced missing gates/legacy ownership before the exact policies were added. The
+current classifier baseline is 1,247 legacy entries, including 775 ordinary `TRANSPORT` entries.
+Physical course-chain acceptance remains deferred.
+
+## Abyss exit rifts - 2026-09-08
+
+Eleven exact inner-Abyss `Exit-through` rows now publish as catalogue/NavigationEngine-owned
+transitions: Air, Mind, Water, Earth, Fire, Body, Cosmic, Chaos, Nature, Death and Blood. The
+directed manifest preserves the existing Lost City, Mourning's End Part II and Sins of the Father
+completion gates, rejects foreign geometry and retains the route edge until its altar landing.
+The [Abyss](https://oldschool.runescape.wiki/w/Abyss) confirms that these rifts directly access
+their runic altars without talismans or tiaras and documents the restricted destinations.
+
+Law and Soul deliberately remain legacy-owned. Law additionally enforces Entrana prohibited-
+equipment restrictions, which the plain catalogue row does not encode; Soul requires using dark
+essence rather than the row's unrestricted `Exit-through` contract. The test-first regression
+reproduced legacy ownership for the deterministic set before the manifest was added. Compilation,
+435 focused navigation/transport/toggle/benchmark tests, both Checkstyle tasks and the whitespace
+check passed. Current classifier baseline is 1,292 legacy entries, including 820 ordinary
+TRANSPORT. Physical acceptance remains deferred and Phase 6 remains open.
+
+## Audited agility traversal batch - 2026-09-08
+
+Twenty-eight ordinary transport rows now use catalogue/NavigationEngine ownership: eight Nature
+Grotto bridge jumps (3522), fourteen Agility Pyramid entrance-rock climbs (11948/11949), two
+Rellekka Hunter-area handholds (19846/19847), and four God Wars Dungeon/Wilderness handhold rows
+(26405). One 26405 row is an exact catalogue duplicate, so the frozen directed manifest contains
+27 unique route keys while all 28 loaded rows are covered. Exact object/name/action matching and
+exact destination acknowledgement prevent another nearby lane, movement near the far end, or
+object disappearance from retiring an unfinished crossing.
+
+The resource now records 1 Agility for the Nature Grotto bridge, 30 Agility for the second
+Agility Pyramid rock set, 35 Agility for the Rellekka handholds, and 60 Agility plus Troll
+Stronghold IN_PROGRESS for the GWD handholds. The first Pyramid rock set remains level-free.
+All four families are normalized as agility shortcuts for configuration filtering. The GWD route
+is one-way and exposed to the area's chill effect; this batch adds no hazard protection or quest
+solver. The local generic shortcut table's level-1 Rellekka entry conflicts with the current wiki,
+so the conservative current level-35 requirement is used and recorded for live verification.
+
+Pre-change regressions reproduced legacy ownership and premature near-destination clearance.
+Compilation, 433 focused navigation/transport/toggle/benchmark tests and both Checkstyle tasks
+passed. Current classifier baseline is 1,303 legacy entries, including 831 ordinary TRANSPORT.
+Physical acceptance remains deferred; no gameplay input was issued and Phase 6 remains open.
+Sources: [Nature Grotto bridge](https://oldschool.runescape.wiki/w/Bridge_(Nature_Grotto)),
+[Agility Pyramid entrance rocks](https://oldschool.runescape.wiki/w/Climbing_rocks_(Agility_Pyramid_entrance)),
+[Rellekka handholds](https://oldschool.runescape.wiki/w/Rocky_handholds_(Rellekka_Hunter_area)), and
+[GWD Wilderness handholds](https://oldschool.runescape.wiki/w/Rocky_handholds_(God_Wars_Dungeon,_Wilderness)).
+
+## Fremennik surface rope bridges - 2026-09-07
+
+Ten exact surface crossings (21306-21315) now use catalogue ownership, strict directional
+object identity and exact destination acknowledgement. The mine shortcut's two ordinary rows
+now require 40 Agility and honour the agility toggle; its stale Cross-bridge action is corrected
+to Walk-across. Other surface bridges are not newly gated behind quest completion or repair:
+the quest walkthrough documents travel around the islands before repair. No repair inputs are added.
+
+The five underground bridge rows (21316-21319) remain pending encounter/access review; one bridge
+is the Ice Troll King boundary and must not be treated as another unrestricted surface crossing.
+Three pre-change regressions reproduced legacy ownership, missing skill metadata and premature
+near-end acknowledgement. Physical acceptance remains deferred; no gameplay input was issued.
+Sources: [mine bridge](https://oldschool.runescape.wiki/w/Rope_bridge_(Neitiznot)) and
+[Fremennik Isles walkthrough](https://oldschool.runescape.wiki/w/The_Fremennik_Isles), corroborated
+by the local quest helper's bridge-repair and boss-entry steps.
+
+Validation: compilation, 423 focused tests, both checkstyle tasks and diff whitespace checks
+passed. Current classifier baseline is 1,331 legacy entries, including 859 ordinary TRANSPORT.
+
+## Isafdar logs and tripwires - 2026-09-07
+
+Fourteen exact ordinary crossings (six log balances and eight tripwires) now use catalogue
+ownership. Strict object identity and exact destination confirmation prevent near-end movement
+or object disappearance from acknowledging arrival. The six logs now require 45 Agility and
+Regicide IN_PROGRESS or later, and respect the agility-shortcut toggle despite being ordinary rows.
+Sources: [Tirannwn logs](https://oldschool.runescape.wiki/w/Log_balance_(Tirannwn)) and
+[tripwires](https://oldschool.runescape.wiki/w/Tripwire).
+
+The four [leaf-pit rows](https://oldschool.runescape.wiki/w/Leaves_(trap)) remain legacy/pending
+implementation: failure drops the player into a pit and requires a verified climb-out protocol.
+This batch does not implement poison treatment or claim safe travel through Isafdar's hazards.
+Live crossing/failure checks remain in the acceptance backlog; no gameplay input was issued.
+Pre-change tests reproduced unsupported ownership and premature near-landing clearance.
+Compilation, 419 focused tests, and both checkstyle tasks passed. Classifier baseline:
+1,341 legacy entries, including 869 ordinary TRANSPORT entries. Phase 6 remains open.
+
+## Short agility crossings and Revenant duplicate cleanup - 2026-09-07
+
+Four one-tile typed agility rows (Varrock trellis 2149 and Shaman Caves jagged wall 2926)
+now use catalogue ownership with exact landing, strict object identity and unchanged level/quest
+gates. The generic catalogue distance check previously rejected them, while adjacent actions did
+not support Climb/Jump-over. Missing objects cannot acknowledge a failed crossing.
+
+Removed eight obsolete ordinary Revenant pillar rows, retaining the existing ten typed shortcuts.
+This eliminates six missing-skill variants and ordinary-row bypasses of the agility toggle; two
+obsolete rows also disagreed with the canonical object's ID/endpoint. Pre-change tests reproduced
+the ownership gap and presence of ordinary Revenant variants. See the agility coverage document
+for sources and live gates. Counts: 1,355 legacy, including 883 ordinary TRANSPORT.
+
+The eight Champions' Guild stepping-stone rows are deliberately not migrated: the wiki reports
+a change from four stones to one, so the old intermediate endpoints need runtime verification
+and replacement. No Hub changes, live input or commit were made.
+Validation: compileJava, 415 transport/navigation/toggle/benchmark tests, both Checkstyle tasks
+and git diff --check passed. The first full run required updating the existing typed-agility
+inventory expectation from 248 to 252 catalogue-owned rows (14 to 10 legacy rows).
+
+## Agility scope expansion and Tarn jumps - 2026-09-07
+
+The user requests all shortcuts and course obstacles. [walker-agility-coverage.md](walker-agility-coverage.md)
+tracks missing route data as well as legacy ownership, including 74 local rooftop ObjectSteps with
+no matching transport TSV object IDs. Their object coordinates are not assumed to be landing tiles.
+
+All 46 exact Tarn pillar/ledge routes now classify as catalogue transitions. A frozen directed
+manifest and strict ID lookup prevent same-name substitution. Headless reproduction showed the
+generic two-tile tolerance could accept neighbouring tiles; Tarn now requires its exact destination.
+Tests cover all 46 rows, foreign geometry, a 5x5 landing neighbourhood, missing objects and falls.
+This does not disarm log traps or claim safe whole-dungeon navigation. Physical testing is deferred.
+
+Classifier counts: 1,365 total legacy / 889 ordinary TRANSPORT. No gameplay input or commit.
+Validation: compilation, 409 focused transport/navigation/benchmark tests and both Checkstyle
+tasks passed. The first full run exposed an older pillar-count assertion; it now accounts for
+35 Tarn pillars plus two already-migrated Revenant pillars, retaining six legacy Revenant rows.
+
+## Meiyerditch floorboards and Ranging Guild requirement - 2026-09-07
+
+All 18 directed Jump-to Floorboards rows now use catalogue/NavigationEngine ownership through
+an exact endpoint, plane, object-ID and action manifest. The resolver permits a five-tile lookup
+for this family, covering the far side of the three-tile jumps, but requires the exact object ID:
+nearby same-named floorboards cannot substitute a different jump. Existing directed landing
+confirmation and pending-edge retirement remain the execution protocol; no additional jump loop.
+
+Headless regression covers all 18 rows, foreign geometry/action rejection, origin/mid-jump and
+lower-plane failed positions, persistent objects, disappearance and actual destination arrival.
+The wiki's [course walkthrough](https://oldschool.runescape.wiki/w/Darkness_of_Hallowvale/Quick_guide)
+describes direct jumps separately from wall pushing, keys and ladder repair. Those quest/setup
+interactions are not included, nor is whole-course access or hazard handling claimed complete.
+
+The two Ranging Guild entry rows now require 40 Ranged; the two exit rows remain unrestricted.
+This fixes missing resource metadata, not guild-door execution ownership. The pre-change tests
+reproduced both zero-level entry metadata and legacy floorboard classification. Ice Gate, hot vent
+and Wintertodt access protocols remain pending implementation, not just live verification.
+
+Classifier baseline: 1,411 legacy rows, including 935 ordinary TRANSPORT rows (18 fewer).
+Validation: compileJava, all 407 focused transport/navigation/benchmark tests, both Checkstyle
+tasks and git diff --check passed. Existing compiler deprecation warnings remain unrelated.
+Live object positions/actions, bidirectional jumps and failed-jump recovery remain deferred in
+the live backlog. No client restart, gameplay input or commit was performed.
+
+## Ardougne wall doors - post-Biohazard headless cutover, 2026-09-07
+
+The 01:16:49 BST log selected LEGACY_LOCKED for `2559,3299,0 -> 2556,3299,0`,
+`Open;Ardougne Wall Door;8738`. All four exact three-tile approaches (8738/8739)
+now use adjacent engine ownership and retain the wide-gate actual-boundary retirement guard.
+Tests cover east/west crossing, near-side positions, persistent/opened doors and quest metadata.
+There is no broadening to arbitrary three-tile doors.
+
+The resource lacked access requirements. All four rows now require Biohazard FINISHED,
+following the specific [wall-door page](https://oldschool.runescape.wiki/w/Ardougne_Wall_Door).
+The broader [West Ardougne page](https://oldschool.runescape.wiki/w/West_Ardougne) instead
+mentions Plague City completion. This conflict is unresolved: the implemented gate is deliberately
+the conservative post-Biohazard contract, not a verified earliest-unlock claim. Earlier access
+must be verified before relaxing it; no quest actions or alternate wall-entry protocol were added.
+
+Physical Open/cross, current/transformed IDs and no inverse bounce remain live checks. No
+client input or restart occurred. Legacy classifier totals are 1,429, including 953 ordinary
+TRANSPORT rows, four fewer than the preceding checkpoint.
+
+Validation: compilation, 90 focused gate/navigation/classification/benchmark tests and both
+Checkstyle tasks passed. Initial failures were the two expected classifier-count changes;
+updated totals passed the rerun. Live acceptance remains deferred and nothing was committed.
+
+## Stronghold and colony wide gates - headless cutover, 2026-09-07
+
+The 00:40:35 BST runtime log selected LEGACY_LOCKED for `2462,3382,0 -> 2461,3385,0`,
+`Open;Gate;190`. All six exact Stronghold approaches and four Swan Song-gated Piscatoris
+Colony gate approaches (12723/12725) now classify as adjacent engine-owned crossings.
+No generic widening of Open/Gate eligibility was made; foreign geometry and missing colony
+quest requirements remain unsupported. Resource requirements and coordinates are unchanged.
+
+Stronghold's diagonal approaches require crossing the north/south boundary, not just lateral
+alignment with the destination. Both the pending scanner and engine retirement protect the
+directed boundary: nearby raw-route progress cannot retire these wide gates before crossing.
+An opened object's disappearance still permits engine-owned forward movement. This addresses
+a newly exposed migration hazard, not a proven diagnosis of the user's legacy in/out loop.
+
+Only the normal direct gate protocol is implemented. First-entry Femi dialogue, Grand Tree
+restricted-entry/smuggling and its optional fare remain unimplemented special protocols;
+do not claim full quest-state coverage. [Femi](https://oldschool.runescape.wiki/w/Femi)
+documents those branches. [Colony gate](https://oldschool.runescape.wiki/w/Colony_gate)
+corroborates both Open object identities. Live crossing and inverse-bounce checks remain
+deferred in the ledger. Classifier totals: 1,433 legacy rows, including 957 ordinary TRANSPORT.
+
+Validation: compileJava, 470 focused transport/navigation/banking/requirement/cost/collision
+and benchmark tests, both Checkstyle tasks and diff whitespace checks passed. Initial focused
+tests identified only the expected ten-row classifier-count changes; those totals were updated.
+No restart, live movement or commit was performed. The legacy gate loop itself remains a
+live reproduction/acceptance item, not a claimed headless fix.
+
+## Broken Raft and desert gate requirements - 2026-09-06
+
+User runtime evidence showed repeated `You need a mithril grapple tipped bolt with a rope`
+while the selected route used `Grapple;Broken Raft;17068`. The two catalog rows had only
+skill gates. Routing now additionally requires finished grapple 9419 in the ammo slot and
+a compatible crossbow equipped, with the same check immediately before legacy object dispatch.
+Inventory/bank possession is not equipment preparation. No new barehanded route is enabled:
+the wiki's newer level-48 variant does not prove that the currently issued Grapple action works.
+Automatic equipment preparation/banked grapple setup and equipment-free interaction verification
+remain implementation work. Equipment readiness participates in the transport memo key.
+
+Al Kharid's four paid rows retain the 10-coin requirement but are rejected after Prince Ali
+Rescue completion, when Pay-toll disappears; the existing free quest-gated Open rows remain.
+Shantay Pass's six ticket rows (including Unkah) are consumable, so repeated entrances sum
+ticket quantities or their purchasable fare fallback. Desert Elite varbit 4486=1 removes
+entry ticket/fare requirements and suppresses vendor purchases without mutating shared rows;
+the exemption also participates in memo invalidation. Return directions remain free.
+
+These are requirement fixes, not new traversal ownership. Shantay and the equipped raft still
+require migration. Rebuilt-client live verification is deferred; see the live-testing backlog.
+
+Validation: compileJava, 100 focused requirement/banking/route/benchmark tests, both Checkstyle
+tasks and diff whitespace checks passed. No client restart, gameplay input or commit.
+
+## Yanille pick-lock door - headless cutover, 2026-09-06
+
+The two directed `Pick-lock;Door;11728` rows at `2601,9481/9482,0` now use
+`ADJACENT_TRANSPORT`. Exact geometry/action/ID, 82 Thieving, reusable inventory lockpick
+`1523`, duration and requirement metadata delimit this migration. The bank planner retains
+one lockpick across repeated crossings; a strange old lockpick is not a substitute.
+[Yanille Agility Dungeon](https://oldschool.runescape.wiki/w/Yanille_Agility_Dungeon) and
+[Lockpick](https://oldschool.runescape.wiki/w/Lockpick) document these requirements.
+
+A failed pick leaving the door present does not retire the edge. An opened/disappeared door
+uses existing engine-owned forward crossing, while actual directed arrival retires the edge.
+The scene requires the exact ID and rechecks boosted Thieving and carried lockpick on the
+client thread. Losing either requirement is unavailable, not missing-object clearance;
+existing bounded interaction acknowledgement/recovery remains with NavigationEngine.
+[Thieving](https://oldschool.runescape.wiki/w/Thieving#Picking_doors) documents that failed
+picking can lower Thieving. No new retry loop or legacy movement owner was introduced.
+
+The two Ardougne Pick-lock rows (11719/11720) remain pending exact location/requirement
+verification; this is not broad Pick-lock support. Physical success/failure, transformed
+door identity, skill drain and bank-only setup remain in the live ledger. No client input
+or restart was performed. Resource classifier totals are now 1,443 legacy rows, including
+967 ordinary TRANSPORT rows (two fewer in each count).
+
+Validation: `:client:compileJava`, 463 focused walker/navigation/banking/transport and
+pathfinder benchmark/requirement/cost/collision tests, both Checkstyle tasks and `git diff --check`
+passed. The initial focused run exposed only the two intentionally changed classifier totals;
+those expectations were updated from 1,445/969 to 1,443/967 before the successful suite.
+Existing deprecation warnings remain. Live acceptance is deferred.
+
+## Draynor basement unlocked crossings - headless cutover, 2026-09-06
+
+The 18 directed `Open;Door` rows for IDs `137..145` now classify as `ADJACENT_TRANSPORT`.
+This migrates **crossing already-unlocked doors only**, not lever solving or the whole puzzle.
+The exact endpoint/object/display/duration/varbit contracts are frozen; existing resource gates
+remain unchanged. Exhaustive tests compare all 64 A-F lever combinations for every row against
+the existing solver's door masks. Missing gate metadata and foreign geometry remain unsupported.
+
+The two-tile links reuse adjacent-door clearance and engine-owned forward crossing, rather than
+remote-transition waiting that would strand a player beside a door that merely opened. Persistent
+objects retire on the directed destination side, not at the source or middle tile. Scene lookup
+requires the exact puzzle-door ID and rechecks lever values on the client thread. Pending observation
+distinguishes loss of eligibility from disappearance of an opened object: a relocked door becomes
+`UNAVAILABLE`; a player already across it may still retire the edge. Other adjacent families retain
+their existing observation behaviour through the scene interface's default enabled verdict.
+
+The existing `Rs2Walker.processWalk -> DraynorBasementSolver.solveIfNeeded` preparation remains
+unchanged and is still legacy orchestration. No new lever pulls, quest actions or nested walk loop
+are added by this slice. [The quest guide](https://oldschool.runescape.wiki/w/Ernest_the_Chicken)
+also notes that leaving/re-entering resets levers; future physical acceptance must include refreshed
+locked states, door opening/crossing in both directions and no inverse bounce. These gates are in the
+live ledger and are not satisfied by the headless truth table.
+
+The classifier changes from **1,463 to 1,445** legacy rows and **987 to 969** ordinary TRANSPORT
+rows. Full puzzle ownership and Phase 6 closure remain open. No client restart or gameplay input
+was performed.
+
+Validation passed: compilation, **459** focused transport/banking/navigation/core tests including
+the pathfinder benchmark, main/test Checkstyle and `git diff --check`. The initial fail-first
+resource test rejected the 18 crossings as expected; classifier count assertions were updated
+only after the corpus reported the exact 18-row reduction.
+
+## Harmony monastery doors - headless requirement correction, 2026-09-06
+
+Both `3804,2844,0 <-> 3806,2844,0 | Open;Door;22119` rows previously lacked access gates.
+A fail-first resource test reproduced zero conditions. They now require `3393>4`, matching
+`BRAIN_BARREL_SETUP >= 5`: the bundled `TheGreatBrainRobbery.setupConditions` identifies that
+state as `churchDoorGone`, after placing the keg, attaching the fuse and lighting it. Values zero
+through four must not publish these crossings; both directions retain the destroyed-door gate.
+No explosives or quest items are added to bank planning, and the walker does not demolish the door.
+
+This is **not an interaction migration or complete Harmony safety implementation**. Object `22119`
+is the entrance wrapper; definitions `22113..22118` name its barred, barrel/fuse and collapsed states.
+The [quest walkthrough](https://oldschool.runescape.wiki/w/The_Great_Brain_Robbery) and bundled quest
+helper show later entry into the Barrelchest instance. The [island guide](https://oldschool.runescape.wiki/w/Harmony_Island)
+also confirms that gas requires equipped underwater protection during the quest and disappears only
+after completion. A destroyed door therefore proves neither gas safety nor a normal non-instance
+landing. Do not add a generic `Open` exception or infer that carrying protective equipment is enough.
+
+Both rows remain legacy-owned; counts stay **1,463** legacy rows / **987** ordinary TRANSPORT rows.
+Outstanding work: inspect transformed actions and collision after demolition and after quest
+completion, establish the safe post-quest crossing protocol, and separately model any intentionally
+supported in-progress equipment/instance flow. These are implementation gates, not merely deferred
+live acceptance. No client restart, gameplay input, quest progression or combat occurred.
+
+Validation passed: compilation, 77 focused tests including the new fail-first gate regression,
+the Waterfall/Zanaris regressions, classifier and pathfinder benchmark, plus both Checkstyle tasks
+and `git diff --check`. The legacy counts are unchanged; no new crossing is claimed complete.
+
+## Waterfall internal doors - headless cutover, 2026-09-06
+
+All four `Open;Door;2002` rows now require reusable key `298`. The fail-first resource test
+reproduced empty item requirements; the shared bank planner now requests one key across both
+doors and repeated return crossings, not one key per use. The [key documentation](https://oldschool.runescape.wiki/w/Key_(Waterfall_Dungeon))
+confirms both western doors require it, including returning through the corridor, and that a steel
+key ring cannot substitute. The walker does not search crates or collect replacement keys.
+
+The 38-tile links are not rewritten as adjacent doors. Bundled quest helpers corroborate the
+separate throne-room copy: `WaterfallQuest.setupZones` records both west and east end rooms;
+`RovingElves.setupZones/setupSteps` and `SongOfTheElves.setupSteps` identify door `2002` at
+`2566,9901,0` and the post-quest room around `2604,9901,0`. Their ordinary door steps require the
+key without an item-target icon or additional dialogue. Those two exact directed links now use
+the existing `CATALOG_TRANSITION` lifecycle, restricted to `Waterfall Quest=FINISHED` so this
+cutover does not promise the same landing through unfinished quest puzzle states. The two adjacent
+`2568,9893,0 <-> 2568,9894,0` rows keep their existing adjacent ownership and gain the missing key gate.
+
+The remote scene resolver requires exact object ID `2002`, not another nearby generic Door.
+No new executor, dialogue selection, puzzle solving or walking loop is introduced. Source-object
+disappearance and an intermediate coordinate cannot acknowledge success; the directed room landing
+does. Headless checks cover both directions, resource gates, bank aggregation, missing/wrong keys,
+unfinished quest metadata and foreign geometry. Classifier counts fall from **1,465 to 1,463**
+legacy rows, including **989 to 987** ordinary TRANSPORT rows.
+
+Validation passed: compilation, **454** selected transport/banking/navigation/requirement/core
+tests including `PathfinderBenchmarkTest`, both Checkstyle tasks and `git diff --check`.
+
+Rebuilt-client definition/action checks, key-in-bank withdrawal and physical crossings in both
+directions remain in the [live ledger](walker-live-testing-backlog.md). No restart, gameplay input
+or live acceptance was performed for this batch. Pre-completion chamber routing remains separate
+implementation work; the original geometry concern below records the earlier investigation checkpoint.
+
+## Zanaris shed - headless cutover, 2026-09-06
+
+The old `3202,3169,0 -> 2452,4473,0 | Open;Door;2406` row had no access requirement.
+A fail-first resource regression reproduced one unrestricted row instead of the expected access
+variants. It is replaced by three exact, post-`Lost City=FINISHED` contracts: Dramen staff `772`
+with elite diary varbit `4498=0`; Lunar staff `9084` with the same diary predicate plus 65 Magic /
+40 Defence; and item-free entry at `4498=1`. Staffs are reusable bank-planned requirements, not
+consumables. This conservatively excludes completing Lost City via the door; quest progression
+is outside this transport migration. The staff remains equipped; original-weapon restoration is
+not included in this entrance contract.
+
+The [shed transcript](https://oldschool.runescape.wiki/w/Door_(Lumbridge_Swamp)) confirms that the
+door never visually opens and that an easy clue can add a two-option menu. The existing catalog
+lifecycle now owns inventory-tab opening, staff equipment observation, exact door `Open`, optional
+`Let it transport you to Zanaris.` selection, and directed landing. Only the full, unique menu
+paired with `Just enter the shed.` is accepted; partial/duplicate/foreign options and Continue
+pages receive no input. Pending observation carries the prior stage so a closed destination menu
+cannot regress to another door click before landing. Exact object ID resolution prevents another
+nearby ordinary Door from inheriting this contract.
+
+The [Lunar staff requirements](https://oldschool.runescape.wiki/w/Lunar_staff) are encoded on its
+own variant rather than imposing its wield levels on Dramen users or offering an unusable banked
+staff to a lower-level account. Existing resource filtering, configuration and banking own
+availability; no planner interaction or legacy control loop was added. Initial classifier failures
+showed the intended one-edge reduction: **1,466 -> 1,465** legacy rows and **990 -> 989** ordinary
+legacy rows (one former route becomes three supported access variants).
+
+Compilation, 450 selected transport/banking/navigation/requirement/core tests including the
+pathfinder benchmark, and main/test Checkstyle passed. Headless coverage includes exclusive diary
+states, Lunar levels, reusable staff quantities, strict menu matching, hidden inventory, equipment
+acknowledgement, no-input transit and directed landing. Physical acceptance and loading the new
+bytecode into a restarted client are deferred per the user's headless-first request. No character,
+inventory, config or live-client changes were made for this batch.
+
+The next Waterfall investigation confirms [key 298](https://oldschool.runescape.wiki/w/Key_(Waterfall_Dungeon))
+is required for the western locked doors and cannot be stored on a steel key ring. That does not
+establish which physical doorway the two object-2002 38-tile links represent. Their geometry,
+key/item-on-object protocol and applicability of any correction to the adjacent rows remain
+unverified; those long links stay legacy-owned and no speculative landing/key rewrite was made.
+See the live ledger for the separate implementation and acceptance queues.
+
+## Equipment-gated ladders and audited direct doors - 2026-09-06
+
+Ten previously legacy-classified resource rows now publish `CATALOG_TRANSITION`:
+four Shadow Dungeon ladder approaches (`6560`), the Waterfall entrance/exit (`2010`/`2000`),
+Baba Yaga's house exit (`16774`), and three Dorgesh-Kaan entrance approaches (`6919`).
+Exact directed manifests retain the completed Desert Treasure I, Waterfall Quest and Death to
+the Dorgeshuun prerequisites. Unrelated routes sharing these object IDs remain unsupported.
+
+Shadow Dungeon preparation is observed before looking for its invisible ladder: open inventory,
+wear one supported visibility ring, observe equipment, then resolve and climb the transformed ladder.
+NavigationEngine owns every stage and acknowledges completion only at the directed landing.
+The ring remains worn for dungeon visibility; repeated route uses require one reusable banked ring.
+The completed-Waterfall-Quest entrance no longer incorrectly requires Glarial's amulet, consistent
+with the [documented dungeon requirements](https://oldschool.runescape.wiki/w/Waterfall_Dungeon).
+This does not add pre-completion quest access or solve a quest.
+
+Focused classification, scene, scanner, banking and NavigationEngine regressions pass, together
+with compilation and main/test Checkstyle. The loaded corpus has **1,466** legacy edges, including
+**990** ordinary `TRANSPORT` edges. Every loaded ladder row is now engine-classified, subject to its
+existing access gates; classification is not a claim of universal live acceptance.
+
+The rebuilt logged-in client repeated the read-only resource/definition probe at **20:00:04 BST**:
+the same 15 audited rows changed from `catalogOwned=0` before the patch to `catalogOwned=10`.
+Wrapper `6560` uses visibility varbit `15152` and transforms to ladder `6561`, whose action is
+`Climb-down`; all three ring alternatives expose `Wear`. No relevant errors appeared in the probe
+log window. Probe: `%TEMP%/microbot-debug-probes/gated-entrances-20260906/GatedEntrancesProbePlugin.java`.
+The probe was undeployed after verification and did not move the character.
+
+Physical acceptance of these ten rows remains deferred. Zanaris's clue-dependent dialogue, the two
+38-tile Waterfall door links and puzzle doors are deliberately outside this cutover. Phase 6 remains
+active; no legacy orchestration was deleted.
+
+## Dwarven Mine trapdoor verification - 2026-09-06
+
+The reported northern Dwarven Mine trapdoor was tested on the running client without changing
+production code. Both resource approaches for object `11867` already classify as
+`CATALOG_TRANSITION`. A read-only client-thread probe confirmed that the live object at
+`3019,3450,0` exposes only `Climb-down`; return ladder `17387` exposes only `Climb-up`.
+This particular trapdoor has no observed `Open` or `Close` stage.
+
+- At **18:29:44-18:29:50 BST**, the walk from `3018,3452,0` to `3018,9850,0`
+  issued one engine-owned `Climb-down` and completed with HTTP `ARRIVED`, distance zero.
+- At **18:30:05-18:30:12 BST**, the return issued one engine-owned `Climb-up`, resumed
+  ordinary movement, and completed at `3018,3452,0` with HTTP `ARRIVED`, distance zero.
+
+Neither crossing emitted legacy ownership or recovery. The approach also opened the building's
+ordinary door under NavigationEngine. An initially chosen staging tile `3019,3453,0` was rejected
+as unwalkable at radius zero; the confirmed walkable `3018,3452,0` was used instead. A later
+attempt to prepare a closed trapdoor via the Agent Server's `Close` interaction descended instead;
+it is excluded from acceptance and does not establish a walker failure or a closed-state protocol.
+The character was returned to the surface. The reported legacy fallback has not been reproduced;
+capture the complete failing route's `nav_mode ... unsupported=` entry before widening eligibility.
+
+Regressions pin both trapdoor approaches, directed underground acknowledgement, and the complete
+loaded ladder corpus: at that checkpoint only the four ring-gated Shadow Dungeon ladder rows remained
+legacy-classified (subsequently migrated in the equipment-gated batch above).
+Two zero-length ladder resource rows are excluded by the loader, not executable legacy edges.
+These checks do not claim that every ladder or specialised door is live-accepted.
+
+Read-only probe: `%TEMP%/microbot-debug-probes/dwarven-trapdoor-20260906/DwarvenTrapdoorProbePlugin.java`.
+
 ## Handover snapshot - 2026-08-05
 
 This workspace contains the uncommitted incremental migration; preserve the dirty worktree and do
@@ -1047,12 +1633,14 @@ no guessed input, and the navigation engine supplies the same bounded remote-int
 the other migrated teleport families. The shared cost model applies a measured three-tick floor to
 one-tick rows while preserving longer configured durations.
 
-The remaining 12 rows are all Castle Wars object `4408`, action `Enter`, name `Guthix Portal`. Six
+The remaining 12 rows were all Castle Wars object `4408`, action `Enter`, name `Guthix Portal`. Six
 identical origin/object/action inputs each declare both `2376,9489,0` and `2416,9524,0`; the catalog
 therefore cannot promise which directed edge the same click will take. They intentionally remain
 `TRANSPORT` / `LEGACY_LOCKED` until the route data or executor can model the team-dependent outcome.
 Catalog-count, supported/unsupported classification, exact live identity, source disappearance,
 changed identity, directed landing, bounded deadline, route ownership, and cost-floor tests pass.
+The 2026-09-08 resolution above supersedes that interim boundary by removing the redundant random
+rows while retaining deterministic access to both team rooms.
 
 The pre-cutover Edgeville-to-Soul-Wars baseline emitted
 `mode=LEGACY_LOCKED ... rows=TELEPORTATION_PORTAL:Soul Wars Portal:Enter:Soul Wars` and completed
@@ -1180,7 +1768,8 @@ still has no dedicated engine route kind for the following complete catalog fami
 `WILDERNESS_OBELISK` (60 source rows). Routes using those rows therefore remain `TRANSPORT` /
 `LEGACY_LOCKED`. Hot-air balloons have completed the representative live gate above. The
 generic portal catalog is partially migrated as described above:
-its 12 ambiguous Guthix rows remain legacy-owned. The 286-edge agility/grapple catalog is now
+its 12 ambiguous Guthix rows remained legacy-owned at this historical boundary and were removed on
+2026-09-08 as redundant nondeterministic edges. The 286-edge agility/grapple catalog is now
 split by an exact production-classifier audit. Of 274 `AGILITY_SHORTCUT` edges, 12 conservative
 same-plane direct actions already publish through `ADJACENT_TRANSPORT`, and 248 deterministic,
 item-free, scene-changing object interactions publish through `CATALOG_TRANSITION`. Those 248
@@ -1568,10 +2157,12 @@ The same audit reproduced the day's legacy fallback: a route from Port Phasmatys
 originless `Lumbridge Home Teleport` edge, and that single unsupported edge locked the whole request
 to `processWalk`. That exact spell is now admitted as `SIMPLE_TELEPORT`, receives a bounded
 35-second cast/landing deadline, and remains pending until its directed Lumbridge landing rather
-than being retired by projected raw-route progress. The other ten spell rows are all destination-
-override contracts (eight Teleport to House locations, Watchtower-to-Yanille, and Varrock-to-GE)
-and remain legacy-owned. Policy, delayed-cast retry, remote-retention, production-count, and focused
-navigation tests pass, reducing the headless legacy floor to 1,623 and spell remainder to ten.
+than being retired by projected raw-route progress. The other ten spell rows at that historical
+boundary were destination-override contracts (eight Teleport to House locations,
+Watchtower-to-Yanille, and Varrock-to-GE). The 2026-09-08 exact alternate-destination cutover above
+supersedes that deferral and reduces the spell remainder to zero. Policy, delayed-cast retry,
+remote-retention, production-count, and focused navigation tests passed for the original direct-
+spell slice, reducing its then-current headless legacy floor to 1,623.
 Rebuilt-client acceptance passed at **2026-09-05 01:49 BST** after the strict 30-minute cooldown
 gate became usable. With competing transport networks temporarily disabled, the route from
 `(1884,3481,0)` to `(3221,3218,0)` published exactly one

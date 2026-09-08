@@ -198,7 +198,7 @@ public class NavigationEngineExecutionTest
 	}
 
 	@Test
-	public void registeredOffRouteDestinationTriggersImmediateCategorizedReplan()
+	public void registeredOffRouteDestinationTriesExistingRouteFirst()
 	{
 		startEngineRequest();
 		AtomicInteger commands = new AtomicInteger();
@@ -216,16 +216,14 @@ public class NavigationEngineExecutionTest
 					return true;
 				});
 
-		assertEquals(NavigationDecision.Type.REQUEST_REPLAN, result.getDecision().getType());
+		assertEquals(NavigationDecision.Type.CLICK_TILE, result.getDecision().getType());
 		assertEquals(RecoveryCause.COMMAND_DESTINATION_MISMATCH,
 			result.getDecision().getRecoveryCause());
-		assertEquals(first.getDecision().getTarget(),
-			result.getDecision().getRecoveryExpectedTarget());
-		assertEquals(offRouteDestination,
-			result.getDecision().getRecoveryObservedDestination());
+		assertEquals(first.getDecision().getTarget(), result.getDecision().getTarget());
+		assertEquals("route-rejoin", result.getDecision().getTargetSelection());
 		assertEquals(1, result.getDecision().getRecoveryAttempt());
 		assertEquals(2, result.getDecision().getRecoveryBudget());
-		assertEquals(1, commands.get());
+		assertEquals(2, commands.get());
 	}
 
 	@Test
@@ -477,11 +475,10 @@ public class NavigationEngineExecutionTest
 			observation(3, A, ordinaryPlan(1), true, false)
 				.withMovementDestination(offRouteDestination), target -> true);
 
-		assertEquals(NavigationDecision.Type.REQUEST_REPLAN, result.getDecision().getType());
+		assertEquals(NavigationDecision.Type.CLICK_TILE, result.getDecision().getType());
 		assertEquals(RecoveryCause.COMMAND_DESTINATION_MISMATCH,
 			result.getDecision().getRecoveryCause());
-		assertEquals(offRouteDestination,
-			result.getDecision().getRecoveryObservedDestination());
+		assertEquals("route-rejoin", result.getDecision().getTargetSelection());
 	}
 
 	@Test

@@ -82,6 +82,67 @@ public class TransportFeatureToggleTest
 		assertShadowRows("Fairy ring", "useFairyRings", Set.of(12003, 12094), 2);
 	}
 
+	@Test
+	public void isafdarLogsRespectAgilityToggle() throws Exception
+	{
+		assertShadowRows("Log balance", "useAgilityShortcuts", Set.of(3931, 3932, 3933), 6);
+	}
+
+	@Test
+	public void neitiznotMineBridgeRespectsAgilityToggle() throws Exception
+	{
+		assertShadowRows("Rope bridge", "useAgilityShortcuts", Set.of(21314, 21315), 2);
+	}
+
+	@Test
+	public void auditedOrdinaryAgilityTraversalsRespectToggle() throws Exception
+	{
+		assertShadowRows("Bridge", "useAgilityShortcuts", Set.of(3522), 8);
+		assertShadowRows("Climbing rocks", "useAgilityShortcuts", Set.of(11948, 11949), 14);
+		assertShadowRows("Rocky handholds", "useAgilityShortcuts", Set.of(19846, 19847, 26405), 6);
+	}
+
+	@Test
+	public void meiyerditchCourseTraversalsRespectToggle() throws Exception
+	{
+		assertShadowRows("Floorboards", "useAgilityShortcuts", Set.of(
+			18070, 18071, 18072, 18073, 18089, 18090, 18093, 18094, 18097, 18098,
+			18109, 18110, 18111, 18112, 18113, 18114, 18117, 18118), 18);
+		assertShadowRows("Floor", "useAgilityShortcuts",
+			Set.of(18129, 18130, 18132, 18133, 18135, 18136), 6);
+		assertShadowRows("Floor", "useAgilityShortcuts", Set.of(18122, 18124), 7);
+		assertShadowRows("Rock", "useAgilityShortcuts", Set.of(17958, 17959, 17960), 3);
+		assertShadowRows("Wall rubble", "useAgilityShortcuts", Set.of(18037, 18038), 3);
+		assertShadowRows("Wall", "useAgilityShortcuts", Set.of(18078, 18088), 4);
+		assertShadowRows("Shelf", "useAgilityShortcuts", Set.of(
+			18086, 18087, 18095, 18096, 18105, 18106, 18107, 18108), 8);
+		assertShadowRows("Washing line", "useAgilityShortcuts", Set.of(18099, 18100), 2);
+		assertShadowRows("Barricade", "useAgilityShortcuts", Set.of(18054), 2);
+		assertShadowRows("Trapdoor tunnel", "useAgilityShortcuts", Set.of(18083), 1);
+		assertShadowRows("Tunnel", "useAgilityShortcuts", Set.of(18085), 2);
+		assertShadowRows("Wall", "useAgilityShortcuts", Set.of(39172, 39173), 2);
+	}
+
+	@Test
+	public void revenantPillarsHaveOnlySkillGatedToggleAwareVariants() throws Exception
+	{
+		PathfinderConfig config = config();
+		int found = 0;
+		for (Set<Transport> group : Transport.loadAllFromResources().values())
+		{
+			for (Transport row : group)
+			{
+				if (row.getObjectId() != 31561 && row.getObjectId() != 31562) continue;
+				assertEquals(31561, row.getObjectId());
+				assertEquals(TransportType.AGILITY_SHORTCUT, row.getType());
+				assertTrue(Set.of(65, 75, 89).contains(row.getSkillLevels()[net.runelite.api.Skill.AGILITY.ordinal()]));
+				assertToggle(config, row, "useAgilityShortcuts");
+				found++;
+			}
+		}
+		assertEquals(10, found);
+	}
+
 	private static void assertShadowRows(String name, String toggle, Set<Integer> ids,
 		int expected) throws Exception
 	{

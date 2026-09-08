@@ -100,6 +100,29 @@ public class CatalogTransitionRouteScannerTest
 	}
 
 	@Test
+	public void dwarvenMineTrapdoorWaitsForUndergroundArrival()
+	{
+		CatalogTransitionRouteScanner scanner = new CatalogTransitionRouteScanner();
+		for (int x : new int[]{3018, 3020})
+		{
+			WorldPoint surface = new WorldPoint(x, 3450, 0);
+			WorldPoint underground = new WorldPoint(x, 9850, 0);
+			RouteInteraction pending = new RouteInteraction(1, 0, surface, underground, surface,
+				RouteInteraction.Kind.CATALOG_TRANSITION, RouteInteraction.Status.AVAILABLE,
+				"Climb-down", true, 11867, surface, underground);
+			CatalogTransition trapdoor = new CatalogTransition(null, surface, 11867,
+				"Climb-down", "Climb-down", surface, underground);
+			RouteInteraction next = scanner.observePending(pending, surface, edge -> trapdoor, 13);
+			assertEquals(RouteInteraction.Status.AVAILABLE, next.getStatus());
+			assertEquals("Climb-down", next.getAction());
+			assertEquals(RouteInteraction.Status.CLEARED,
+				scanner.observePending(next, underground, edge -> null, 13).getStatus());
+			assertEquals(RouteInteraction.Status.UNAVAILABLE,
+				scanner.observePending(next, surface, edge -> null, 13).getStatus());
+		}
+	}
+
+	@Test
 	public void ropePreparationCanAdvanceToClimbStage()
 	{
 		RouteInteraction observed = new CatalogTransitionRouteScanner().observePending(
@@ -107,6 +130,23 @@ public class CatalogTransitionRouteScannerTest
 
 		assertEquals(RouteInteraction.Status.AVAILABLE, observed.getStatus());
 		assertEquals("Climb-down", observed.getAction());
+	}
+
+	@Test
+	public void visibilityRingStagesDoNotAcknowledgeArrivalBeforeTheLadderLanding()
+	{
+		CatalogTransitionRouteScanner scanner = new CatalogTransitionRouteScanner();
+		RouteInteraction pending = interaction(CatalogTransitionPolicy.VISIBILITY_RING_OPEN);
+		for (String action : Arrays.asList(CatalogTransitionPolicy.VISIBILITY_RING_WEAR, "Climb-down"))
+		{
+			pending = scanner.observePending(pending, A, edge -> transition(action), 13);
+			assertEquals(RouteInteraction.Status.AVAILABLE, pending.getStatus());
+			assertEquals(action, pending.getAction());
+		}
+		assertEquals(RouteInteraction.Status.UNAVAILABLE,
+			scanner.observePending(pending, A, edge -> null, 13).getStatus());
+		assertEquals(RouteInteraction.Status.CLEARED,
+			scanner.observePending(pending, B, edge -> null, 13).getStatus());
 	}
 
 	@Test
