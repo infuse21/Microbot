@@ -1926,3 +1926,16 @@ object that cannot perform the promised action. Validate every alternative again
 inventory/equipment actions before cutover. The Mythical cape route accepts wearable capes 22114
 and 24855 only; POH trophy 21913 is inert and cannot satisfy the route. This is an item-contract
 correction, not support for mounted-house teleports.
+
+## 103. Freeze every approach to a shared cross-plane entrance
+
+A single physical entrance can be represented by several adjacent approach rows and several
+return-side object tiles. Treat each origin, destination, object ID, action and name combination as
+its own directed contract, even when all rows describe the same cave. Karamja Volcano therefore
+publishes eight exact `Climb-down;Rocks;11441` approaches and four exact
+`Climb;Climbing rope;18969` returns without enabling generic Rocks or Climbing rope objects.
+
+Preserve the requirements of the boundary actually being crossed. The public volcano entrance has
+no item, skill, quest, currency or members gate; the Dragon Slayer restriction belongs deeper on
+the Crandor route and must not be inferred from the wider dungeon. Keep NavigationEngine ownership
+through the plane change and acknowledge only the selected surface or dungeon landing.

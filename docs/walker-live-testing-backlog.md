@@ -21,6 +21,15 @@ additive totals; source rows, generated edges and duplicated approaches must not
 
 ## Latest work versus earlier headless batches
 
+### Karamja Volcano entrance and return transitions - 2026-09-08
+
+- **Headless:** all eight exact surface `Climb-down;Rocks;11441` rows and all four dungeon
+  `Climb;Climbing rope;18969` rows are engine-owned. The immutable route keys retain the selected
+  cross-plane landing and reject unrelated objects or newly added requirements.
+- **Live pending:** traverse one surface approach and one dungeon return, verify exact landing,
+  normal recovery if combat or external movement interrupts the dungeon side, and no legacy
+  handoff. This tests only the public volcano boundary, not the deeper Dragon Slayer/Crandor route.
+
 ### Chronicle and Jaltevas charged-container teleports - 2026-09-08
 
 - **Headless:** Chronicle now has exact inventory/worn `Teleport`, a corrected Wilderness ceiling

@@ -21,6 +21,22 @@ headless batches, outstanding branches of representative live passes, and contra
 implementation. As of 2026-09-06 the user requests headless-first progress; deferred physical tests
 remain open rather than blocking each batch or being silently marked complete.
 
+## Karamja Volcano entrance and return transitions - 2026-09-08
+
+All 12 exact Karamja Volcano surface/dungeon transitions now use catalogue/NavigationEngine
+ownership: eight `Climb-down;Rocks;11441` approaches and four `Climb;Climbing rope;18969`
+returns. OSRS Wiki MCP and packaged-route verification confirm that this is the public volcano
+entrance, with no item, skill, quest, currency or members requirement on these entrance objects;
+the Dragon Slayer restriction applies deeper toward Crandor and is not copied onto this boundary.
+
+The frozen directed manifest prevents the generic Rocks or Climbing rope names from admitting
+unrelated routes. Each interaction remains pending through the cross-plane transition and clears
+only at its selected surface or dungeon landing. Focused policy, scanner, route-publication and
+classifier tests pass. The classifier floor is now **1,042 legacy entries**: 676 ordinary
+`TRANSPORT`, 10 `AGILITY_SHORTCUT`, 38 `TELEPORTATION_ITEM` and 318 `WILDERNESS_OBELISK` entries.
+Representative down/up crossings and recovery from aggressive dungeon-side interruption remain
+live-deferred, so Phase 6 remains open.
+
 ## Chronicle and Jaltevas charged-container teleports - 2026-09-08
 
 The Chronicle and final Pharaoh's sceptre destination now use the exact item-teleport/

@@ -133,6 +133,29 @@ public class CatalogTransitionPolicyTest
 	}
 
 	@Test
+	public void acceptsAllExactKaramjaVolcanoEntryAndReturnRows()
+	{
+		java.util.List<Transport> rows = Transport.loadAllFromResources().values().stream()
+			.flatMap(java.util.Collection::stream)
+			.filter(row -> row.getObjectId() == 11441 || row.getObjectId() == 18969)
+			.collect(java.util.stream.Collectors.toList());
+		assertEquals(12, rows.size());
+		assertEquals(8, rows.stream().filter(row -> row.getObjectId() == 11441).count());
+		assertEquals(4, rows.stream().filter(row -> row.getObjectId() == 18969).count());
+		assertTrue(rows.stream().allMatch(CatalogTransitionPolicy::isKaramjaVolcanoTransition));
+		assertTrue(rows.stream().allMatch(CatalogTransitionPolicy::isEligible));
+		assertTrue(rows.stream().allMatch(row -> !row.isMembers()
+			&& !row.isConsumable() && row.getItemIdRequirements().isEmpty()
+			&& row.getCurrencyAmount() == 0 && !row.isQuestLocked()
+			&& row.getVarbits().isEmpty() && row.getVarplayers().isEmpty()));
+
+		Transport entrance = rows.stream().filter(row -> row.getObjectId() == 11441)
+			.findFirst().orElseThrow(AssertionError::new);
+		entrance.setItemIdRequirements(Set.of(Set.of(954)));
+		assertFalse(CatalogTransitionPolicy.isKaramjaVolcanoTransition(entrance));
+	}
+
+	@Test
 	public void acceptsOnlyExactItemFreeOrdinaryDirectContracts()
 	{
 		assertTrue(CatalogTransitionPolicy.isEligible(transport(SURFACE,

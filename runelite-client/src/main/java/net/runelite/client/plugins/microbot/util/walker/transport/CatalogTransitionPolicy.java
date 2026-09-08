@@ -341,6 +341,19 @@ public final class CatalogTransitionPolicy
 		"2436,5121,0->2436,5119,0|30266|pass|hot vent door",
 		"2436,5119,0->2436,5121,0|30266|pass|hot vent door",
 		"2399,5177,0->2399,5175,0|30266|pass|hot vent door");
+	private static final Set<String> KARAMJA_VOLCANO_ROUTES = Set.of(
+		"2855,3169,0->2855,9569,0|11441|climbdown|rocks",
+		"2856,3167,0->2856,9567,0|11441|climbdown|rocks",
+		"2855,3168,0->2855,9568,0|11441|climbdown|rocks",
+		"2857,3167,0->2857,9567,0|11441|climbdown|rocks",
+		"2858,3168,0->2858,9568,0|11441|climbdown|rocks",
+		"2858,3169,0->2858,9569,0|11441|climbdown|rocks",
+		"2857,3170,0->2857,9570,0|11441|climbdown|rocks",
+		"2856,3170,0->2856,9570,0|11441|climbdown|rocks",
+		"2855,9569,0->2856,3167,0|18969|climb|climbing rope",
+		"2856,9568,0->2856,3167,0|18969|climb|climbing rope",
+		"2856,9570,0->2856,3167,0|18969|climb|climbing rope",
+		"2857,9569,0->2856,3167,0|18969|climb|climbing rope");
 	private static final Set<Integer> MOR_UL_REK_CAPE_IDS = Set.of(6570, 13329, 24134, 24223);
 	private static final Set<Set<Integer>> MOR_UL_REK_CAPES = Set.of(MOR_UL_REK_CAPE_IDS);
 	private static final int GUARDIANS_OF_THE_RIFT_BARRIER_ID = 43700;
@@ -629,6 +642,7 @@ public final class CatalogTransitionPolicy
 			|| TEMPLE_OF_THE_EYE_PORTAL_ROUTES.contains(routeKey(transport, action, name))
 			|| isGuardiansOfTheRiftBarrier(transport, action, name)
 			|| isMorUlRekHotVentDoor(transport)
+			|| isKaramjaVolcanoTransition(transport)
 			|| "pass".equals(action) && "barrier".equals(name)
 				&& transport.getObjectId() == 32153
 			|| "enter".equals(action) && "dense forest".equals(name)
@@ -681,6 +695,22 @@ public final class CatalogTransitionPolicy
 	static Set<Integer> morUlRekCapeIds()
 	{
 		return MOR_UL_REK_CAPE_IDS;
+	}
+
+	static boolean isKaramjaVolcanoTransition(Transport transport)
+	{
+		if (transport == null || transport.getType() != TransportType.TRANSPORT
+			|| transport.getOrigin() == null || transport.getDestination() == null
+			|| transport.isConsumable() || transport.getCurrencyAmount() != 0
+			|| transport.isQuestLocked() || !transport.getVarbits().isEmpty()
+			|| !transport.getVarplayers().isEmpty() || transport.isMembers()
+			|| !transport.getItemIdRequirements().isEmpty()
+			|| java.util.Arrays.stream(transport.getSkillLevels()).anyMatch(level -> level != 0))
+		{
+			return false;
+		}
+		return KARAMJA_VOLCANO_ROUTES.contains(routeKey(transport,
+			normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
 	}
 
 	static boolean isFremennikSurfaceBridge(Transport transport)
