@@ -1,77 +1,121 @@
 package net.runelite.client.plugins.microbot.util.walker.transport;
 
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+import net.runelite.api.Quest;
+import net.runelite.api.QuestState;
+import net.runelite.api.Skill;
+import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.shortestpath.Transport;
+import net.runelite.client.plugins.microbot.shortestpath.TransportVarbit;
+import net.runelite.client.plugins.microbot.util.walker.navigation.RouteInteraction;
+import net.runelite.client.plugins.microbot.util.walker.transport.model.CatalogTransition;
 import org.junit.Test;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
-import java.util.Map;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class DarkmeyerWallSourceTest
 {
-	private static final String TRANSPORT_RESOURCE =
-		"/net/runelite/client/plugins/microbot/shortestpath/transports.tsv";
+	@Test
+	public void sixCanonicalRowsRequireBothPermanentRopes()
+	{
+		List<Transport> rows = rows();
+		assertEquals(6, rows.size());
+		assertEquals(Set.of(
+			"3667 3375 0>3670 3375 0:39542",
+			"3670 3375 0>3667 3375 0:39542",
+			"3670 3375 0>3673 3375 0:39541",
+			"3673 3375 0>3670 3375 0:39541",
+			"3672 3376 0>3670 3375 0:39541",
+			"3672 3374 0>3670 3375 0:39541"),
+			rows.stream().map(DarkmeyerWallSourceTest::signature).collect(Collectors.toSet()));
+		for (Transport row : rows)
+		{
+			assertTrue(row.isMembers());
+			assertEquals(0, row.getDuration());
+			assertTrue(row.getItemIdRequirements().isEmpty());
+			assertTrue(row.getVarplayers().isEmpty());
+			assertEquals(Map.of(Quest.SINS_OF_THE_FATHER, QuestState.FINISHED),
+				row.getQuests());
+			assertEquals(63, row.getSkillLevels()[Skill.AGILITY.ordinal()]);
+			assertEquals(63, java.util.Arrays.stream(row.getSkillLevels()).sum());
+			assertEquals(Set.of("10449=1", "10450=1"), row.getVarbits().stream()
+				.map(DarkmeyerWallSourceTest::varbit).collect(Collectors.toSet()));
+			assertTrue(CatalogTransitionPolicy.isDarkmeyerInstalledWall(row));
+			assertTrue(CatalogTransitionPolicy.isEligible(row));
+		}
+	}
 
 	@Test
-	public void unencodedPermanentRopeWallsAreNotLoaded()
+	public void installedObjectTransformsAreMappedToTheirCatalogWalls()
 	{
-		assertTrue(Transport.loadAllFromResources().values().stream()
+		for (Transport row : rows())
+		{
+			int installed = row.getObjectId() == 39541 ? 39166 : 39168;
+			int wrong = row.getObjectId() == 39541 ? 39168 : 39166;
+			assertTrue(CatalogTransitionPolicy.matchesDarkmeyerInstalledObject(row, installed));
+			assertFalse(CatalogTransitionPolicy.matchesDarkmeyerInstalledObject(row, wrong));
+		}
+	}
+
+	@Test
+	public void everyApproachRequiresItsExactDirectedLanding()
+	{
+		CatalogTransitionRouteScanner scanner = new CatalogTransitionRouteScanner();
+		for (Transport row : rows())
+		{
+			RouteInteraction pending = new RouteInteraction(1, 0, row.getOrigin(),
+				row.getDestination(), row.getOrigin(), RouteInteraction.Kind.CATALOG_TRANSITION,
+				RouteInteraction.Status.AVAILABLE, row.getAction(), true, row.getObjectId(),
+				row.getOrigin(), row.getDestination());
+			CatalogTransition transition = new CatalogTransition(null, row.getOrigin(),
+				row.getObjectId(), row.getAction(), row.getAction(), row.getOrigin(),
+				row.getDestination());
+			WorldPoint near = new WorldPoint(row.getDestination().getX() + 1,
+				row.getDestination().getY(), row.getDestination().getPlane());
+			assertEquals(RouteInteraction.Status.AVAILABLE,
+				scanner.observePending(pending, near, edge -> transition, 13).getStatus());
+			assertEquals(RouteInteraction.Status.CLEARED,
+				scanner.observePending(pending, row.getDestination(), edge -> transition, 13)
+					.getStatus());
+		}
+	}
+
+	@Test
+	public void missingInstalledRopeGateIsRejected()
+	{
+		Transport row = rows().get(0);
+		row.getVarbits().removeIf(requirement -> requirement.getVarbitId() == 10450);
+		assertFalse(CatalogTransitionPolicy.isDarkmeyerInstalledWall(row));
+		assertFalse(CatalogTransitionPolicy.isEligible(row));
+	}
+
+	private static List<Transport> rows()
+	{
+		return Transport.loadAllFromResources().values().stream()
 			.flatMap(java.util.Collection::stream)
-			.noneMatch(row -> row.getObjectId() == 39541 || row.getObjectId() == 39542));
+			.filter(row -> row.getObjectId() == 39541 || row.getObjectId() == 39542)
+			.collect(Collectors.toList());
 	}
 
-	@Test
-	public void allEightUngatedRowsRemainAsExactSourceEvidence()
-		throws IOException
+	private static String signature(Transport row)
 	{
-		Map<String, Long> expected = Map.of(
-			"3667 3375 0>3670 3375 0:39542", 1L,
-			"3670 3375 0>3667 3375 0:39542", 1L,
-			"3670 3375 0>3673 3375 0:39541", 1L,
-			"3673 3375 0>3670 3375 0:39541", 1L,
-			"3672 3376 0>3670 3375 0:39541", 2L,
-			"3672 3374 0>3670 3375 0:39541", 2L);
-		InputStream resource = DarkmeyerWallSourceTest.class.getResourceAsStream(TRANSPORT_RESOURCE);
-		assertNotNull(resource);
-		try (BufferedReader reader = new BufferedReader(new InputStreamReader(resource,
-			StandardCharsets.UTF_8)))
-		{
-			Map<String, Long> disabled = reader.lines()
-				.filter(line -> line.startsWith("# ")
-					&& (line.contains(";39541") || line.contains(";39542")))
-				.map(line -> line.substring(2).split("\\t", -1))
-				.peek(columns -> assertTrue(noRequirements(columns)))
-				.map(DarkmeyerWallSourceTest::sourceSignature)
-				.collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
-			assertEquals(expected, disabled);
-			assertEquals(8L, disabled.values().stream().mapToLong(Long::longValue).sum());
-		}
+		return point(row.getOrigin()) + ">" + point(row.getDestination()) + ":"
+			+ row.getObjectId();
 	}
 
-	private static boolean noRequirements(String[] columns)
+	private static String point(WorldPoint point)
 	{
-		for (int index = 3; index <= 10; index++)
-		{
-			if (index < columns.length && !columns[index].trim().isEmpty())
-			{
-				return false;
-			}
-		}
-		return true;
+		return point.getX() + " " + point.getY() + " " + point.getPlane();
 	}
 
-	private static String sourceSignature(String[] columns)
+	private static String varbit(TransportVarbit requirement)
 	{
-		String objectId = columns[2].substring(columns[2].lastIndexOf(';') + 1);
-		return columns[0] + ">" + columns[1] + ":" + objectId;
+		assertEquals(TransportVarbit.Operator.EQUAL, requirement.getOperator());
+		return requirement.getVarbitId() + "=" + requirement.getValue();
 	}
 }

@@ -23,9 +23,9 @@ remain open rather than blocking each batch or being silently marked complete.
 
 ## Active-graph classification closure and resolver hardening - 2026-09-09
 
-The current production resource set loads **6,056 transports** and has no active route edge left
+The current production resource set loads **6,061 transport origins** and has no active route edge left
 classified as the generic legacy `TRANSPORT` kind. This closes the active-graph classification
-boundary only: a source audit still identifies **163 genuine disabled traversals** whose quest,
+boundary only: a source audit still identifies **157 genuine disabled traversals** whose quest,
 equipment, safety, payment, failure or staged-interaction contracts remain implementation work.
 Phase 6 therefore remains open, and Phase 7 deletion has not started.
 
@@ -78,6 +78,20 @@ on the exact rocks object, retaining ownership until the exact opposite tile is 
 edges plan one plank rather than consuming one per crossing. Both completed-quest ropeswing rows
 are also restored with 40 Agility and permanent-installation varbit `2147=1`; first-time quest rope
 installation remains outside walker ownership. Both obstacle families remain live-deferred.
+
+Four failure-prone but source-side-safe shortcuts are restored: both Lighthouse broken-bridge
+directions and both Karamja wooden-log directions. Failed attempts leave the player on the origin
+side, so NavigationEngine retains the pending edge and retries until the exact destination is
+observed. Six Regicide stick crossings similarly retain ownership after an 8-damage knockback, but
+their live scene resolver rechecks that current Hitpoints exceed 8 before every dispatch. The four
+Regicide leaf rows are source-disabled because failure enters a spike pit whose same-side climb-out
+is not yet engine-owned.
+
+Six unique post-quest Darkmeyer wall directions are restored with 63 Agility, completed Sins of the
+Father and both permanent-rope varbits (`10449=1`, `10450=1`). The catalogue's construction-state
+objects `39541`/`39542` are matched only to their corresponding installed live transforms
+`39166`/`39168`; no long rope is banked or consumed during traversal. Duplicate source rows were
+removed, exact landing is required, and physical acceptance remains deferred.
 
 The complete focused Phase 6 banking, League, transport, navigation, pathfinder, POH, collision and
 minimap suite passes, as do main and test Checkstyle. Existing deprecation warnings are unrelated.

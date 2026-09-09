@@ -23,9 +23,9 @@ additive totals; source rows, generated edges and duplicated approaches must not
 
 ### Active graph, instance scene boundary and large agility objects - 2026-09-09
 
-- **Headless:** all 6,056 currently loaded transports now classify into an explicit
+- **Headless:** all 6,061 currently loaded transport origins now classify into an explicit
   NavigationEngine-owned family; no active edge remains generic `TRANSPORT`. This does not include
-  the 163 genuine disabled traversals that still need complete protocols. Shared two-way instance
+  the 157 genuine disabled traversals that still need complete protocols. Shared two-way instance
   normalization now covers ordinary doors, catalog transitions, adjacent transports and exact
   mineable/object probes; synthetic chunk mappings test live-to-template and template-to-live.
 - **Live pending:** in a rebuilt client, repeat a GOTR/instanced layout where a closed ordinary door
@@ -61,6 +61,15 @@ additive totals; source rows, generated edges and duplicated approaches must not
 - **New Royal Trouble ropeswings:** both post-quest directions require 40 Agility and permanent
   installation varbit `2147=1`, and complete only at their exact directed landing. Live-test each
   direction; first-time rope installation is quest-helper work and is not claimed by the walker.
+- **New failure-retry batch:** both Lighthouse broken-bridge and Karamja wooden-log directions
+  remain pending after a source-side failure and clear only at the exact directed landing. Six
+  Regicide stick directions additionally require current HP above their 8-damage maximum before
+  every attempt. The four leaf-pit rows are implementation-pending because their failure recovery
+  is not owned. Live-test one failure and success for each restored family in prepared conditions.
+- **New Darkmeyer wall batch:** six unique directions require 63 Agility, Sins of the Father
+  completion and both installed-rope varbits. The walker matches only the corresponding installed
+  live wall transforms, never withdraws long rope, and requires exact landing. Live-test the two
+  wall segments and at least one alternate eastern approach after permanent setup.
 
 ### Steps, access routes and audited shortcut cleanup - 2026-09-08
 

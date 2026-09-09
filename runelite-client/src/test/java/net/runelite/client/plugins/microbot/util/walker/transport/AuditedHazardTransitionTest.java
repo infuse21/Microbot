@@ -11,6 +11,8 @@ import net.runelite.client.plugins.microbot.util.walker.navigation.RouteInteract
 import net.runelite.client.plugins.microbot.util.walker.transport.model.CatalogTransition;
 import org.junit.Test;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -28,7 +30,7 @@ public class AuditedHazardTransitionTest
 	public void exactRowsHaveCompleteDirectedRequirements()
 	{
 		List<Transport> rows = rows();
-		assertEquals(16, rows.size());
+		assertEquals(12, rows.size());
 		assertTrue(rows.stream().allMatch(Transport::isMembers));
 		assertTrue(rows.stream().allMatch(CatalogTransitionPolicy::isAuditedHazardTransition));
 		assertTrue(rows.stream().allMatch(CatalogTransitionPolicy::isEligible));
@@ -46,14 +48,12 @@ public class AuditedHazardTransitionTest
 			deadTree.getQuests().get(Quest.WATERFALL_QUEST));
 
 		assertEquals(6, count(rows, 3922));
-		assertEquals(4, count(rows, 3925));
-		for (Transport trap : rows.stream().filter(row ->
-			row.getObjectId() == 3922 || row.getObjectId() == 3925)
+		assertEquals(0, count(rows, 3925));
+		for (Transport trap : rows.stream().filter(row -> row.getObjectId() == 3922)
 			.collect(Collectors.toList()))
 		{
 			assertEquals(QuestState.IN_PROGRESS, trap.getQuests().get(Quest.REGICIDE));
-			assertTrue(onlySkills(trap, Map.of(Skill.AGILITY, 1, Skill.HITPOINTS,
-				trap.getObjectId() == 3922 ? 9 : 19)));
+			assertTrue(onlySkills(trap, Map.of(Skill.AGILITY, 1, Skill.HITPOINTS, 9)));
 		}
 
 		Transport tombRocks = only(rows, 2236);
@@ -71,6 +71,27 @@ public class AuditedHazardTransitionTest
 			assertEquals(1, gate.getValue());
 			assertEquals(TransportVarbit.Operator.GREATER_THAN, gate.getOperator());
 		}
+	}
+
+	@Test
+	public void regicideStickRetryRequiresSurvivingAnotherMaximumHit()
+	{
+		Transport sticks = only(rows(), 3922);
+		assertTrue(Rs2CatalogTransitionScene.hasSafeCurrentHitpoints(sticks, 9));
+		assertFalse(Rs2CatalogTransitionScene.hasSafeCurrentHitpoints(sticks, 8));
+		assertFalse(Rs2CatalogTransitionScene.hasSafeCurrentHitpoints(sticks, 1));
+	}
+
+	@Test
+	public void leafPitRowsRemainDisabledUntilRecoveryIsOwned() throws IOException
+	{
+		String source = new String(getClass().getResourceAsStream(
+			"/net/runelite/client/plugins/microbot/shortestpath/transports.tsv").readAllBytes(),
+			StandardCharsets.UTF_8);
+		assertTrue(source.contains("# 2274 3172 0\t2274 3176 0\tJump;Leaves;3925"));
+		assertTrue(source.contains("# 2274 3176 0\t2274 3172 0\tJump;Leaves;3925"));
+		assertTrue(source.contains("# 2267 3201 0\t2267 3205 0\tJump;Leaves;3925"));
+		assertTrue(source.contains("# 2267 3205 0\t2267 3201 0\tJump;Leaves;3925"));
 	}
 
 	@Test

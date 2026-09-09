@@ -2197,13 +2197,13 @@
 3611 3323 1	3611 3327 0	Climb-down;Staircase;39492									
 3599 3317 0	3603 3317 1	Climb-up;Staircase;39491									
 3603 3317 1	3599 3317 0	Climb-down;Staircase;39492									
-# Disabled: permanent two-long-rope Darkmeyer wall setup is not encoded.
-# 3667 3375 0	3670 3375 0	Climb;Wall;39542
-# 3670 3375 0	3667 3375 0	Climb;Wall;39542
-# 3670 3375 0	3673 3375 0	Climb;Wall;39541
-# 3673 3375 0	3670 3375 0	Climb;Wall;39541
-# 3672 3376 0	3670 3375 0	Climb;Wall;39541
-# 3672 3374 0	3670 3375 0	Climb;Wall;39541
+# Permanent wall shortcuts; quest completion and both installed-rope varbits are required.
+3667 3375 0	3670 3375 0	Climb;Wall;39542	63 Agility			Sins of the Father=FINISHED	10449=1;10450=1		Y	0
+3670 3375 0	3667 3375 0	Climb;Wall;39542	63 Agility			Sins of the Father=FINISHED	10449=1;10450=1		Y	0
+3670 3375 0	3673 3375 0	Climb;Wall;39541	63 Agility			Sins of the Father=FINISHED	10449=1;10450=1		Y	0
+3673 3375 0	3670 3375 0	Climb;Wall;39541	63 Agility			Sins of the Father=FINISHED	10449=1;10450=1		Y	0
+3672 3376 0	3670 3375 0	Climb;Wall;39541	63 Agility			Sins of the Father=FINISHED	10449=1;10450=1		Y	0
+3672 3374 0	3670 3375 0	Climb;Wall;39541	63 Agility			Sins of the Father=FINISHED	10449=1;10450=1		Y	0
 											
 # The Hollows											
 # The Hollows wall opens and walks the player through after Search; require post-quest access.
@@ -2280,8 +2280,6 @@
 3809 9801 1	3809 9797 2	Climb-up;Stairs;37835									
 											
 # Ectofunctus											
-# 3672 3376 0	3670 3375 0	Climb;Wall;39541
-# 3672 3374 0	3670 3375 0	Climb;Wall;39541
 3666 3517 0	3666 3522 1	Climb-up;Staircase;16646									
 3666 3522 1	3666 3517 0	Climb-down;Staircase;16647									
 3667 3517 0	3667 3522 1	Climb-up;Staircase;16646									
@@ -5014,9 +5012,9 @@
 2234 3149 0	2231 3149 0	Enter;Dense forest;3937									
 2237 3149 0	2234 3149 0	Enter;Dense forest;3938									
 2240 3149 0	2237 3149 0	Enter;Dense forest;3939									
-# Leaf and stick failures remain pending; current Hitpoints must exceed their documented maximum hit.
-2274 3172 0	2274 3176 0	Jump;Leaves;3925	1 Agility;19 Hitpoints			Regicide=IN_PROGRESS			Y
-2274 3176 0	2274 3172 0	Jump;Leaves;3925	1 Agility;19 Hitpoints			Regicide=IN_PROGRESS			Y
+# Leaf failure enters a spike pit; keep disabled until the same-side climb-out is engine-owned.
+# 2274 3172 0	2274 3176 0	Jump;Leaves;3925	1 Agility;19 Hitpoints			Regicide=IN_PROGRESS			Y
+# 2274 3176 0	2274 3172 0	Jump;Leaves;3925	1 Agility;19 Hitpoints			Regicide=IN_PROGRESS			Y
 2234 3181 0	2238 3181 0	Pass;Sticks;3922	1 Agility;9 Hitpoints			Regicide=IN_PROGRESS			Y
 2238 3181 0	2234 3181 0	Pass;Sticks;3922	1 Agility;9 Hitpoints			Regicide=IN_PROGRESS			Y
 2238 3219 0	2235 3219 0	Enter;Dense forest;3939									
@@ -5033,8 +5031,8 @@
 2271 3192 0	2274 3192 0	Enter;Dense forest;3937									
 2268 3192 0	2271 3192 0	Enter;Dense forest;3939									
 2265 3192 0	2268 3192 0	Enter;Dense forest;3938									
-2267 3201 0	2267 3205 0	Jump;Leaves;3925	1 Agility;19 Hitpoints			Regicide=IN_PROGRESS			Y
-2267 3205 0	2267 3201 0	Jump;Leaves;3925	1 Agility;19 Hitpoints			Regicide=IN_PROGRESS			Y
+# 2267 3201 0	2267 3205 0	Jump;Leaves;3925	1 Agility;19 Hitpoints			Regicide=IN_PROGRESS			Y
+# 2267 3205 0	2267 3201 0	Jump;Leaves;3925	1 Agility;19 Hitpoints			Regicide=IN_PROGRESS			Y
 2284 3188 0	2287 3188 0	Step-over;Tripwire;3921									
 2287 3188 0	2284 3188 0	Step-over;Tripwire;3921									
 2306 3194 0	2304 3194 0	Pass;Tree;8742				Mourning's End Part I=IN_PROGRESS		517>1	Y	5

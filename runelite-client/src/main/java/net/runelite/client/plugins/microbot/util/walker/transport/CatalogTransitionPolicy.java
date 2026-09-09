@@ -357,10 +357,6 @@ public final class CatalogTransitionPolicy
 		"2238,3181,0->2234,3181,0|3922|pass|sticks",
 		"2295,3215,0->2295,3217,0|3922|pass|sticks",
 		"2295,3217,0->2295,3215,0|3922|pass|sticks",
-		"2274,3172,0->2274,3176,0|3925|jump|leaves",
-		"2274,3176,0->2274,3172,0|3925|jump|leaves",
-		"2267,3201,0->2267,3205,0|3925|jump|leaves",
-		"2267,3205,0->2267,3201,0|3925|jump|leaves",
 		"2764,9376,0->2765,2976,0|2236|climb|climbing rocks");
 	private static final Set<String> ISAFDAR_CROSSINGS = Set.of(
 		"2215,3156,0->2215,3153,0|3921|stepover|tripwire",
@@ -973,6 +969,13 @@ public final class CatalogTransitionPolicy
 		"2596,3608,0->2598,3608,0|4615|cross|broken bridge",
 		"2910,3049,0->2906,3049,0|23644|cross|a wooden log",
 		"2906,3049,0->2910,3049,0|23644|cross|a wooden log");
+	private static final Set<String> DARKMEYER_INSTALLED_WALL_ROUTES = Set.of(
+		"3667,3375,0->3670,3375,0|39542|climb|wall",
+		"3670,3375,0->3667,3375,0|39542|climb|wall",
+		"3670,3375,0->3673,3375,0|39541|climb|wall",
+		"3673,3375,0->3670,3375,0|39541|climb|wall",
+		"3672,3376,0->3670,3375,0|39541|climb|wall",
+		"3672,3374,0->3670,3375,0|39541|climb|wall");
 
 	private CatalogTransitionPolicy()
 	{
@@ -1014,7 +1017,8 @@ public final class CatalogTransitionPolicy
 			|| isHauntedMineStairsOrLift(transport) || isGuardedProtocolRoute(transport)
 			|| isGodWarsBoulder(transport) || isSaradominRopeDescent(transport)
 			|| isIcePathGate(transport) || isRoyalTroublePlankCrossing(transport)
-			|| isRoyalTroubleRopeswing(transport) || isFailureRetryShortcut(transport))
+			|| isRoyalTroubleRopeswing(transport) || isFailureRetryShortcut(transport)
+			|| isDarkmeyerInstalledWall(transport))
 		{
 			return true;
 		}
@@ -2009,6 +2013,49 @@ public final class CatalogTransitionPolicy
 		return objectId == 4615 || objectId == 4616 || objectId == 23644;
 	}
 
+	static boolean isDarkmeyerInstalledWall(Transport transport)
+	{
+		return transport != null && transport.getType() == TransportType.TRANSPORT
+			&& transport.getOrigin() != null && transport.getDestination() != null
+			&& transport.isMembers() && !transport.isConsumable() && transport.getDuration() == 0
+			&& transport.getCurrencyAmount() == 0 && transport.getItemIdRequirements().isEmpty()
+			&& transport.getQuests().equals(Map.of(Quest.SINS_OF_THE_FATHER,
+				QuestState.FINISHED))
+			&& transport.getVarplayers().isEmpty() && hasDarkmeyerWallVarbits(transport)
+			&& hasOnlySkillRequirement(transport, net.runelite.api.Skill.AGILITY, 63)
+			&& DARKMEYER_INSTALLED_WALL_ROUTES.contains(routeKey(transport,
+				normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
+	}
+
+	static boolean isDarkmeyerInstalledWallObject(int objectId)
+	{
+		return objectId == 39541 || objectId == 39542;
+	}
+
+	static boolean matchesDarkmeyerInstalledObject(Transport transport, int liveObjectId)
+	{
+		if (!isDarkmeyerInstalledWall(transport))
+		{
+			return false;
+		}
+		return transport.getObjectId() == 39541 && liveObjectId == 39166
+			|| transport.getObjectId() == 39542 && liveObjectId == 39168;
+	}
+
+	private static boolean hasDarkmeyerWallVarbits(Transport transport)
+	{
+		if (transport.getVarbits().size() != 2)
+		{
+			return false;
+		}
+		return transport.getVarbits().stream().anyMatch(requirement ->
+			requirement.getVarbitId() == 10449 && requirement.getValue() == 1
+				&& requirement.getOperator() == TransportVarbit.Operator.EQUAL)
+			&& transport.getVarbits().stream().anyMatch(requirement ->
+				requirement.getVarbitId() == 10450 && requirement.getValue() == 1
+				&& requirement.getOperator() == TransportVarbit.Operator.EQUAL);
+	}
+
 	static boolean isGhostShipRockJump(Transport transport)
 	{
 		return transport != null && transport.getObjectId() == 16115
@@ -2161,7 +2208,7 @@ public final class CatalogTransitionPolicy
 	{
 		boolean agilityShadow = transport != null
 			&& transport.getType() == TransportType.AGILITY_SHORTCUT
-			&& Set.of(2234, 2236, 3922, 3925).contains(transport.getObjectId());
+			&& Set.of(2234, 2236, 3922).contains(transport.getObjectId());
 		if (transport == null
 			|| (transport.getType() != TransportType.TRANSPORT && !agilityShadow)
 			|| transport.getOrigin() == null || transport.getDestination() == null
@@ -2193,13 +2240,12 @@ public final class CatalogTransitionPolicy
 					QuestState.IN_PROGRESS))
 				&& hasOnlySkill(transport, net.runelite.api.Skill.HITPOINTS, 10);
 		}
-		if (transport.getObjectId() == 3922 || transport.getObjectId() == 3925)
+		if (transport.getObjectId() == 3922)
 		{
-			int hitpoints = transport.getObjectId() == 3922 ? 9 : 19;
 			return transport.getDuration() == 0 && transport.getVarbits().isEmpty()
 				&& transport.getQuests().equals(Map.of(Quest.REGICIDE, QuestState.IN_PROGRESS))
 				&& hasOnlySkills(transport, Map.of(net.runelite.api.Skill.AGILITY, 1,
-					net.runelite.api.Skill.HITPOINTS, hitpoints));
+					net.runelite.api.Skill.HITPOINTS, 9));
 		}
 		if (transport.getObjectId() == 2236)
 		{
@@ -2217,7 +2263,7 @@ public final class CatalogTransitionPolicy
 	static boolean isAuditedHazardObject(int objectId)
 	{
 		return objectId == 412 || objectId == 2020 || objectId == 2234 || objectId == 2236
-			|| objectId == 25274 || objectId == 3922 || objectId == 3925;
+			|| objectId == 25274 || objectId == 3922;
 	}
 
 	static boolean isIsafdarCrossing(Transport transport)

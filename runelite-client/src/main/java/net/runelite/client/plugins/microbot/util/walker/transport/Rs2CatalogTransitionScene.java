@@ -3,6 +3,7 @@ package net.runelite.client.plugins.microbot.util.walker.transport;
 import net.runelite.api.ItemID;
 import net.runelite.api.NPCComposition;
 import net.runelite.api.ObjectComposition;
+import net.runelite.api.Skill;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.widgets.ComponentID;
 import net.runelite.api.widgets.Widget;
@@ -158,6 +159,11 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 
 	private static CatalogTransition findSceneTransitionOnClientThread(Transport transport)
 	{
+		if (!hasSafeCurrentHitpoints(transport,
+			Microbot.getClient().getBoostedSkillLevel(Skill.HITPOINTS)))
+		{
+			return null;
+		}
 		if (CatalogTransitionPolicy.isGhostShipRockJump(transport)
 			&& !CatalogTransitionPolicy.hasGhostShipRunEnergy(Microbot.getClient().getEnergy()))
 		{
@@ -172,6 +178,7 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 		Rs2TileObjectModel direct = candidates.stream()
 			.filter(candidate -> !(floorboardJump || tarnsJump || CatalogTransitionPolicy.isShortAgilityCrossing(transport)
 				|| CatalogTransitionPolicy.isIsafdarCrossing(transport)
+				|| CatalogTransitionPolicy.isDarkmeyerInstalledWall(transport)
 				|| CatalogTransitionPolicy.isAuditedHazardTransition(transport)
 				|| CatalogTransitionPolicy.isFremennikSurfaceBridge(transport)
 				|| CatalogTransitionPolicy.isAuditedAgilityTraversal(transport)
@@ -197,6 +204,8 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 			.filter(candidate -> Rs2SceneLocation.templateLocation(candidate).getPlane()
 				== transport.getOrigin().getPlane())
 			.filter(candidate -> candidate.getId() == transport.getObjectId()
+				|| CatalogTransitionPolicy.matchesDarkmeyerInstalledObject(transport,
+					candidate.getId())
 				|| permitsCatalogIdentityFallback(transport)
 					&& matchesCatalogIdentity(candidate, transport))
 			.min(Comparator.comparingInt(candidate ->
@@ -241,6 +250,11 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 				Rs2SceneLocation.templateLocation(candidate).distanceTo2D(transport.getOrigin())))
 			.orElse(null);
 		return closed == null ? null : transition(closed, transport, "Open", false);
+	}
+
+	static boolean hasSafeCurrentHitpoints(Transport transport, int currentHitpoints)
+	{
+		return transport == null || transport.getObjectId() != 3922 || currentHitpoints > 8;
 	}
 
 	private static List<Rs2TileObjectModel> sceneCandidates(Transport transport, boolean pohPortal)
