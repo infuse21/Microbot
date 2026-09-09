@@ -1765,16 +1765,24 @@ public class PathfinderConfig {
     private boolean hasRequiredItems(Transport transport) {
         if (requiresChronicle(transport)) return hasChronicleCharges();
 
+		Set<Integer> additional = TransportRequirementPolicy.additionalReusableItemIds(transport);
         if (refreshAvailableItemIds != null) {
-            return TransportRequirementPolicy.itemIdRequirements(transport)
+			boolean primary = TransportRequirementPolicy.itemIdRequirements(transport)
                     .stream()
                     .flatMap(Collection::stream)
                     .anyMatch(refreshAvailableItemIds::contains);
+			return primary && (additional.isEmpty()
+					|| additional.stream().anyMatch(refreshAvailableItemIds::contains));
         }
-        return TransportRequirementPolicy.itemIdRequirements(transport)
+		boolean primary = TransportRequirementPolicy.itemIdRequirements(transport)
                 .stream()
                 .flatMap(Collection::stream)
                 .anyMatch(itemId -> Rs2Equipment.isWearing(itemId) || Rs2Inventory.hasItem(itemId) || (ShortestPathPlugin.getPathfinderConfig().useBankItems && Rs2Bank.hasItem(itemId)));
+		return primary && (additional.isEmpty() || additional.stream()
+				.anyMatch(itemId -> Rs2Equipment.isWearing(itemId)
+					|| Rs2Inventory.hasItem(itemId)
+					|| ShortestPathPlugin.getPathfinderConfig().useBankItems
+						&& Rs2Bank.hasItem(itemId)));
     }
 
     /**

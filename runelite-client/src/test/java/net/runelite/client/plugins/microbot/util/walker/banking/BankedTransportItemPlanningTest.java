@@ -6,6 +6,7 @@ import net.runelite.client.plugins.microbot.shortestpath.Transport;
 import net.runelite.client.plugins.microbot.shortestpath.TransportType;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.policy.TransportRequirementPolicy;
 import net.runelite.client.plugins.microbot.util.magic.Runes;
+import net.runelite.client.plugins.microbot.util.walker.transport.ElidCrevicePolicy;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -103,6 +104,25 @@ public class BankedTransportItemPlanningTest {
                     requirements.contains(ItemID.LIT_CANDLE));
         }
     }
+
+	@Test
+	public void elidCreviceSumsRopesButReusesOneLightSource() {
+		Transport crevice = all.stream()
+				.filter(t -> t.getObjectId() == 10416)
+				.findFirst()
+				.orElseThrow(() -> new AssertionError("Spirits of the Elid crevice missing"));
+		Map<Integer, Integer> requirements =
+				Rs2WalkerBankingPlanner.getMissingTransportItemIdsWithQuantities(
+						List.of(crevice, crevice));
+
+		assertEquals("each descent consumes one rope", 2,
+				requirements.getOrDefault(ItemID.ROPE, 0).intValue());
+		int lights = ElidCrevicePolicy.lightSourceIds(crevice).stream()
+				.mapToInt(itemId -> requirements.getOrDefault(itemId, 0))
+				.sum();
+		assertEquals("the lit light source is reusable across repeated descents", 1, lights);
+		assertTrue(Rs2WalkerBankingPlanner.requiresBankPlanning(crevice));
+	}
 
     private static Transport teleport(String displayInfo) {
         return all.stream()

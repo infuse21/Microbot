@@ -23,9 +23,9 @@ additive totals; source rows, generated edges and duplicated approaches must not
 
 ### Active graph, instance scene boundary and large agility objects - 2026-09-09
 
-- **Headless:** all 6,061 currently loaded transport origins now classify into an explicit
+- **Headless:** all 6,073 currently loaded transport origins now classify into an explicit
   NavigationEngine-owned family; no active edge remains generic `TRANSPORT`. This does not include
-  the 157 genuine disabled traversals that still need complete protocols. Shared two-way instance
+  the 145 genuine disabled traversals that still need complete protocols. Shared two-way instance
   normalization now covers ordinary doors, catalog transitions, adjacent transports and exact
   mineable/object probes; synthetic chunk mappings test live-to-template and template-to-live.
 - **Live pending:** in a rebuilt client, repeat a GOTR/instanced layout where a closed ordinary door
@@ -70,6 +70,11 @@ additive totals; source rows, generated edges and duplicated approaches must not
   completion and both installed-rope varbits. The walker matches only the corresponding installed
   live wall transforms, never withdraws long rope, and requires exact landing. Live-test the two
   wall segments and at least one alternate eastern approach after permanent setup.
+- **New Spirits of the Elid crevice batch:** twelve approaches require quest stage 40 (or quest
+  completion), one consumable rope and one reusable lit light source. Bank planning independently
+  sums ropes and selects one carried, worn or banked light source, while NavigationEngine owns the
+  exact `Climb-down` and underground landing. Live-test one in-progress and one post-quest descent,
+  including a banked rope/light setup; the walker enters the cave and does not solve the quest.
 
 ### Steps, access routes and audited shortcut cleanup - 2026-09-08
 

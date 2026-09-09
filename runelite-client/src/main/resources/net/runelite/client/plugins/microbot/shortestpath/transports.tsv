@@ -3338,22 +3338,22 @@
 3371 9312 0	3371 9313 0	Open;Door;10431								1	
 3371 9313 0	3371 9312 0	Open;Door;10431								1	
 3373 9304 0	3375 2904 0	Climb;Rope;10434							Y
-# DEFERRED: Spirits of the Elid entry needs installed-rope and light-source state.
-# 3375 2904 0	3374 9305 0	Climb-down;Crevice;10416
+# Spirits of the Elid crevice consumes one rope; the reusable lit-light requirement is policy-owned.
+3375 2904 0	3374 9305 0	Climb-down;Crevice;10416		954		Spirits of the Elid=IN_PROGRESS			Y	1		T
 3374 9305 0	3375 2904 0	Climb;Rope;10434							Y
-# 3375 2905 0	3374 9305 0	Climb-down;Crevice;10416
+3375 2905 0	3374 9305 0	Climb-down;Crevice;10416		954		Spirits of the Elid=IN_PROGRESS			Y	1		T
 3373 9306 0	3375 2904 0	Climb;Rope;10434							Y
-# 3375 2906 0	3374 9305 0	Climb-down;Crevice;10416
+3375 2906 0	3374 9305 0	Climb-down;Crevice;10416		954		Spirits of the Elid=IN_PROGRESS			Y	1		T
 3372 9305 0	3375 2904 0	Climb;Rope;10434							Y
-# 3374 2903 0	3374 9305 0	Climb-down;Crevice;10416
-# 3374 2902 0	3374 9305 0	Climb-down;Crevice;10416
-# 3372 2902 0	3374 9305 0	Climb-down;Crevice;10416
-# 3372 2903 0	3374 9305 0	Climb-down;Crevice;10416
-# 3372 2904 0	3374 9305 0	Climb-down;Crevice;10416
-# 3372 2905 0	3374 9305 0	Climb-down;Crevice;10416
-# 3372 2906 0	3374 9305 0	Climb-down;Crevice;10416
-# 3372 2907 0	3374 9305 0	Climb-down;Crevice;10416
-# 3374 2907 0	3374 9305 0	Climb-down;Crevice;10416
+3374 2903 0	3374 9305 0	Climb-down;Crevice;10416		954		Spirits of the Elid=IN_PROGRESS			Y	1		T
+3374 2902 0	3374 9305 0	Climb-down;Crevice;10416		954		Spirits of the Elid=IN_PROGRESS			Y	1		T
+3372 2902 0	3374 9305 0	Climb-down;Crevice;10416		954		Spirits of the Elid=IN_PROGRESS			Y	1		T
+3372 2903 0	3374 9305 0	Climb-down;Crevice;10416		954		Spirits of the Elid=IN_PROGRESS			Y	1		T
+3372 2904 0	3374 9305 0	Climb-down;Crevice;10416		954		Spirits of the Elid=IN_PROGRESS			Y	1		T
+3372 2905 0	3374 9305 0	Climb-down;Crevice;10416		954		Spirits of the Elid=IN_PROGRESS			Y	1		T
+3372 2906 0	3374 9305 0	Climb-down;Crevice;10416		954		Spirits of the Elid=IN_PROGRESS			Y	1		T
+3372 2907 0	3374 9305 0	Climb-down;Crevice;10416		954		Spirits of the Elid=IN_PROGRESS			Y	1		T
+3374 2907 0	3374 9305 0	Climb-down;Crevice;10416		954		Spirits of the Elid=IN_PROGRESS			Y	1		T
 											
 # Agility Pyramid											
 3334 2829 0	3338 2829 0	Climb;Climbing rocks;11948									

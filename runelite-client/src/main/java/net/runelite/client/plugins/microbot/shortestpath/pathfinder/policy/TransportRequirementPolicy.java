@@ -7,6 +7,7 @@ import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.shortestpath.Transport;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.transport.EquippedSafetyTransitionPolicy;
+import net.runelite.client.plugins.microbot.util.walker.transport.ElidCrevicePolicy;
 
 import java.util.Collections;
 import java.util.List;
@@ -89,6 +90,11 @@ public final class TransportRequirementPolicy {
         return itemIdRequirements(transport, questState);
     }
 
+    /** Item alternatives required in addition to the row's primary item requirement. */
+    public static Set<Integer> additionalReusableItemIds(Transport transport) {
+        return ElidCrevicePolicy.lightSourceIds(transport);
+    }
+
     static Set<Set<Integer>> itemIdRequirements(Transport transport, QuestState ghostsAhoyState) {
         if (isEctoBarrier(transport) && ghostsAhoyState != QuestState.FINISHED) {
             return Set.of(GHOSTSPEAK_ITEMS);
@@ -103,6 +109,7 @@ public final class TransportRequirementPolicy {
 
     /** The duration-two barrier rows describe the paid pre-quest landing only. */
     public static boolean questVariantAvailable(Transport transport) {
+		if (!ElidCrevicePolicy.questStageAvailable(transport)) return false;
         if (isAlKharidPaidGate(transport)) {
             QuestState state = Microbot.getRs2PlayerStateCache() == null
                     ? null : Rs2Player.getQuestState(Quest.PRINCE_ALI_RESCUE);

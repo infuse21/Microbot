@@ -162,14 +162,15 @@ public final class Rs2WalkerBankingPlanner {
             }
             Set<Set<Integer>> itemRequirements =
                     TransportRequirementPolicy.itemIdRequirements(transport);
-            if (itemRequirements.isEmpty()) {
-                return true;
-            }
-
-            return itemRequirements
+			boolean primaryReady = itemRequirements.isEmpty() || itemRequirements
                     .stream()
                     .flatMap(Collection::stream)
                     .anyMatch(itemId -> Rs2Equipment.isWearing(itemId) || Rs2Inventory.hasItem(itemId));
+			Set<Integer> additional =
+					TransportRequirementPolicy.additionalReusableItemIds(transport);
+			return primaryReady && (additional.isEmpty() || additional.stream()
+					.anyMatch(itemId -> Rs2Equipment.isWearing(itemId)
+							|| Rs2Inventory.hasItem(itemId)));
         }
 
         return true;
@@ -239,6 +240,11 @@ public final class Rs2WalkerBankingPlanner {
                     }
                 }
             }
+			Set<Integer> additional =
+					TransportRequirementPolicy.additionalReusableItemIds(transport);
+			if (!additional.isEmpty()) {
+				reusableAlternatives.add(additional);
+			}
         });
 
         addSpellWithdrawals(spellRequirements, exactWithdrawals);
