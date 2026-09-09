@@ -1200,15 +1200,15 @@
 2873 9847 0	1310 1237 0	Crawl;Cave;26569									
 1309 1237 0	2873 9848 0	Crawl;Cave;26564									
 2873 9846 0	1310 1237 0	Crawl;Cave;26567									
-# DEFERRED: Cerberus winches require 91 Slayer and an active hellhound/Cerberus task; these rows encode neither gate.
-# 1292 1253 0	1240 1226 0	Turn;Iron Winch;23104
-# 1291 1253 0	1240 1226 0	Turn;Iron Winch;23104
+# Cerberus winches: boosted 91 Slayer and a positive task count are declarative; exact hellhound/Cerberus target resolution is policy-owned.
+1292 1253 0	1240 1226 0	Turn;Iron Winch;23104	91 Slayer					394>0	Y	1
+1291 1253 0	1240 1226 0	Turn;Iron Winch;23104	91 Slayer					394>0	Y	1
 1240 1226 0	1291 1253 0	Exit;Portcullis;21772							Y	1
-# 1309 1269 0	1304 1290 0	Turn;Iron Winch;23104
+1309 1269 0	1304 1290 0	Turn;Iron Winch;23104	91 Slayer					394>0	Y	1
 1304 1290 0	1309 1269 0	Exit;Portcullis;21772							Y	1
 1368 1226 0	1328 1253 0	Exit;Portcullis;21772							Y	1
-# 1328 1253 0	1368 1226 0	Turn;Iron Winch;23104
-# 1329 1253 0	1368 1226 0	Turn;Iron Winch;23104
+1328 1253 0	1368 1226 0	Turn;Iron Winch;23104	91 Slayer					394>0	Y	1
+1329 1253 0	1368 1226 0	Turn;Iron Winch;23104	91 Slayer					394>0	Y	1
 2903 9813 1	2906 9813 0	Climb;Steps;30190							Y	1
 2906 9813 0	2903 9813 1	Climb;Steps;30189							Y	1
 2883 9825 0	2880 9825 1	Climb;Steps;30189							Y	1
@@ -5378,14 +5378,14 @@
 3101 9755 0	3099 9755 0	Open;Door;141					1790=1;1791=1;1793=1			1	Draynor basement puzzle door
 # --- Backfilled 2026-07-20 from upstream Skretzo/shortest-path (7e7e5bf94b): routes absent locally (intentional exclusions omitted) ---
 3205 3209 1	3206 3208 0	Climb-down;Staircase;16672								1	
-# Unsupported: Lumbridge Swamp dark hole requires installed-rope and safe-light state; open flames can ignite swamp gas.
-# 3169 3171 0	3169 9571 0	Climb-down;Dark hole;5947								2
+# Permanently roped Lumbridge Swamp entrance. Gas-safe light sources are a separate policy-owned reusable requirement.
+3169 3171 0	3169 9571 0	Climb-down;Dark hole;5947					279=1		Y	2
 3169 9571 0	3169 3171 0	Climb;Climbing rope;5946							Y	2
-# 3168 3172 0	3168 9572 0	Climb-down;Dark hole;5947								2
+3168 3172 0	3168 9572 0	Climb-down;Dark hole;5947					279=1		Y	2
 3168 9572 0	3168 3172 0	Climb;Climbing rope;5946							Y	2
-# 3170 3172 0	3170 9572 0	Climb-down;Dark hole;5947								2
+3170 3172 0	3170 9572 0	Climb-down;Dark hole;5947					279=1		Y	2
 3170 9572 0	3170 3172 0	Climb;Climbing rope;5946							Y	2
-# 3169 3173 0	3167 9573 0	Climb-down;Dark hole;5947								2
+3169 3173 0	3167 9573 0	Climb-down;Dark hole;5947					279=1		Y	2
 # 3225 9542 0	3219 9532 2	Enter;Tunnel;6659								2
 # 3227 9542 0	3219 9532 2	Enter;Tunnel;6659								2
 # 3218 9532 2	3226 9542 0	Enter;Tunnel;6658								2

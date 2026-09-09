@@ -7,6 +7,7 @@ import net.runelite.api.*;
 import net.runelite.api.coords.WorldArea;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.ItemID;
+import net.runelite.api.gameval.VarPlayerID;
 import net.runelite.api.gameval.VarbitID;
 import net.runelite.client.plugins.itemcharges.ItemChargeConfig;
 import net.runelite.client.plugins.microbot.Microbot;
@@ -29,6 +30,7 @@ import net.runelite.client.plugins.microbot.util.poh.PohTeleports;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.walker.WebWalkLog;
 import net.runelite.client.plugins.microbot.util.walker.transport.CatalogTransitionPolicy;
+import net.runelite.client.plugins.microbot.util.walker.transport.CerberusWinchPolicy;
 import net.runelite.client.plugins.microbot.util.walker.transport.NpcDialogueTransportPolicy;
 import java.io.File;
 import java.io.IOException;
@@ -235,6 +237,7 @@ public class PathfinderConfig {
     // global state cache never retains zero-valued varps — ~115 varp-gated rows accounted for
     // ~2.3s of the 2.8s refilter. Captured in the same client-thread block as boosted levels.
     private Map<Integer, Integer> refreshVarplayerValues;
+	private CerberusWinchPolicy.AccessSnapshot refreshCerberusWinchAccess;
     private static final Skill[] SKILLS = Skill.values();
 
     /**
@@ -573,12 +576,16 @@ public class PathfinderConfig {
         // requirement). Only these may participate in the verification hash — otherwise hitpoints
         // regenerating invalidates the whole transport cache.
         Set<Integer> requiredSkillOrdinals = new HashSet<>();
+		boolean hasCerberusWinchRows = false;
         // Item ids / currency names some transport or restriction gates on — everything else is
         // excluded from the cache key so ordinary inventory churn stops forcing a cold start.
         Set<Integer> relevantItemIds = new HashSet<>();
         Set<String> relevantCurrencyNames = new HashSet<>();
         for (Set<Transport> ts : mergedList.values()) {
             for (Transport t : ts) {
+				if (CerberusWinchPolicy.isEligible(t)) {
+					hasCerberusWinchRows = true;
+				}
                 t.getVarbits().forEach(v -> {
                     varbitIds.add(v.getVarbitId());
                     varbitConditions.add(new int[]{v.getVarbitId(), v.getOperator().ordinal(), v.getValue()});
@@ -600,6 +607,8 @@ public class PathfinderConfig {
                             .filter(Objects::nonNull)
                             .forEach(relevantItemIds::addAll);
                 }
+				relevantItemIds.addAll(
+						TransportRequirementPolicy.additionalReusableItemIds(t));
                 int currencyAmount = TransportRequirementPolicy.currencyAmount(t);
                 String currencyName = TransportRequirementPolicy.currencyName(t);
                 if (currencyAmount > 0 && currencyName != null && !currencyName.isEmpty()) {
@@ -640,9 +649,17 @@ public class PathfinderConfig {
         transportRelevantItemIds = allCurrenciesResolved
                 ? Collections.unmodifiableSet(relevantItemIds)
                 : null;
+		if (hasCerberusWinchRows) {
+			varplayerIds.add(VarPlayerID.SLAYER_TARGET);
+			varbitIds.add(VarbitID.SLAYER_TARGET_BOSSID);
+			refreshCerberusWinchAccess = CerberusWinchPolicy.AccessSnapshot.unavailable();
+		} else {
+			refreshCerberusWinchAccess = null;
+		}
 
         refreshBoostedLevels = new int[SKILLS.length];
         Map<Integer, Integer> varplayerValues = new HashMap<>();
+		final boolean captureCerberusAccess = hasCerberusWinchRows;
         Microbot.getClientThread().runOnClientThreadOptional(() -> {
             for (int i = 0; i < SKILLS.length; i++) {
                 refreshBoostedLevels[i] = client.getBoostedSkillLevel(SKILLS[i]);
@@ -655,9 +672,20 @@ public class PathfinderConfig {
             for (int id : varplayerIds) {
                 varplayerValues.put(id, client.getVarpValue(id));
             }
+			if (captureCerberusAccess) {
+				refreshCerberusWinchAccess = CerberusWinchPolicy.readAccessSnapshot(client);
+			}
             return true;
         });
         refreshVarplayerValues = varplayerValues;
+		if (refreshCerberusWinchAccess != null) {
+			varplayerConditions.add(new int[]{VarPlayerID.SLAYER_TARGET,
+				TransportVarPlayer.Operator.EQUAL.ordinal(),
+				refreshCerberusWinchAccess.getTaskTargetId()});
+			varbitConditions.add(new int[]{VarbitID.SLAYER_TARGET_BOSSID,
+				TransportVarbit.Operator.EQUAL.ordinal(),
+				refreshCerberusWinchAccess.getBossTargetId()});
+		}
         long cacheTime = System.currentTimeMillis() - cacheStart;
 
         long filterStart = System.currentTimeMillis();
@@ -747,6 +775,7 @@ public class PathfinderConfig {
         refreshBoostedLevels = null;
         refreshCurrencyCache = null;
         refreshVarplayerValues = null;
+		refreshCerberusWinchAccess = null;
 
         // varbit/varplayer counts = distinct ids referenced by merged transport definitions this refresh, not total client var space.
         WebWalkLog.cfg("refresh_transports merge={}ms cache={}ms filter={}ms useTrans={}ms similar={}ms total/chk={}/{} usablePost={} vb={} vp={}",
@@ -1318,6 +1347,8 @@ public class PathfinderConfig {
     }
 
     private boolean useTransport(Transport transport) {
+		if (CerberusWinchPolicy.isEligible(transport)
+				&& !cerberusWinchAccessAvailable()) return false;
 		if (CatalogTransitionPolicy.isEquippedGrappleShortcut(transport)
 				&& !TransportRequirementPolicy.grappleEquipmentReady()) return false;
 		if (CatalogTransitionPolicy.isAuditedHazardTransition(transport)
@@ -1432,7 +1463,8 @@ public class PathfinderConfig {
         }
 
         // Used for Generic Item Requirements
-        if (!TransportRequirementPolicy.itemIdRequirements(transport).isEmpty()) {
+        if (!TransportRequirementPolicy.itemIdRequirements(transport).isEmpty()
+				|| !TransportRequirementPolicy.additionalReusableItemIds(transport).isEmpty()) {
             boolean hasRequiredItems = hasRequiredItems(transport);
             if (!hasRequiredItems) {
                 log.debug("Transport ( O: {} D: {} ) requires items {}", transport.getOrigin(), transport.getDestination(), TransportRequirementPolicy.itemIdRequirements(transport).stream().flatMap(Set::stream).collect(Collectors.toSet()));
@@ -1442,6 +1474,12 @@ public class PathfinderConfig {
 
         return true;
     }
+
+	private boolean cerberusWinchAccessAvailable() {
+		CerberusWinchPolicy.AccessSnapshot snapshot = refreshCerberusWinchAccess;
+		return snapshot == null ? CerberusWinchPolicy.liveAccessAvailable()
+				: snapshot.isAvailable();
+	}
 
     /**
      * Same gating as the main {@link #refreshTransports} loop, for rows injected after the merge pass
@@ -1766,15 +1804,17 @@ public class PathfinderConfig {
         if (requiresChronicle(transport)) return hasChronicleCharges();
 
 		Set<Integer> additional = TransportRequirementPolicy.additionalReusableItemIds(transport);
+		Set<Set<Integer>> primaryRequirements =
+				TransportRequirementPolicy.itemIdRequirements(transport);
         if (refreshAvailableItemIds != null) {
-			boolean primary = TransportRequirementPolicy.itemIdRequirements(transport)
+			boolean primary = primaryRequirements.isEmpty() || primaryRequirements
                     .stream()
                     .flatMap(Collection::stream)
                     .anyMatch(refreshAvailableItemIds::contains);
 			return primary && (additional.isEmpty()
 					|| additional.stream().anyMatch(refreshAvailableItemIds::contains));
         }
-		boolean primary = TransportRequirementPolicy.itemIdRequirements(transport)
+		boolean primary = primaryRequirements.isEmpty() || primaryRequirements
                 .stream()
                 .flatMap(Collection::stream)
                 .anyMatch(itemId -> Rs2Equipment.isWearing(itemId) || Rs2Inventory.hasItem(itemId) || (ShortestPathPlugin.getPathfinderConfig().useBankItems && Rs2Bank.hasItem(itemId)));

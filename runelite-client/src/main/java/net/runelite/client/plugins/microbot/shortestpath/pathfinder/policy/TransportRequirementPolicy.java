@@ -8,6 +8,7 @@ import net.runelite.client.plugins.microbot.shortestpath.Transport;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.transport.EquippedSafetyTransitionPolicy;
 import net.runelite.client.plugins.microbot.util.walker.transport.ElidCrevicePolicy;
+import net.runelite.client.plugins.microbot.util.walker.transport.LumbridgeSwampCavePolicy;
 
 import java.util.Collections;
 import java.util.List;
@@ -92,7 +93,9 @@ public final class TransportRequirementPolicy {
 
     /** Item alternatives required in addition to the row's primary item requirement. */
     public static Set<Integer> additionalReusableItemIds(Transport transport) {
-        return ElidCrevicePolicy.lightSourceIds(transport);
+		Set<Integer> elidLights = ElidCrevicePolicy.lightSourceIds(transport);
+		return elidLights.isEmpty()
+				? LumbridgeSwampCavePolicy.gasSafeLightSourceIds(transport) : elidLights;
     }
 
     static Set<Set<Integer>> itemIdRequirements(Transport transport, QuestState ghostsAhoyState) {

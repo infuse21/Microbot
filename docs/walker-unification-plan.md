@@ -23,9 +23,9 @@ remain open rather than blocking each batch or being silently marked complete.
 
 ## Active-graph classification closure and resolver hardening - 2026-09-09
 
-The current production resource set loads **6,073 transport origins** and has no active route edge left
+The current production resource set loads **6,078 transport origins** and has no active route edge left
 classified as the generic legacy `TRANSPORT` kind. This closes the active-graph classification
-boundary only: a source audit still identifies **145 genuine disabled traversals** whose quest,
+boundary only: a source audit still identifies **140 genuine disabled traversals** whose quest,
 equipment, safety, payment, failure or staged-interaction contracts remain implementation work.
 Phase 6 therefore remains open, and Phase 7 deletion has not started.
 
@@ -98,6 +98,13 @@ landing contracts. Each descent consumes one rope, while a separate reusable req
 the full lit-light-source collection from Quest Helper; pathfinding and bank setup therefore require
 both and repeated descents sum ropes without withdrawing duplicate lanterns. The entry is unavailable
 before quest stage 40, remains available after quest completion, and is live-deferred.
+
+Five Cerberus Iron Winch approaches are restored with a strict members-only access contract:
+currently boosted 91 Slayer, a positive assignment count, and an exact live task resolved as either
+Hellhounds or Cerberus. Transport-refresh snapshots include the precise Slayer target and boss
+subtype so changing between nonzero tasks invalidates a cached route; the scene resolver repeats
+the access check on the client thread immediately before exposing `Turn`. NavigationEngine retains
+the edge until its exact lair landing, and physical acceptance remains deferred.
 
 The complete focused Phase 6 banking, League, transport, navigation, pathfinder, POH, collision and
 minimap suite passes, as do main and test Checkstyle. Existing deprecation warnings are unrelated.

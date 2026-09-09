@@ -88,7 +88,8 @@ public final class Rs2WalkerBankingPlanner {
             return false;
         }
         return TransportRequirementPolicy.currencyAmount(transport) > 0
-                || !TransportRequirementPolicy.itemIdRequirements(transport).isEmpty();
+                || !TransportRequirementPolicy.itemIdRequirements(transport).isEmpty()
+				|| !TransportRequirementPolicy.additionalReusableItemIds(transport).isEmpty();
     }
 
 	/** Shared inclusion boundary for route analysis and missing-item planning. */

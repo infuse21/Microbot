@@ -1006,6 +1006,14 @@ public final class CatalogTransitionPolicy
 		{
 			return true;
 		}
+		if (CerberusWinchPolicy.isEligible(transport))
+		{
+			return true;
+		}
+		if (LumbridgeSwampCavePolicy.isEligible(transport))
+		{
+			return true;
+		}
 		if (isShadowDungeonLadder(transport) || ZanarisEntrancePolicy.isEligible(transport)
 			|| isWaterfallThroneDoor(transport) || isMorUlRekHotVentDoor(transport)
 			|| EquippedSafetyTransitionPolicy.isEligible(transport)

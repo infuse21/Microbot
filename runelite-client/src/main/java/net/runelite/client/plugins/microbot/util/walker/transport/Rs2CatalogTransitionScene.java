@@ -159,6 +159,11 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 
 	private static CatalogTransition findSceneTransitionOnClientThread(Transport transport)
 	{
+		if (CerberusWinchPolicy.isEligible(transport)
+			&& !CerberusWinchPolicy.readAccessSnapshot(Microbot.getClient()).isAvailable())
+		{
+			return null;
+		}
 		if (!hasSafeCurrentHitpoints(transport,
 			Microbot.getClient().getBoostedSkillLevel(Skill.HITPOINTS)))
 		{

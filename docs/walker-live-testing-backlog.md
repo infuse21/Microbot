@@ -23,9 +23,9 @@ additive totals; source rows, generated edges and duplicated approaches must not
 
 ### Active graph, instance scene boundary and large agility objects - 2026-09-09
 
-- **Headless:** all 6,073 currently loaded transport origins now classify into an explicit
+- **Headless:** all 6,078 currently loaded transport origins now classify into an explicit
   NavigationEngine-owned family; no active edge remains generic `TRANSPORT`. This does not include
-  the 145 genuine disabled traversals that still need complete protocols. Shared two-way instance
+  the 140 genuine disabled traversals that still need complete protocols. Shared two-way instance
   normalization now covers ordinary doors, catalog transitions, adjacent transports and exact
   mineable/object probes; synthetic chunk mappings test live-to-template and template-to-live.
 - **Live pending:** in a rebuilt client, repeat a GOTR/instanced layout where a closed ordinary door
@@ -75,6 +75,11 @@ additive totals; source rows, generated edges and duplicated approaches must not
   sums ropes and selects one carried, worn or banked light source, while NavigationEngine owns the
   exact `Climb-down` and underground landing. Live-test one in-progress and one post-quest descent,
   including a banked rope/light setup; the walker enters the cave and does not solve the quest.
+- **New Cerberus winch batch:** five members-only approaches require currently boosted 91 Slayer,
+  a positive assignment count and an exact Hellhounds or Cerberus task. The refresh cache tracks
+  both the task target and boss subtype, the scene snapshot rechecks access immediately before
+  `Turn`, and only the exact lair landing clears the edge. Live-test a normal Hellhounds assignment
+  and a boosted-level boundary; the walker enters the lair and does not own combat or survival.
 
 ### Steps, access routes and audited shortcut cleanup - 2026-09-08
 
@@ -681,8 +686,8 @@ Pre-Zanaris checkpoint: 1,466 legacy edges, including 990 ordinary TRANSPORT edg
 headless Zanaris cutover: 1,465 and 989; after Waterfall internal doors: 1,463 and 987;
 after Draynor unlocked crossings: 1,445 and 969 respectively; after Yanille pick-lock:
 1,443 and 967 respectively. Those are historical checkpoints. The current active graph has no
-generic legacy `TRANSPORT` classification: all 6,035 loaded rows have explicit engine ownership,
-while 184 genuine traversals remain source-disabled pending complete protocols. These counts are
+generic legacy `TRANSPORT` classification: all 6,078 loaded transport origins have explicit engine
+ownership, while 140 genuine traversals remain source-disabled pending complete protocols. These counts are
 not percentages of live acceptance or estimates of implementation effort.
 
 ## Acceptance record to append for each future run
