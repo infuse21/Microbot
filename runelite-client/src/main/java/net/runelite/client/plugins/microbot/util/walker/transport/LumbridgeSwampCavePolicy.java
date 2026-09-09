@@ -14,6 +14,7 @@ import net.runelite.client.plugins.microbot.shortestpath.TransportVarbit;
 public final class LumbridgeSwampCavePolicy
 {
 	public static final int DARK_HOLE_ID = 5947;
+	private static final int ROPE_ITEM_ID = ItemID.ROPE;
 	private static final Set<Integer> GAS_IGNITING_LIGHTS = Set.of(
 		ItemID.TORCH_LIT,
 		ItemID.LIT_CANDLE,
@@ -41,18 +42,27 @@ public final class LumbridgeSwampCavePolicy
 			&& "Climb-down".equalsIgnoreCase(transport.getAction())
 			&& "Dark hole".equalsIgnoreCase(transport.getName())
 			&& transport.isMembers() && transport.getDuration() == 2
-			&& !transport.isConsumable() && transport.getCurrencyAmount() == 0
-			&& transport.getItemIdRequirements().isEmpty()
+			&& transport.getCurrencyAmount() == 0
 			&& transport.getQuests().isEmpty() && transport.getVarplayers().isEmpty()
 			&& java.util.Arrays.stream(transport.getSkillLevels()).allMatch(level -> level == 0)
-			&& hasInstalledRope(transport)
+			&& hasRopeVariant(transport)
 			&& ROUTES.contains(point(transport.getOrigin()) + "->"
 				+ point(transport.getDestination()));
 	}
 
 	public static Set<Integer> gasSafeLightSourceIds(Transport transport)
 	{
-		return isEligible(transport) ? GAS_SAFE_LIGHTS : Set.of();
+		return isEligible(transport) && requiresLight(transport) ? GAS_SAFE_LIGHTS : Set.of();
+	}
+
+	public static boolean requiresLight(Transport transport)
+	{
+		return hasExactVarbit(transport, VarbitID.MY2ARM_FIRE_LUMB, 0);
+	}
+
+	public static boolean isRopeSetup(Transport transport)
+	{
+		return isEligible(transport) && transport.isConsumable();
 	}
 
 	public static boolean requiresExactLanding(int objectId)
@@ -60,15 +70,28 @@ public final class LumbridgeSwampCavePolicy
 		return objectId == DARK_HOLE_ID;
 	}
 
-	private static boolean hasInstalledRope(Transport transport)
+	private static boolean hasRopeVariant(Transport transport)
 	{
-		if (transport.getVarbits().size() != 1)
+		if (transport.getVarbits().size() != 2
+			|| !(requiresLight(transport)
+				|| hasExactVarbit(transport, VarbitID.MY2ARM_FIRE_LUMB, 1)))
 		{
 			return false;
 		}
-		TransportVarbit gate = transport.getVarbits().iterator().next();
-		return gate.getVarbitId() == VarbitID.SWAMP_CAVES_ROPED_ENTRANCE
-			&& gate.getValue() == 1 && gate.getOperator() == TransportVarbit.Operator.EQUAL;
+		boolean setup = transport.isConsumable()
+			&& transport.getItemIdRequirements().equals(Set.of(Set.of(ROPE_ITEM_ID)))
+			&& hasExactVarbit(transport, VarbitID.SWAMP_CAVES_ROPED_ENTRANCE, 0);
+		boolean installed = !transport.isConsumable()
+			&& transport.getItemIdRequirements().isEmpty()
+			&& hasExactVarbit(transport, VarbitID.SWAMP_CAVES_ROPED_ENTRANCE, 1);
+		return setup || installed;
+	}
+
+	private static boolean hasExactVarbit(Transport transport, int varbitId, int value)
+	{
+		return transport != null && transport.getVarbits().stream().anyMatch(gate ->
+			gate.getVarbitId() == varbitId && gate.getValue() == value
+				&& gate.getOperator() == TransportVarbit.Operator.EQUAL);
 	}
 
 	private static String point(WorldPoint point)

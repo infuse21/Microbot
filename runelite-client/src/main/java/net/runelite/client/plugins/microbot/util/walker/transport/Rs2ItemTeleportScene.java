@@ -172,10 +172,10 @@ public final class Rs2ItemTeleportScene implements ItemTeleportScene
 
 	private static ItemTeleport observeMasterScrollBook(Transport transport)
 	{
-		Widget contents = Microbot.getClient().getWidget(InterfaceID.Bookofscrolls.CONTENTS);
+		Widget contents = Rs2Widget.getWidget(InterfaceID.Bookofscrolls.CONTENTS);
 		if (visible(contents))
 		{
-			Widget destination = Microbot.getClient().getWidget(
+			Widget destination = Rs2Widget.getWidget(
 				ItemTeleportPolicy.masterScrollBookWidget(transport));
 			if (!visible(destination))
 			{
@@ -339,9 +339,12 @@ public final class Rs2ItemTeleportScene implements ItemTeleportScene
 
 	private static boolean inventoryReady()
 	{
-		Widget widget = Microbot.getClient().getWidget(ComponentID.INVENTORY_CONTAINER);
-		return Rs2Tab.isCurrentTab(InterfaceTab.INVENTORY) && widget != null && !widget.isHidden()
-			&& widget.getChildren() != null;
+		return Microbot.getClientThread().runOnClientThreadOptional(() ->
+		{
+			Widget widget = Microbot.getClient().getWidget(ComponentID.INVENTORY_CONTAINER);
+			return Rs2Tab.isCurrentTab(InterfaceTab.INVENTORY) && widget != null
+				&& !widget.isHidden() && widget.getChildren() != null;
+		}).orElse(false);
 	}
 
 	private static boolean openInventory()
@@ -404,7 +407,8 @@ public final class Rs2ItemTeleportScene implements ItemTeleportScene
 
 	private static boolean visible(Widget widget)
 	{
-		return widget != null && !widget.isHidden();
+		return Microbot.getClientThread().runOnClientThreadOptional(() ->
+			widget != null && !widget.isHidden()).orElse(false);
 	}
 
 	private static boolean quetzalWhistleMapVisible()

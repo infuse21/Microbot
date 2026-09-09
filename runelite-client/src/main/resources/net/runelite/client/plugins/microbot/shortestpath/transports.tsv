@@ -1251,12 +1251,12 @@
 2906 9876 0	2906 3476 0	Climb-up;Ladder;24717									
 2907 3475 0	2906 9876 0	Climb-down;Ladder;24718									
 2907 9875 0	2906 3476 0	Climb-up;Ladder;24717									
-# Unsupported: Grim Tales manhole is a quest-state object leading into an aggressive experiment area; these rows encode neither state nor access.
-# 2898 3469 0	2901 9867 0	Enter;Manhole;24842
-2901 9867 0	2899 3469 0	Climb-up;Staircase;24687									
-# 2899 3469 0	2901 9867 0	Enter;Manhole;24842
-# 2899 3470 0	2901 9867 0	Enter;Manhole;24842
-# 2899 3468 0	2901 9867 0	Enter;Manhole;24842
+# Post-unlock Grim Tales manhole. The walker enters only after the permanent manhole state is set; it does not solve the quest.
+2898 3469 0	2901 9867 0	Enter;Manhole;24842					3718=1		Y	1
+2901 9867 0	2899 3469 0	Climb-up;Staircase;24687
+2899 3469 0	2901 9867 0	Enter;Manhole;24842					3718=1		Y	1
+2899 3470 0	2901 9867 0	Enter;Manhole;24842					3718=1		Y	1
+2899 3468 0	2901 9867 0	Enter;Manhole;24842					3718=1		Y	1
 2877 3482 0	2876 9878 0	Climb-down;Stairs;57				Fishing Contest
 2876 9879 0	2877 3482 0	Climb-up;Stairs;56				Fishing Contest
 2876 3482 0	2876 9878 0	Climb-down;Stairs;57				Fishing Contest
@@ -5378,14 +5378,26 @@
 3101 9755 0	3099 9755 0	Open;Door;141					1790=1;1791=1;1793=1			1	Draynor basement puzzle door
 # --- Backfilled 2026-07-20 from upstream Skretzo/shortest-path (7e7e5bf94b): routes absent locally (intentional exclusions omitted) ---
 3205 3209 1	3206 3208 0	Climb-down;Staircase;16672								1	
-# Permanently roped Lumbridge Swamp entrance. Gas-safe light sources are a separate policy-owned reusable requirement.
-3169 3171 0	3169 9571 0	Climb-down;Dark hole;5947					279=1		Y	2
+# Permanently roped Lumbridge Swamp entrance. Gas-safe light sources are a separate policy-owned reusable requirement unless the Lumbridge Fire of Eternal Light is built.
+3169 3171 0	3169 9571 0	Climb-down;Dark hole;5947		954			279=0;6533=0		Y	2		T
+3169 3171 0	3169 9571 0	Climb-down;Dark hole;5947		954			279=0;6533=1		Y	2		T
+3169 3171 0	3169 9571 0	Climb-down;Dark hole;5947					279=1;6533=0		Y	2
+3169 3171 0	3169 9571 0	Climb-down;Dark hole;5947					279=1;6533=1		Y	2
 3169 9571 0	3169 3171 0	Climb;Climbing rope;5946							Y	2
-3168 3172 0	3168 9572 0	Climb-down;Dark hole;5947					279=1		Y	2
+3168 3172 0	3168 9572 0	Climb-down;Dark hole;5947		954			279=0;6533=0		Y	2		T
+3168 3172 0	3168 9572 0	Climb-down;Dark hole;5947		954			279=0;6533=1		Y	2		T
+3168 3172 0	3168 9572 0	Climb-down;Dark hole;5947					279=1;6533=0		Y	2
+3168 3172 0	3168 9572 0	Climb-down;Dark hole;5947					279=1;6533=1		Y	2
 3168 9572 0	3168 3172 0	Climb;Climbing rope;5946							Y	2
-3170 3172 0	3170 9572 0	Climb-down;Dark hole;5947					279=1		Y	2
+3170 3172 0	3170 9572 0	Climb-down;Dark hole;5947		954			279=0;6533=0		Y	2		T
+3170 3172 0	3170 9572 0	Climb-down;Dark hole;5947		954			279=0;6533=1		Y	2		T
+3170 3172 0	3170 9572 0	Climb-down;Dark hole;5947					279=1;6533=0		Y	2
+3170 3172 0	3170 9572 0	Climb-down;Dark hole;5947					279=1;6533=1		Y	2
 3170 9572 0	3170 3172 0	Climb;Climbing rope;5946							Y	2
-3169 3173 0	3167 9573 0	Climb-down;Dark hole;5947					279=1		Y	2
+3169 3173 0	3167 9573 0	Climb-down;Dark hole;5947		954			279=0;6533=0		Y	2		T
+3169 3173 0	3167 9573 0	Climb-down;Dark hole;5947		954			279=0;6533=1		Y	2		T
+3169 3173 0	3167 9573 0	Climb-down;Dark hole;5947					279=1;6533=0		Y	2
+3169 3173 0	3167 9573 0	Climb-down;Dark hole;5947					279=1;6533=1		Y	2
 # 3225 9542 0	3219 9532 2	Enter;Tunnel;6659								2
 # 3227 9542 0	3219 9532 2	Enter;Tunnel;6659								2
 # 3218 9532 2	3226 9542 0	Enter;Tunnel;6658								2

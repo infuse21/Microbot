@@ -19,6 +19,7 @@ import net.runelite.client.plugins.microbot.shortestpath.pathfinder.policy.Trans
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
+import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.tabs.Rs2Tab;
 import net.runelite.client.plugins.microbot.util.walker.Rs2PathApi;
 import net.runelite.client.plugins.microbot.util.walker.obstacle.PlannedEdge;
@@ -165,12 +166,12 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 			return null;
 		}
 		if (!hasSafeCurrentHitpoints(transport,
-			Microbot.getClient().getBoostedSkillLevel(Skill.HITPOINTS)))
+			Rs2Player.getBoostedSkillLevel(Skill.HITPOINTS)))
 		{
 			return null;
 		}
 		if (CatalogTransitionPolicy.isGhostShipRockJump(transport)
-			&& !CatalogTransitionPolicy.hasGhostShipRunEnergy(Microbot.getClient().getEnergy()))
+			&& !CatalogTransitionPolicy.hasGhostShipRunEnergy(currentRunEnergy()))
 		{
 			return new CatalogTransition(null, transport.getOrigin(), transport.getObjectId(),
 				WAIT_FOR_RUN_ENERGY, transport.getAction(), transport.getOrigin(),
@@ -225,6 +226,7 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 				return transition(direct, transport, "Use", false);
 			}
 			if (CatalogTransitionPolicy.isSaradominRopeSetup(transport)
+				|| LumbridgeSwampCavePolicy.isRopeSetup(transport)
 				|| CatalogTransitionPolicy.isGuardedProtocolRoute(transport)
 					&& transport.getObjectId() == 6382)
 			{
@@ -238,6 +240,7 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 			}
 			if (CatalogTransitionPolicy.isKalphiteRopeSetup(transport)
 				|| CatalogTransitionPolicy.isSaradominRopeSetup(transport)
+				|| LumbridgeSwampCavePolicy.isRopeSetup(transport)
 				|| CatalogTransitionPolicy.isGuardedProtocolRoute(transport)
 					&& transport.getObjectId() == 6382)
 			{
@@ -269,7 +272,7 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 			return Microbot.getRs2TileObjectCache().query().fromWorldView()
 				.withId(transport.getObjectId()).toList();
 		}
-		if (!Microbot.getClient().getTopLevelWorldView().isInstance())
+		if (!net.runelite.client.plugins.microbot.util.walker.obstacle.Rs2LiveScene.isInInstance())
 		{
 			return Microbot.getRs2TileObjectCache().query().within(transport.getOrigin(),
 				objectSearchRadius(transport)).toList();
@@ -324,9 +327,9 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 
 	private static boolean matchesCatalogIdentity(Rs2TileObjectModel object, Transport transport)
 	{
-		ObjectComposition composition = object.getObjectComposition();
-		return composition != null && sameText(composition.getName(), transport.getName())
-			&& resolveLiveAction(composition.getActions(), transport) != null;
+		ObjectSnapshot snapshot = snapshot(object);
+		return snapshot != null && sameText(snapshot.name, transport.getName())
+			&& resolveLiveAction(snapshot.actions, transport) != null;
 	}
 
 	/** Dispatches one non-blocking preparation or object command for an exact route edge. */
@@ -526,23 +529,26 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 
 	private static boolean hasAction(Rs2NpcModel npc, String action)
 	{
-		NPCComposition composition = npc.getNpc().getTransformedComposition();
-		if (composition == null)
+		return Microbot.getClientThread().runOnClientThreadOptional(() ->
 		{
-			composition = npc.getNpc().getComposition();
-		}
-		if (composition == null || composition.getActions() == null)
-		{
-			return false;
-		}
-		for (String candidate : composition.getActions())
-		{
-			if (candidate != null && candidate.equalsIgnoreCase(action))
+			NPCComposition composition = npc.getNpc().getTransformedComposition();
+			if (composition == null)
 			{
-				return true;
+				composition = npc.getNpc().getComposition();
 			}
-		}
-		return false;
+			if (composition == null || composition.getActions() == null)
+			{
+				return false;
+			}
+			for (String candidate : composition.getActions())
+			{
+				if (candidate != null && candidate.equalsIgnoreCase(action))
+				{
+					return true;
+				}
+			}
+			return false;
+		}).orElse(false);
 	}
 
 	static CatalogTransition visibilityRingPreparation(Transport transport, boolean equipped,
@@ -602,10 +608,20 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 
 	private static List<String> zanarisOptions()
 	{
-		List<Widget> options = Rs2Dialogue.getDialogueOptions();
-		return options == null ? java.util.Collections.emptyList() : options.stream()
-			.map(option -> option == null ? "" : option.getText())
-			.collect(java.util.stream.Collectors.toList());
+		return Microbot.getClientThread().runOnClientThreadOptional(() ->
+		{
+			List<Widget> options = Rs2Dialogue.getDialogueOptions();
+			if (options == null)
+			{
+				return java.util.Collections.<String>emptyList();
+			}
+			List<String> texts = new java.util.ArrayList<>();
+			for (Widget option : options)
+			{
+				texts.add(option == null ? "" : option.getText());
+			}
+			return texts;
+		}).orElse(java.util.Collections.emptyList());
 	}
 
 	private static String zanarisAction(Transport transport, String pendingAction)
@@ -625,9 +641,12 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 
 	private static boolean inventoryReady()
 	{
-		Widget inventory = Microbot.getClient().getWidget(ComponentID.INVENTORY_CONTAINER);
-		return Rs2Tab.isCurrentTab(InterfaceTab.INVENTORY) && inventory != null
-			&& !inventory.isHidden() && inventory.getChildren() != null;
+		return Microbot.getClientThread().runOnClientThreadOptional(() ->
+		{
+			Widget inventory = Microbot.getClient().getWidget(ComponentID.INVENTORY_CONTAINER);
+			return Rs2Tab.isCurrentTab(InterfaceTab.INVENTORY) && inventory != null
+				&& !inventory.isHidden() && inventory.getChildren() != null;
+		}).orElse(false);
 	}
 
 	private static DispatchResult dispatchVisibilityRing(Transport transport, String action)
@@ -693,6 +712,7 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 		return CatalogTransitionPolicy.ATTACH_ROPE_ACTION.equalsIgnoreCase(action)
 			&& (CatalogTransitionPolicy.isKalphiteRopeSetup(transport)
 				|| CatalogTransitionPolicy.isSaradominRopeSetup(transport)
+				|| LumbridgeSwampCavePolicy.isRopeSetup(transport)
 				|| CatalogTransitionPolicy.isGuardedProtocolRoute(transport)
 					&& transport.getObjectId() == 6382);
 	}
@@ -711,8 +731,8 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 
 	private static String resolveLiveAction(Rs2TileObjectModel object, Transport transport)
 	{
-		ObjectComposition composition = object.getObjectComposition();
-		return composition == null ? null : resolveLiveAction(composition.getActions(), transport);
+		ObjectSnapshot snapshot = snapshot(object);
+		return snapshot == null ? null : resolveLiveAction(snapshot.actions, transport);
 	}
 
 	static String resolveLiveAction(String[] actions, Transport transport)
@@ -746,12 +766,12 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 		{
 			return false;
 		}
-		ObjectComposition composition = object.getObjectComposition();
-		if (composition == null || resolveAction(composition.getActions(), "Open") == null)
+		ObjectSnapshot snapshot = snapshot(object);
+		if (snapshot == null || resolveAction(snapshot.actions, "Open") == null)
 		{
 			return false;
 		}
-		String name = normalize(composition.getName());
+		String name = normalize(snapshot.name);
 		return name.contains("trapdoor") || name.contains("manhole")
 			|| name.contains("grate") || name.contains("hatch");
 	}
@@ -786,5 +806,37 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 	private static String normalize(String value)
 	{
 		return value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
+	}
+
+	private static int currentRunEnergy()
+	{
+		return Microbot.getClientThread().runOnClientThreadOptional(
+			() -> Microbot.getClient().getEnergy()).orElse(0);
+	}
+
+	private static ObjectSnapshot snapshot(Rs2TileObjectModel object)
+	{
+		if (object == null)
+		{
+			return null;
+		}
+		return Microbot.getClientThread().runOnClientThreadOptional(() ->
+		{
+			ObjectComposition composition = object.getObjectComposition();
+			return composition == null ? null
+				: new ObjectSnapshot(composition.getName(), composition.getActions());
+		}).orElse(null);
+	}
+
+	private static final class ObjectSnapshot
+	{
+		private final String name;
+		private final String[] actions;
+
+		private ObjectSnapshot(String name, String[] actions)
+		{
+			this.name = name;
+			this.actions = actions;
+		}
 	}
 }

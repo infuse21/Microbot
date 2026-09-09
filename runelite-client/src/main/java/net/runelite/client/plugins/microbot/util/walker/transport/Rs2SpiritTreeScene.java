@@ -14,7 +14,6 @@ import net.runelite.client.plugins.microbot.util.walker.transport.model.SpiritTr
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.List;
 
 /** Cache-backed live adapter for non-blocking spirit-tree interaction stages. */
@@ -60,10 +59,10 @@ public final class Rs2SpiritTreeScene implements SpiritTreeScene
 	public static boolean interactObject(PlannedEdge edge, String expectedAction, int objectId)
 	{
 		Transport transport = findTransport(edge);
-		Rs2TileObjectModel tree = transport == null ? null : findTreeObject(transport);
-		return tree != null && tree.getId() == objectId
+		TreeObject tree = transport == null ? null : findTreeObject(transport);
+		return tree != null && tree.id == objectId
 			&& transport.getAction().equalsIgnoreCase(expectedAction)
-			&& tree.click(transport.getAction());
+			&& tree.object.click(transport.getAction());
 	}
 
 	public static boolean selectDestination(String destination)
@@ -113,10 +112,10 @@ public final class Rs2SpiritTreeScene implements SpiritTreeScene
 
 	private static SpiritTree objectStage(Transport transport)
 	{
-		Rs2TileObjectModel tree = findTreeObject(transport);
+		TreeObject tree = findTreeObject(transport);
 		if (tree != null)
 		{
-			return stage(transport, tree.getWorldLocation(), SpiritTree.Stage.OBJECT);
+			return stage(transport, tree.tile, SpiritTree.Stage.OBJECT);
 		}
 		WorldPoint player = Rs2Player.getWorldLocation();
 		if (player == null || player.getPlane() != transport.getOrigin().getPlane()
@@ -132,23 +131,34 @@ public final class Rs2SpiritTreeScene implements SpiritTreeScene
 		return stage(transport, transport.getOrigin(), SpiritTree.Stage.ORIGIN_UNAVAILABLE);
 	}
 
-	private static Rs2TileObjectModel findTreeObject(Transport transport)
+	private static TreeObject findTreeObject(Transport transport)
 	{
 		return Microbot.getClientThread().runOnClientThreadOptional(() ->
-			Microbot.getRs2TileObjectCache().query().withId(transport.getObjectId())
-				.within(transport.getOrigin(), OBJECT_SEARCH_RADIUS).toList().stream()
-				.filter(object -> hasAction(object, transport.getAction()))
-				.min(Comparator.comparingInt(object -> object.getWorldLocation()
-					.distanceTo2D(transport.getOrigin())))
-				.orElse(null)).orElse(null);
-	}
-
-	private static boolean hasAction(Rs2TileObjectModel object, String expected)
-	{
-		String[] actions = object.getObjectComposition() == null
-			? null : object.getObjectComposition().getActions();
-		return actions != null && Arrays.stream(actions).filter(java.util.Objects::nonNull)
-			.anyMatch(action -> action.equalsIgnoreCase(expected));
+		{
+			TreeObject best = null;
+			int bestDistance = Integer.MAX_VALUE;
+			for (Rs2TileObjectModel object : Microbot.getRs2TileObjectCache().query()
+				.withId(transport.getObjectId())
+				.within(transport.getOrigin(), OBJECT_SEARCH_RADIUS).toList())
+			{
+				net.runelite.api.ObjectComposition composition = object.getObjectComposition();
+				String[] actions = composition == null ? null : composition.getActions();
+				WorldPoint tile = object.getWorldLocation();
+				if (tile == null || actions == null || Arrays.stream(actions)
+					.filter(java.util.Objects::nonNull)
+					.noneMatch(action -> action.equalsIgnoreCase(transport.getAction())))
+				{
+					continue;
+				}
+				int distance = tile.distanceTo2D(transport.getOrigin());
+				if (distance < bestDistance)
+				{
+					best = new TreeObject(object, object.getId(), tile);
+					bestDistance = distance;
+				}
+			}
+			return best;
+		}).orElse(null);
 	}
 
 	private static SpiritTree stage(Transport transport, WorldPoint objectTile,
@@ -181,5 +191,19 @@ public final class Rs2SpiritTreeScene implements SpiritTreeScene
 	{
 		return choices == null ? null
 			: Rs2Widget.findWidget(destination, List.of(choices), false);
+	}
+
+	private static final class TreeObject
+	{
+		private final Rs2TileObjectModel object;
+		private final int id;
+		private final WorldPoint tile;
+
+		private TreeObject(Rs2TileObjectModel object, int id, WorldPoint tile)
+		{
+			this.object = object;
+			this.id = id;
+			this.tile = tile;
+		}
 	}
 }

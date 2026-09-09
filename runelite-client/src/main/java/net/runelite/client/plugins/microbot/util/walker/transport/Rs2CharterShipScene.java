@@ -154,7 +154,39 @@ public final class Rs2CharterShipScene implements CharterShipScene
 			{
 				return null;
 			}
-			Widget text = findDestinationText(root, destination);
+			Widget text = null;
+			java.util.Deque<Widget> pending = new java.util.ArrayDeque<>();
+			pending.push(root);
+			while (!pending.isEmpty())
+			{
+				Widget candidate = pending.pop();
+				if (candidate == null || candidate.isHidden())
+				{
+					continue;
+				}
+				if (matchesDestination(candidate, destination))
+				{
+					text = candidate;
+					break;
+				}
+				Widget[][] childGroups = {candidate.getStaticChildren(),
+					candidate.getDynamicChildren(), candidate.getNestedChildren()};
+				for (int group = childGroups.length - 1; group >= 0; group--)
+				{
+					Widget[] widgets = childGroups[group];
+					if (widgets == null)
+					{
+						continue;
+					}
+					for (int index = widgets.length - 1; index >= 0; index--)
+					{
+						if (widgets[index] != null)
+						{
+							pending.push(widgets[index]);
+						}
+					}
+				}
+			}
 			if (text == null)
 			{
 				return null;
@@ -162,42 +194,6 @@ public final class Rs2CharterShipScene implements CharterShipScene
 			Widget clickable = findClickableParent(text, root);
 			return clickable == null ? text : clickable;
 		}).orElse(null);
-	}
-
-	private static Widget findDestinationText(Widget widget, String destination)
-	{
-		if (widget == null || widget.isHidden())
-		{
-			return null;
-		}
-		if (matchesDestination(widget, destination))
-		{
-			return widget;
-		}
-		Widget found = findDestinationText(widget.getStaticChildren(), destination);
-		if (found == null)
-		{
-			found = findDestinationText(widget.getDynamicChildren(), destination);
-		}
-		return found == null
-			? findDestinationText(widget.getNestedChildren(), destination) : found;
-	}
-
-	private static Widget findDestinationText(Widget[] widgets, String destination)
-	{
-		if (widgets == null)
-		{
-			return null;
-		}
-		for (Widget widget : widgets)
-		{
-			Widget found = findDestinationText(widget, destination);
-			if (found != null)
-			{
-				return found;
-			}
-		}
-		return null;
 	}
 
 	private static boolean matchesDestination(Widget widget, String destination)

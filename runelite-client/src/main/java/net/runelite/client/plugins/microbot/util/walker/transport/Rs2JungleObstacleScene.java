@@ -20,22 +20,45 @@ public final class Rs2JungleObstacleScene implements JungleObstacleScene
 	@Override
 	public JungleObstacle find(PlannedEdge edge)
 	{
-		for (Transport transport : findTransports(edge))
+		List<Transport> transports = findTransports(edge);
+		return Microbot.getClientThread().runOnClientThreadOptional(() ->
 		{
-			Rs2TileObjectModel object = Microbot.getRs2TileObjectCache().query()
-				.withId(transport.getObjectId()).toList().stream()
-				.filter(candidate -> liveMatch(transport, candidate))
-				.min(java.util.Comparator.comparingInt(candidate ->
-					candidate.getWorldLocation().distanceTo2D(transport.getOrigin())))
-				.orElse(null);
-			if (object != null)
+			for (Transport transport : transports)
 			{
-				return new JungleObstacle(object, object.getWorldLocation(),
-					transport.getObjectId(), transport.getAction(), transport.getOrigin(),
-					transport.getDestination());
+				Rs2TileObjectModel best = null;
+				net.runelite.api.coords.WorldPoint bestTile = null;
+				int bestDistance = Integer.MAX_VALUE;
+				for (Rs2TileObjectModel candidate : Microbot.getRs2TileObjectCache().query()
+					.withId(transport.getObjectId()).toList())
+				{
+					ObjectComposition composition = candidate.getObjectComposition();
+					net.runelite.api.coords.WorldPoint tile = candidate.getWorldLocation();
+					String[] rawActions = composition == null ? null : composition.getActions();
+					List<String> liveActions = rawActions == null
+						? java.util.Collections.emptyList() : Arrays.stream(rawActions)
+							.filter(Objects::nonNull).collect(Collectors.toList());
+					if (composition == null || tile == null
+						|| !JungleObstaclePolicy.isLiveObjectMatch(transport,
+							candidate.getId(), composition.getName(), liveActions, tile))
+					{
+						continue;
+					}
+					int distance = tile.distanceTo2D(transport.getOrigin());
+					if (distance < bestDistance)
+					{
+						best = candidate;
+						bestTile = tile;
+						bestDistance = distance;
+					}
+				}
+				if (best != null)
+				{
+					return new JungleObstacle(best, bestTile, transport.getObjectId(),
+						transport.getAction(), transport.getOrigin(), transport.getDestination());
+				}
 			}
-		}
-		return null;
+			return null;
+		}).orElse(null);
 	}
 
 	public static boolean interactObject(PlannedEdge edge, String action, int catalogObjectId)
@@ -57,18 +80,4 @@ public final class Rs2JungleObstacleScene implements JungleObstacleScene
 			.collect(Collectors.toList());
 	}
 
-	private static boolean liveMatch(Transport transport, Rs2TileObjectModel object)
-	{
-		ObjectComposition composition = object.getObjectComposition();
-		return composition != null && JungleObstaclePolicy.isLiveObjectMatch(transport,
-			object.getId(), composition.getName(), actions(composition),
-			object.getWorldLocation());
-	}
-
-	private static List<String> actions(ObjectComposition composition)
-	{
-		String[] actions = composition.getActions();
-		return actions == null ? java.util.Collections.emptyList() : Arrays.stream(actions)
-			.filter(Objects::nonNull).collect(Collectors.toList());
-	}
 }

@@ -7,6 +7,7 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.regex.Pattern;
 import net.runelite.api.ObjectComposition;
+import net.runelite.client.plugins.microbot.Microbot;
 
 /**
  * Stateless classification of door/gate objects: whether a name looks door-like, which menu
@@ -64,11 +65,16 @@ public final class Rs2DoorClassifier {
 
     /** True when every non-null action is Close/Shut (typical open-door state). */
     public static boolean doorCompositionSpecifiesOnlyCloseOrShut(ObjectComposition comp) {
-        if (comp == null || comp.getActions() == null) {
+        CompositionSnapshot snapshot = snapshot(comp);
+        return snapshot != null && doorCompositionSpecifiesOnlyCloseOrShut(snapshot.actions);
+    }
+
+    static boolean doorCompositionSpecifiesOnlyCloseOrShut(String[] actions) {
+        if (actions == null) {
             return false;
         }
         boolean sawNonNull = false;
-        for (String a : comp.getActions()) {
+        for (String a : actions) {
             if (a == null) {
                 continue;
             }
@@ -85,10 +91,15 @@ public final class Rs2DoorClassifier {
      * (empty defs or only close/shut).
      */
     public static String pickWalkDoorAction(ObjectComposition comp) {
-        if (comp == null || comp.getActions() == null) {
+        CompositionSnapshot snapshot = snapshot(comp);
+        return snapshot == null ? null : pickWalkDoorAction(snapshot.actions);
+    }
+
+    static String pickWalkDoorAction(String[] actions) {
+        if (actions == null) {
             return null;
         }
-        return Arrays.stream(comp.getActions())
+        return Arrays.stream(actions)
                 .filter(Objects::nonNull)
                 .filter(a -> !isDoorCloseOrShutAction(a))
                 .min(Comparator.comparingInt(Rs2DoorClassifier::doorActionPriorityIndex))
@@ -114,18 +125,25 @@ public final class Rs2DoorClassifier {
 
     /** Whether a (real, non-impostor) composition exposes one of {@code doorActions}. */
     public static boolean isDoorComposition(ObjectComposition comp, List<String> doorActions) {
-        if (comp == null || comp.getImpostorIds() != null || isNullOrPlaceholderObjectName(comp.getName()) || comp.getActions() == null) {
+        CompositionSnapshot snapshot = snapshot(comp);
+        if (snapshot == null || snapshot.hasImpostors
+                || isNullOrPlaceholderObjectName(snapshot.name) || snapshot.actions == null) {
             return false;
         }
-        return getDoorAction(comp, doorActions) != null;
+        return getDoorAction(snapshot.actions, doorActions) != null;
     }
 
     /** The highest-priority matching {@code doorActions} entry the composition exposes, or null. */
     public static String getDoorAction(ObjectComposition comp, List<String> doorActions) {
-        if (comp == null || comp.getActions() == null) {
+        CompositionSnapshot snapshot = snapshot(comp);
+        return snapshot == null ? null : getDoorAction(snapshot.actions, doorActions);
+    }
+
+    static String getDoorAction(String[] actions, List<String> doorActions) {
+        if (actions == null) {
             return null;
         }
-        return Arrays.stream(comp.getActions())
+        return Arrays.stream(actions)
                 .filter(Objects::nonNull)
                 .filter(act -> doorActions.stream().anyMatch(dact -> act.toLowerCase().startsWith(dact.toLowerCase())))
                 .min(Comparator.comparing(act -> doorActions.indexOf(doorActions.stream()
@@ -133,5 +151,26 @@ public final class Rs2DoorClassifier {
                         .findFirst()
                         .orElse(""))))
                 .orElse(null);
+    }
+
+    private static CompositionSnapshot snapshot(ObjectComposition comp) {
+        if (comp == null) {
+            return null;
+        }
+        return Microbot.getClientThread().runOnClientThreadOptional(() ->
+                new CompositionSnapshot(comp.getName(), comp.getActions(),
+                        comp.getImpostorIds() != null)).orElse(null);
+    }
+
+    private static final class CompositionSnapshot {
+        private final String name;
+        private final String[] actions;
+        private final boolean hasImpostors;
+
+        private CompositionSnapshot(String name, String[] actions, boolean hasImpostors) {
+            this.name = name;
+            this.actions = actions;
+            this.hasImpostors = hasImpostors;
+        }
     }
 }

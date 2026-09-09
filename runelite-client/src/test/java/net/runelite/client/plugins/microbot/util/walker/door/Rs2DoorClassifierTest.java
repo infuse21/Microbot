@@ -1,6 +1,5 @@
 package net.runelite.client.plugins.microbot.util.walker.door;
 
-import net.runelite.api.ObjectComposition;
 import org.junit.Test;
 
 import java.util.Arrays;
@@ -10,8 +9,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 /**
  * Headless tests for {@link Rs2DoorClassifier} — the pure door name/action heuristics the walker uses to
@@ -21,12 +18,6 @@ import static org.mockito.Mockito.when;
  * through here, so the classification must be pinned down independently of a live client.
  */
 public class Rs2DoorClassifierTest {
-
-    private static ObjectComposition compWithActions(String... actions) {
-        ObjectComposition comp = mock(ObjectComposition.class);
-        when(comp.getActions()).thenReturn(actions);
-        return comp;
-    }
 
     // --- isDoorLikeGameObjectName ------------------------------------------------------------------
 
@@ -98,16 +89,17 @@ public class Rs2DoorClassifierTest {
     @Test
     public void picksHighestPriorityWalkThroughActionExcludingClose() {
         // Open(4) beats Pass(5); Close is excluded entirely.
-        assertEquals("Open", Rs2DoorClassifier.pickWalkDoorAction(compWithActions("Pass", "Open", "Close")));
+        assertEquals("Open", Rs2DoorClassifier.pickWalkDoorAction(
+                new String[]{"Pass", "Open", "Close"}));
         assertEquals("Pay-toll",
-                Rs2DoorClassifier.pickWalkDoorAction(compWithActions("Open", "Pay-toll")));
+                Rs2DoorClassifier.pickWalkDoorAction(new String[]{"Open", "Pay-toll"}));
     }
 
     @Test
     public void pickWalkDoorActionReturnsNullWhenOnlyCloseOrShut() {
-        assertNull(Rs2DoorClassifier.pickWalkDoorAction(compWithActions("Close", "Shut", null)));
-        assertNull(Rs2DoorClassifier.pickWalkDoorAction(compWithActions((String[]) new String[]{null, null})));
-        assertNull(Rs2DoorClassifier.pickWalkDoorAction(null));
+        assertNull(Rs2DoorClassifier.pickWalkDoorAction(new String[]{"Close", "Shut", null}));
+        assertNull(Rs2DoorClassifier.pickWalkDoorAction(new String[]{null, null}));
+        assertNull(Rs2DoorClassifier.pickWalkDoorAction((String[]) null));
     }
 
     // --- doorCompositionSpecifiesOnlyCloseOrShut ---------------------------------------------------
@@ -115,13 +107,14 @@ public class Rs2DoorClassifierTest {
     @Test
     public void onlyCloseOrShutDetectsOpenDoorState() {
         assertTrue(Rs2DoorClassifier.doorCompositionSpecifiesOnlyCloseOrShut(
-                compWithActions("Close", null, null)));
+                new String[]{"Close", null, null}));
         assertFalse("a still-openable door is not in the only-close state",
-                Rs2DoorClassifier.doorCompositionSpecifiesOnlyCloseOrShut(compWithActions("Open", "Close")));
+                Rs2DoorClassifier.doorCompositionSpecifiesOnlyCloseOrShut(
+                        new String[]{"Open", "Close"}));
         assertFalse("no non-null actions -> not classified as open",
                 Rs2DoorClassifier.doorCompositionSpecifiesOnlyCloseOrShut(
-                        compWithActions((String[]) new String[]{null, null})));
-        assertFalse(Rs2DoorClassifier.doorCompositionSpecifiesOnlyCloseOrShut(null));
+                        new String[]{null, null}));
+        assertFalse(Rs2DoorClassifier.doorCompositionSpecifiesOnlyCloseOrShut((String[]) null));
     }
 
     // --- getDoorAction -----------------------------------------------------------------------------
@@ -130,8 +123,10 @@ public class Rs2DoorClassifierTest {
     public void getDoorActionReturnsHighestPriorityConfiguredMatch() {
         List<String> doorActions = Arrays.asList("open", "pass", "climb-over");
         // Composition exposes Pass + Open; "open" is earlier in doorActions so it wins.
-        assertEquals("Open", Rs2DoorClassifier.getDoorAction(compWithActions("Pass", "Open"), doorActions));
-        assertNull(Rs2DoorClassifier.getDoorAction(compWithActions("Examine", "Look-at"), doorActions));
-        assertNull(Rs2DoorClassifier.getDoorAction(null, doorActions));
+        assertEquals("Open", Rs2DoorClassifier.getDoorAction(
+                new String[]{"Pass", "Open"}, doorActions));
+        assertNull(Rs2DoorClassifier.getDoorAction(
+                new String[]{"Examine", "Look-at"}, doorActions));
+        assertNull(Rs2DoorClassifier.getDoorAction((String[]) null, doorActions));
     }
 }

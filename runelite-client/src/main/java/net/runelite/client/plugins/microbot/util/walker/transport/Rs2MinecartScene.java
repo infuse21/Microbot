@@ -21,7 +21,6 @@ import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -257,27 +256,36 @@ public final class Rs2MinecartScene implements MinecartScene
 
 	private static MinecartObject findObject(Transport transport)
 	{
-		return Microbot.getRs2TileObjectCache().query()
-			.within(transport.getOrigin(), MinecartPolicy.LIVE_OBJECT_ORIGIN_TOLERANCE)
-			.toList().stream().map(candidate -> minecartObject(transport, candidate))
-			.filter(Objects::nonNull)
-			.min(Comparator.comparingInt(candidate ->
-				candidate.tile.distanceTo2D(transport.getOrigin())))
-			.orElse(null);
-	}
-
-	private static MinecartObject minecartObject(Transport transport,
-		Rs2TileObjectModel object)
-	{
-		ObjectComposition composition = object.getObjectComposition();
-		List<String> actions = composition == null || composition.getActions() == null
-			? Collections.emptyList() : Arrays.stream(composition.getActions())
-				.filter(Objects::nonNull).collect(Collectors.toList());
-		String name = composition == null ? null : composition.getName();
-		String action = MinecartPolicy.exactAction(actions, transport.getAction());
-		return action != null && MinecartPolicy.isLiveObjectMatch(transport,
-			object.getId(), name, actions, object.getWorldLocation())
-			? new MinecartObject(object, object.getWorldLocation(), action) : null;
+		return Microbot.getClientThread().runOnClientThreadOptional(() ->
+		{
+			MinecartObject best = null;
+			int bestDistance = Integer.MAX_VALUE;
+			for (Rs2TileObjectModel object : Microbot.getRs2TileObjectCache().query()
+				.within(transport.getOrigin(), MinecartPolicy.LIVE_OBJECT_ORIGIN_TOLERANCE)
+				.toList())
+			{
+				ObjectComposition composition = object.getObjectComposition();
+				String[] rawActions = composition == null ? null : composition.getActions();
+				List<String> actions = rawActions == null ? Collections.emptyList()
+					: Arrays.stream(rawActions).filter(Objects::nonNull)
+						.collect(Collectors.toList());
+				WorldPoint tile = object.getWorldLocation();
+				String action = MinecartPolicy.exactAction(actions, transport.getAction());
+				if (composition == null || tile == null || action == null
+					|| !MinecartPolicy.isLiveObjectMatch(transport, object.getId(),
+						composition.getName(), actions, tile))
+				{
+					continue;
+				}
+				int distance = tile.distanceTo2D(transport.getOrigin());
+				if (distance < bestDistance)
+				{
+					best = new MinecartObject(object, tile, action);
+					bestDistance = distance;
+				}
+			}
+			return best;
+		}).orElse(null);
 	}
 
 	private static Transport findTransport(PlannedEdge edge)
@@ -292,9 +300,12 @@ public final class Rs2MinecartScene implements MinecartScene
 
 	private static boolean menuVisible()
 	{
-		Widget choices = choicesWidget();
-		return choices != null && !choices.isHidden()
-			|| !Rs2Widget.isHidden(ComponentID.ADVENTURE_LOG_CONTAINER);
+		return Microbot.getClientThread().runOnClientThreadOptional(() ->
+		{
+			Widget choices = choicesWidget();
+			return choices != null && !choices.isHidden()
+				|| !Rs2Widget.isHidden(ComponentID.ADVENTURE_LOG_CONTAINER);
+		}).orElse(false);
 	}
 
 	private static Widget findDestinationWidget(String displayInfo)

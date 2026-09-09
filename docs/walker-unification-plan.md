@@ -23,9 +23,9 @@ remain open rather than blocking each batch or being silently marked complete.
 
 ## Active-graph classification closure and resolver hardening - 2026-09-09
 
-The current production resource set loads **6,078 transport origins** and has no active route edge left
+The current production resource set loads **6,086 transport origins** and has no active route edge left
 classified as the generic legacy `TRANSPORT` kind. This closes the active-graph classification
-boundary only: a source audit still identifies **140 genuine disabled traversals** whose quest,
+boundary only: a source audit still identifies **132 genuine disabled traversals** whose quest,
 equipment, safety, payment, failure or staged-interaction contracts remain implementation work.
 Phase 6 therefore remains open, and Phase 7 deletion has not started.
 
@@ -105,6 +105,20 @@ Hellhounds or Cerberus. Transport-refresh snapshots include the precise Slayer t
 subtype so changing between nonzero tasks invalidates a cached route; the scene resolver repeats
 the access check on the client thread immediately before exposing `Turn`. NavigationEngine retains
 the edge until its exact lair landing, and physical acceptance remains deferred.
+
+Four permanently roped Lumbridge Swamp dark-hole approaches are restored with exact object,
+installed-rope varbit and underground-landing contracts. Route availability and bank setup share a
+reusable gas-safe light requirement; lit torches, candles, black candles and oil lamps are excluded
+because they can ignite cave gas. The exact Lumbridge Fire of Eternal Light varbit (`6533=1`)
+publishes separate light-free route variants. When varbit `279=0`, NavigationEngine stages one
+consumable rope on the exact dark hole, waits for its installed transform and then owns the same
+directed descent; bank planning also supplies a gas-safe light unless the permanent fire is built.
+Physical acceptance remains deferred.
+
+Four Grim Tales witch-house manhole approaches are restored only when permanent unlock varbit
+`3718=1` is present. They carry no invented quest, item or combat requirement: NavigationEngine
+owns the exact `Enter` interaction and basement landing, while the walker neither unlocks the
+manhole nor owns survival in the aggressive experiment area. Physical acceptance remains deferred.
 
 The complete focused Phase 6 banking, League, transport, navigation, pathfinder, POH, collision and
 minimap suite passes, as do main and test Checkstyle. Existing deprecation warnings are unrelated.

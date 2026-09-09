@@ -23,9 +23,9 @@ additive totals; source rows, generated edges and duplicated approaches must not
 
 ### Active graph, instance scene boundary and large agility objects - 2026-09-09
 
-- **Headless:** all 6,078 currently loaded transport origins now classify into an explicit
+- **Headless:** all 6,086 currently loaded transport origins now classify into an explicit
   NavigationEngine-owned family; no active edge remains generic `TRANSPORT`. This does not include
-  the 140 genuine disabled traversals that still need complete protocols. Shared two-way instance
+  the 132 genuine disabled traversals that still need complete protocols. Shared two-way instance
   normalization now covers ordinary doors, catalog transitions, adjacent transports and exact
   mineable/object probes; synthetic chunk mappings test live-to-template and template-to-live.
 - **Live pending:** in a rebuilt client, repeat a GOTR/instanced layout where a closed ordinary door
@@ -80,6 +80,15 @@ additive totals; source rows, generated edges and duplicated approaches must not
   both the task target and boss subtype, the scene snapshot rechecks access immediately before
   `Turn`, and only the exact lair landing clears the edge. Live-test a normal Hellhounds assignment
   and a boosted-level boundary; the walker enters the lair and does not own combat or survival.
+- **New Lumbridge Swamp entrance batch:** four permanently roped dark-hole approaches require
+  installed-state varbit `279=1`, one reusable gas-safe light and the exact underground landing.
+  The mutually exclusive `6533=1` variant removes the light requirement after the Lumbridge Fire of
+  Eternal Light is built. When `279=0`, the engine stages and consumes one bankable rope before the
+  same descent. Live-test one banked rope/light setup, one installed entry, one permanent-fire entry,
+  and confirm open flames are never selected.
+- **New Grim Tales manhole batch:** four approaches publish only with permanent unlock varbit
+  `3718=1`, dispatch exact `Enter;Manhole;24842`, and clear only at `(2901,9867,0)`. Live-test one
+  unlocked entry and the existing staircase exit; the walker does not solve the quest or own combat.
 
 ### Steps, access routes and audited shortcut cleanup - 2026-09-08
 
@@ -686,8 +695,8 @@ Pre-Zanaris checkpoint: 1,466 legacy edges, including 990 ordinary TRANSPORT edg
 headless Zanaris cutover: 1,465 and 989; after Waterfall internal doors: 1,463 and 987;
 after Draynor unlocked crossings: 1,445 and 969 respectively; after Yanille pick-lock:
 1,443 and 967 respectively. Those are historical checkpoints. The current active graph has no
-generic legacy `TRANSPORT` classification: all 6,078 loaded transport origins have explicit engine
-ownership, while 140 genuine traversals remain source-disabled pending complete protocols. These counts are
+generic legacy `TRANSPORT` classification: all 6,086 loaded transport origins have explicit engine
+ownership, while 132 genuine traversals remain source-disabled pending complete protocols. These counts are
 not percentages of live acceptance or estimates of implementation effort.
 
 ## Acceptance record to append for each future run

@@ -40,10 +40,15 @@ public final class Rs2NpcTransportScene implements NpcTransportScene
 		Rs2NpcModel npc = findNpc(transport);
 		if (npc != null)
 		{
-			return model(transport, npc.getWorldLocation());
+			WorldPoint tile = Microbot.getClientThread().runOnClientThreadOptional(
+				npc::getWorldLocation).orElse(null);
+			return model(transport, tile);
 		}
 		Rs2TileObjectModel object = findTravelObject(transport);
-		return object == null ? null : model(transport, object.getWorldLocation());
+		WorldPoint tile = object == null ? null
+			: Microbot.getClientThread().runOnClientThreadOptional(
+				object::getWorldLocation).orElse(null);
+		return object == null ? null : model(transport, tile);
 	}
 
 	public static Rs2NpcModel findNpc(Transport transport)
@@ -82,34 +87,45 @@ public final class Rs2NpcTransportScene implements NpcTransportScene
 	 */
 	public static Rs2TileObjectModel findTravelObject(Transport transport)
 	{
-		return Microbot.getRs2TileObjectCache().query()
-			.within(transport.getOrigin(), NpcTransportPolicy.LIVE_OBJECT_ORIGIN_TOLERANCE)
-			.toList().stream()
-			.filter(candidate -> NpcTransportPolicy.isLiveObjectMatch(transport,
-				candidate.getId(), compositionName(candidate),
-				compositionActions(candidate), candidate.getWorldLocation()))
-			.min(Comparator.comparingInt((Rs2TileObjectModel candidate) ->
-				(candidate.getId() == transport.getObjectId() ? 0 : 100)
-					+ candidate.getWorldLocation().distanceTo2D(transport.getOrigin())))
-			.orElse(null);
+		return Microbot.getClientThread().runOnClientThreadOptional(() ->
+		{
+			Rs2TileObjectModel best = null;
+			int bestScore = Integer.MAX_VALUE;
+			for (Rs2TileObjectModel candidate : Microbot.getRs2TileObjectCache().query()
+				.within(transport.getOrigin(), NpcTransportPolicy.LIVE_OBJECT_ORIGIN_TOLERANCE)
+				.toList())
+			{
+				ObjectComposition composition = candidate.getObjectComposition();
+				int id = candidate.getId();
+				WorldPoint tile = candidate.getWorldLocation();
+				String name = composition == null ? null : composition.getName();
+				String[] liveActions = composition == null ? null : composition.getActions();
+				if (tile == null || !NpcTransportPolicy.isLiveObjectMatch(transport,
+					id, name, liveActions, tile))
+				{
+					continue;
+				}
+				int score = (id == transport.getObjectId() ? 0 : 100)
+					+ tile.distanceTo2D(transport.getOrigin());
+				if (score < bestScore)
+				{
+					best = candidate;
+					bestScore = score;
+				}
+			}
+			return best;
+		}).orElse(null);
 	}
 
 	public static String resolveLiveAction(Rs2TileObjectModel object, String catalogAction)
 	{
-		return object == null ? null
-			: NpcTransportPolicy.matchAction(compositionActions(object), catalogAction);
-	}
-
-	private static String compositionName(Rs2TileObjectModel object)
-	{
-		ObjectComposition composition = object.getObjectComposition();
-		return composition == null ? null : composition.getName();
-	}
-
-	private static String[] compositionActions(Rs2TileObjectModel object)
-	{
-		ObjectComposition composition = object.getObjectComposition();
-		return composition == null ? null : composition.getActions();
+		return object == null ? null : Microbot.getClientThread()
+			.runOnClientThreadOptional(() ->
+			{
+				ObjectComposition composition = object.getObjectComposition();
+				return NpcTransportPolicy.matchAction(
+					composition == null ? null : composition.getActions(), catalogAction);
+			}).orElse(null);
 	}
 
 	private static NpcTransport model(Transport transport, WorldPoint tile)

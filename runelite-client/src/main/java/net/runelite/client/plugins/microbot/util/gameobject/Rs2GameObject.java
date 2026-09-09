@@ -21,7 +21,6 @@ import net.runelite.client.plugins.microbot.util.misc.Rs2UiHelper;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.tile.Rs2Tile;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
-import org.apache.commons.lang3.tuple.Triple;
 
 import javax.annotation.Nullable;
 import java.lang.reflect.Field;
@@ -50,7 +49,8 @@ public class Rs2GameObject {
 	 * @return a {@link List} of {@link GameObject} instances on the tile (never null)
 	 */
 	private static final Function<Tile, Collection<? extends GameObject>> GAMEOBJECT_EXTRACTOR =
-		tile -> Arrays.asList(tile.getGameObjects());
+		tile -> Microbot.getClientThread().runOnClientThreadOptional(() ->
+			Arrays.asList(tile.getGameObjects())).orElse(Collections.emptyList());
 
 	/**
 	 * Extracts the {@link GroundObject} located on a given {@link Tile}.
@@ -61,7 +61,8 @@ public class Rs2GameObject {
 	 *         or a list with a single null element if none is present
 	 */
 	private static final Function<Tile, Collection<? extends GroundObject>> GROUNDOBJECT_EXTRACTOR =
-		tile -> Collections.singletonList(tile.getGroundObject());
+		tile -> Microbot.getClientThread().runOnClientThreadOptional(() ->
+			Collections.singletonList(tile.getGroundObject())).orElse(Collections.emptyList());
 
 	/**
 	 * Extracts the {@link DecorativeObject} located on a given {@link Tile}.
@@ -72,7 +73,8 @@ public class Rs2GameObject {
 	 *         or a list with a single null element if none is present
 	 */
 	private static final Function<Tile, Collection<? extends DecorativeObject>> DECORATIVEOBJECT_EXTRACTOR =
-		tile -> Collections.singletonList(tile.getDecorativeObject());
+		tile -> Microbot.getClientThread().runOnClientThreadOptional(() ->
+			Collections.singletonList(tile.getDecorativeObject())).orElse(Collections.emptyList());
 
 	/**
 	 * Extracts the {@link WallObject} located on a given {@link Tile}.
@@ -83,7 +85,8 @@ public class Rs2GameObject {
 	 *         or a list with a single null element if none is present
 	 */
 	private static final Function<Tile, Collection<? extends WallObject>> WALLOBJECT_EXTRACTOR =
-		tile -> Collections.singletonList(tile.getWallObject());
+		tile -> Microbot.getClientThread().runOnClientThreadOptional(() ->
+			Collections.singletonList(tile.getWallObject())).orElse(Collections.emptyList());
 
 	/**
 	 * Extracts all types of {@link TileObject} (decorative, ground, wall) from a given {@link Tile}.
@@ -93,11 +96,9 @@ public class Rs2GameObject {
 	 *         and {@link WallObject} (some entries may be null if that object is not present)
 	 */
 	private static final Function<Tile, Collection<? extends TileObject>> TILEOBJECT_EXTRACTOR =
-		tile -> Arrays.asList(
-			tile.getDecorativeObject(),
-			tile.getGroundObject(),
-			tile.getWallObject()
-		);
+		tile -> Microbot.getClientThread().runOnClientThreadOptional(() -> Arrays.asList(
+			tile.getDecorativeObject(), tile.getGroundObject(), tile.getWallObject()))
+			.orElse(Collections.emptyList());
 
 
     public static boolean interact(WorldPoint worldPoint) {
@@ -362,7 +363,9 @@ public class Rs2GameObject {
     public static boolean hasAction(ObjectComposition objComp, String action, boolean exact) {
         if (objComp == null) return false;
 
-        return Arrays.stream(objComp.getActions())
+        String[] actions = Microbot.getClientThread().runOnClientThreadOptional(
+                objComp::getActions).orElse(new String[0]);
+        return Arrays.stream(actions)
                 .filter(Objects::nonNull)
                 .anyMatch(a -> exact ? a.equalsIgnoreCase(action) : a.toLowerCase().contains(action.toLowerCase()));
     }
@@ -1524,60 +1527,49 @@ public class Rs2GameObject {
 
     // private methods
     private static <T extends TileObject> Stream<T> getSceneObjects(Function<Tile, Collection<? extends T>> extractor) {
-        var triple = Microbot.getClientThread().invoke(() -> {
+        List<T> result = Microbot.getClientThread().runOnClientThreadOptional(() -> {
             Player player = Microbot.getClient().getLocalPlayer();
             if (player == null || player.getWorldView() == null) {
-                return Triple.of(null, null, 0);
+				return Collections.<T>emptyList();
             }
 
             Scene scene = player.getWorldView().getScene();
 
             Tile[][][] tiles = scene.getTiles();
             if (tiles == null) {
-                return Triple.of(null, null, 0);
+				return Collections.<T>emptyList();
             }
 
             int z = player.getWorldView().getPlane();
+			List<T> sceneObjects = new ArrayList<>();
+			int sceneSize = Constants.SCENE_SIZE;
+			for (int x = 0; x < sceneSize; x++) {
+				for (int y = 0; y < sceneSize; y++) {
+					for (int h = 0; h <= z; h++) {
+						Tile tile = tiles[h][x][y];
+						if (tile == null) continue;
 
-            return Triple.of(scene, tiles, z);
-        });
+						Collection<? extends T> objs = extractor.apply(tile);
+						if (objs != null) {
+							for (T obj : objs) {
+								if (obj == null) continue;
 
-        var result = new ArrayList<T>();
-        Tile[][][] tiles = (Tile[][][]) triple.getMiddle();
-        int z = triple.getRight();
-        if (tiles == null) {
-            return result.stream();
-        }
-
-        int sceneSize = Constants.SCENE_SIZE;
-
-        for (int x = 0; x < sceneSize; x++) {
-            for (int y = 0; y < sceneSize; y++) {
-                for (int h = 0; h <= z; h++) {
-                    Tile tile = tiles[h][x][y];
-                    if (tile == null) continue;
-
-                    Collection<? extends T> objs = extractor.apply(tile);
-                    if (objs != null) {
-                        for (T obj : objs) {
-                            if (obj == null) continue;
-
-                            if (obj instanceof GameObject) {
-                                GameObject gameObject = (GameObject) obj;
-                                if (gameObject.getSceneMinLocation().equals(tile.getSceneLocation())) {
-                                    result.add(obj);
-                                }
-                            } else {
-                                if (obj.getLocalLocation().equals(tile.getLocalLocation())) {
-                                    result.add(obj);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        return result.stream();
+								if (obj instanceof GameObject) {
+									GameObject gameObject = (GameObject) obj;
+									if (sceneMinLocation(gameObject).equals(tile.getSceneLocation())) {
+										sceneObjects.add(obj);
+									}
+								} else if (objectLocalLocation(obj).equals(tile.getLocalLocation())) {
+									sceneObjects.add(obj);
+								}
+							}
+						}
+					}
+				}
+			}
+			return sceneObjects;
+		}).orElse(Collections.emptyList());
+		return result.stream();
     }
 
     private static <T extends TileObject> List<T> getSceneObjects(Function<Tile, Collection<? extends T>> extractor, Predicate<T> predicate, LocalPoint anchorLocal, int distance) {
@@ -1588,7 +1580,7 @@ public class Rs2GameObject {
         return getSceneObjects(extractor)
                 .filter(withinTilesPredicate(distance, anchorLocal))
                 .filter(predicate)
-                .sorted(Comparator.comparingInt(o -> o.getLocalLocation().distanceTo(anchorLocal)))
+                .sorted(Comparator.comparingInt(o -> objectLocalLocation(o).distanceTo(anchorLocal)))
                 .collect(Collectors.toList());
     }
 
@@ -1613,7 +1605,7 @@ public class Rs2GameObject {
     }
 
     private static <T extends TileObject> Predicate<T> withinTilesPredicate(int distance, LocalPoint anchor) {
-        return to -> isWithinTiles(anchor, to.getLocalLocation(), distance);
+        return to -> isWithinTiles(anchor, objectLocalLocation(to), distance);
     }
 
 	private static LocalPoint localPointFromWorldSafe(WorldPoint anchor) {
@@ -1779,7 +1771,7 @@ public class Rs2GameObject {
         // triggering the "not close enough" path).
         LocalPoint playerLocal = Microbot.getClient().getLocalPlayer() != null
                 ? Microbot.getClient().getLocalPlayer().getLocalLocation() : null;
-        LocalPoint objectLocal = object.getLocalLocation();
+        LocalPoint objectLocal = objectLocalLocation(object);
         boolean tooFar;
         if (playerLocal != null && objectLocal != null && objectLocal.isInScene()) {
             int dx = playerLocal.getSceneX() - objectLocal.getSceneX();
@@ -1808,30 +1800,28 @@ public class Rs2GameObject {
             if (object instanceof GameObject) {
                 GameObject obj = (GameObject) object;
                 if (obj.sizeX() > 1) {
-                    param0 = obj.getLocalLocation().getSceneX() - obj.sizeX() / 2;
+                    param0 = objectLocal.getSceneX() - obj.sizeX() / 2;
                 } else {
-                    param0 = obj.getLocalLocation().getSceneX();
+                    param0 = objectLocal.getSceneX();
                 }
 
                 if (obj.sizeY() > 1) {
-                    param1 = obj.getLocalLocation().getSceneY() - obj.sizeY() / 2;
+                    param1 = objectLocal.getSceneY() - obj.sizeY() / 2;
                 } else {
-                    param1 = obj.getLocalLocation().getSceneY();
+                    param1 = objectLocal.getSceneY();
                 }
             } else {
                 // Default objects like walls, groundobjects, decorationobjects etc...
-                param0 = object.getLocalLocation().getSceneX();
-                param1 = object.getLocalLocation().getSceneY();
+                param0 = objectLocal.getSceneX();
+                param1 = objectLocal.getSceneY();
             }
 
             int index = 0;
             if (action != null) {
-                String[] actions;
-                if (objComp.getImpostorIds() != null && objComp.getImpostor() != null) {
-                    actions = objComp.getImpostor().getActions();
-                } else {
-                    actions = objComp.getActions();
-                }
+                String[] actions = Microbot.getClientThread().runOnClientThreadOptional(() ->
+                        objComp.getImpostorIds() != null && objComp.getImpostor() != null
+                                ? objComp.getImpostor().getActions() : objComp.getActions())
+                        .orElse(new String[0]);
 
                 for (int i = 0; i < actions.length; i++) {
                     if (actions[i] == null) continue;
@@ -1864,7 +1854,7 @@ public class Rs2GameObject {
                 menuAction = MenuAction.GAME_OBJECT_FIFTH_OPTION;
             }
 
-            if (!Rs2Camera.isTileOnScreen(object.getLocalLocation())) {
+            if (!Rs2Camera.isTileOnScreen(objectLocal)) {
                 Rs2Camera.turnTo(object);
             }
 
@@ -1882,7 +1872,7 @@ public class Rs2GameObject {
 
             int worldViewId = WorldView.TOPLEVEL;
 
-            if (!object.getWorldView().isTopLevel()) {
+            if (!objectWorldView(object).isTopLevel()) {
                 var worldView =Microbot.getClientThread().invoke(() ->  Microbot.getClient().getLocalPlayer().getWorldView());
                 if (worldView == null) {
                     worldViewId = Microbot.getClient().getTopLevelWorldView().getId();
@@ -1924,7 +1914,9 @@ public class Rs2GameObject {
         if (tileObject == null) return false;
         if (tileObject instanceof GameObject) {
             GameObject gameObject = (GameObject) tileObject;
-            WorldPoint worldPoint = WorldPoint.fromScene(Microbot.getClient(), gameObject.getSceneMinLocation().getX(), gameObject.getSceneMinLocation().getY(), gameObject.getPlane());
+            Point sceneMin = sceneMinLocation(gameObject);
+            WorldPoint worldPoint = WorldPoint.fromScene(Microbot.getClient(), sceneMin.getX(),
+                    sceneMin.getY(), gameObject.getPlane());
             return new WorldArea(
                     worldPoint,
                     gameObject.sizeX(),
@@ -1985,7 +1977,9 @@ public class Rs2GameObject {
 
         if (tileObject instanceof GameObject) {
             GameObject gameObject = (GameObject) tileObject;
-            WorldPoint worldPoint = WorldPoint.fromScene(Microbot.getClient(), gameObject.getSceneMinLocation().getX(), gameObject.getSceneMinLocation().getY(), gameObject.getPlane());
+            Point sceneMin = sceneMinLocation(gameObject);
+            WorldPoint worldPoint = WorldPoint.fromScene(Microbot.getClient(), sceneMin.getX(),
+                    sceneMin.getY(), gameObject.getPlane());
 
             if (Microbot.getClient().isInInstancedRegion()) {
                 var localPoint = LocalPoint.fromWorld(Microbot.getClient(), worldPoint);
@@ -2037,6 +2031,21 @@ public class Rs2GameObject {
                 .findFirst()
                 .orElse(null);
         return walkableInteractPoint != null;
+    }
+
+    private static LocalPoint objectLocalLocation(TileObject object) {
+        return Microbot.getClientThread().runOnClientThreadOptional(
+                object::getLocalLocation).orElse(null);
+    }
+
+    private static WorldView objectWorldView(TileObject object) {
+        return Microbot.getClientThread().runOnClientThreadOptional(
+                object::getWorldView).orElse(null);
+    }
+
+    private static Point sceneMinLocation(GameObject object) {
+        return Microbot.getClientThread().runOnClientThreadOptional(
+                object::getSceneMinLocation).orElse(null);
     }
 
     public static WorldArea getWorldArea(GameObject gameObject) {

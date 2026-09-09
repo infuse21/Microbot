@@ -79,12 +79,19 @@ public final class Rs2LiveScene implements LiveScene {
 		if (tile == null) {
 			return null;
 		}
-		return Microbot.getClientThread().runOnClientThreadOptional(() ->
-			Rs2SceneLocation.sceneLocations(tile).stream()
-				.map(Rs2GameObject::findGameObjectByLocation)
-				.filter(java.util.Objects::nonNull)
-				.filter(object -> object.getId() == ObjectID.MOTHERLODE_ROCKFALL_1
-					|| object.getId() == ObjectID.MOTHERLODE_ROCKFALL_2)
-				.findFirst().orElse(null)).orElse(null);
+		return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+			for (WorldPoint sceneTile : Rs2SceneLocation.sceneLocations(tile)) {
+				TileObject object = Rs2GameObject.findGameObjectByLocation(sceneTile);
+				if (object == null) {
+					continue;
+				}
+				int objectId = object.getId();
+				if (objectId == ObjectID.MOTHERLODE_ROCKFALL_1
+					|| objectId == ObjectID.MOTHERLODE_ROCKFALL_2) {
+					return object;
+				}
+			}
+			return null;
+		}).orElse(null);
 	}
 }

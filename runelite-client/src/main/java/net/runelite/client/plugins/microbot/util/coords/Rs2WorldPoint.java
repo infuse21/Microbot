@@ -144,7 +144,9 @@ public class Rs2WorldPoint {
         if (worldPoint == null) return null;
 
 
-        return WorldPoint.toLocalInstance(Microbot.getClient().getTopLevelWorldView(),worldPoint).stream().findFirst().orElse(null);
+        return Microbot.getClientThread().runOnClientThreadOptional(() ->
+                WorldPoint.toLocalInstance(Microbot.getClient().getTopLevelWorldView(), worldPoint)
+                        .stream().findFirst().orElse(null)).orElse(null);
     }
 
     /**

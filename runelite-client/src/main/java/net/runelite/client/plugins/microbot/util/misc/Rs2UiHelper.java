@@ -20,11 +20,14 @@ import java.util.regex.Pattern;
 public class Rs2UiHelper {
 
     public static boolean isRectangleWithinViewport(Rectangle rectangle) {
-        int viewportHeight = Microbot.getClient().getViewportHeight();
-        int viewportWidth = Microbot.getClient().getViewportWidth();
+        int[] viewportSize = Microbot.getClientThread().runOnClientThreadOptional(() -> new int[] {
+                Microbot.getClient().getViewportWidth(),
+                Microbot.getClient().getViewportHeight()
+        }).orElse(null);
+        if (rectangle == null || viewportSize == null) return false;
 
-        return !(rectangle.getX() > (double) viewportWidth) &&
-                !(rectangle.getY() > (double) viewportHeight) &&
+        return !(rectangle.getX() > (double) viewportSize[0]) &&
+                !(rectangle.getY() > (double) viewportSize[1]) &&
                 !(rectangle.getX() < 0.0) &&
                 !(rectangle.getY() < 0.0);
     }

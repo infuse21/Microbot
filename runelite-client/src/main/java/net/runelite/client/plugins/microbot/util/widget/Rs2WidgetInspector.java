@@ -9,7 +9,6 @@ import net.runelite.client.plugins.microbot.util.misc.Rs2UiHelper;
 
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @Slf4j
 public class Rs2WidgetInspector {
@@ -186,11 +185,13 @@ public class Rs2WidgetInspector {
 	}
 
 	private static List<Widget> getAllChildren(Widget widget) {
-		List<Widget> all = new ArrayList<>();
-		addNonNull(all, widget.getStaticChildren());
-		addNonNull(all, widget.getDynamicChildren());
-		addNonNull(all, widget.getNestedChildren());
-		return all;
+		return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+			List<Widget> all = new ArrayList<>();
+			addNonNull(all, widget.getStaticChildren());
+			addNonNull(all, widget.getDynamicChildren());
+			addNonNull(all, widget.getNestedChildren());
+			return all;
+		}).orElse(Collections.emptyList());
 	}
 
 	private static void addNonNull(List<Widget> list, Widget[] arr) {
@@ -206,22 +207,18 @@ public class Rs2WidgetInspector {
 	}
 
 	private static int countVisibleChildren(Widget widget) {
-		int count = 0;
-		Widget[] children = widget.getStaticChildren();
-		if (children != null) count += countVisible(children);
-		children = widget.getDynamicChildren();
-		if (children != null) count += countVisible(children);
-		children = widget.getNestedChildren();
-		if (children != null) count += countVisible(children);
-		return count;
-	}
-
-	private static int countVisible(Widget[] widgets) {
-		int c = 0;
-		for (Widget w : widgets) {
-			if (w != null && !w.isHidden()) c++;
-		}
-		return c;
+		return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+			int count = 0;
+			Widget[][] childGroups = {widget.getStaticChildren(), widget.getDynamicChildren(),
+					widget.getNestedChildren()};
+			for (Widget[] children : childGroups) {
+				if (children == null) continue;
+				for (Widget child : children) {
+					if (child != null && !child.isHidden()) count++;
+				}
+			}
+			return count;
+		}).orElse(0);
 	}
 
 	private static String getLabel(Widget widget) {

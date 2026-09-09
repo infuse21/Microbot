@@ -215,9 +215,16 @@ public final class Rs2MapOfAlacrityTransport
 		{
 			return null;
 		}
-		return Microbot.getClientThread().runOnClientThreadOptional(() -> collectChildren(root).stream()
-			.filter(widget -> normalizedTextContainsAllTokens(widget.getText(), text))
-			.findFirst().orElse(null)).orElse(null);
+		return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+			for (Widget widget : collectChildren(root))
+			{
+				if (normalizedTextContainsAllTokens(widget.getText(), text))
+				{
+					return widget;
+				}
+			}
+			return null;
+		}).orElse(null);
 	}
 
 	private static boolean select(Widget root, Widget row, String text)
@@ -262,11 +269,13 @@ public final class Rs2MapOfAlacrityTransport
 
 	private static List<Widget> collectChildren(Widget root)
 	{
-		List<Widget> result = new ArrayList<>();
-		addChildren(result, root.getDynamicChildren());
-		addChildren(result, root.getNestedChildren());
-		addChildren(result, root.getStaticChildren());
-		return result;
+		return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+			List<Widget> result = new ArrayList<>();
+			addChildren(result, root.getDynamicChildren());
+			addChildren(result, root.getNestedChildren());
+			addChildren(result, root.getStaticChildren());
+			return result;
+		}).orElseGet(ArrayList::new);
 	}
 
 	private static void addChildren(List<Widget> result, Widget[] children)

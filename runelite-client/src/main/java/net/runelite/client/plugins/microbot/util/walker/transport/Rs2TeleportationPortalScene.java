@@ -11,7 +11,6 @@ import net.runelite.client.plugins.microbot.util.walker.transport.model.Teleport
 
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -68,30 +67,39 @@ public final class Rs2TeleportationPortalScene implements TeleportationPortalSce
 
 	private static TeleportationPortal portal(Transport transport)
 	{
-		PortalObject object = Microbot.getRs2TileObjectCache().query()
-			.withId(transport.getObjectId()).toList().stream()
-			.map(candidate -> liveObject(transport, candidate))
-			.filter(Objects::nonNull)
-			.min(Comparator.comparingInt(candidate -> candidate.tile.distanceTo2D(
-				transport.getOrigin())))
-			.orElse(null);
+		PortalObject object = Microbot.getClientThread().runOnClientThreadOptional(() ->
+		{
+			PortalObject best = null;
+			int bestDistance = Integer.MAX_VALUE;
+			for (Rs2TileObjectModel candidate : Microbot.getRs2TileObjectCache().query()
+				.withId(transport.getObjectId()).toList())
+			{
+				ObjectComposition composition = candidate.getObjectComposition();
+				String[] rawActions = composition == null ? null : composition.getActions();
+				List<String> actions = rawActions == null ? Collections.emptyList()
+					: Arrays.stream(rawActions).filter(Objects::nonNull)
+						.collect(Collectors.toList());
+				net.runelite.api.coords.WorldPoint tile = candidate.getWorldLocation();
+				String action = TeleportationPortalPolicy.exactAction(actions,
+					transport.getAction());
+				if (composition == null || tile == null || action == null
+					|| !TeleportationPortalPolicy.isLiveObjectMatch(transport,
+						candidate.getId(), composition.getName(), actions, tile))
+				{
+					continue;
+				}
+				int distance = tile.distanceTo2D(transport.getOrigin());
+				if (distance < bestDistance)
+				{
+					best = new PortalObject(candidate, tile, action);
+					bestDistance = distance;
+				}
+			}
+			return best;
+		}).orElse(null);
 		return object == null ? null : new TeleportationPortal(object.object, object.tile,
 			transport.getObjectId(), object.action, transport.getOrigin(),
 			transport.getDestination());
-	}
-
-	private static PortalObject liveObject(Transport transport, Rs2TileObjectModel object)
-	{
-		ObjectComposition composition = object.getObjectComposition();
-		List<String> actions = composition == null || composition.getActions() == null
-			? Collections.emptyList() : Arrays.stream(composition.getActions())
-				.filter(Objects::nonNull).collect(Collectors.toList());
-		String action = TeleportationPortalPolicy.exactAction(actions,
-			transport.getAction());
-		return composition != null && action != null
-			&& TeleportationPortalPolicy.isLiveObjectMatch(transport, object.getId(),
-				composition.getName(), actions, object.getWorldLocation())
-			? new PortalObject(object, object.getWorldLocation(), action) : null;
 	}
 
 	private static final class PortalObject

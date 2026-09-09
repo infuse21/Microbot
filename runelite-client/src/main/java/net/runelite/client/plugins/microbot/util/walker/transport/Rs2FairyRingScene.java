@@ -22,7 +22,6 @@ import net.runelite.client.plugins.microbot.util.walker.transport.model.FairyRin
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.List;
 
 /** Cache-backed live adapter for the non-blocking fairy-ring interaction stages. */
@@ -209,24 +208,28 @@ public final class Rs2FairyRingScene implements FairyRingScene
 		{
 			List<Rs2TileObjectModel> candidates = Microbot.getRs2TileObjectCache().query()
 				.within(anchor, 2).toList();
-			return candidates.stream().map(Rs2FairyRingScene::ringObject)
-				.filter(java.util.Objects::nonNull)
-				.min(Comparator.comparingInt(candidate ->
-					candidate.tile.distanceTo2D(anchor)))
-				.orElse(null);
+			RingObject best = null;
+			int bestDistance = Integer.MAX_VALUE;
+			for (Rs2TileObjectModel object : candidates)
+			{
+				ObjectComposition composition = object.getObjectComposition();
+				String[] actions = composition == null ? null : composition.getActions();
+				WorldPoint tile = object.getWorldLocation();
+				if (tile == null || actions == null || Arrays.stream(actions)
+					.filter(java.util.Objects::nonNull)
+					.noneMatch(Rs2FairyRingScene::isFairyRingAction))
+				{
+					continue;
+				}
+				int distance = tile.distanceTo2D(anchor);
+				if (distance < bestDistance)
+				{
+					best = new RingObject(object, tile, actions.clone());
+					bestDistance = distance;
+				}
+			}
+			return best;
 		}).orElse(null);
-	}
-
-	private static RingObject ringObject(Rs2TileObjectModel object)
-	{
-		ObjectComposition composition = object.getObjectComposition();
-		String[] actions = composition == null ? null : composition.getActions();
-		if (actions == null || Arrays.stream(actions).filter(java.util.Objects::nonNull)
-			.noneMatch(Rs2FairyRingScene::isFairyRingAction))
-		{
-			return null;
-		}
-		return new RingObject(object, object.getWorldLocation(), actions);
 	}
 
 	private static DialState dialState(String code)

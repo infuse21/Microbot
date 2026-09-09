@@ -12,6 +12,7 @@ import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2PathApi;
 import net.runelite.client.plugins.microbot.util.walker.obstacle.PlannedEdge;
+import net.runelite.client.plugins.microbot.util.walker.obstacle.Rs2SceneLocation;
 import net.runelite.client.plugins.microbot.util.walker.transport.model.CanoeTransport;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 
@@ -28,6 +29,28 @@ public final class Rs2CanoeScene implements CanoeScene
 	@Override
 	public CanoeTransport find(PlannedEdge edge)
 	{
+		if (edge == null || edge.from() == null || edge.to() == null)
+		{
+			return null;
+		}
+		try
+		{
+			return Microbot.getClientThread().runOnClientThreadOptional(
+				() -> findOnClientThread(edge)).orElse(null);
+		}
+		catch (RuntimeException ex)
+		{
+			if (Thread.currentThread().isInterrupted()
+				|| Rs2SceneLocation.clientThreadUnavailable(ex))
+			{
+				return null;
+			}
+			throw ex;
+		}
+	}
+
+	private static CanoeTransport findOnClientThread(PlannedEdge edge)
+	{
 		for (Transport transport : findTransports(edge))
 		{
 			CanoeTransport canoe = resolveStage(transport, null);
@@ -42,6 +65,29 @@ public final class Rs2CanoeScene implements CanoeScene
 	@Override
 	public CanoeTransport observe(PlannedEdge edge, String pendingAction,
 		int catalogObjectId)
+	{
+		if (edge == null || edge.from() == null || edge.to() == null)
+		{
+			return null;
+		}
+		try
+		{
+			return Microbot.getClientThread().runOnClientThreadOptional(() ->
+				observeOnClientThread(edge, pendingAction, catalogObjectId)).orElse(null);
+		}
+		catch (RuntimeException ex)
+		{
+			if (Thread.currentThread().isInterrupted()
+				|| Rs2SceneLocation.clientThreadUnavailable(ex))
+			{
+				return null;
+			}
+			throw ex;
+		}
+	}
+
+	private static CanoeTransport observeOnClientThread(PlannedEdge edge,
+		String pendingAction, int catalogObjectId)
 	{
 		Transport transport = findTransports(edge).stream()
 			.filter(candidate -> candidate.getObjectId() == catalogObjectId)
@@ -184,39 +230,73 @@ public final class Rs2CanoeScene implements CanoeScene
 
 	private static CanoeTransport objectStage(Transport transport)
 	{
-		Rs2TileObjectModel object = Microbot.getRs2TileObjectCache().query()
+		LiveObject object = Microbot.getRs2TileObjectCache().query()
 			.withId(transport.getObjectId()).toList().stream()
+			.map(Rs2CanoeScene::snapshot)
+			.filter(Objects::nonNull)
 			.filter(candidate -> liveMatch(transport, candidate))
-			.min(Comparator.comparingInt(candidate -> candidate.getWorldLocation()
+			.min(Comparator.comparingInt(candidate -> candidate.location
 				.distanceTo2D(transport.getOrigin())))
 			.orElse(null);
 		if (object == null)
 		{
 			return null;
 		}
-		String action = actions(object.getObjectComposition()).stream()
+		String action = actions(object.actions).stream()
 			.filter(CanoePolicy::isObjectAction).findFirst().orElse(null);
-		return action == null ? null : new CanoeTransport(object, object.getWorldLocation(),
+		return action == null ? null : new CanoeTransport(object.object, object.location,
 			transport.getObjectId(), action, transport.getOrigin(), transport.getDestination(),
 			CanoeTransport.Stage.OBJECT);
 	}
 
-	private static boolean liveMatch(Transport transport, Rs2TileObjectModel object)
+	private static boolean liveMatch(Transport transport, LiveObject object)
 	{
-		ObjectComposition composition = object.getObjectComposition();
-		return composition != null && CanoePolicy.isLiveObjectMatch(transport,
-			object.getId(), composition.getName(), actions(composition),
-			object.getWorldLocation());
+		return object.name != null && CanoePolicy.isLiveObjectMatch(transport,
+			object.id, object.name, actions(object.actions), object.location);
 	}
 
-	private static List<String> actions(ObjectComposition composition)
+	private static List<String> actions(String[] actions)
 	{
-		if (composition == null || composition.getActions() == null)
+		if (actions == null)
 		{
 			return Collections.emptyList();
 		}
-		return Arrays.stream(composition.getActions()).filter(Objects::nonNull)
+		return Arrays.stream(actions).filter(Objects::nonNull)
 			.collect(Collectors.toList());
+	}
+
+	private static LiveObject snapshot(Rs2TileObjectModel object)
+	{
+		if (object == null)
+		{
+			return null;
+		}
+		return Microbot.getClientThread().runOnClientThreadOptional(() ->
+		{
+			ObjectComposition composition = object.getObjectComposition();
+			return new LiveObject(object, object.getId(), object.getWorldLocation(),
+				composition == null ? null : composition.getName(),
+				composition == null ? null : composition.getActions());
+		}).orElse(null);
+	}
+
+	private static final class LiveObject
+	{
+		private final Rs2TileObjectModel object;
+		private final int id;
+		private final net.runelite.api.coords.WorldPoint location;
+		private final String name;
+		private final String[] actions;
+
+		private LiveObject(Rs2TileObjectModel object, int id,
+			net.runelite.api.coords.WorldPoint location, String name, String[] actions)
+		{
+			this.object = object;
+			this.id = id;
+			this.location = location;
+			this.name = name;
+			this.actions = actions;
+		}
 	}
 
 	private static boolean clickShape(String shape)

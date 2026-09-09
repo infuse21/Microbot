@@ -280,9 +280,12 @@ public final class Rs2NpcDialogueTransportScene implements NpcDialogueTransportS
 		{
 			return java.util.Collections.emptyList();
 		}
-		return options.stream()
-			.map(option -> option == null ? null : option.getText())
-			.collect(Collectors.toList());
+		List<String> texts = new java.util.ArrayList<>(options.size());
+		for (Widget option : options)
+		{
+			texts.add(option == null ? null : option.getText());
+		}
+		return texts;
 	}
 
 	private static String normalizeText(String text)
@@ -318,11 +321,16 @@ public final class Rs2NpcDialogueTransportScene implements NpcDialogueTransportS
 		Rs2NpcModel npc = findActorNpc(transport);
 		if (npc != null)
 		{
-			return stage(transport, npc.getWorldLocation(), NpcDialogueTransport.Stage.ACTOR);
+			WorldPoint tile = Microbot.getClientThread().runOnClientThreadOptional(
+				npc::getWorldLocation).orElse(null);
+			return stage(transport, tile, NpcDialogueTransport.Stage.ACTOR);
 		}
 		Rs2TileObjectModel object = findActorObject(transport);
-		return object == null ? null
-			: stage(transport, object.getWorldLocation(), NpcDialogueTransport.Stage.ACTOR);
+		WorldPoint tile = object == null ? null
+			: Microbot.getClientThread().runOnClientThreadOptional(
+				object::getWorldLocation).orElse(null);
+		return object == null ? null : stage(transport, tile,
+			NpcDialogueTransport.Stage.ACTOR);
 	}
 
 	public static boolean equipGhostspeakItem()
@@ -363,23 +371,46 @@ public final class Rs2NpcDialogueTransportScene implements NpcDialogueTransportS
 		{
 			return null;
 		}
-		return Microbot.getRs2TileObjectCache().query()
-			.within(transport.getOrigin(),
-				NpcDialogueTransportPolicy.LIVE_ACTOR_ORIGIN_TOLERANCE)
-			.toList().stream()
-			.filter(candidate -> NpcDialogueTransportPolicy.isLiveObjectMatch(transport,
-				candidate.getId(), compositionName(candidate),
-				compositionActions(candidate), candidate.getWorldLocation()))
-			.min(Comparator.comparingInt((Rs2TileObjectModel candidate) ->
-				(candidate.getId() == transport.getObjectId() ? 0 : 100)
-					+ candidate.getWorldLocation().distanceTo2D(transport.getOrigin())))
-			.orElse(null);
+		return Microbot.getClientThread().runOnClientThreadOptional(() ->
+		{
+			Rs2TileObjectModel best = null;
+			int bestScore = Integer.MAX_VALUE;
+			for (Rs2TileObjectModel candidate : Microbot.getRs2TileObjectCache().query()
+				.within(transport.getOrigin(),
+					NpcDialogueTransportPolicy.LIVE_ACTOR_ORIGIN_TOLERANCE)
+				.toList())
+			{
+				ObjectComposition composition = candidate.getObjectComposition();
+				int id = candidate.getId();
+				WorldPoint tile = candidate.getWorldLocation();
+				String name = composition == null ? null : composition.getName();
+				String[] liveActions = composition == null ? null : composition.getActions();
+				if (tile == null || !NpcDialogueTransportPolicy.isLiveObjectMatch(
+					transport, id, name, liveActions, tile))
+				{
+					continue;
+				}
+				int score = (id == transport.getObjectId() ? 0 : 100)
+					+ tile.distanceTo2D(transport.getOrigin());
+				if (score < bestScore)
+				{
+					best = candidate;
+					bestScore = score;
+				}
+			}
+			return best;
+		}).orElse(null);
 	}
 
 	public static String resolveLiveObjectAction(Rs2TileObjectModel object, String catalogAction)
 	{
-		return object == null ? null
-			: NpcTransportPolicy.matchAction(compositionActions(object), catalogAction);
+		return object == null ? null : Microbot.getClientThread()
+			.runOnClientThreadOptional(() ->
+			{
+				ObjectComposition composition = object.getObjectComposition();
+				return NpcTransportPolicy.matchAction(
+					composition == null ? null : composition.getActions(), catalogAction);
+			}).orElse(null);
 	}
 
 	/** Resolves the live NPC action, tolerating destination-named quest-state variants. */
@@ -399,18 +430,6 @@ public final class Rs2NpcDialogueTransportScene implements NpcDialogueTransportS
 			.flatMap(Arrays::stream)
 			.filter(java.util.Objects::nonNull)
 			.collect(Collectors.toList());
-	}
-
-	private static String compositionName(Rs2TileObjectModel object)
-	{
-		ObjectComposition composition = object.getObjectComposition();
-		return composition == null ? null : composition.getName();
-	}
-
-	private static String[] compositionActions(Rs2TileObjectModel object)
-	{
-		ObjectComposition composition = object.getObjectComposition();
-		return composition == null ? null : composition.getActions();
 	}
 
 	private static NpcDialogueTransport stage(Transport transport, WorldPoint tile,

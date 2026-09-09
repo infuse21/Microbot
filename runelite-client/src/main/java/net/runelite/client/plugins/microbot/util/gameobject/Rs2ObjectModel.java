@@ -267,7 +267,8 @@ public class Rs2ObjectModel {
      */
     public String[] getActions() {
         ObjectComposition composition = getObjectComposition();
-        return composition != null ? composition.getActions() : new String[0];
+        return composition == null ? new String[0] : Microbot.getClientThread()
+                .runOnClientThreadOptional(composition::getActions).orElse(new String[0]);
     }
     
     /**
@@ -376,7 +377,7 @@ public class Rs2ObjectModel {
             }
             
             // Check specific action keywords that suggest blocking objects
-            String[] actions = composition.getActions();
+            String[] actions = getActions();
             if (actions != null) {
                 for (String action : actions) {
                     if (action != null && (
@@ -452,30 +453,28 @@ public class Rs2ObjectModel {
      * @return The canonical world location
      */
     public WorldPoint getCanonicalLocation() {
-        if (getObjectType() != ObjectType.GAME_OBJECT) {
-            return tileObject.getWorldLocation(); // For single-tile objects, just return the world location
-        }
-        GameObject gameObject = (GameObject) tileObject;
-        // For multi-tile objects, we need to ensure we use the southwest tile consistently
-        Point sceneMinLocation = gameObject.getSceneMinLocation();
-        Point currentSceneLocation = tile.getSceneLocation();
-        
-        // If this is the southwest tile, use this tile's location
-        if (sceneMinLocation != null && currentSceneLocation != null && 
-            sceneMinLocation.getX() == currentSceneLocation.getX() && 
-            sceneMinLocation.getY() == currentSceneLocation.getY()) {
-            return tile.getWorldLocation();
-        }
-        
-        // Otherwise, we need to calculate the southwest tile's world location
-        // This is tricky without scene-to-world conversion, so we'll use a different approach
-        WorldPoint currentLocation = tile.getWorldLocation();
-        if (sceneMinLocation != null && currentSceneLocation != null) {
-            int deltaX = currentSceneLocation.getX() - sceneMinLocation.getX();
-            int deltaY = currentSceneLocation.getY() - sceneMinLocation.getY();
-            return new WorldPoint(currentLocation.getX() - deltaX, currentLocation.getY() - deltaY, currentLocation.getPlane());
-        }
-        
-        return currentLocation;
+		return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+			if (getObjectType() != ObjectType.GAME_OBJECT) {
+				return tileObject.getWorldLocation();
+			}
+			GameObject gameObject = (GameObject) tileObject;
+			Point sceneMinLocation = gameObject.getSceneMinLocation();
+			if (sceneMinLocation == null) {
+				return gameObject.getWorldLocation();
+			}
+			Point currentSceneLocation = tile.getSceneLocation();
+			WorldPoint currentLocation = tile.getWorldLocation();
+			if (currentSceneLocation == null || currentLocation == null) {
+				return currentLocation;
+			}
+			if (sceneMinLocation.getX() == currentSceneLocation.getX()
+				&& sceneMinLocation.getY() == currentSceneLocation.getY()) {
+				return currentLocation;
+			}
+			int deltaX = currentSceneLocation.getX() - sceneMinLocation.getX();
+			int deltaY = currentSceneLocation.getY() - sceneMinLocation.getY();
+			return new WorldPoint(currentLocation.getX() - deltaX,
+				currentLocation.getY() - deltaY, currentLocation.getPlane());
+		}).orElse(null);
     }
 }

@@ -133,12 +133,13 @@ public class TransportFeatureToggleTest
 	}
 
 	@Test
-	public void auditedStochasticHazardsRespectAgilityToggle() throws Exception
+	public void enabledStochasticHazardsRespectAgilityToggleAndUnsafeLeavesStayDisabled()
+		throws Exception
 	{
 		assertShadowRows("Well stacked rocks", "useAgilityShortcuts", Set.of(2234), 1);
 		assertShadowRows("Climbing rocks", "useAgilityShortcuts", Set.of(2236), 1);
 		assertShadowRows("Sticks", "useAgilityShortcuts", Set.of(3922), 6);
-		assertShadowRows("Leaves", "useAgilityShortcuts", Set.of(3925), 4);
+		assertShadowRows("Leaves", "useAgilityShortcuts", Set.of(3925), 0);
 	}
 
 	@Test

@@ -13,7 +13,6 @@ import net.runelite.client.plugins.microbot.util.walker.transport.model.MagicMus
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.List;
 
 /** Cache-backed live adapter for non-blocking Magic Mushtree stages. */
@@ -56,10 +55,10 @@ public final class Rs2MagicMushtreeScene implements MagicMushtreeScene
 	public static boolean interactObject(PlannedEdge edge, String expectedAction, int objectId)
 	{
 		Transport transport = findTransport(edge);
-		Rs2TileObjectModel mushtree = transport == null ? null : findObject(transport);
-		return mushtree != null && mushtree.getId() == objectId
+		MushtreeObject mushtree = transport == null ? null : findObject(transport);
+		return mushtree != null && mushtree.id == objectId
 			&& transport.getAction().equalsIgnoreCase(expectedAction)
-			&& mushtree.click(transport.getAction());
+			&& mushtree.object.click(transport.getAction());
 	}
 
 	public static boolean selectDestination(String destination)
@@ -106,28 +105,39 @@ public final class Rs2MagicMushtreeScene implements MagicMushtreeScene
 
 	private static MagicMushtreeTransport objectStage(Transport transport)
 	{
-		Rs2TileObjectModel mushtree = findObject(transport);
-		return mushtree == null ? null : stage(transport, mushtree.getWorldLocation(),
+		MushtreeObject mushtree = findObject(transport);
+		return mushtree == null ? null : stage(transport, mushtree.tile,
 			MagicMushtreeTransport.Stage.OBJECT);
 	}
 
-	private static Rs2TileObjectModel findObject(Transport transport)
+	private static MushtreeObject findObject(Transport transport)
 	{
 		return Microbot.getClientThread().runOnClientThreadOptional(() ->
-			Microbot.getRs2TileObjectCache().query().withId(transport.getObjectId())
-				.within(transport.getOrigin(), OBJECT_SEARCH_RADIUS).toList().stream()
-				.filter(object -> hasAction(object, transport.getAction()))
-				.min(Comparator.comparingInt(object -> object.getWorldLocation()
-					.distanceTo2D(transport.getOrigin())))
-				.orElse(null)).orElse(null);
-	}
-
-	private static boolean hasAction(Rs2TileObjectModel object, String expected)
-	{
-		String[] actions = object.getObjectComposition() == null
-			? null : object.getObjectComposition().getActions();
-		return actions != null && Arrays.stream(actions).filter(java.util.Objects::nonNull)
-			.anyMatch(action -> action.equalsIgnoreCase(expected));
+		{
+			MushtreeObject best = null;
+			int bestDistance = Integer.MAX_VALUE;
+			for (Rs2TileObjectModel object : Microbot.getRs2TileObjectCache().query()
+				.withId(transport.getObjectId())
+				.within(transport.getOrigin(), OBJECT_SEARCH_RADIUS).toList())
+			{
+				net.runelite.api.ObjectComposition composition = object.getObjectComposition();
+				String[] actions = composition == null ? null : composition.getActions();
+				WorldPoint tile = object.getWorldLocation();
+				if (tile == null || actions == null || Arrays.stream(actions)
+					.filter(java.util.Objects::nonNull)
+					.noneMatch(action -> action.equalsIgnoreCase(transport.getAction())))
+				{
+					continue;
+				}
+				int distance = tile.distanceTo2D(transport.getOrigin());
+				if (distance < bestDistance)
+				{
+					best = new MushtreeObject(object, object.getId(), tile);
+					bestDistance = distance;
+				}
+			}
+			return best;
+		}).orElse(null);
 	}
 
 	private static MagicMushtreeTransport stage(Transport transport, WorldPoint objectTile,
@@ -153,5 +163,19 @@ public final class Rs2MagicMushtreeScene implements MagicMushtreeScene
 	{
 		return Microbot.getClientThread().runOnClientThreadOptional(() ->
 			widget != null && !widget.isHidden()).orElse(false);
+	}
+
+	private static final class MushtreeObject
+	{
+		private final Rs2TileObjectModel object;
+		private final int id;
+		private final WorldPoint tile;
+
+		private MushtreeObject(Rs2TileObjectModel object, int id, WorldPoint tile)
+		{
+			this.object = object;
+			this.id = id;
+			this.tile = tile;
+		}
 	}
 }

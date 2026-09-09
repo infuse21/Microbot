@@ -269,11 +269,11 @@ public class CatalogTransitionPolicyTest
 	}
 
 	@Test
-	public void unsafeFeeAndSetupCrevicesAreNotLoaded()
+	public void unresolvedRevenantFeeCrevicesAreNotLoaded()
 	{
 		assertTrue(Transport.loadAllFromResources().values().stream()
 			.flatMap(java.util.Collection::stream)
-			.noneMatch(row -> row.getObjectId() == 40386 || row.getObjectId() == 10416));
+			.noneMatch(row -> row.getObjectId() == 40386));
 	}
 
 	@Test

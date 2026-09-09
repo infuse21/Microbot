@@ -99,30 +99,38 @@ public final class Rs2TeleportationLeverScene implements TeleportationLeverScene
 
 	private static TeleportationLever objectStage(Transport transport)
 	{
-		Rs2TileObjectModel object = Microbot.getRs2TileObjectCache().query()
-			.withId(transport.getObjectId()).toList().stream()
-			.filter(candidate -> liveMatch(transport, candidate))
-			.min(java.util.Comparator.comparingInt(candidate -> candidate.getWorldLocation()
-				.distanceTo2D(transport.getOrigin())))
-			.orElse(null);
-		return object == null ? null : new TeleportationLever(object,
-			object.getWorldLocation(), transport.getObjectId(), transport.getAction(),
-			transport.getOrigin(), transport.getDestination(), TeleportationLever.Stage.OBJECT);
-	}
-
-	private static boolean liveMatch(Transport transport, Rs2TileObjectModel object)
-	{
-		ObjectComposition composition = object.getObjectComposition();
-		return composition != null && TeleportationLeverPolicy.isLiveObjectMatch(transport,
-			object.getId(), composition.getName(), actions(composition),
-			object.getWorldLocation());
-	}
-
-	private static List<String> actions(ObjectComposition composition)
-	{
-		String[] actions = composition.getActions();
-		return actions == null ? java.util.Collections.emptyList() : Arrays.stream(actions)
-			.filter(Objects::nonNull).collect(Collectors.toList());
+		return Microbot.getClientThread().runOnClientThreadOptional(() ->
+		{
+			Rs2TileObjectModel best = null;
+			net.runelite.api.coords.WorldPoint bestTile = null;
+			int bestDistance = Integer.MAX_VALUE;
+			for (Rs2TileObjectModel object : Microbot.getRs2TileObjectCache().query()
+				.withId(transport.getObjectId()).toList())
+			{
+				ObjectComposition composition = object.getObjectComposition();
+				net.runelite.api.coords.WorldPoint tile = object.getWorldLocation();
+				String[] rawActions = composition == null ? null : composition.getActions();
+				List<String> actions = rawActions == null
+					? java.util.Collections.emptyList() : Arrays.stream(rawActions)
+						.filter(Objects::nonNull).collect(Collectors.toList());
+				if (composition == null || tile == null
+					|| !TeleportationLeverPolicy.isLiveObjectMatch(transport,
+						object.getId(), composition.getName(), actions, tile))
+				{
+					continue;
+				}
+				int distance = tile.distanceTo2D(transport.getOrigin());
+				if (distance < bestDistance)
+				{
+					best = object;
+					bestTile = tile;
+					bestDistance = distance;
+				}
+			}
+			return best == null ? null : new TeleportationLever(best, bestTile,
+				transport.getObjectId(), transport.getAction(), transport.getOrigin(),
+				transport.getDestination(), TeleportationLever.Stage.OBJECT);
+		}).orElse(null);
 	}
 
 	private static TeleportationLever stage(Transport transport, String action,

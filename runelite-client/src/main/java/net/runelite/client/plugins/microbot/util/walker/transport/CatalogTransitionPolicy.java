@@ -1014,6 +1014,10 @@ public final class CatalogTransitionPolicy
 		{
 			return true;
 		}
+		if (GrimTalesManholePolicy.isEligible(transport))
+		{
+			return true;
+		}
 		if (isShadowDungeonLadder(transport) || ZanarisEntrancePolicy.isEligible(transport)
 			|| isWaterfallThroneDoor(transport) || isMorUlRekHotVentDoor(transport)
 			|| EquippedSafetyTransitionPolicy.isEligible(transport)

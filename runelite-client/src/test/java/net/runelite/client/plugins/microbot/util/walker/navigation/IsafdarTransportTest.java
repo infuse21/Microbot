@@ -81,12 +81,10 @@ public class IsafdarTransportTest
 	}
 
 	@Test
-	public void leafPitsUseGuardedHazardOwnership()
+	public void leafPitsStayDisabledUntilRecoveryIsOwned()
 	{
 		List<Transport> leaves = Transport.loadAllFromResources().values().stream().flatMap(Collection::stream)
 			.filter(row -> row.getObjectId() == 3925).collect(Collectors.toList());
-		assertEquals(4, leaves.size());
-		assertTrue(leaves.stream().allMatch(CatalogTransitionPolicy::isAuditedHazardTransition));
-		assertTrue(leaves.stream().allMatch(CatalogTransitionPolicy::isEligible));
+		assertTrue(leaves.isEmpty());
 	}
 }

@@ -1,26 +1,60 @@
 package net.runelite.client.plugins.microbot.util.walker.obstacle;
 
+import java.lang.reflect.Field;
 import java.util.Collection;
+import java.util.Optional;
+import java.util.concurrent.Callable;
 import java.util.concurrent.TimeoutException;
 import net.runelite.api.Client;
 import net.runelite.api.TileObject;
 import net.runelite.api.WorldView;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.client.callback.ClientThread;
+import net.runelite.client.plugins.microbot.Microbot;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 public class Rs2SceneLocationTest
 {
+	private Client originalClient;
+	private ClientThread originalClientThread;
+	private Client client;
+
+	@Before
+	public void setUp() throws Exception
+	{
+		originalClient = Microbot.getClient();
+		originalClientThread = Microbot.getClientThread();
+		client = mock(Client.class);
+		ClientThread clientThread = mock(ClientThread.class);
+		when(clientThread.runOnClientThreadOptional(any())).thenAnswer(invocation ->
+		{
+			Callable<?> callable = invocation.getArgument(0);
+			return Optional.ofNullable(callable.call());
+		});
+		setStaticField("client", client);
+		setStaticField("clientThread", clientThread);
+	}
+
+	@After
+	public void tearDown() throws Exception
+	{
+		setStaticField("client", originalClient);
+		setStaticField("clientThread", originalClientThread);
+	}
+
 	@Test
 	public void convertsInstanceObjectAnchorIntoTemplateCoordinates()
 	{
-		Client client = mock(Client.class);
 		WorldView worldView = mock(WorldView.class);
 		TileObject object = mock(TileObject.class);
 		int[][][] chunks = emptyChunks();
@@ -36,13 +70,12 @@ public class Rs2SceneLocationTest
 		when(object.getWorldLocation()).thenReturn(new WorldPoint(10010, 10018, 0));
 
 		assertEquals(new WorldPoint(3202, 3282, 0),
-			Rs2SceneLocation.templateLocation(client, object));
+			Rs2SceneLocation.templateLocation(object));
 	}
 
 	@Test
 	public void preservesOrdinaryObjectCoordinates()
 	{
-		Client client = mock(Client.class);
 		WorldView worldView = mock(WorldView.class);
 		TileObject object = mock(TileObject.class);
 		WorldPoint raw = new WorldPoint(3200, 3200, 1);
@@ -50,7 +83,7 @@ public class Rs2SceneLocationTest
 		when(object.getWorldView()).thenReturn(worldView);
 		when(object.getWorldLocation()).thenReturn(raw);
 
-		assertEquals(raw, Rs2SceneLocation.templateLocation(client, object));
+		assertEquals(raw, Rs2SceneLocation.templateLocation(object));
 	}
 
 	@Test
@@ -63,8 +96,9 @@ public class Rs2SceneLocationTest
 		when(worldView.getInstanceTemplateChunks()).thenReturn(chunks);
 		when(worldView.getBaseX()).thenReturn(10000);
 		when(worldView.getBaseY()).thenReturn(10000);
+		when(client.getTopLevelWorldView()).thenReturn(worldView);
 
-		Collection<WorldPoint> locations = Rs2SceneLocation.sceneLocations(worldView,
+		Collection<WorldPoint> locations = Rs2SceneLocation.sceneLocations(
 			new WorldPoint(3202, 3282, 0));
 
 		assertEquals(1, locations.size());
@@ -96,5 +130,12 @@ public class Rs2SceneLocationTest
 	private static int templateChunk(int chunkX, int chunkY, int plane, int rotation)
 	{
 		return plane << 24 | chunkX << 14 | chunkY << 3 | rotation << 1;
+	}
+
+	private static void setStaticField(String name, Object value) throws Exception
+	{
+		Field field = Microbot.class.getDeclaredField(name);
+		field.setAccessible(true);
+		field.set(null, value);
 	}
 }

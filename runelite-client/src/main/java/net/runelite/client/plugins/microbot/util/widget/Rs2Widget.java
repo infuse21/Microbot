@@ -17,7 +17,6 @@ import java.awt.event.KeyEvent;
 import java.util.List;
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static net.runelite.client.plugins.microbot.util.Global.*;
 
@@ -234,20 +233,28 @@ public class Rs2Widget {
      * @return The widget containing the specified text, or null if no match is found.
      */
     public static Widget searchChildren(String text, Widget child, boolean exact) {
-        if (matchesText(child, text, exact)) return child;
-
-        Widget[][] childGroups = {child.getChildren(), child.getNestedChildren(), child.getDynamicChildren(), child.getStaticChildren()};
-        for (Widget[] childGroup : childGroups) {
-            if (childGroup != null) {
-                for (Widget nestedChild : childGroup) {
-                    if (nestedChild != null && !nestedChild.isHidden()) {
-                        Widget found = searchChildren(text, nestedChild, exact);
-                        if (found != null) return found;
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            if (child == null) return null;
+            Deque<Widget> pending = new ArrayDeque<>();
+            pending.push(child);
+            while (!pending.isEmpty()) {
+                Widget current = pending.pop();
+                if (matchesText(current, text, exact)) return current;
+                Widget[][] childGroups = {current.getChildren(), current.getNestedChildren(),
+                        current.getDynamicChildren(), current.getStaticChildren()};
+                for (int group = childGroups.length - 1; group >= 0; group--) {
+                    Widget[] widgets = childGroups[group];
+                    if (widgets == null) continue;
+                    for (int index = widgets.length - 1; index >= 0; index--) {
+                        Widget nestedChild = widgets[index];
+                        if (nestedChild != null && !nestedChild.isHidden()) {
+                            pending.push(nestedChild);
+                        }
                     }
                 }
             }
-        }
-        return null;
+            return null;
+        }).orElse(null);
     }
 
     /**
@@ -325,20 +332,28 @@ public class Rs2Widget {
      * @return The widget with the specified sprite ID, or null if not found.
      */
     public static Widget searchChildren(int spriteId, Widget child) {
-        if (matchesSpriteId(child, spriteId)) return child;
-
-        Widget[][] childGroups = {child.getChildren(), child.getNestedChildren(), child.getDynamicChildren(), child.getStaticChildren()};
-        for (Widget[] childGroup : childGroups) {
-            if (childGroup != null) {
-                for (Widget nestedChild : childGroup) {
-                    if (nestedChild != null && !nestedChild.isHidden()) {
-                        Widget found = searchChildren(spriteId, nestedChild);
-                        if (found != null) return found;
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            if (child == null) return null;
+            Deque<Widget> pending = new ArrayDeque<>();
+            pending.push(child);
+            while (!pending.isEmpty()) {
+                Widget current = pending.pop();
+                if (matchesSpriteId(current, spriteId)) return current;
+                Widget[][] childGroups = {current.getChildren(), current.getNestedChildren(),
+                        current.getDynamicChildren(), current.getStaticChildren()};
+                for (int group = childGroups.length - 1; group >= 0; group--) {
+                    Widget[] widgets = childGroups[group];
+                    if (widgets == null) continue;
+                    for (int index = widgets.length - 1; index >= 0; index--) {
+                        Widget nestedChild = widgets[index];
+                        if (nestedChild != null && !nestedChild.isHidden()) {
+                            pending.push(nestedChild);
+                        }
                     }
                 }
             }
-        }
-        return null;
+            return null;
+        }).orElse(null);
     }
 
     /**
@@ -525,21 +540,17 @@ public class Rs2Widget {
      * @return map of widgets to action text
      */
     public static Map<Widget, String> findWidgetsWithAction(String actionText, int widgetGroupId, int widgetSubGroupId, boolean clickWidget) {
-        Map<Widget, String> widgetActions = new HashMap<>();
-        Widget child = getWidget(widgetGroupId, widgetSubGroupId);
-        if (child == null) return widgetActions;
-        
-        List<Widget[]> childGroups = Stream.of(child.getChildren(), child.getNestedChildren(), 
-                                             child.getDynamicChildren(), child.getStaticChildren())
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
-        
-        for (Widget[] childGroup : childGroups) {
-            if (childGroup != null) {
-                for (Widget nestedChild : Arrays.stream(childGroup)
-                        .filter(w -> w != null && !w.isHidden())
-                        .collect(Collectors.toList())) {
-                    if (matchesWildCardText(nestedChild, actionText, false, false)) {
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            Map<Widget, String> widgetActions = new HashMap<>();
+            Widget child = getWidget(widgetGroupId, widgetSubGroupId);
+            if (child == null) return widgetActions;
+            Widget[][] childGroups = {child.getChildren(), child.getNestedChildren(),
+                    child.getDynamicChildren(), child.getStaticChildren()};
+            for (Widget[] childGroup : childGroups) {
+                if (childGroup == null) continue;
+                for (Widget nestedChild : childGroup) {
+                    if (nestedChild != null && !nestedChild.isHidden()
+                            && matchesWildCardText(nestedChild, actionText, false, false)) {
                         if (clickWidget) {
                             clickWidget(nestedChild);
                         }
@@ -547,8 +558,8 @@ public class Rs2Widget {
                     }
                 }
             }
-        }
-        return widgetActions;
+            return widgetActions;
+        }).orElseGet(HashMap::new);
     }
 
     /**
@@ -848,93 +859,55 @@ public class Rs2Widget {
     }
 
     public static boolean checkBoundsOverlapWidgetInMainModal( Rectangle overlayBoundsCanvas, int viewportXOffset, int viewportYOffset) {
-        final int MAIN_MODAL_TOPLEVEL_CHILD_ID = 40; // Main modal child ID
-        final int MAIN_MODAL_STRECH_CHILD_ID = 16; // Main modal child ID
-        Widget mainModalWidget = getWidget(net.runelite.api.gameval.InterfaceID.TOPLEVEL, MAIN_MODAL_TOPLEVEL_CHILD_ID);
-        if (mainModalWidget == null || mainModalWidget.isHidden()) {
-            mainModalWidget  = getWidget(net.runelite.api.gameval.InterfaceID.TOPLEVEL_OSRS_STRETCH, MAIN_MODAL_STRECH_CHILD_ID);
-            
-        }
-        if (mainModalWidget == null ) {            
-            mainModalWidget  = getWidget(net.runelite.api.gameval.InterfaceID.TOPLEVEL_PRE_EOC, MAIN_MODAL_STRECH_CHILD_ID);
-        }
-        return checkWidgetAndDescendantsForOverlapCanvas(mainModalWidget, overlayBoundsCanvas, viewportXOffset, viewportYOffset);
+		return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+			final int mainModalTopLevelChildId = 40;
+			final int mainModalStretchChildId = 16;
+			Widget root = getWidget(net.runelite.api.gameval.InterfaceID.TOPLEVEL,
+					mainModalTopLevelChildId);
+			if (root == null || root.isHidden()) {
+				root = getWidget(net.runelite.api.gameval.InterfaceID.TOPLEVEL_OSRS_STRETCH,
+						mainModalStretchChildId);
+			}
+			if (root == null) {
+				root = getWidget(net.runelite.api.gameval.InterfaceID.TOPLEVEL_PRE_EOC,
+						mainModalStretchChildId);
+			}
+			if (root == null) return false;
+
+			Deque<Widget> pending = new ArrayDeque<>();
+			pending.push(root);
+			while (!pending.isEmpty()) {
+				Widget widget = pending.pop();
+				if (widget == null || widget.isHidden()) continue;
+				Widget[][] nestedAndDynamic = {
+					widget.getDynamicChildren(), widget.getNestedChildren()};
+				for (Widget[] widgets : nestedAndDynamic) {
+					if (widgets == null) continue;
+					for (Widget candidate : widgets) {
+						if (candidate == null || candidate.isHidden()
+								|| candidate.getCanvasLocation() == null) continue;
+						Rectangle bounds = candidate.getBounds();
+						if (bounds == null) continue;
+						Rectangle canvasBounds = new Rectangle(bounds.x + viewportXOffset,
+								bounds.y + viewportYOffset, bounds.width, bounds.height);
+						if (canvasBounds.intersects(overlayBoundsCanvas)) {
+							Rectangle intersection = canvasBounds.intersection(overlayBoundsCanvas);
+							if (intersection.width > 8 && intersection.height > 8) return true;
+						}
+					}
+				}
+				Widget[] staticChildren = widget.getStaticChildren();
+				if (staticChildren == null) continue;
+				for (int index = staticChildren.length - 1; index >= 0; index--) {
+					Widget child = staticChildren[index];
+					if (child == null || child.isHidden() || child.getCanvasLocation() == null
+							|| child.getCanvasLocation().getX() == 0
+							&& child.getCanvasLocation().getY() == 0) continue;
+					pending.push(child);
+				}
+			}
+			return false;
+		}).orElse(false);
     }
-    /**
-	* Recursively iterates all descendants, but only checks bounds for nested containers 
-	* This matches the requirement: only nested containers within the static container are checked for overlap.
-	*/    
-    private static boolean checkWidgetAndDescendantsForOverlapCanvas(Widget widget, Rectangle overlayBoundsCanvas, int viewportXOffset, int viewportYOffset) {
-	    if (widget == null || widget.isHidden()) {
-		   return false;
-	    }       	   
-	    List<Widget[]> nestedAndDynamicWidgets = new java.util.ArrayList<>();
-	    if (widget.getDynamicChildren() != null) nestedAndDynamicWidgets.add(widget.getDynamicChildren());
-		if (widget.getNestedChildren() != null) nestedAndDynamicWidgets.add(widget.getNestedChildren());
-	    for (Widget[] widgetArray : nestedAndDynamicWidgets) {
-		   for (Widget nestedOrDynamic : widgetArray) {
-			   if (nestedOrDynamic == null || nestedOrDynamic.isHidden()) {
-				   continue;
-			   }
-               int groupId = nestedOrDynamic.getId() >>> 16; // upper 16 bits
-			   if(  nestedOrDynamic.getCanvasLocation() == null) {				   
-				   continue;
-			   }
-			   Rectangle widgetBounds = nestedOrDynamic.getBounds();
-			   if (widgetBounds != null) {
-				   Rectangle widgetCanvasBounds = new Rectangle(
-					   widgetBounds.x + viewportXOffset,
-					   widgetBounds.y + viewportYOffset,
-					   widgetBounds.width,
-					   widgetBounds.height
-				   );
-				   if (widgetCanvasBounds.intersects(overlayBoundsCanvas)) {
-					   Rectangle intersection = widgetCanvasBounds.intersection(overlayBoundsCanvas);
-					   if (intersection.width > 8 && intersection.height > 8) {
-                            log.debug("Widget with group ID {} and child ID {} overlaps with the overlay bounds.\n" +
-                                 "Widget ID: {}, Title: {}, Canvas Location: {}, Bounds: {}, Intersection: {}",
-                                 groupId, nestedOrDynamic.getId() & 0xFFFF, nestedOrDynamic.getId(),
-                                 nestedOrDynamic.getName(), nestedOrDynamic.getCanvasLocation(),
-                                 widgetCanvasBounds, intersection);
-						   return true;
-					   }
-				   }
-			   }
-		   }
-	   }
-	   
-
-	   // Recursively check all children for nested containers
-	   List<Widget[]> childGroups = new java.util.ArrayList<>();
-	   
-	   if (widget.getStaticChildren() != null) childGroups.add(widget.getStaticChildren());
-	   
-
-	   for (Widget[] childGroup : childGroups) {
-		   for (Widget child : childGroup) {
-			   if (child != null && !child.isHidden()) {					
-					int widgetId = child.getId();
-					int groupId = widgetId >>> 16; // upper 16 bits
-					int childId = widgetId & 0xFFFF; // lower 16 bits	
-                    if (child.getCanvasLocation() == null || (child.getCanvasLocation().getX() == 0 && child.getCanvasLocation().getY() == 0)) {
-                        continue;
-                    }				
-				   if (checkWidgetAndDescendantsForOverlapCanvas(child, overlayBoundsCanvas, viewportXOffset, viewportYOffset)) {
-                        Widget parentWidget = child.getParent();
-                        String title = parentWidget != null ? parentWidget.getName() : "Unknown";
-                        int parentId = parentWidget != null ? parentWidget.getId() : -1;
-                        int parentGoupID = parentId >>> 16; // upper 16 bits
-                        int parentChildID = parentId & 0xFFFF; // lower 16 bits
-
-                        log.debug("Widget with group ID {} and child ID {} overlaps with the overlay bounds.\n" +
-                                 "Parent Widget ID: {}, Group ID: {}, Child ID: {}, Title: {}",
-                                 groupId, childId, parentId, parentGoupID, parentChildID, title);
-					   return true;
-				   }
-			   }
-		   }
-	   }
-	   return false;
-   }
 
 }

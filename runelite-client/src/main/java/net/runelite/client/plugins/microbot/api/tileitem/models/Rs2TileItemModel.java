@@ -261,10 +261,15 @@ public class Rs2TileItemModel implements TileItem, IEntity {
             if (!Rs2Camera.isTileOnScreen(localPoint1)) {
                 Rs2Camera.turnTo(localPoint1);
             }
-            Polygon canvas = Perspective.getCanvasTilePoly(Microbot.getClient(), localPoint1);
-            Rectangle bounds = canvas == null
-                    ? new Rectangle(1, 1, Microbot.getClient().getCanvasWidth(), Microbot.getClient().getCanvasHeight())
-                    : canvas.getBounds();
+            Rectangle bounds = Microbot.getClientThread().runOnClientThreadOptional(() -> {
+                Polygon canvas = Perspective.getCanvasTilePoly(Microbot.getClient(), localPoint1);
+                return canvas == null
+                        ? new Rectangle(1, 1, Microbot.getClient().getCanvasWidth(), Microbot.getClient().getCanvasHeight())
+                        : canvas.getBounds();
+            }).orElse(null);
+            if (bounds == null) {
+                return false;
+            }
             int worldViewId = localPoint1.getWorldView();
             Microbot.doInvoke(new NewMenuEntry()
                             .option(action)

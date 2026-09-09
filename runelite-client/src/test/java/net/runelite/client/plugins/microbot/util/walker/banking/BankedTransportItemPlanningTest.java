@@ -1,15 +1,21 @@
 package net.runelite.client.plugins.microbot.util.walker.banking;
 
+import net.runelite.api.Client;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.gameval.ItemID;
+import net.runelite.client.callback.ClientThread;
+import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.shortestpath.Transport;
 import net.runelite.client.plugins.microbot.shortestpath.TransportType;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.policy.TransportRequirementPolicy;
 import net.runelite.client.plugins.microbot.util.magic.Runes;
 import net.runelite.client.plugins.microbot.util.walker.transport.ElidCrevicePolicy;
+import net.runelite.client.plugins.microbot.util.walker.transport.LumbridgeSwampCavePolicy;
+import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.List;
@@ -35,11 +41,29 @@ import static org.junit.Assert.assertTrue;
 public class BankedTransportItemPlanningTest {
 
     private static List<Transport> all;
+    private static Client originalClient;
+    private static ClientThread originalClientThread;
 
     @BeforeClass
-    public static void load() {
+    public static void load() throws Exception {
+        originalClient = Microbot.getClient();
+        originalClientThread = Microbot.getClientThread();
+        setMicrobotField("client", null);
+        setMicrobotField("clientThread", null);
         HashMap<WorldPoint, Set<Transport>> transports = Transport.loadAllFromResources();
         all = transports.values().stream().flatMap(Set::stream).collect(Collectors.toList());
+    }
+
+    @AfterClass
+    public static void restoreMicrobotState() throws Exception {
+        setMicrobotField("client", originalClient);
+        setMicrobotField("clientThread", originalClientThread);
+    }
+
+    private static void setMicrobotField(String name, Object value) throws Exception {
+        Field field = Microbot.class.getDeclaredField(name);
+        field.setAccessible(true);
+        field.set(null, value);
     }
 
     /** {@code menuOption;menuTarget} for readable assertion messages. */
@@ -122,6 +146,49 @@ public class BankedTransportItemPlanningTest {
 				.sum();
 		assertEquals("the lit light source is reusable across repeated descents", 1, lights);
 		assertTrue(Rs2WalkerBankingPlanner.requiresBankPlanning(crevice));
+	}
+
+	@Test
+	public void lumbridgeSwampEntryBanksOneSafeLightUnlessPermanentFireIsBuilt()
+	{
+		List<Transport> entrances = all.stream()
+			.filter(t -> t.getObjectId() == LumbridgeSwampCavePolicy.DARK_HOLE_ID)
+			.collect(Collectors.toList());
+		Transport lightRequired = entrances.stream()
+			.filter(t -> !t.isConsumable())
+			.filter(LumbridgeSwampCavePolicy::requiresLight)
+			.findFirst().orElseThrow(() -> new AssertionError("light-required entrance missing"));
+		assertTrue(Rs2WalkerBankingPlanner.planningCoversPlainTransport(lightRequired));
+		assertTrue(Rs2WalkerBankingPlanner.requiresBankPlanning(lightRequired));
+		Map<Integer, Integer> requirements =
+			Rs2WalkerBankingPlanner.getMissingTransportItemIdsWithQuantities(
+				List.of(lightRequired, lightRequired));
+		int safeLights = LumbridgeSwampCavePolicy.gasSafeLightSourceIds(lightRequired).stream()
+			.mapToInt(itemId -> requirements.getOrDefault(itemId, 0))
+			.sum();
+		assertEquals("one gas-safe light is reused across repeated entries", 1, safeLights);
+		assertFalse(requirements.containsKey(ItemID.ROPE));
+
+		Transport permanentFire = entrances.stream()
+			.filter(t -> !t.isConsumable())
+			.filter(t -> !LumbridgeSwampCavePolicy.requiresLight(t))
+			.findFirst().orElseThrow(() -> new AssertionError("permanent-fire entrance missing"));
+		assertFalse(Rs2WalkerBankingPlanner.requiresBankPlanning(permanentFire));
+		assertTrue(Rs2WalkerBankingPlanner.getMissingTransportItemIdsWithQuantities(
+			List.of(permanentFire)).isEmpty());
+
+		Transport setup = entrances.stream()
+			.filter(Transport::isConsumable)
+			.filter(LumbridgeSwampCavePolicy::requiresLight)
+			.findFirst().orElseThrow(() -> new AssertionError("rope-setup entrance missing"));
+		Map<Integer, Integer> setupRequirements =
+			Rs2WalkerBankingPlanner.getMissingTransportItemIdsWithQuantities(
+				List.of(setup, setup));
+		assertEquals(2, setupRequirements.getOrDefault(ItemID.ROPE, 0).intValue());
+		int setupLights = LumbridgeSwampCavePolicy.gasSafeLightSourceIds(setup).stream()
+			.mapToInt(itemId -> setupRequirements.getOrDefault(itemId, 0))
+			.sum();
+		assertEquals(1, setupLights);
 	}
 
     private static Transport teleport(String displayInfo) {
@@ -496,6 +563,7 @@ public class BankedTransportItemPlanningTest {
         List<Transport> unrestricted = all.stream()
                 .filter(t -> t.getType() == TransportType.TRANSPORT)
                 .filter(t -> TransportRequirementPolicy.itemIdRequirements(t).isEmpty())
+				.filter(t -> TransportRequirementPolicy.additionalReusableItemIds(t).isEmpty())
                 .filter(t -> t.getCurrencyAmount() <= 0)
                 .filter(t -> !"Pay-toll(2-Ecto)".equals(t.getAction())
                         || !"Energy Barrier".equals(t.getName()))

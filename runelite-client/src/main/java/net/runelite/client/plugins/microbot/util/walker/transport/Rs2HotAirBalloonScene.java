@@ -13,7 +13,6 @@ import net.runelite.client.plugins.microbot.util.walker.transport.model.HotAirBa
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.Locale;
 import java.util.Map;
 
@@ -63,10 +62,10 @@ public final class Rs2HotAirBalloonScene implements HotAirBalloonScene
 	public static boolean interactObject(PlannedEdge edge, String expectedAction, int objectId)
 	{
 		Transport transport = findTransport(edge);
-		Rs2TileObjectModel basket = transport == null ? null : findObject(transport);
-		return basket != null && basket.getId() == objectId
+		BalloonObject basket = transport == null ? null : findObject(transport);
+		return basket != null && basket.id == objectId
 			&& transport.getAction().equalsIgnoreCase(expectedAction)
-			&& basket.click(transport.getAction());
+			&& basket.object.click(transport.getAction());
 	}
 
 	public static boolean selectDestination(String destination)
@@ -100,37 +99,48 @@ public final class Rs2HotAirBalloonScene implements HotAirBalloonScene
 
 	private static HotAirBalloonTransport objectStage(Transport transport)
 	{
-		Rs2TileObjectModel basket = findObject(transport);
-		return basket == null ? null : stage(transport, basket.getId(),
-			basket.getWorldLocation(), HotAirBalloonTransport.Stage.OBJECT);
+		BalloonObject basket = findObject(transport);
+		return basket == null ? null : stage(transport, basket.id,
+			basket.tile, HotAirBalloonTransport.Stage.OBJECT);
 	}
 
-	private static Rs2TileObjectModel findObject(Transport transport)
+	private static BalloonObject findObject(Transport transport)
 	{
 		return Microbot.getClientThread().runOnClientThreadOptional(() ->
-			Microbot.getRs2TileObjectCache().query()
+		{
+			BalloonObject best = null;
+			int bestDistance = Integer.MAX_VALUE;
+			for (Rs2TileObjectModel object : Microbot.getRs2TileObjectCache().query()
 				.withIds(HotAirBalloonPolicy.basketObjectIds())
 				.within(transport.getOrigin(), HotAirBalloonPolicy.LIVE_OBJECT_ORIGIN_TOLERANCE)
-				.toList().stream().filter(object -> hasAction(object, transport.getAction()))
-				.min(Comparator.comparingInt(object -> object.getWorldLocation()
-					.distanceTo2D(transport.getOrigin())))
-				.orElse(null)).orElse(null);
-	}
-
-	private static boolean hasAction(Rs2TileObjectModel object, String expected)
-	{
-		String[] actions = object.getObjectComposition() == null
-			? null : object.getObjectComposition().getActions();
-		return actions != null && Arrays.stream(actions).filter(java.util.Objects::nonNull)
-			.anyMatch(action -> action.equalsIgnoreCase(expected));
+				.toList())
+			{
+				net.runelite.api.ObjectComposition composition = object.getObjectComposition();
+				String[] actions = composition == null ? null : composition.getActions();
+				WorldPoint tile = object.getWorldLocation();
+				if (tile == null || actions == null || Arrays.stream(actions)
+					.filter(java.util.Objects::nonNull)
+					.noneMatch(action -> action.equalsIgnoreCase(transport.getAction())))
+				{
+					continue;
+				}
+				int distance = tile.distanceTo2D(transport.getOrigin());
+				if (distance < bestDistance)
+				{
+					best = new BalloonObject(object, object.getId(), tile);
+					bestDistance = distance;
+				}
+			}
+			return best;
+		}).orElse(null);
 	}
 
 	private static HotAirBalloonTransport stage(Transport transport, WorldPoint objectTile,
 		HotAirBalloonTransport.Stage stage)
 	{
-		Rs2TileObjectModel basket = findObject(transport);
-		int objectId = basket == null ? transport.getObjectId() : basket.getId();
-		WorldPoint liveTile = basket == null ? objectTile : basket.getWorldLocation();
+		BalloonObject basket = findObject(transport);
+		int objectId = basket == null ? transport.getObjectId() : basket.id;
+		WorldPoint liveTile = basket == null ? objectTile : basket.tile;
 		return stage(transport, objectId, liveTile, stage);
 	}
 
@@ -157,5 +167,19 @@ public final class Rs2HotAirBalloonScene implements HotAirBalloonScene
 	{
 		return value == null ? "" : value.trim().toLowerCase(Locale.ROOT)
 			.replaceAll("\\s+", " ");
+	}
+
+	private static final class BalloonObject
+	{
+		private final Rs2TileObjectModel object;
+		private final int id;
+		private final WorldPoint tile;
+
+		private BalloonObject(Rs2TileObjectModel object, int id, WorldPoint tile)
+		{
+			this.object = object;
+			this.id = id;
+			this.tile = tile;
+		}
 	}
 }

@@ -169,19 +169,22 @@ public final class Rs2MinigameTeleportScene implements MinigameTeleportScene
 
 	private static Widget findActivityWidgetOnClientThread(String activity, Widget choices)
 	{
-		if (choices == null || choices.isHidden() || choices.getDynamicChildren() == null)
+		return Microbot.getClientThread().runOnClientThreadOptional(() ->
 		{
-			return null;
-		}
-		for (Widget choice : choices.getDynamicChildren())
-		{
-			if (choice != null && !choice.isHidden()
-				&& MinigameTeleportPolicy.activityMatches(activity, choice.getText()))
+			if (choices == null || choices.isHidden() || choices.getDynamicChildren() == null)
 			{
-				return choice;
+				return null;
 			}
-		}
-		return null;
+			for (Widget choice : choices.getDynamicChildren())
+			{
+				if (choice != null && !choice.isHidden()
+					&& MinigameTeleportPolicy.activityMatches(activity, choice.getText()))
+				{
+					return choice;
+				}
+			}
+			return null;
+		}).orElse(null);
 	}
 
 	private static boolean dropdownOpen(Widget arrow)

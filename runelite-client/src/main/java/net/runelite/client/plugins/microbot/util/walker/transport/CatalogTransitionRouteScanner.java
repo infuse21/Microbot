@@ -92,6 +92,7 @@ public final class CatalogTransitionRouteScanner
 			|| ElidCrevicePolicy.requiresExactLanding(pending.getObjectId())
 			|| CerberusWinchPolicy.requiresExactLanding(pending.getObjectId())
 			|| LumbridgeSwampCavePolicy.requiresExactLanding(pending.getObjectId())
+			|| GrimTalesManholePolicy.requiresExactLanding(pending.getObjectId())
 			|| CatalogTransitionPolicy.isDarkmeyerInstalledWallObject(pending.getObjectId())
 			|| CatalogTransitionPolicy.isRoyalTroublePlankObject(pending.getObjectId())
 			|| CatalogTransitionPolicy.isRoyalTroubleRopeswingObject(pending.getObjectId())
