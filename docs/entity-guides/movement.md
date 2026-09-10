@@ -2293,3 +2293,18 @@ applicable fragment. Never use the first origin group as a proxy for the whole n
 `PohPanel.createTransportsToPoh`.
 **Defensive check:** use at least two origins and two destinations with disjoint requirements;
 assert all connections exist, requirements remain directional, and outbound edges are unique.
+
+## 129. Resolve large shared transport objects by their cache anchor
+
+A multi-tile object can expose several catalogue approach lanes while the object cache reports only
+one south-west anchor. Searching within the normal radius of each route origin can therefore miss
+the same object from its central and far-side lanes. Resolve an exact-ID candidate against the
+object's occupied footprint while retaining the fast anchor-radius lookup and the directed
+catalogue landing. The Doors of Dinh use seven approach tiles around object 29322; keep their
+catalogue name aligned with the live plural identity instead of weakening name matching.
+
+**Where this applies:** `CatalogTransitionPolicy`, `Rs2CatalogTransitionScene`, and multi-tile
+catalogue objects represented by several approach rows.
+
+**Defensive check:** exercise every directed approach against one multi-tile cache object; each must
+issue the exact action, while non-matching IDs remain subject to the normal anchor-radius lookup.

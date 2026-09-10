@@ -4,6 +4,7 @@ import net.runelite.api.ItemID;
 import net.runelite.api.NPCComposition;
 import net.runelite.api.ObjectComposition;
 import net.runelite.api.Skill;
+import net.runelite.api.coords.WorldArea;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.widgets.ComponentID;
 import net.runelite.api.widgets.Widget;
@@ -26,6 +27,7 @@ import net.runelite.client.plugins.microbot.util.walker.obstacle.PlannedEdge;
 import net.runelite.client.plugins.microbot.util.walker.obstacle.Rs2SceneLocation;
 import net.runelite.client.plugins.microbot.util.walker.transport.model.CatalogTransition;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -443,19 +445,37 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 			return Microbot.getRs2TileObjectCache().query().fromWorldView()
 				.withId(transport.getObjectId()).toList();
 		}
+		int radius = objectSearchRadius(transport);
 		if (!net.runelite.client.plugins.microbot.util.walker.obstacle.Rs2LiveScene.isInInstance())
 		{
-			return Microbot.getRs2TileObjectCache().query().within(transport.getOrigin(),
-				objectSearchRadius(transport)).toList();
+			List<Rs2TileObjectModel> candidates = new ArrayList<>(Microbot.getRs2TileObjectCache()
+				.query().within(transport.getOrigin(), radius).toList());
+			Microbot.getRs2TileObjectCache().query().withId(transport.getObjectId()).toList().stream()
+				.filter(candidate -> distanceToFootprint(candidate, transport.getOrigin()) <= radius)
+				.filter(candidate -> !candidates.contains(candidate)).forEach(candidates::add);
+			return candidates;
 		}
-		int radius = objectSearchRadius(transport);
 		return Microbot.getRs2TileObjectCache().query().fromWorldView().toList().stream()
 			.filter(candidate -> Rs2SceneLocation.templateLocation(candidate) != null)
 			.filter(candidate -> Rs2SceneLocation.templateLocation(candidate).getPlane()
 				== transport.getOrigin().getPlane())
 			.filter(candidate -> Rs2SceneLocation.templateLocation(candidate)
-				.distanceTo2D(transport.getOrigin()) <= radius)
+				.distanceTo2D(transport.getOrigin()) <= radius
+				|| candidate.getId() == transport.getObjectId()
+				&& distanceToFootprint(candidate, transport.getOrigin()) <= radius)
 			.collect(Collectors.toList());
+	}
+
+	static int distanceToFootprint(Rs2TileObjectModel object, WorldPoint point)
+	{
+		WorldPoint anchor = Rs2SceneLocation.templateLocation(object);
+		if (anchor == null || point == null || anchor.getPlane() != point.getPlane())
+		{
+			return Integer.MAX_VALUE;
+		}
+		WorldArea footprint = new WorldArea(anchor, Math.max(1, object.getSizeX()),
+			Math.max(1, object.getSizeY()));
+		return point.distanceTo(footprint);
 	}
 
 	static int objectSearchRadius(Transport transport)

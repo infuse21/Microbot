@@ -88,6 +88,20 @@ public class Rs2TileObjectModel implements TileObject, IEntity {
         return tileObject.getId();
     }
 
+    public int getSizeX() {
+        return tileObject instanceof GameObject
+                ? Microbot.getClientThread().runOnClientThreadOptional(
+                        () -> ((GameObject) tileObject).sizeX()).orElse(1)
+                : 1;
+    }
+
+    public int getSizeY() {
+        return tileObject instanceof GameObject
+                ? Microbot.getClientThread().runOnClientThreadOptional(
+                        () -> ((GameObject) tileObject).sizeY()).orElse(1)
+                : 1;
+    }
+
     @Override
     public @NotNull WorldPoint getWorldLocation() {
         WorldPoint worldLocation = tileObject.getWorldLocation();

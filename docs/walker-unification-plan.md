@@ -29,6 +29,19 @@ ownership gaps and unsupported-route decisions still require resolution before P
 
 ## Active-graph classification closure and resolver hardening - 2026-09-09
 
+Wintertodt multi-tile-door follow-up (2026-09-10): the rebuilt client now enters the live
+`Enter;Doors of Dinh;29322` boundary successfully. The catalogue identity is corrected to the live
+plural name, and exact-ID catalogue lookup now measures the normal approach radius from a game
+object's occupied footprint rather than only its south-west cache anchor. This retains the existing
+fast anchor lookup and transformed-object fallback without globally widening scene search. The
+user observed the successful entry; Agent Server state then confirmed the logged-in character
+inside at `(1638,3995,0)`, and the subsequent NavigationEngine leg from `(1634,3978,0)` reached
+`(1638,3996,0)` with `rs2walker:navigation-engine:arrived`. All 16 Wintertodt approaches pass the
+shared-object regression, all 454 walker transport tests pass, and the 903/0 client-thread/queryable
+guardrails plus both Checkstyles remain green. This live acceptance covers the Doors of Dinh only;
+other large multi-tile catalogue objects remain headless-covered or deferred until physically
+tested.
+
 Mounted-menu follow-up (2026-09-10): all three mounted Digsite pendant and all four
 mounted Xeric's talisman destinations now use the retained TELEPORTATION_PORTAL lifecycle.
 The scene publishes explicit object-menu and exact-destination stages, accepts a transformed
