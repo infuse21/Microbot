@@ -47,6 +47,8 @@ public final class EquippedSafetyTransitionPolicy
 
 	public static boolean isEligible(Transport transport)
 	{
+		if (transport != null && KaruulmAccessPolicy.ownsObject(transport.getObjectId()))
+			return KaruulmAccessPolicy.isEligible(transport) && !transport.getItemIdRequirements().isEmpty();
 		if (transport == null || transport.getType() != TransportType.TRANSPORT
 			|| transport.getOrigin() == null || transport.getDestination() == null
 			|| !transport.isMembers() || transport.isConsumable()

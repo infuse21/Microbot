@@ -2056,3 +2056,240 @@ exceptions as cancellation.
 **Defensive check:** Cover wrapped client-thread timeouts and interrupted cancellation headlessly,
 then press Ctrl+X during a rebuilt-client catalogue scan and verify no timeout exception or later
 interaction is emitted.
+
+## 112. Recovery pits need their own scene coordinates and the original route edge
+
+Regicide leaf failures do not simply place the player at the surface tile plus 6400 Y. The cache
+places the climb-out objects in separate two-by-two pits; object 3927 is named `Protruding rocks`
+and exposes `Climb`. Match the current pit, exact object and action after an engine-owned leaf
+jump. Keep the original directed jump pending through escape, and require the original surface tile
+before retrying; only the opposite landing completes the crossing.
+
+Recovery cannot depend on the original jump staying in the usable transport snapshot: damage can
+remove its HP requirement immediately after falling. Recheck HP above 18 before another jump, not
+before escape, and spend the failure budget without abandoning the final climb-out. An unavailable
+or timed-out climb must stop rather than issue ordinary ground walking toward the distant surface
+origin. Capture recovery objects in a client-thread snapshot and retain cancellation throughout.
+
+**Defensive check:** Test both directions, near-side leaf anchors, other-pit object rejection,
+filtered-row disappearance, repeated fall/escape cycles, exhausted HP, missing rocks, rejected input,
+climb timeout and cancellation. Cache geometry and headless tests do not prove the physical landing.
+
+## 113. Match the exact fare prompt only after the pending gate Open
+
+Resource Area gate 26760 opens `Pay 7500 coins to enter?` with Yes/No before crossing inward.
+The catalogue correctly charges southbound travel from Y=3945 to Y=3944; the northbound exit is
+free. Match the exact current fare title and complete unique Yes/No menu only after the engine's
+Open stage, recheck coins and diary predicates, and retain the pending edge after confirmation.
+Neither a disappearing menu nor spent coins proves crossing; require the exact opposite tile.
+Exclude this gate from ordinary adjacent-door ownership and block bare ground routing across it.
+
+**Defensive check:** Reject foreign/wrong-fare/duplicate-option menus, insufficient coins and
+unowned confirmations. After Yes, do not reopen the gate while waiting for landing. The user's
+manual 7,500-coin crossing does not prove rebuilt-engine or discounted/free-variant acceptance.
+
+## 114. A static exit can require the same permanent unlock as its transformed entrance
+
+Southern Brimhaven's surface wrapper 66 uses varbit 5629: zero exposes an actionless hole, values
+1-3 expose rope 30200 with Climb, and the fallback is absent. Interior crevice 30201 always exposes
+Use, but Banisoch's payment is required for both directions. Do not infer unrestricted exit access
+from object presence or apply the usual unconditional-escape rule without checking this contract.
+
+Gate both directed routes on the verified enabled range, recheck it in the client-thread scene
+snapshot before dispatch, and resolve only the exact wrapper/rope/crevice identities. Retain the
+interaction until the exact remote landing. The permanent purchase is not a fare per crossing,
+and supporting already-unlocked travel does not implement first-time payment.
+
+## 115. A Slayer-only combat area does not necessarily require a task for passage
+
+Hieve checks attacks on Brimhaven's metal dragons, while the two static crevice-30198 objects
+provide passage through the wall. The area's Slayer-only label is not sufficient evidence for
+an entrance task gate. Audit the documented restriction's trigger separately from the movement
+action, and keep task-gated combat outside the walker. This differs from Cerberus's winches,
+whose entry contract explicitly requires the assignment and Slayer level.
+
+Freeze exact directed passage rows and object identity, require actual landing, and retain a
+no-task physical crossing in the live ledger; metadata and headless tests are not that live proof.
+
+## 116. Separate single-entry fees from permanent access and unrelated packed door bits
+
+Brimhaven's main entrance uses composite varbit 8123: bit 0 is the single-entry fee (5628),
+bits 1-2 are the southern backdoor state (5629), and bit 3 is permanent main-entry access (8122).
+Do not interpret every nonzero composite value as open, or label the temporary fee as permanent.
+Publish disjoint paid/temporary/permanent variants and recheck the actual Pay/Enter transform.
+The payment menu changes when carrying one million coins: select only the explicit 875-coin
+visit, never permanent purchase. Retain ownership through the scoped receipt and exact landing;
+missing dialogue after confirmation is not permission to pay again.
+
+## 117. A zig-zag agility fall may not project behind the attempted edge
+
+Weiss's ascending rope can return below the first rockslide, and its ledge can return below the
+rope. The lower platform can project level with or ahead of a diagonal/horizontal attempted edge,
+so a generic dot-product test can miss the failure. Match only the exact owned route and known
+earlier stage, replan from the real position, and never treat that lower position as arrival.
+Require the exact source before issuing the obstacle so ranged clicks cannot skip earlier stages.
+Keep ascent skill/HP requirements separate from descents, and respect the agility config even
+when the source row is an ordinary `TRANSPORT` rather than an `AGILITY_SHORTCUT`.
+
+## 118. Resolve coloured barriers by exact anchor and counter, not a shared transformed ID
+
+Molch's five barrier wrappers share the same three transformed object IDs. Each has its own
+counter varbit and crossing damage; accepting a nearby shared live ID can target the wrong
+barrier. Match the directed route, exact anchor, current colour and action, then recheck HP
+against a conservative next-crossing damage budget before input. A colour transition or object
+presence is not proof of crossing: acknowledge only the opposite two-tile landing band.
+
+**Why this matters:** four source rows used 34542 (Karuulm lava scenery) instead of 34642
+(Molch barrier 1), while sixteen other rows used a damage-blind adjacent handler. Cache placement
+plane 1 has the bridge flag and corresponds to effective plane 0; neither the typo nor the raw
+placement plane establishes a Karuulm heat-protection requirement.
+
+**Where this applies:** `MolchBarrierPolicy`, `Rs2CatalogTransitionScene`,
+`CatalogTransitionRouteScanner`, and the transport catalog.
+
+## 119. Verify a quest object's placement before borrowing its transform or unlock
+
+Nearby object constants can belong to different entrances. Grand Tree wrapper 2444 transforms
+through varp 150, but is placed at Glough's house; it does not describe the static central
+trapdoor 2446. Enakhra's alleged bone-pile ID 18342 is actually a Slug Menace wall elsewhere.
+Check placement, name/action and each available state together before publishing a directed row.
+Sparse quest transforms require exact supported values, not a lower-bound predicate that also
+admits absent states.
+
+**Where this applies:** `QuestStatePassagePolicy`, `Rs2CatalogTransitionScene` and catalog audits.
+**Defensive check:** pin exact geometry, reject intermediate/unknown states and recheck the
+current state before dispatch; cached availability must not authorize a stale interaction.
+
+## 120. Check every transport resource before calling a commented row unsupported
+
+Eastern Brimhaven stones were commented out in the ordinary transport file but remained active
+in the agility file, with an incorrect 56-Agility gate on both directions. Resolve canonical
+duplicates before counting missing routes or enabling another shadow row. For asymmetric
+island shortcuts, use transport-free ground connectivity to distinguish inward from outward
+endpoints; both pairs need the higher level inward, while departure from the island is free.
+
+**Where this applies:** transport inventory audits, `CatalogTransitionPolicy`, and the
+Brimhaven source-stone resolver.
+**Defensive check:** pin four canonical rows, their inward/outward requirements, exact
+source-side anchors and destination acknowledgement; actionless middle stones are not targets.
+
+The entrance pipe 21728 is also asymmetric (22 southbound, free northbound). A Wiki monster
+map marker is not necessarily walkable, and a flood clipped before the connecting corridor
+can falsely suggest disconnected rooms. Start on a known route endpoint and include the whole
+local corridor when checking connectivity; do not infer direction merely from marker position.
+
+## 121. Reserve combination runes per cast, not against merged journey elements
+
+Varrock plus Watchtower consumes three lava runes when air/law are supplied separately:
+one for the first cast's fire and two for the second cast's earth. Merging those requirements
+first incorrectly reserves only two. Preserve raw physical rune quantities (disable combination
+expansion) for carried/pouch stock, decrement reservations across casts, and leave equipped
+infinite supplies non-consuming. All withdrawals precede the first cast, so later-needed
+combination runes can be consumed earlier. Keep overlapping-type server priority explicitly
+unverified until observed; a deterministic allocator is not evidence of server ordering.
+
+**Where this applies:** `Rs2WalkerBankingPlanner` and banked spell routes.
+**Defensive check:** test unlike/repeated casts, single-cast combination benefit, inventory versus
+pouch totals, depleted supplies and bank closure before the final target leg.
+
+## 122. Retain spell-equipment preparation when its observation is unavailable
+
+After a staff preparation transaction is acquired, a null or stale preparation observation
+does not authorize the underlying cast. Client-thread snapshot calls can return empty on
+interruption, timeout or failure. Feed unavailable equipment into the retained engine transaction
+so it waits within its existing deadline; only an observed ready loadout permits casting.
+
+**Where this applies:** `NavigationEngineRuntime`, `Rs2SpellEquipmentScene`.
+**Defensive check:** acquire preparation, make the next observation unavailable, assert no cast
+or duplicate equip, then restore the observed staff and verify the cast can proceed.
+
+## 123. Separate safe dungeon entry from protected onward travel and escape
+
+Karuulm's entrance chamber is safe without protective boots; heat protection is needed beyond
+its rock boundaries. Keep entry and escape routes independent from inward equipment gates.
+Publish equip-level requirements with each footwear alternative, recheck real levels and the
+claimed diary reward before input, and keep protection worn for the subsequent hot-floor walk.
+Do not automatically confirm an unprotected warning or mistake completed diary tasks for the
+reward exemption. Paired catalog landings must be acknowledged within their explicit landing
+area, not merely by disappearance of the source object.
+
+**Where this applies:** `KaruulmAccessPolicy`, `EquippedSafetyTransitionPolicy`, `Rs2CatalogTransitionScene`.
+**Defensive check:** cover free entrance/escape, each boot's equip-level boundary, unclaimed versus
+claimed diary reward, item requirements, and distinct source/destination acknowledgement.
+
+Check classifier precedence as well as catalog eligibility: Karuulm's one-tile northern rocks
+must be excluded from generic adjacent ownership, including free and diary variants. Otherwise
+the earlier adjacent classifier bypasses the dedicated scene's real-level and reward rechecks.
+
+## 124. Distinguish functional exits from same-named decorative props
+
+The Old School Museum's upstairs passageway 31892 exposes Leave; downstairs 47316 is actionless.
+Do not attach the prop's description to the usable exit or accept it through a name fallback.
+Offline placement records put the upstairs objects on raw plane 1 with bridge flag 2, so their
+effective scene plane is 0. Compare effective coordinates with the historical approach tiles,
+and keep physical server landing verification separate from cache geometry and mocked dispatch.
+
+**Where this applies:** `CatalogTransitionPolicy`, `Rs2CatalogTransitionScene`, museum exits.
+**Defensive check:** verify all four directed approaches, reject the decorative ID even with a
+matching mock name/action, and acknowledge only the selected surface landing.
+
+## 125. Large tunnel footprints can put the cache anchor beyond a generic search radius
+
+Tears-cave tunnel 6659 is anchored at (3225,9539,0), three tiles from its Y=9542 approach
+rows; 6658 is anchored at (3218,9533,2). Resolve each exact ID at its template anchor inside
+the client-thread scene snapshot, rather than enlarging all Tunnel-name searches. The Chasm
+needs no light or completed quest; do not copy adjacent swamp hazards or minigame access onto
+this traversal. Protective loadouts remain the caller's responsibility.
+
+**Defensive check:** all six approaches must dispatch from their true anchor, reject an object
+at the approach tile instead, and retain ownership until the selected remote landing.
+
+## 126. POH chamber portal actions depend on the destination, not just the portal family
+
+Varrock/Grand Exchange, Camelot and Watchtower portal variants expose named destination
+actions instead of Enter. Their Toggle action changes the preferred destination and must not
+be used as a travel action. Varrock and Camelot base definitions transform through varbits
+4585 and 4560; inspect the active composition when resolving a live portal. Other chamber
+entries currently use Enter. Keep this action contract distinct from instance-local approach
+and landing verification; correcting a click string does not establish engine ownership.
+
+**Where this applies:** `PohPortal`, POH chamber transport adapters.
+**Defensive check:** exercise all chamber enum entries and require the destination-specific
+action for Varrock, Grand Exchange, Camelot and Watchtower.
+
+For generated chamber rows, the graph origin is the configured house exit anchor, not the
+room portal's tile. Approach the resolved chamber object in template space rather than
+repeatedly clicking that graph anchor. Filter to the player's world view, match the base or
+active definition ID, and require the selected landing rather than treating house-scene
+unloading as arrival. Reading active definition IDs belongs directly in
+the client-thread snapshot; nested matching predicates should compare captured primitives.
+
+## 127. Treat mounted POH menus as staged transports, not blocking teleport helpers
+
+Mounted Digsite and Xeric's objects can expose the requested destination directly when their
+active variant matches it; other variants require Teleport menu followed by an exact widget
+selection. Publish those as separate observations of one retained interaction. Search the
+current house/world view and approach the object's template tile, because the route origin is
+the synthetic house-exit anchor. A missing or struck-through destination is unavailable, not
+permission to retry the object or call the blocking `PohTeleport.execute()` helper. Keep widget
+tree traversal and bounds capture entirely inside a client-thread snapshot; mouse dispatch
+uses only the captured bounds.
+
+**Where this applies:** `PohTransport`, `TeleportationPortalPolicy`,
+`Rs2TeleportationPortalScene`, and mounted POH destination menus.
+**Defensive check:** cover all mounted destinations through menu-open, exact selection,
+locked rejection and transformed direct-action states; retain the selected landing afterward.
+
+## 128. Retain permutation endpoints before adding a POH network node
+
+Expanded fairy-ring and spirit-tree rows merge the requirements of their source and destination
+fragments. Reusing an arbitrary expanded row to connect a house can therefore copy a different
+destination's requirements onto an inbound leg or a different source's requirements onto an
+outbound leg. Retain both endpoint fragments when `Transport(origin, destination)` expands a
+permutation, enumerate every unique endpoint, and combine the house placeholder only with the
+applicable fragment. Never use the first origin group as a proxy for the whole network.
+
+**Where this applies:** `Transport` permutation expansion and
+`PohPanel.createTransportsToPoh`.
+**Defensive check:** use at least two origins and two destinations with disjoint requirements;
+assert all connections exist, requirements remain directional, and outbound edges are unique.

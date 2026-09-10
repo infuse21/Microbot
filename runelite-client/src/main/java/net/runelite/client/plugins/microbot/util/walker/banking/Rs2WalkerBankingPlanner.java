@@ -148,7 +148,11 @@ public final class Rs2WalkerBankingPlanner {
                         : transport.getDisplayInfo();
                 log.debug("Looking for spell rune requirements for: '{}' - display info {}", spellName, displayInfo);
                 Rs2Spells rs2Spell = Rs2Magic.getRs2Spell(displayInfo);
-                return Rs2Magic.hasRequiredRunes(rs2Spell);
+                return Rs2Magic.hasRequiredRunes(rs2Spell)
+                        || rs2Spell != null && Rs2Walker.config != null
+                        && Rs2Walker.config.navigationEngineOrdinaryWalking()
+                        && net.runelite.client.plugins.microbot.util.walker.transport.SimpleTeleportPolicy.isEligible(transport)
+                        && Rs2SpellEquipmentScene.plan(List.of(getSpellRequirements(transport)), false) != null;
             }
             int currencyAmount = TransportRequirementPolicy.currencyAmount(transport);
             String currencyName = TransportRequirementPolicy.currencyName(transport);
@@ -196,12 +200,11 @@ public final class Rs2WalkerBankingPlanner {
         Map<Integer, Integer> fungibleRequirements = new HashMap<>();
         Map<Set<Integer>, Integer> consumableAlternatives = new HashMap<>();
         Set<Set<Integer>> reusableAlternatives = new HashSet<>();
-        Map<Runes, Integer> spellRequirements = new EnumMap<>(Runes.class);
+        List<Map<Runes, Integer>> spellRequirements = new ArrayList<>();
 
         transports.stream().filter(Rs2WalkerBankingPlanner::requiresBankPlanning).forEach(transport -> {
             if (transport.getType() == TransportType.TELEPORTATION_SPELL) {
-                getSpellRequirements(transport).forEach(
-                        (rune, quantity) -> spellRequirements.merge(rune, quantity, Integer::sum));
+                spellRequirements.add(getSpellRequirements(transport));
                 return;
             }
 
@@ -248,7 +251,10 @@ public final class Rs2WalkerBankingPlanner {
 			}
         });
 
-        addSpellWithdrawals(spellRequirements, exactWithdrawals);
+        boolean staffExecutionSupported = transports.stream()
+                .filter(transport -> transport != null && transport.getType() == TransportType.TELEPORTATION_SPELL)
+                .allMatch(net.runelite.client.plugins.microbot.util.walker.transport.SimpleTeleportPolicy::isEligible);
+        addSpellWithdrawals(spellRequirements, exactWithdrawals, staffExecutionSupported);
         consumableAlternatives.forEach((alternatives, uses) ->
                 addAlternativeWithdrawal(alternatives, uses, exactWithdrawals, fungibleRequirements));
         reusableAlternatives.forEach(alternatives ->
@@ -343,14 +349,29 @@ public final class Rs2WalkerBankingPlanner {
         }
     }
 
-    private static void addSpellWithdrawals(Map<Runes, Integer> required,
-            Map<Integer, Integer> exactWithdrawals) {
+    private static void addSpellWithdrawals(List<Map<Runes, Integer>> required,
+            Map<Integer, Integer> exactWithdrawals, boolean staffExecutionSupported) {
         if (required.isEmpty()) {
             return;
         }
+        if (staffExecutionSupported && Rs2Walker.config != null
+                && Rs2Walker.config.walkWithBankedTransports() && Rs2Walker.config.useBankedElementalStaffs()
+                && Rs2Walker.config.navigationEngineOrdinaryWalking()) {
+            BankedSpellEquipmentPlanner.Plan selected = Rs2SpellEquipmentScene.plan(required, true);
+            if (selected != null) {
+                selected.getRuneWithdrawals().forEach((itemId, amount) ->
+                        exactWithdrawals.merge(itemId, amount, Integer::sum));
+                int staffId = selected.getStaff().getItemID();
+                if (staffId > 0 && !Rs2Equipment.isWearing(staffId) && !Rs2Inventory.hasItem(staffId)) {
+                    exactWithdrawals.merge(staffId, 1, Math::max);
+                }
+                return;
+            }
+        }
         Map<Runes, Integer> available;
         try {
-            available = Rs2Magic.getRunes(RuneFilter.builder().includeBank(false).build());
+            available = Rs2Magic.getRunes(RuneFilter.builder()
+                    .includeBank(false).includeComboRunes(false).build());
         } catch (RuntimeException ex) {
             available = Map.of();
         }
@@ -366,56 +387,74 @@ public final class Rs2WalkerBankingPlanner {
 
     static Map<Integer, Integer> planRuneWithdrawals(Map<Runes, Integer> required,
             Map<Runes, Integer> available, Map<Runes, Integer> bankQuantities) {
+        return planRuneWithdrawals(List.of(required), available, bankQuantities);
+    }
+
+    static Map<Integer, Integer> planRuneWithdrawals(List<Map<Runes, Integer>> casts,
+            Map<Runes, Integer> available, Map<Runes, Integer> bankQuantities) {
         Map<Integer, Integer> withdrawals = new HashMap<>();
-        Map<Runes, Integer> deficits = new EnumMap<>(Runes.class);
-        required.forEach((rune, quantity) -> {
-            int missing = amountToWithdraw(quantity, available.getOrDefault(rune, 0));
-            if (missing > 0) {
-                deficits.put(rune, missing);
-            }
-        });
-        Map<Runes, Integer> bankRemaining = new EnumMap<>(Runes.class);
-        bankRemaining.putAll(bankQuantities);
-
-        while (!deficits.isEmpty()) {
-            Runes best = null;
-            int bestCoverage = 0;
-            int bestQuantity = 0;
-            for (Runes candidate : Runes.values()) {
-                int quantity = bankRemaining.getOrDefault(candidate, 0);
-                if (quantity <= 0) {
-                    continue;
-                }
-                int coverage = (int) deficits.keySet().stream()
-                        .filter(candidate::providesRune)
-                        .count();
-                if (coverage > bestCoverage
-                        || (coverage == bestCoverage && quantity > bestQuantity)) {
-                    best = candidate;
-                    bestCoverage = coverage;
-                    bestQuantity = quantity;
-                }
-            }
-            if (best == null || bestCoverage == 0) {
-                deficits.forEach((rune, quantity) ->
-                        withdrawals.merge(rune.getItemId(), quantity, Integer::sum));
-                break;
-            }
-
-            final Runes selected = best;
-            int amount = deficits.entrySet().stream()
-                    .filter(entry -> selected.providesRune(entry.getKey()))
-                    .mapToInt(Map.Entry::getValue)
-                    .max()
-                    .orElse(0);
-            amount = Math.min(amount, bankRemaining.get(selected));
-            withdrawals.merge(selected.getItemId(), amount, Integer::sum);
-            bankRemaining.put(selected, bankRemaining.get(selected) - amount);
-            int supplied = amount;
-            deficits.replaceAll((rune, quantity) ->
-                    selected.providesRune(rune) ? Math.max(0, quantity - supplied) : quantity);
-            deficits.entrySet().removeIf(entry -> entry.getValue() == 0);
+        Map<Runes, Integer> remaining = new EnumMap<>(Runes.class);
+        Map<Runes, Integer> consumed = new EnumMap<>(Runes.class);
+        for (Runes rune : Runes.values()) {
+            long quantity = (long) Math.max(0, available.getOrDefault(rune, 0))
+                    + Math.max(0, bankQuantities.getOrDefault(rune, 0));
+            remaining.put(rune, (int) Math.min(Integer.MAX_VALUE, quantity));
         }
+
+        for (Map<Runes, Integer> cast : casts) {
+            Map<Runes, Integer> deficits = new EnumMap<>(Runes.class);
+            cast.forEach((rune, quantity) -> {
+                if (quantity > 0 && available.getOrDefault(rune, 0) != Integer.MAX_VALUE) {
+                    deficits.put(rune, quantity);
+                }
+            });
+            while (!deficits.isEmpty()) {
+                Runes best = null;
+                int bestCoverage = 0;
+                int bestQuantity = 0;
+                boolean bestCombination = false;
+                for (Runes candidate : Runes.values()) {
+                    int quantity = remaining.getOrDefault(candidate, 0);
+                    if (quantity <= 0) continue;
+                    int coverage = (int) deficits.keySet().stream()
+                            .filter(candidate::providesRune).count();
+                    if (coverage == 0) continue;
+                    boolean combination = candidate.getBaseRunes().length > 0;
+                    // All withdrawals are carried before the first cast: a combination rune
+                    // fetched for a later spell can also be consumed by an earlier spell.
+                    if (best == null || (combination && !bestCombination)
+                            || (combination == bestCombination && (coverage > bestCoverage
+                            || (coverage == bestCoverage && quantity > bestQuantity)))) {
+                        best = candidate;
+                        bestCoverage = coverage;
+                        bestQuantity = quantity;
+                        bestCombination = combination;
+                    }
+                }
+                if (best == null) {
+                    // Retain unsatisfied requirements so withdrawal validation exits before
+                    // the target leg, rather than treating an exhausted supply as success.
+                    deficits.forEach((rune, quantity) ->
+                            withdrawals.merge(rune.getItemId(), quantity, Integer::sum));
+                    break;
+                }
+                final Runes selected = best;
+                int amount = deficits.entrySet().stream()
+                        .filter(entry -> selected.providesRune(entry.getKey()))
+                        .mapToInt(Map.Entry::getValue).max().orElse(0);
+                amount = Math.min(amount, remaining.get(selected));
+                remaining.put(selected, remaining.get(selected) - amount);
+                consumed.merge(selected, amount, Integer::sum);
+                int supplied = amount;
+                deficits.replaceAll((rune, quantity) -> selected.providesRune(rune)
+                        ? Math.max(0, quantity - supplied) : quantity);
+                deficits.entrySet().removeIf(entry -> entry.getValue() == 0);
+            }
+        }
+        consumed.forEach((rune, quantity) -> {
+            int missing = amountToWithdraw(quantity, available.getOrDefault(rune, 0));
+            if (missing > 0) withdrawals.merge(rune.getItemId(), missing, Integer::sum);
+        });
         return withdrawals;
     }
 

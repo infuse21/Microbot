@@ -72,6 +72,9 @@ public final class CatalogTransitionRouteScanner
 		WorldPoint tile = transition.getObjectTile();
 		boolean ready = player != null && player.getPlane() == tile.getPlane()
 			&& player.distanceTo2D(tile) <= interactionDistance;
+		if (NorthernQuestShortcutPolicy.ownsObject(transition.getCatalogObjectId())
+			|| MolchBarrierPolicy.ownsObject(transition.getCatalogObjectId()))
+			ready = transition.getOrigin().equals(player);
 		return new RouteInteraction(generation, edge.getRawIndex(), edge.getFrom(), edge.getTo(),
 			tile, RouteInteraction.Kind.CATALOG_TRANSITION,
 			RouteInteraction.Status.AVAILABLE, transition.getAction(), ready,
@@ -81,13 +84,28 @@ public final class CatalogTransitionRouteScanner
 	private static boolean hasLanded(RouteInteraction pending, WorldPoint player)
 	{
 		WorldPoint destination = pending.getCrossingTo();
+		if (KaruulmAccessPolicy.ownsObject(pending.getObjectId()))
+			return KaruulmAccessPolicy.hasLanded(pending.getObjectId(), pending.getCrossingFrom(), destination, player);
+		if (MolchBarrierPolicy.ownsObject(pending.getObjectId()))
+			return MolchBarrierPolicy.hasCrossed(pending.getObjectId(), pending.getCrossingFrom(), destination, player);
 		if (pending.getObjectId() == ShantayPassPolicy.MAIN_GATE_ID
 			|| pending.getObjectId() == ShantayPassPolicy.UNKAH_GATE_ID)
 		{
 			return ShantayPassPolicy.hasCrossed(pending.getObjectId(),
 				pending.getCrossingFrom(), destination, player);
 		}
-		if (CatalogTransitionPolicy.isTarnsJumpObject(pending.getObjectId())
+		if (pending.getObjectId() == 19040
+			|| QuestStatePassagePolicy.ownsObject(pending.getObjectId())
+			|| pending.getObjectId() == 12268
+			|| pending.getObjectId() == 5055
+			|| pending.getObjectId() == 31892
+			|| pending.getObjectId() == 6658 || pending.getObjectId() == 6659
+			|| pending.getObjectId() == ResourceAreaGatePolicy.GATE
+			|| NorthernQuestShortcutPolicy.ownsObject(pending.getObjectId())
+			|| pending.getObjectId() == BrimhavenEntrancePolicy.ENTRANCE
+			|| CatalogTransitionPolicy.isBrimhavenBackdoorObject(pending.getObjectId())
+			|| pending.getObjectId() == LeafPitPolicy.LEAVES
+			|| CatalogTransitionPolicy.isTarnsJumpObject(pending.getObjectId())
 			|| CatalogTransitionPolicy.isIcePathGateObject(pending.getObjectId())
 			|| ElidCrevicePolicy.requiresExactLanding(pending.getObjectId())
 			|| CerberusWinchPolicy.requiresExactLanding(pending.getObjectId())

@@ -13,7 +13,6 @@ import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
 
 public class WeissRockslideSourceTest
 {
@@ -22,15 +21,15 @@ public class WeissRockslideSourceTest
 	private static final Set<Integer> ROCKSLIDE_IDS = Set.of(33184, 33185, 33191);
 
 	@Test
-	public void unsafeRockslidesAreNotLoaded()
+	public void allSixRockslideDirectionsAreLoaded()
 	{
-		assertTrue(Transport.loadAllFromResources().values().stream()
+		assertEquals(6, Transport.loadAllFromResources().values().stream()
 			.flatMap(java.util.Collection::stream)
-			.noneMatch(row -> ROCKSLIDE_IDS.contains(row.getObjectId())));
+			.filter(row -> ROCKSLIDE_IDS.contains(row.getObjectId())).count());
 	}
 
 	@Test
-	public void allSixRowsRemainAsExactSourceEvidence()
+	public void allSixRowsKeepTheirExactDirectedGeometry()
 		throws IOException
 	{
 		Set<String> expected = Set.of(
@@ -47,25 +46,14 @@ public class WeissRockslideSourceTest
 			StandardCharsets.UTF_8)))
 		{
 			Set<String> disabled = reader.lines()
-				.filter(line -> line.startsWith("# ")
+				.filter(line -> !line.startsWith("#")
 					&& ROCKSLIDE_IDS.stream().anyMatch(id -> line.contains(";" + id)))
-				.map(line -> line.substring(2).split("\\t", -1))
-				.peek(columns -> assertTrue(noRequirements(columns)))
+				.map(line -> line.split("\\t", -1))
+				.peek(columns -> assertEquals("Y", columns[9]))
 				.map(columns -> columns[0] + ">" + columns[1] + ":" + columns[2])
 				.collect(Collectors.toSet());
 			assertEquals(expected, disabled);
 		}
 	}
 
-	private static boolean noRequirements(String[] columns)
-	{
-		for (int index = 3; index <= 10; index++)
-		{
-			if (index < columns.length && !columns[index].trim().isEmpty())
-			{
-				return false;
-			}
-		}
-		return true;
-	}
 }

@@ -741,10 +741,22 @@ public interface ShortestPathConfig extends Config {
     }
 
     @ConfigItem(
+            keyName = "useBankedElementalStaffs",
+            name = "Use banked elemental staffs",
+            description = "Optional: withdraw an elemental staff for teleport spells when Walk with banked transports is enabled. " +
+                    "Restores your original weapon after casting, but leaves the staff in your inventory. Off uses rune withdrawals only.",
+            position = 2,
+            section = sectionAdvanced
+    )
+    default boolean useBankedElementalStaffs() {
+        return false;
+    }
+
+    @ConfigItem(
             keyName = "minBankRouteSavings",
             name = "Min. bank route savings (tiles)",
             description = "Minimum number of tiles the bank route must be shorter than the direct route to use banking.",
-            position = 2,
+            position = 3,
             section = sectionAdvanced
     )
     @Range(min = 0)

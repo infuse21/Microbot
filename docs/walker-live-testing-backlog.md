@@ -14,18 +14,494 @@ tracks implementation batches. Later dated evidence supersedes earlier audit cou
   warnings, locks and equipment variants are not automatically accepted.
 - **Pending implementation:** not headless-complete; do not place it in a live-only queue.
 
-The user has approved headless-first work for now. Do not restart or issue gameplay input merely
-to close these entries. A deferred live gate remains open and does not authorize Phase 7/8 or
-deleting legacy orchestration. Counts below are scoped to their named historical batches, not
+The user explicitly revised Phase 6 acceptance on 2026-09-09: implementation and headless
+verification may close Phase 6 without live tests requiring unavailable items, stats, unlocks
+or endgame equipment. Those tests remain deferred here, never labelled live-passed. Do not
+restart or issue gameplay input merely to close these entries. This supersedes older wording
+that made every deferred physical gate a Phase 6 blocker; unresolved implementation defects
+and unsupported-route decisions still block closure. No Phase 7 or legacy deletion starts
+before the implementation/headless completion audit passes. Counts below are scoped to their named historical batches, not
 additive totals; source rows, generated edges and duplicated approaches must not be mixed.
 
 ## Latest work versus earlier headless batches
 
+### Mounted Digsite and Xeric's menus - 2026-09-10
+
+All three mounted Digsite pendant and four mounted Xeric's talisman destinations are
+headless-complete under NavigationEngine ownership. Tests cover base/non-selected objects
+opening Teleport menu, exact unlocked selection, struck-through/unavailable destinations,
+destination-specific transformed-object actions, actual room-object approach and directed
+landing retention. Compilation, focused POH tests, both thread-safety guardrails, benchmark
+and both Checkstyles pass with unchanged 903/0 guardrail baselines. No rebuilt client was
+available, so physical room layouts and all seven destination landings remain deferred,
+not live-passed. Nexus, jewellery box and POH fairy ring/spirit tree interaction integration
+are still pending implementation; the graph-generator correction is recorded below.
+
+### POH fairy-ring/spirit-tree graph generation - 2026-09-10
+
+The shared house network generator is headless-complete. It now connects every unique external
+origin to the house and the house to every unique destination while retaining the original
+permutation endpoints, so source-only and destination-only requirements cannot contaminate the
+opposite leg. Tests pin two origins, two destinations, all four house edges, exact item
+requirements and outbound de-duplication. Actual POH fairy-ring and spirit-tree interaction
+ownership remains pending implementation; no physical house network test is claimed.
+
+### Mounted glory and mythical cape - 2026-09-09
+
+Four mounted glory destinations and the mounted mythical cape now use the same direct POH
+portal lifecycle as chamber portals. Cache definitions confirm 13523's Edgeville, Karamja,
+Draynor Village and Al Kharid actions, and 31986's Teleport action. These decorative objects
+resolve only in the current house/world view; the engine approaches their actual room tile.
+Headless coverage includes all five classifications, exact actions/IDs, missing or wrong
+object/action/world rejection, and engine approach. The shared scene test now covers 45
+direct POH destinations including the earlier chambers. Mounted digsite/Xeric's menu flows
+were subsequently migrated above; nexus, jewellery box and house network generation remain
+implementation work. Physical
+crossings and layout-specific approaches remain deferred, not live-passed.
+
+### POH chamber portals - 2026-09-09
+
+Typed `PohTransport` chamber destinations now publish `TELEPORTATION_PORTAL` ownership,
+using the existing engine portal lifecycle rather than `PohTransport.execute()` dispatch.
+The 40 enum destinations retain their configured endpoints and expose stable object/action
+identity. Resolution requires being inside a house and the player's current world view;
+it checks base or active transformed IDs and the destination's exact action, never Toggle
+or Remove. Grand Exchange also resolves through a Varrock-preferred base portal. The
+object's template tile, rather than the configured exit-anchor tile, drives approach readiness.
+Source unloading is not arrival; the common portal scanner waits for the selected landing.
+Physical approach across room layouts/floors, diary variants, wilderness destinations and
+arrival timing remain deferred, not live-passed. This does not implement nexus, jewellery
+box, mounted facilities, house rings/trees or their graph-generation correction.
+Validation: 2,212-test full-suite checkpoint (zero failures, four skips), followed by the final
+approach correction's 90-test engine/portal/guardrail/benchmark run (zero failures/skips).
+Compilation and both Checkstyles passed; the guardrail baseline remains unchanged.
+
+### Ice Troll underground bridges - 2026-09-09
+
+All five directed rows now use the shared quest-state passage lifecycle with exact cache
+anchors. The north-to-boss bridge 21316 checks FRIS_TASK/3312=0 before input; four return or
+east/west passage rows have no copied entrance/task/item gate. This supersedes the earlier
+five-row implementation deferral. Pending physical states: first boss-entry cutscene, return
+crossings before/after victory, east/west passage, post-quest accessibility and precise landing.
+No fighting or quest solving is implemented, and physical cases remain deferred, not live-passed.
+Validation: selected quest-state scene/policy, audited-shortcut, route, disabled-row audit and
+benchmark tests passed with compilation and both Checkstyles (1m58s).
+
+### Eastern Ice Troll quest-time entrance - 2026-09-09
+
+Three approaches have six exact variants for quest varbit 3311=300 or 310, handled through
+the existing quest-state passage lifecycle. Exact anchor (2401,3889,0), Open/Cave/21584 and
+the selected underground landing are retained; requirements are rechecked before dispatch.
+No gear banking, troll combat or quest solving is performed. Deferred live: initial cutscene
+and repeat entry at these stages. Later corpse-return stages are not represented by this
+landing, and the five underground bridge directions still require implementation decisions.
+Validation: selected route/source-audit/benchmark and quest-state scene/policy tests passed,
+including all 17 variants of the shared quest-state family; compilation and both Checkstyles
+passed (2m12s). Those 17 include earlier families, not 17 new Ice Troll routes.
+
+### Tears-cave tunnels - 2026-09-09
+
+Six member-only approaches use catalog ownership and exact cache anchors for Enter. No travel
+item or quest completion is required. Caller/plugin remains responsible for light in the swamp
+caves outside the Chasm; the Chasm itself needs none. The original per-row durations (0/2) are
+preserved rather than treated as measured timings. Headless tests exercise every approach,
+reject wrong-position objects, retain source-side pending interactions and require the exact
+remote destination. Deferred live checks: actual landing/timing in both directions and onward
+navigation. These physical checks do not block Phase 6 under the revised acceptance scope.
+Validation: 79 selected route/source/scene/audit/benchmark tests, compilation and both
+Checkstyle tasks passed (1m9s); all six actual scene-dispatch approaches were exercised headlessly.
+
+### Old School Museum upstairs exits - 2026-09-09
+
+Four historical Leave approaches now use exact catalog ownership. Offline cache metadata places
+31892 at (3013,9951,1) and (3066,9951,1), bridge flag 2/effective plane 0; downstairs 47316 is
+actionless and is not a substitute. No item withdrawal or quest solve is required. Tests cover
+all four approaches, exact cache anchors, decorative-ID rejection and destination acknowledgement.
+Pending live: each exit's actual surface landing and normal onward navigation on a rebuilt client.
+Cache geometry and mocked dispatch do not prove the historical destination tiles are exact.
+Validation: 78 selected tests passed, including source/scene, route classification, disabled-row
+audit and pathfinder benchmark; compilation and both Checkstyle tasks passed (1m42s).
+
+### Karuulm safe entry and protected onward travel - 2026-09-09
+
+- **Classifier follow-up:** a failing loaded-graph test found four northern one-tile free/diary
+  rock variants selecting the generic adjacent handler. They now use catalog ownership, retaining
+  Karuulm-specific requirement checks. Focused route/scene/policy/benchmark tests, compilation and
+  both Checkstyle tasks pass; physical testing still requires a rebuilt client.
+
+- **Scene integration follow-up:** `KaruulmAccessSceneTest` drives all 54 loaded variants through
+  the actual scene resolver/dispatcher with mocked client state. Boot routes open the inventory,
+  issue one equip command, and issue no object click before worn equipment is observed. Removing
+  that equipment before a subsequent traversal dispatch rejects the stale action; revoking the
+  diary reward does likewise. Every boot variant participates in banking requirement analysis.
+  Three Karuulm policy/scene tests and Checkstyle passed in 21s. These are simulated object/widget
+  observations, not a live equipment or boundary trace.
+
+- **Headless implementation:** 24 directed contracts now publish 54 disjoint resource variants:
+  four safe elevator entries, six rock returns and four descending stairs are equipment-free;
+  six outward rock crossings and four ascending stairs each have stone/Brimstone/granite boot
+  variants or the claimed elite-diary reward exemption (`7932>0`). Boots stay worn for onward
+  travel; the walker never confirms an unprotected heat warning. Existing cave exits are unchanged.
+- **Ownership:** exact catalog policy, shared engine-owned equipment preparation, dispatch-time
+  diary/real-skill recheck and bounded directed landing. Elevator/stair acknowledgement accepts
+  their explicitly paired catalog landing tiles; rock crossings retain the exact opposite tile.
+  Ordinary item planning sees each boot variant; normal bank configuration remains authoritative.
+- **Evidence:** the [dungeon](https://oldschool.runescape.wiki/w/Karuulm_Slayer_Dungeon) separates
+  the safe chamber from heat outside it; the bundled quest helper supplies the elevator anchor.
+  Equipment levels and the directed source contracts are recorded in the batch inventory.
+- **Validation:** fail-first resource regression found only 12 active rock rows instead of the
+  planned 54 variants. Compilation, 47 selected policy/equipment/readiness/benchmark/guardrail
+  tests and both Checkstyle tasks passed (39s). The skill-read loop remains directly inside its
+  client-thread callback; no new guardrail exemptions. Loader count is 6,139 origins.
+- **Live pending:** all distinct elevator/stair/rock protocols, actual protected/unprotected
+  boundary behavior, diary reward exemption, bank-only boot preparation, retained footwear and
+  landing bounds. Headless source geometry is not a physical heat-boundary or arrival trace.
+
+### Canifis tavern trapdoor - 2026-09-09
+
+- The two object-5055 surface approaches now publish post-`In Search of the Myreque=FINISHED`
+  catalog transitions. Dispatch rechecks the quest and uses the existing exact-object `Open`
+  resolver; no synthetic second trapdoor action or legacy movement owner is introduced.
+- Pending interaction clears only at `(3477,9845,0)`, not when the surface object disappears.
+  The existing ungated ladder exits are unchanged. Historical ungated entry comments stay disabled.
+- Evidence: [trapdoor](https://oldschool.runescape.wiki/w/Trapdoor_(Canifis)) identifies 5055/Open
+  as cellar access; the [quest guide](https://oldschool.runescape.wiki/w/In_Search_of_the_Myreque)
+  describes unlocking the return route by leaving through it before the final conversation.
+- Physical Open/landing acceptance remains open. The precise earlier quest-stage unlock remains
+  unverified; this post-quest slice is not proof of full mid-quest support.
+- Compilation, six selected Canifis/unsupported-source/Evil-Dave/benchmark tests and both
+  Checkstyle tasks passed (27s). The new resource test first failed with zero active entries.
+
+### Latest full-suite result
+
+The post-Canifis/staff-option full run executed 2,197 tests: one failure, four skips (1m 38s).
+`UdsHttpServerTest.authTokenAccepted` exceeded its 15-second deadline while reading the socket;
+all other tests passed, including the walker tests. The six-test UDS class passed in isolation
+immediately afterward (3s), without source changes. This does not erase the full-suite failure or
+establish its cause. Client-thread/queryable guardrails reported 903/0 known violations and no
+regressions. Do not describe this worktree's latest full run as green.
+
+### Earlier passing full-suite checkpoint
+
+Full-suite checkpoint after the Brimhaven/rune batches, staff integration and withdrawal-config
+guard: 2,193 tests, zero failures/errors, four skips. XML reports were inspected and Gradle
+confirmed runUnitTests, compileJava and both Checkstyle tasks successful/up-to-date on
+2026-09-09. Physical-live entries below remain open.
+
+### Multi-cast combination-rune planning audit - 2026-09-09
+
+- **Reproduced and corrected headlessly:** `getMissingTransportItemIdsWithQuantities`
+  previously merged all spell costs before `planRuneWithdrawals` chose combination runes. This lost
+  cast boundaries: Varrock needs one fire rune and Watchtower needs two earth runes; with
+  air/law supplied separately, their journey consumes three lava runes, not the two obtained
+  by covering the merged fire=1/earth=2 deficits. Combination runes supply both elements
+  within one cast, not across separate casts
+  ([Wiki](https://oldschool.runescape.wiki/w/Combination_rune)).
+- **Implementation:** ordered cast requirements and a private physical-rune reservation map
+  replace merged elemental deficits. The collector disables combination expansion while retaining
+  inventory, pouch and equipped supplies. All potentially withdrawn runes are considered before
+  the first cast, since combination runes fetched for a later cast can be consumed earlier.
+  Equipped infinite base-element supplies remain non-consuming. Only the physical shortfall is
+  converted to coordinator inventory targets; pouch counts are not added to those targets.
+- **Regression scope:** unlike/repeated spells, one-cast dual-element benefit, finite bank stock,
+  inventory/pouch shortfall, staff supply and bank closure without a target leg on insufficient stock.
+- **Validation:** compileJava, all 56 banking tests and both Checkstyle tasks passed, with zero
+  failures/errors/skips; the final combined run took 39s. No client restart or gameplay performed.
+- **Still open:** rebuilt-client cast consumption, especially inventory/pouch priority when multiple
+  different combination-rune types overlap. The planner prioritizes combination runes, then coverage
+  and stock; this tie-breaking is not yet verified against every server consumption ordering.
+  Banked-staff equipment/restoration is a separate unimplemented gate.
+
+### Banked elemental-staff integration boundary - 2026-09-09
+
+- **User-selected default:** `Use banked elemental staffs` is now an opt-in option immediately
+  below `Walk with banked transports`. It defaults off: spell banking requests runes rather than
+  an extra elemental staff. Bank-only staff eligibility and collection require both options;
+  each actual elemental-staff withdrawal rechecks the opt-in. Already-carried equipment and
+  restoration of an acquired transaction remain available. Enabling the option deliberately
+  leaves the reusable staff in inventory after restoring the original weapon.
+
+- **Unavailable preparation regression:** the runtime attempted the spell command after an
+  acquired staff transaction's next preparation observation returned null. A fail-first runtime
+  test reached the cast callback with the original weapon still observed. The runtime now feeds
+  missing/mismatched preparation into the retained transaction as unavailable equipment, retaining
+  the bounded wait instead of bypassing preparation. The test also verifies casting resumes after
+  a valid equipped-staff observation. This is headless evidence, not a live timeout reproduction.
+  Compilation, all 89 selected banking/equipment/journey/config tests and both Checkstyle tasks
+  passed in 1m 5s, with zero failures/errors/skips. The full-suite checkpoint predates this fix.
+
+- **Connected headless journey:** `BankedStaffJourneyTest` now runs the pure staff selector,
+  bank coordinator and NavigationEngine runtime in one scenario. Starting with no carried
+  requirements, it withdraws one air staff plus one fire and law rune, closes the bank before
+  final-route setup, equips once, casts once, observes landing, restores the original weapon
+  once and completes. Final inventory retains the reusable staff and no spent runes.
+  The regression and test Checkstyle passed (39s; compilation up-to-date). This adds coverage
+  beyond the 2,193-test full-suite checkpoint above, not a new full-suite result. Bank operations,
+  route publication and game observations are simulated: production eligibility/collector/scene
+  integration, actual bank approach, inventory-event timing and physical travel remain unproved
+  by this test. Do not close the bank-only-staff live gate from this result.
+
+- **Pending implementation:** `PathfinderConfig.isTeleportationSpellUsable` checks bank runes,
+  but `Rs2Magic.addBankRunes` does not provide banked-staff elements. A withdrawal-only change
+  therefore cannot make a staff-dependent route eligible. Selection must be shared with banking
+  and honor actual equip requirements. `Rs2Staff` now has immutable equip-level/membership metadata
+  and a pure `canEquip` predicate for all 25 elemental staffs: four basic (no level/member gate),
+  ten battlestaffs (30 Attack/Magic), ten mystic staffs (40 Attack/Magic), and Twinflame
+  (60 Magic, no Attack requirement). `NONE` and unknown/plain battlestaff IDs are not candidates.
+  Sources: [elemental staffs](https://oldschool.runescape.wiki/w/Elemental_staff) and
+  [Twinflame](https://oldschool.runescape.wiki/w/Twinflame_staff). This is prerequisite metadata,
+  not enabled banked-staff routing or completed equipment execution.
+  Compilation, all 60 selected staff/banking/guardrail tests and both Checkstyle tasks passed
+  in 1m 26s, with zero failures/errors/skips and unchanged guardrail baselines (903/0).
+- **Selection core implemented, not yet wired:** `BankedSpellEquipmentPlanner` prefers the
+  current weapon/rune plan whenever affordable, then considers only owned, equipable staff IDs.
+  Each candidate must cover the whole cast sequence with the available physical rune/bank stock;
+  missing law or other catalytic runes still rejects the plan. Inputs separate the current weapon's
+  rune contribution from independent equipment supplies, preventing a new staff from inheriting
+  the replaced staff's infinite elements. Results contain immutable staff/rune-withdrawal choices.
+  The caller still needs coherent snapshots, capacity/restoration checks and engine-owned stages;
+  no production route eligibility or equipment interaction uses this core yet.
+  Compilation, 67 selected banking/staff/guardrail tests and both Checkstyle tasks passed in
+  1m 16s, with zero failures/errors/skips and unchanged 903/0 guardrail baselines.
+- **Equipment decision core implemented, not yet wired:** `SpellEquipmentTransaction` retains
+  the selected staff and original weapon/offhand independently of a route generation. Confirmed
+  snapshots distinguish equip, ready-to-cast, restore-weapon, remove-staff, restored, wait, conflict
+  and stop. Empty original weapon slots require removal plus inventory space; manual equipment
+  changes are not overwritten. Cancellation returns stop without destroying the immutable obligation.
+  The runtime must distinguish an observed empty slot from an unavailable cache snapshot.
+  The decision model alone does not dispatch equipment actions.
+  Compilation, all 71 selected banking/staff tests and both Checkstyle tasks passed in 1m 15s
+  with zero failures/errors/skips. No client input or restart was performed.
+- **Engine retention added, runtime still unwired:** an engine-supported session can retain one
+  immutable equipment transaction independently of `pendingInteraction`. Route-generation changes
+  keep it and pause navigation for restoration; both spatial and explicit arrival refuse completion
+  while it remains outstanding. Cancellation issues no cleanup input, and a replacement request
+  inherits the obligation before it can walk. Restoration acknowledgement requires the current
+  request/generation, the same transaction instance and confirmed original weapon/offhand values.
+  Snapshot views retain immutable historical values. No production staff stage acquires this
+  obligation yet, so this does not enable banked-staff routing or claim physical restoration.
+  Compilation, 151 selected engine/banking/guardrail tests and both Checkstyle tasks passed in
+  1m 29s; zero failures/errors/skips and unchanged 903/0 guardrail baselines.
+- **Restoration command regression covered:** the unfinished engine command path initially
+  recorded attempted equipment input only in `recordInteractionPreparation`, allowing normal
+  command results to request repeated restoration clicks. A fail-first test reproduced
+  `INTERACT` instead of `WAIT`; `recordCommandResult` now records the equipment attempt without
+  contaminating route-interaction acknowledgement state. Tests cover accepted/rejected dispatch,
+  confirmed original equipment, unavailable snapshots, stale generations and cancellation.
+  All 151 selected engine/banking tests passed with zero failures/errors/skips. This is headless
+  command-path coverage only: the production equipment adapter, cast stages and bank-aware
+  route eligibility remain unfinished, and no live restoration is claimed.
+- **Route-generation follow-up:** a second fail-first regression showed restoration could
+  issue input using the retained generation while the observation supplied a newer plan.
+  Restoration now yields to normal route validation/installation whenever the observed plan
+  is missing or has a different request/generation. Additional tests prove bounded timeout
+  retains the obligation for a fresh request, an originally empty weapon slot needs removal
+  capacity, and confirmed manual loadout changes relinquish ownership without overwrite.
+  All 154 selected engine/banking tests passed with zero failures/errors/skips.
+  Adapter integration must stage tab preparation separately: the existing inventory helper
+  can switch tabs and issue item input in one invocation. No adapter or live gate is closed here.
+- **Restoration adapter and tab stages implemented, not connected:** `Rs2SpellEquipmentScene`
+  reads both item containers in one client-thread observation, distinguishes missing state from
+  empty slots, rechecks the loadout before dispatch and resolves an actual equip action rather
+  than assuming Wield. Engine restoration now separates inventory/equipment-tab preparation from
+  item input, with independent once-only attempts and the existing bounded acknowledgement wait.
+  Final validation: compilation, 84 selected banking/retention/guardrail tests and both Checkstyle
+  tasks passed in 30s, with zero failures/errors/skips and no baseline expansion. The runtime
+  dispatch boundary still needs review before wiring
+  this adapter: it currently holds its mutex while calling interaction helpers. No production
+  staff obligation is acquired yet; cast staging, eligibility and live acceptance remain open.
+- **Restoration runtime connected:** the walker now supplies the equipment observation and
+  dispatch adapter through `WalkerActions`. The runtime reserves an equipment attempt under its
+  mutex, then dispatches outside it with a permission predicate covering request identity,
+  cancellation, generation and transaction identity. A reserved attempt prevents concurrent passes
+  from issuing another command; cleanup releases the reservation even on exceptions. Equipment
+  tab callbacks check permission on the client thread, and item helpers check before invocation.
+  A bounded headless concurrency test proves another thread can enter the runtime and cancel
+  during adapter dispatch, revoking permission without losing the restoration obligation.
+  The prior unconnected-adapter note is superseded; acquisition/equip/cast staging and bank-aware
+  spell eligibility are still unfinished. No staff-dependent route or live acceptance is enabled.
+- **Runtime selection snapshot added:** `Rs2SpellEquipmentScene.plan` feeds the pure selector
+  with physical inventory/pouch runes (no equipment or combo expansion), independent worn-tome
+  supply, owned inventory/bank staff IDs, real equip levels and world membership. Bank lookup is
+  conditional on the supplied bank-planning flag; zero-quantity/noted bank entries are excluded.
+  The old weapon's infinite supply is added only by the evaluated candidate, not inherited by
+  its replacement. A headless scene test checks the bank toggle, bank-only staff, catalytic-rune
+  withdrawal and depleted bank staff. Compilation, 86 selected banking/retention/guardrail tests
+  and both Checkstyle tasks passed in 30s with zero failures/errors/skips; baselines remain 903/0.
+  This snapshot bridge is not yet called by production spell eligibility or withdrawal collection;
+  enable those together with engine-owned acquisition/equip/cast stages, not independently.
+- **Engine preparation sequence implemented, production caller still pending:**
+  `prepareSpellEquipment` can replace only the current engine-owned spell interaction with
+  tab/equip commands. It acquires the immutable original-loadout obligation, limits preparation
+  attempts and permits casting only after the supplied equipment observation reports the staff.
+  A cleared spell landing now requests restoration before retiring the interaction. A headless
+  sequence covers open, equip, observed staff, cast, landing, original-weapon restoration and
+  completion. Its initial final assertion incorrectly kept republishing the retired cleared
+  interaction; the corrected test follows the existing scanner contract and removes it after
+  retirement. Compilation, 162 selected engine/banking/guardrail tests and both Checkstyle tasks
+  passed in 23s with zero failures/errors/skips and unchanged 903/0 baselines. The runtime must
+  still feed the preparation candidate and dispatch equip-stage actions before bank-aware staff
+  routing is enabled. This is not a live cast or a closed banked-staff gate.
+- **Production preparation dispatch connected:** `SpellEquipmentPreparation` binds the selected
+  transaction and observed loadout to the spell's generation, raw edge, coordinates, type and
+  display action. The walker supplies this candidate outside the runtime mutex; the runtime
+  applies it only to the matching engine decision. The scene selects carried staff/runes only,
+  preserves a retained transaction after equipment changes, and dispatches tab/equip stages with
+  current equip-level and permission checks. A runtime test proves one equip command, no cast
+  while the old weapon remains observed, then one cast after staff acknowledgement. Compilation,
+  163 selected engine/banking/guardrail tests and both Checkstyle tasks passed in 23s, zero
+  failures/errors/skips and unchanged 903/0 baselines. Earlier pending-production-caller notes
+  are superseded. Bank-aware eligibility and coordinated staff withdrawal remain disconnected;
+  no bank-only-staff journey or physical acceptance is claimed.
+- **Bank integration connected, physical acceptance still open:** migrated spells may use the
+  shared staff selector when unified navigation is enabled. The withdrawal collector selects
+  against the complete cast sequence and requests one missing reusable staff plus the selected
+  rune shortfall; carried/worn staffs are not withdrawn again. Legacy-engine configuration keeps
+  the rune-only path. Initial focused compilation/tests/Checkstyle passed; broader and physical
+  bank-only-staff journey validation remains open.
+- **Bank-setting authority clarified by the user:** actual walker withdrawals require the current
+  `walkWithBankedTransports` setting. Direct banked-walk entry falls back to ordinary walking
+  when it is off, including `forceBanking` calls (that flag overrides efficiency, not permission).
+  The production withdrawal callback rechecks the setting for every item, so switching it off
+  during a transaction prevents further withdrawals. The unified-engine toggle is not banking
+  authorization. Read-only requirement planning and use of already-carried equipment are separate.
+- The earlier direct-cast-only implementation boundary is superseded by the engine-owned staff
+  preparation/restoration integration above. Whole-journey acceptance must still verify retained
+  identity while equipment changes the enabled transport snapshot; isolated equipment tests are
+  not proof of a complete bank-only-staff journey.
+- Required checks include already-worn staff, bank-only staff, insufficient equip levels, drained
+  levels, full inventory, previous two-handed weapon/offhand, initially empty weapon slot, spell
+  failure, cancellation and replan. Do not publish banked-staff availability before these execution
+  stages exist, or switch equipment in the banking coordinator outside NavigationEngine ownership.
+
+### Brimhaven entrance pipe - 2026-09-09
+
+- **Implementation:** existing object-21728 northbound row no longer requires 22 Agility;
+  southbound toward moss giants still does. No new ordinary duplicate or ownership handoff.
+- **Evidence:** Wiki asymmetric requirement and transport-free collision connectivity;
+  fail-first resource regression detected the original return-direction level requirement.
+- **Headless validation:** compilation, all 19 selected Brimhaven/benchmark tests and both
+  Checkstyle tasks passed in 1m 25s; zero failures, errors or skips.
+- **Live pending:** both directions, below-22 return and below-22 inward exclusion, plus
+  interaction/landing acknowledgement. No client restart or gameplay performed for this change.
+
+### Eastern Brimhaven stepping stones - 2026-09-09
+
+- **Headless:** corrected the four existing agility rows: 56 Agility
+  toward the island, none away. Exact source-side 19040 anchors, current-level recheck and
+  exact landing replace generic identity/proximity handling. Ordinary duplicates stay disabled.
+  Compilation, 36 focused tests, benchmark, unchanged guardrail and both Checkstyle tasks passed.
+- **Evidence:** transport-free collision-map connectivity establishes the island endpoints;
+  wiki and cache definitions establish asymmetry and active versus scenery IDs.
+- **Live pending:** both crossing pairs in both directions, below-56 departure from the island,
+  boosted-level drain before inward dispatch, continued walking and any observed failed crossing.
+  Unknown damage/failure behavior is not claimed as accepted.
+
+### Full-suite checkpoint - 2026-09-09
+
+**Latest rerun passed:** 2,143 tests, zero failures/errors, four skips, both Checkstyle tasks,
+3m 27s. UDS smoke tests now have a test-only 15-second deadline and all six passed in isolation.
+The production server is unchanged; the intermittent socket stall's cause remains unproved.
+This supersedes the incomplete checkpoint described below. Live gates are unchanged.
+
+First run: 2,143 tests, two stale Weiss source-test failures, four skips. The source expectations
+were corrected to enforce the migrated contracts, and all 50 focused Weiss/northern/engine tests
+plus Checkstyle passed. The full rerun stalled in the Agent Server UDS test's socket read and its
+verified Gradle worker was stopped. A clean full-suite rerun is still required; no client restart,
+gameplay, production-server change or commit was made during this checkpoint.
+
+### Opened quest-state passages - 2026-09-09
+
+- **Headless:** Zogre's crushed barricade, Slug Menace's wall/passage pair,
+  and both Enakhra rubble directions use exact object/anchor/state and landing checks. Five
+  directed contracts have eleven state variants. No quest setup actions are automated.
+  Compilation, 25 focused tests, benchmark, unchanged guardrail and both Checkstyle tasks passed
+  in 1m 42s, with zero failures/errors/skips.
+- **Live pending:** cross in each supported direction/state; confirm locked/absent transforms
+  are rejected, the reverse Slug passage remains usable for escape, and a quest-state refresh
+  before dispatch prevents stale input. Exercise continued walking and cancellation.
+- These are travel contracts, not combat protection: Jiggig contains disease-inflicting enemies
+  and the Slug tunnel contains aggressive lobsters. The separate imposing door is not migrated
+  by this entry. Malformed bone rows and the central Grand Tree trapdoor remain implementation work.
+
+### Quest trapdoor follow-up - 2026-09-09
+
+- **Headless:** Basement of Doom entry now publishes 12268/Go-down with
+  completed Shadow of the Storm, membership and the original directed landing. The exact
+  12267/Open object is preparation, not arrival; the same catalog interaction advances to the
+  open object. Quest state, identity, action and anchor are rechecked before dispatch.
+  Compilation, 110 focused tests, benchmark, unchanged guardrail and both Checkstyle tasks passed
+  in 1m 45s, with no failures/errors/skips.
+- **Live pending:** closed and already-open entry, quest-locked refusal, cancellation between
+  opening and descending, actual underground landing and continued walking after descent.
+- **Still implementation work:** Grand Tree and Canifis surface Open outcomes/unlocks. The
+  cache does not establish that those static Open objects use Evil Dave's two-object protocol.
+  Do not enable them by broadly treating every Open trapdoor as either arrival or preparation.
+
+### Molch coloured barriers - 2026-09-09
+
+- **Headless:** all 20 directions across five barriers use exact catalog
+  ownership, colour-specific object identity and a current-HP check before dispatch. Four
+  previously disabled rows used the mistyped lava-scenery ID 34542; the actual Molch ID is 34642.
+  The other 16 directions no longer bypass damage checks through the adjacent-transport handler.
+  Compilation, all 89 combined focused tests, benchmark, unchanged client-thread guardrail and
+  both Checkstyle tasks passed in 1m 10s. The scene test covers 20 directions across 11 states.
+- **Live pending:** rebuilt-client crossings in both directions and both lanes of each barrier,
+  green/orange/red states, colour-boundary crossings, counter decay and low-HP refusal. The
+  next-crossing budgets (0/10/20) conservatively include a possible colour increase; exact
+  server damage timing remains unproved. Confirm source-side/mid-barrier positions cannot
+  acknowledge crossing and that adjacent barriers sharing transformed IDs are never selected.
+- Karuulm stairs/elevator remain separate implementation work. The safe entrance chamber does
+  not justify gating every elevator visit on boots, while equipping only at a later stair is too
+  late to protect a route that already crossed the hot floor. No gameplay was issued for this batch.
+
+### Revenant fee discovery - 2026-09-09
+
+- **Pending implementation, not live-only:** all 16 deferred crevice-40386 approaches. The fee is
+  100,000 coins and can be deducted directly from the bank. Capture exact initial warning/payment
+  frames with no carried coins and sufficient bank coins, then already-paid entry with neither
+  carried nor bank coins required. Establish how paid status is exposed; warning varbit 6506
+  must not be treated as a receipt. Invalidation must distinguish cave deaths / Wilderness PvP
+  deaths from ordinary deaths elsewhere. Do not deliberately cause a death merely to inspect this
+  flag; use an independently observed transition or authoritative protocol evidence.
+- No coins were withdrawn, spent or exposed to Wilderness travel by this audit. It does not
+  authorize a live run under the current headless-first instruction.
+
+### Ungael side passages and Weiss cliff chain - 2026-09-09
+
+- **Headless:** four Ungael side passages require `6108>29`, matching the
+  cache transforms unlocked after quest Vorkath is defeated. These are not crater-entry objects
+  31990/31822. All ten Weiss directions have exact anchors and landings; ascent requires 68 Agility
+  and current HP above 15, while descent has no Agility/HP gate. The installed rope requires
+  `6528>44`. All Weiss directions respect the agility-shortcut switch.
+  Compilation, 142 focused tests (including scene, lower-stage recovery, config, classification,
+  benchmark and guardrail) and both Checkstyle tasks passed in 1m 35s; no guardrail exemptions added.
+- **Live pending:** cross all Ungael directions after the unlock; verify locked refusal before it.
+  Exercise the complete Weiss ascent/descent, one rope fall to below the first rockslide, one ledge
+  fall to below the rope, and a source-side failure. Confirm replans start at the lower stage, never
+  repeat the later obstacle, and do not acknowledge a fall as arrival. Verify low-HP refusal and
+  installed/uninstalled rope behavior. The 15-HP margin comes from the documented rockslide damage;
+  it does not promise protection from unrelated hazards or replace physical failure observations.
+- **Not implemented:** installing the rope or solving either quest; those are quest-helper actions.
+
+### Main Brimhaven entrance - 2026-09-09
+
+- **Implemented:** seven approaches, each with disjoint paid, already-paid and permanent-access
+  variants; exact base/live-object identity, single-visit-only menu selection and scoped receipt
+  continuation under NavigationEngine ownership. Paid variants use shared bank planning.
+- **Live pending:** freshly rebuilt client, a banked 875-coin visit, already-paid entry without coins,
+  permanent access without coins, and the three-option payment menu when carrying at least one
+  million coins. Confirm only 875 coins are deducted, no permanent purchase is selected, the receipt
+  advances at most once and actual underground arrival clears the leg. Check all approach geometry,
+  particularly the easternmost approach three tiles from the object's anchor.
+- **Still implementation work:** the two conflicting main-exit rows; neither destination is asserted
+  as a successful crossing. First-time permanent purchase is not part of this transport protocol.
+
 ### Active graph, instance scene boundary and large agility objects - 2026-09-09
 
-- **Headless:** all 6,086 currently loaded transport origins now classify into an explicit
+- **Headless:** all 6,117 currently loaded transport origins now classify into an explicit
   NavigationEngine-owned family; no active edge remains generic `TRANSPORT`. This does not include
-  the 132 genuine disabled traversals that still need complete protocols. Shared two-way instance
+  the 88 genuine disabled traversals that still need complete protocols. Shared two-way instance
   normalization now covers ordinary doors, catalog transitions, adjacent transports and exact
   mineable/object probes; synthetic chunk mappings test live-to-template and template-to-live.
 - **Live pending:** in a rebuilt client, repeat a GOTR/instanced layout where a closed ordinary door
@@ -64,8 +540,22 @@ additive totals; source rows, generated edges and duplicated approaches must not
 - **New failure-retry batch:** both Lighthouse broken-bridge and Karamja wooden-log directions
   remain pending after a source-side failure and clear only at the exact directed landing. Six
   Regicide stick directions additionally require current HP above their 8-damage maximum before
-  every attempt. The four leaf-pit rows are implementation-pending because their failure recovery
-  is not owned. Live-test one failure and success for each restored family in prepared conditions.
+  every attempt. Live-test one failure and success for each restored family in prepared conditions.
+- **New leaf-pit recovery batch (2026-09-09):** four directed leaf jumps are restored with exact
+  near-side object selection, Regicide/Agility requirements and current HP above 18 before jumping.
+  The [Wiki](https://oldschool.runescape.wiki/w/Leaves_(trap)) documents damage and same-side return;
+  an offline copy of the local game cache identifies `Climb;Protruding rocks;3927` in four two-by-two
+  pits starting at `(2313,9656)`, `(2336,9656)`, `(2354,9656)` and `(2354,9643)`, all plane zero.
+  NavigationEngine retains the jump while resolving only that pit's rocks, climbing out and verifying
+  the original surface tile before retry. Recovery does not depend on the damaged player's jump row
+  remaining available. Missing/rejected/timed-out recovery stops; five failed jumps exhaust the budget
+  only after escape. Exact opposite landing, not recovery or object disappearance, clears the route.
+  - **Headless coverage:** scene resolution/dispatch, foreign pit/object/action rejection, HP boundary,
+    both directions, transient missing scene, fall/escape/retry, five-failure limit, failed climb,
+    cancellation and requirement loss after escape. No new thread-safety exemptions.
+  - **Live pending:** confirm the actual pit position and original-side surface return for both
+    directions of each physical trap, success followed by route continuation, below-19-HP refusal
+    after a damaging fall, and cancellation during recovery. Cache inspection is not a live crossing.
 - **New Darkmeyer wall batch:** six unique directions require 63 Agility, Sins of the Father
   completion and both installed-rope varbits. The walker matches only the corresponding installed
   live wall transforms, never withdraws long rope, and requires exact landing. Live-test the two
@@ -89,6 +579,16 @@ additive totals; source rows, generated edges and duplicated approaches must not
 - **New Grim Tales manhole batch:** four approaches publish only with permanent unlock varbit
   `3718=1`, dispatch exact `Enter;Manhole;24842`, and clear only at `(2901,9867,0)`. Live-test one
   unlocked entry and the existing staircase exit; the walker does not solve the quest or own combat.
+- **New southern Brimhaven backdoor batch:** four rope approaches and one crevice exit require
+  members access and varbit `5629` in the cache's enabled range 1-3. Exact object/name/action checks
+  support wrapper 66 and rope transform 30200; static exit 30201 is also unlock-gated. Scene discovery
+  and dispatch both check current state, and only the exact directed landing completes the edge.
+  Live-test locked refusal, unlocked entry and exit, plus continued walking after each landing.
+  The one-time 5,000-trading-stick Banisoch purchase is not implemented or charged per traversal.
+- **New Brimhaven metal-dragon passage correction:** both crevice-30198 directions are direct,
+  members-only catalogue transitions with exact landing. Hieve's documented Slayer-task restriction
+  applies to attacking dragons, not ordinary passage. Test both directions without a task in a
+  rebuilt client and verify continued walking; this does not grant or automate dragon combat.
 
 ### Steps, access routes and audited shortcut cleanup - 2026-09-08
 
@@ -104,9 +604,10 @@ additive totals; source rows, generated edges and duplicated approaches must not
 
 - **Headless:** 25 exact tree/root/mud/fence/opening/odd-wall and outward boss-exit transitions are
   engine-owned with exact identity, requirement and directed-landing contracts.
-- **Not live-pending:** four equipped-sled slopes, five directionally invalid Resource Area fare
+- **Historical implementation remainder:** four equipped-sled slopes, five Resource Area payment
   rows, one malformed remote odd wall and four ungated southern Brimhaven ropes are runtime-disabled.
-  Restore them only after their equipment, fare or permanent-unlock protocols are represented.
+  The slopes and Resource Area rows have since been restored with explicit protocols; the earlier
+  claim that the Resource Area fares were reversed was incorrect. Remaining rows need unlock protocols.
   Current classifier floor: 181 ordinary plus 23 item rows, 204 total.
 - **Live pending:** traverse each migrated family in both available directions where applicable;
   for Cerberus and Scorpia, test only prepared outward exits and verify exact landing with no legacy
@@ -522,8 +1023,8 @@ transport waits. Auto-retaliate settings and ordinary-ground movement timing wer
   toggle-off exclusion; failed log crossing and tripwire damage/poison must not acknowledge
   arrival without reaching the destination. Verify bounded recovery without a premature next edge.
   Arrange hazard-safe test conditions explicitly; this batch adds no poison treatment.
-- **Pending implementation:** four leaf-pit crossings need near-side object selection and verified
-  fall/climb-out recovery before migration. They are not merely waiting for a live acceptance pass.
+- **Superseded:** the four leaf-pit crossings now have headless recovery ownership; see the
+  2026-09-09 leaf-pit batch above for the outstanding physical acceptance cases.
 
 ### Short agility crossings and Revenant cleanup - 2026-09-07
 
@@ -631,6 +1132,12 @@ is outstanding. Equipment-free crossings do not satisfy grapple-specific diary t
 
 ## Partially live-accepted families: remaining branches
 
+Resource Area gate 26760 (2026-09-09): all five directed fare/diary variants are headless-owned.
+The user's screenshot and manual crossing confirm the 7,500-coin `Open -> exact prompt -> Yes`
+flow, not rebuilt-engine acceptance. Test engine-driven ordinary paid, discounted and elite/free
+entry plus free exit, insufficient coins and bank-funded entry. Only the exact fare prompt is
+accepted; discounted prompt wording and direct free-entry/exit flows remain live-unverified.
+
 | Family | Evidence already completed | Outstanding live cases |
 | --- | --- | --- |
 | Banking | Draynor tablet coordinator; legacy-era necklace/dueling variant withdrawal; later engine-owned two ecto-tokens + ghostspeak amulet transaction. | Repeated requirements, inventory shortfall, missing/failed withdrawal with bank close and no target leg; capes/tools, spell runes, combination runes, rune pouch and already-equipped elemental staff. Banked elemental-staff equip/restore is NOT implemented. |
@@ -695,8 +1202,9 @@ Pre-Zanaris checkpoint: 1,466 legacy edges, including 990 ordinary TRANSPORT edg
 headless Zanaris cutover: 1,465 and 989; after Waterfall internal doors: 1,463 and 987;
 after Draynor unlocked crossings: 1,445 and 969 respectively; after Yanille pick-lock:
 1,443 and 967 respectively. Those are historical checkpoints. The current active graph has no
-generic legacy `TRANSPORT` classification: all 6,086 loaded transport origins have explicit engine
-ownership, while 132 genuine traversals remain source-disabled pending complete protocols. These counts are
+generic legacy `TRANSPORT` classification: the latest verified loader has 6,127 origins with engine
+ownership. After removing the active Brimhaven-stone duplicates from the disabled backlog,
+74 source contracts remain unresolved; this is not a verified count of distinct missing routes. These counts are
 not percentages of live acceptance or estimates of implementation effort.
 
 ## Acceptance record to append for each future run

@@ -227,6 +227,24 @@ public class NavigationEngineExecutionTest
 	}
 
 	@Test
+	public void chamberApproachTargetsTheResolvedRoomInsteadOfTheHouseAnchor()
+	{
+		for (int objectId : new int[]{13622, 13523, 31986})
+		{
+			startEngineRequest();
+			WorldPoint room = A.dx(40);
+			RouteInteraction portal = new RouteInteraction(1, 0, A, B, room,
+				RouteInteraction.Kind.TELEPORTATION_PORTAL, RouteInteraction.Status.AVAILABLE,
+				"Teleport", false, objectId, A, B);
+			NavigationExecutionResult result = NavigationEngineRuntime.execute(
+				observation(1, A, ordinaryPlan(1), false, false).withRouteInteraction(portal), target -> true);
+			assertEquals(NavigationDecision.Type.CLICK_TILE, result.getDecision().getType());
+			assertEquals(room, result.getDecision().getTarget());
+			NavigationEngineRuntime.resetForTesting();
+		}
+	}
+
+	@Test
 	public void routeBackedRegisteredDestinationAcknowledgesCommand()
 	{
 		startEngineRequest();
@@ -1642,6 +1660,43 @@ public class NavigationEngineExecutionTest
 		assertEquals(NavigationDecision.Type.WAIT, result.getDecision().getType());
 		assertEquals("off-route-movement-in-flight", result.getDecision().getReason());
 		assertEquals(0, NavigationEngineRuntime.getSnapshot().getRecoveryAttempts());
+	}
+
+	@Test
+	public void weissFallsReplanFromEarlierStagesWithoutAnotherLaterObstacleClick()
+	{
+		WorldPoint[] origins = {new WorldPoint(2855, 3964, 0), new WorldPoint(2853, 3961, 0)};
+		WorldPoint[] destinations = {new WorldPoint(2853, 3961, 0), new WorldPoint(2857, 3961, 0)};
+		WorldPoint[] falls = {new WorldPoint(2852, 3966, 0), new WorldPoint(2855, 3964, 0)};
+		int[] ids = {33328, 33190};
+		for (int i = 0; i < origins.length; i++)
+		{
+			NavigationEngineRuntime.resetForTesting();
+			WorldPoint from = origins[i];
+			WorldPoint to = destinations[i];
+			NavigationEngineRuntime.ensureRequest(new NavigationRequest(21, Collections.singleton(to), 0,
+				new NavigationRouteOptions(true, true, false, true), "weiss-failure-test"));
+			RoutePlan plan = new RoutePlan(21, 1, from, Collections.singleton(to),
+				Arrays.asList(from, to), Arrays.asList(from, to), true,
+				Collections.singletonList(new RouteEdge(0, from, to, RouteEdge.Kind.CATALOG_TRANSITION)));
+			RouteInteraction interaction = new RouteInteraction(1, 0, from, to, from,
+				RouteInteraction.Kind.CATALOG_TRANSITION, RouteInteraction.Status.AVAILABLE,
+				i == 0 ? "Climb" : "Cross", true, ids[i], from, to);
+			AtomicInteger commands = new AtomicInteger();
+			WalkerActions actions = new WalkerActions()
+			{
+				@Override public boolean clickTile(WorldPoint point) { return true; }
+				@Override public boolean interact(RouteInteraction pending) { commands.incrementAndGet(); return true; }
+			};
+			assertEquals(NavigationDecision.Type.INTERACT, NavigationEngineRuntime.execute(
+				observation(1, from, plan, false, false).withRouteInteraction(interaction), actions).getDecision().getType());
+			NavigationExecutionResult fallen = NavigationEngineRuntime.execute(
+				observation(2, falls[i], plan, false, false).withRouteInteraction(
+					interaction.withStatus(RouteInteraction.Status.UNAVAILABLE, false)), actions);
+			assertEquals(NavigationDecision.Type.REQUEST_REPLAN, fallen.getDecision().getType());
+			assertEquals("interaction-displaced-behind-origin", fallen.getDecision().getReason());
+			assertEquals(1, commands.get());
+		}
 	}
 
 	private static void startEngineRequest()

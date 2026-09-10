@@ -1,6 +1,9 @@
 package net.runelite.client.plugins.microbot.util.walker.navigation;
 
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.client.plugins.microbot.util.walker.banking.SpellEquipmentObservation;
+import net.runelite.client.plugins.microbot.util.walker.banking.SpellEquipmentTransaction;
+import net.runelite.client.plugins.microbot.util.walker.banking.SpellEquipmentPreparation;
 
 /** Process bridge for shadow comparison and opt-in ordinary-route execution. */
 @Slf4j
@@ -10,6 +13,7 @@ public final class NavigationEngineRuntime
 	private static NavigationEngine engine;
 	private static volatile NavigationSnapshot snapshot;
 	private static PendingBlockedEdge pendingBlockedEdge;
+	private static volatile NavigationDecision equipmentDispatch;
 
 	private NavigationEngineRuntime()
 	{
@@ -54,6 +58,18 @@ public final class NavigationEngineRuntime
 		}
 	}
 
+	public static boolean retainEquipmentTransaction(long requestId, long generation,
+		SpellEquipmentTransaction transaction)
+	{
+		synchronized (MUTEX)
+		{
+			if (engine == null) return false;
+			boolean retained = engine.retainEquipmentTransaction(requestId, generation, transaction);
+			snapshot = engine.snapshot();
+			return retained;
+		}
+	}
+
 	/** Executes at most one command, and only for a request locked to ENGINE_SUPPORTED. */
 	public static NavigationExecutionResult execute(NavigationObservation observation,
 		WalkerActions actions)
@@ -62,6 +78,17 @@ public final class NavigationEngineRuntime
 		{
 			throw new NullPointerException("actions");
 		}
+		NavigationSnapshot equipmentOwner = snapshot;
+		SpellEquipmentObservation equipment = equipmentOwner != null && !equipmentOwner.isTerminal()
+			&& equipmentOwner.isEquipmentRestorationRequired() ? actions.observeEquipment() : null;
+		NavigationDecision deferredCommand;
+		RouteInteraction observedSpell = observation.getRouteInteraction() != null
+			? observation.getRouteInteraction() : equipmentOwner == null ? null : equipmentOwner.getPendingInteraction();
+		SpellEquipmentPreparation preparation = equipmentOwner != null && !equipmentOwner.isTerminal()
+			&& !equipmentOwner.isEquipmentRestorationRequired() && observedSpell != null
+			&& observedSpell.getKind() == RouteInteraction.Kind.SIMPLE_TELEPORT
+			? actions.observeSpellEquipment(observedSpell, equipmentOwner.getEquipmentTransaction()) : null;
+		NavigationSnapshot deferredOwner;
 		synchronized (MUTEX)
 		{
 			if (engine == null || snapshot == null)
@@ -70,12 +97,42 @@ public final class NavigationEngineRuntime
 					NavigationDecision.Type.NO_ACTION, "engine-session-not-started"), false, false,
 					"none");
 			}
+			if (equipmentDispatch != null)
+				return new NavigationExecutionResult(NavigationDecision.of(NavigationDecision.Type.WAIT,
+					"equipment-dispatch-in-flight"), snapshot.getExecutionMode()
+					== NavigationExecutionMode.ENGINE_SUPPORTED, false, "none");
 			NavigationObservation effectiveObservation = applyPendingRecovery(observation);
-			NavigationDecision decision = engine.observe(effectiveObservation);
+			NavigationDecision decision = equipmentOwner == null ? null : engine.observeEquipmentRestoration(
+				equipmentOwner.getRequestId(), equipmentOwner.getGeneration(),
+				equipmentOwner.getEquipmentTransaction(), equipment, effectiveObservation);
+			if (decision == null) decision = engine.observe(effectiveObservation);
+			if (preparation != null && snapshot.getRequest() == equipmentOwner.getRequest()
+				&& preparation.matches(decision.getInteraction()))
+				decision = engine.prepareSpellEquipment(decision, preparation.getTransaction(),
+					preparation.getEquipment(), preparation.isEquipable(), effectiveObservation);
+			else if (snapshot.getEquipmentTransaction() != null)
+				// Unavailable or stale observations cannot bypass an acquired equipment obligation.
+				decision = engine.prepareSpellEquipment(decision, snapshot.getEquipmentTransaction(),
+					null, false, effectiveObservation);
 			clearHandledRecovery(effectiveObservation, decision);
 			snapshot = engine.snapshot();
 			boolean engineOwned = snapshot.getExecutionMode() == NavigationExecutionMode.ENGINE_SUPPORTED;
 			boolean issued = false;
+			if (engineOwned && decision.getInteraction() != null
+				&& decision.getInteraction().getKind() == RouteInteraction.Kind.SPELL_EQUIPMENT)
+			{
+				equipmentDispatch = decision;
+				deferredCommand = decision;
+				deferredOwner = snapshot;
+				// Reserve the attempt before releasing ownership; observations acknowledge completion.
+				engine.recordCommandResult(decision, false, effectiveObservation.getObservedAtMs());
+				snapshot = engine.snapshot();
+			}
+			else
+			{
+				deferredCommand = null;
+				deferredOwner = null;
+			}
 			if (engineOwned && decision.getType() == NavigationDecision.Type.CLICK_TILE)
 			{
 				issued = actions.clickTile(decision.getTarget(), decision.getTargetSelection());
@@ -83,7 +140,7 @@ public final class NavigationEngineRuntime
 				snapshot = engine.snapshot();
 			}
 			else if (engineOwned && decision.getType() == NavigationDecision.Type.INTERACT
-				&& decision.getInteraction() != null)
+				&& decision.getInteraction() != null && deferredCommand == null)
 			{
 				issued = actions.interact(decision.getInteraction());
 				if (actions.interactionPreparedOnly())
@@ -98,11 +155,36 @@ public final class NavigationEngineRuntime
 				}
 				snapshot = engine.snapshot();
 			}
-			return new NavigationExecutionResult(decision, engineOwned, issued,
+			if (deferredCommand == null) return new NavigationExecutionResult(decision, engineOwned, issued,
 				decision.getType() == NavigationDecision.Type.CLICK_TILE
 					|| decision.getType() == NavigationDecision.Type.INTERACT
 					? actions.getLastActionType() : "none");
 		}
+		try
+		{
+			boolean issued = equipmentPermission(deferredOwner, deferredCommand)
+				&& actions.interactEquipment(deferredCommand.getInteraction(), deferredOwner.getEquipmentTransaction(),
+					() -> equipmentPermission(deferredOwner, deferredCommand));
+			return new NavigationExecutionResult(deferredCommand, true, issued, actions.getLastActionType());
+		}
+		finally
+		{
+			synchronized (MUTEX)
+			{
+				if (equipmentDispatch == deferredCommand) equipmentDispatch = null;
+			}
+		}
+	}
+
+	private static boolean equipmentPermission(NavigationSnapshot owner, NavigationDecision command)
+	{
+		NavigationSnapshot current = snapshot;
+		return equipmentDispatch == command && current != null && !current.isTerminal()
+			&& current.getRequest() == owner.getRequest()
+			&& !owner.getRequest().getCancellationToken().isCancelled()
+			&& current.getGeneration() == owner.getGeneration()
+			&& current.getEquipmentTransaction() == owner.getEquipmentTransaction()
+			&& current.isEquipmentRestorationRequired() == owner.isEquipmentRestorationRequired();
 	}
 
 	/** Queues one live-collision contradiction for the engine-owned route. */
@@ -178,6 +260,7 @@ public final class NavigationEngineRuntime
 		{
 			engine = null;
 			snapshot = null;
+			equipmentDispatch = null;
 			pendingBlockedEdge = null;
 		}
 	}

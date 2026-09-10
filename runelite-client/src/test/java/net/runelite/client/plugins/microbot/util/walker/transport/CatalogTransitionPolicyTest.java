@@ -478,11 +478,12 @@ public class CatalogTransitionPolicyTest
 	}
 
 	@Test
-	public void unsafeKaruulmHazardRowsAreNotLoaded()
+	public void karuulmAccessUsesOnlyExplicitSafeOrProtectedContracts()
 	{
 		assertTrue(Transport.loadAllFromResources().values().stream()
 			.flatMap(java.util.Collection::stream)
-			.noneMatch(row -> Set.of(34359, 34530, 34531).contains(row.getObjectId())));
+			.filter(row -> KaruulmAccessPolicy.ownsObject(row.getObjectId()))
+			.allMatch(KaruulmAccessPolicy::isEligible));
 	}
 
 	@Test

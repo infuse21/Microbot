@@ -54,8 +54,6 @@ public final class AdjacentTransportPolicy
 	private static final int FEROX_BARRIER_MIRRORED = 39653;
 	private static final int SLASHABLE_WEB = 733;
 	private static final String STRONGHOLD_TREE_DOOR = "tree door";
-	private static final Set<Integer> MOLCH_MYSTICAL_BARRIERS = Set.of(
-		34643, 34644, 34645, 34646);
 	private static final Set<String> AL_KHARID_TOLL_ROUTES = Set.of(
 		"3267,3227,0->3268,3227,0|2786",
 		"3267,3228,0->3268,3228,0|2787",
@@ -76,6 +74,9 @@ public final class AdjacentTransportPolicy
 
 	public static boolean isEligible(Transport transport)
 	{
+		if (transport != null && KaruulmAccessPolicy.ownsObject(transport.getObjectId())) return false;
+		if (transport != null && QuestStatePassagePolicy.ownsObject(transport.getObjectId())) return false;
+		if (transport != null && transport.getObjectId() == ResourceAreaGatePolicy.GATE) return false;
 		if (transport == null || transport.getOrigin() == null || transport.getDestination() == null
 			|| transport.getObjectId() <= 0 || isBlank(transport.getAction())
 			|| transport.getOrigin().getPlane() != transport.getDestination().getPlane())
@@ -83,6 +84,8 @@ public final class AdjacentTransportPolicy
 			return false;
 		}
 		TransportType type = transport.getType();
+		if (MolchBarrierPolicy.ownsObject(transport.getObjectId()) || transport.getObjectId() == 34542)
+			return false;
 		if (type != TransportType.TRANSPORT && type != TransportType.AGILITY_SHORTCUT
 			&& type != TransportType.GRAPPLE_SHORTCUT)
 		{
@@ -106,7 +109,6 @@ public final class AdjacentTransportPolicy
 			&& transport.getItemIdRequirements().isEmpty();
 		boolean feroxBarrier = isFeroxBarrier(transport, action);
 		boolean slashableWeb = isSlashableWeb(transport, action);
-		boolean molchMysticalBarrier = isMolchMysticalBarrier(transport, action);
 		if (isAlKharidTollGate(transport))
 		{
 			return true;
@@ -121,8 +123,7 @@ public final class AdjacentTransportPolicy
 		}
 		int distance = transport.getOrigin().distanceTo2D(transport.getDestination());
 		return distance <= ADJACENT_DISTANCE || isStrongholdTreeDoor(transport, action, distance)
-			|| slashableWeb && distance <= SHORT_PORTAL_DISTANCE
-			|| molchMysticalBarrier && distance <= SHORT_PORTAL_DISTANCE;
+			|| slashableWeb && distance <= SHORT_PORTAL_DISTANCE;
 	}
 
 	static boolean isEdgevilleOddWall(Transport transport)
@@ -295,16 +296,6 @@ public final class AdjacentTransportPolicy
 	private static String pointKey(net.runelite.api.coords.WorldPoint point)
 	{
 		return point.getX() + "," + point.getY() + "," + point.getPlane();
-	}
-
-	private static boolean isMolchMysticalBarrier(Transport transport, String action)
-	{
-		return transport.getType() == TransportType.TRANSPORT
-			&& "pass".equals(action)
-			&& "mystical barrier".equals(normalize(transport.getName()))
-			&& MOLCH_MYSTICAL_BARRIERS.contains(transport.getObjectId())
-			&& !transport.isConsumable()
-			&& transport.getItemIdRequirements().isEmpty();
 	}
 
 	private static boolean isSlashableWeb(Transport transport, String action)

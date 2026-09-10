@@ -1638,7 +1638,8 @@ public class PathfinderConfig {
 				&& "Walk-across".equalsIgnoreCase(transport.getAction())) {
 				type = TransportType.AGILITY_SHORTCUT;
 		} else if (type == TransportType.TRANSPORT
-				&& CatalogTransitionPolicy.isAuditedShortcutTraversal(transport)) {
+				&& (CatalogTransitionPolicy.isAuditedShortcutTraversal(transport)
+					|| net.runelite.client.plugins.microbot.util.walker.transport.NorthernQuestShortcutPolicy.isWeiss(transport))) {
 			type = TransportType.AGILITY_SHORTCUT;
 		} else if (type == TransportType.TRANSPORT && transport.getObjectId() == 38574
 				&& CatalogTransitionPolicy.isAuditedMiscAccess(transport)) {
@@ -1844,7 +1845,12 @@ public class PathfinderConfig {
                 : transport.getDisplayInfo();
         Rs2Spells rs2Spell = Rs2Magic.getRs2Spell(displayInfo);
         if (rs2Spell == null) return false;
-        return Rs2Magic.hasRequiredRunes(rs2Spell, RuneFilter.builder().includeBank(useBankItems).build());
+        if (Rs2Magic.hasRequiredRunes(rs2Spell, RuneFilter.builder().includeBank(useBankItems).build())) return true;
+        return config.navigationEngineOrdinaryWalking()
+                && (!useBankItems || config.walkWithBankedTransports() && config.useBankedElementalStaffs())
+                && net.runelite.client.plugins.microbot.util.walker.transport.SimpleTeleportPolicy.isEligible(transport)
+                && net.runelite.client.plugins.microbot.util.walker.banking.Rs2SpellEquipmentScene.plan(
+                        List.of(Rs2Magic.getRequiredRunes(rs2Spell, 1)), useBankItems) != null;
 //        return Rs2Magic.quickCanCast(displayInfo);
     }
 

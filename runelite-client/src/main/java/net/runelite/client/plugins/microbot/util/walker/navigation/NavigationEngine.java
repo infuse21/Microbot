@@ -1,7 +1,11 @@
 package net.runelite.client.plugins.microbot.util.walker.navigation;
 
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.client.plugins.microbot.util.walker.banking.SpellEquipmentTransaction;
+import net.runelite.client.plugins.microbot.util.walker.banking.SpellEquipmentObservation;
+import net.runelite.client.plugins.microbot.util.walker.transport.LeafPitPolicy;
 import net.runelite.client.plugins.microbot.util.walker.transport.NpcDialogueTransportPolicy;
+import net.runelite.client.plugins.microbot.util.walker.transport.TeleportationPortalPolicy;
 
 import java.util.List;
 
@@ -44,11 +48,14 @@ public final class NavigationEngine
 
 	public synchronized NavigationSnapshot start(NavigationRequest request)
 	{
+		SpellEquipmentTransaction retained = session == null ? null : session.equipmentTransaction;
 		if (session != null && !session.phase.isTerminal())
 		{
 			cancel("replaced-by-request-" + request.getRequestId());
 		}
 		session = new WalkSession(request);
+		session.equipmentTransaction = retained;
+		session.equipmentRestorationRequired = retained != null;
 		return snapshot();
 	}
 
@@ -110,12 +117,14 @@ public final class NavigationEngine
 			session.transitionTo(NavigationPhase.FOLLOWING_ROUTE, "route-generation-installed");
 		}
 
+		if (session.equipmentRestorationRequired) return awaitEquipmentRestoration(observation);
 		updateProgress(observation.getPlayerLocation(), observation.getObservedAtMs());
 		retireCrossedChainedInteractions();
 		if (hasArrived(observation.getPlayerLocation())
 			&& !hasUncrossedEngineInteractionEdge()
 			&& !hasUnresolvedRouteInteraction(observation))
 		{
+			if (session.equipmentTransaction != null) return awaitEquipmentRestoration(observation);
 			session.transitionTo(NavigationPhase.ARRIVED, "destination-within-reached-distance");
 			return publish(NavigationDecision.of(NavigationDecision.Type.COMPLETE,
 				"destination-within-reached-distance"), observation);
@@ -129,6 +138,11 @@ public final class NavigationEngine
 		if (session.commandRejected)
 		{
 			session.commandRejected = false;
+			if (LeafPitPolicy.owns(session.pendingInteraction)
+				&& LeafPitPolicy.inPit(observation.getPlayerLocation()))
+			{
+				return failLeafRecovery("leaf-pit-recovery-rejected", observation);
+			}
 			clearCommandTarget();
 			return requestReplan(RecoveryCause.NO_ACKNOWLEDGEMENT,
 				"movement-command-rejected", observation);
@@ -172,7 +186,7 @@ public final class NavigationEngine
 		// or loading scene that is intentionally nowhere near the published raw route.
 		// While the interaction acknowledgement window owns the command, let its
 		// destination predicate observe that state before ordinary off-route recovery.
-		if (session.interactionCommandPending)
+		if (session.interactionCommandPending || LeafPitPolicy.owns(session.pendingInteraction))
 		{
 			NavigationDecision interactionInFlight = handleRouteInteraction(observation);
 			if (interactionInFlight != null)
@@ -303,6 +317,12 @@ public final class NavigationEngine
 		session.lastCommandAtMs = commandAtMs;
 		if (decision.getType() == NavigationDecision.Type.INTERACT)
 		{
+			if (decision.getInteraction() != null
+				&& decision.getInteraction().getKind() == RouteInteraction.Kind.SPELL_EQUIPMENT)
+			{
+				recordEquipmentCommand(decision.getInteraction());
+				return;
+			}
 			session.interactionCommandPending = issued;
 			session.interactionCommandOrigin = issued ? session.lastObservedPlayer : null;
 			int distance = interactionCommandDistance(decision.getInteraction());
@@ -551,7 +571,16 @@ public final class NavigationEngine
 		if (observed != null && observed.getGeneration() == session.generation)
 		{
 			RouteInteraction previous = session.pendingInteraction;
-			if (interactionStageAdvanced(previous, observed))
+			boolean leafStageAdvanced = LeafPitPolicy.owns(previous) && LeafPitPolicy.owns(observed)
+				&& previous.getRawEdgeIndex() == observed.getRawEdgeIndex()
+				&& observed.getStatus() == RouteInteraction.Status.AVAILABLE
+				&& !previous.getAction().equals(observed.getAction());
+			if (leafStageAdvanced && LeafPitPolicy.RECOVER.equals(observed.getAction()))
+			{
+				// Count the failed jump once, but always climb out before exhausting its budget.
+				session.stochasticTransitionAttempts++;
+			}
+			if (interactionStageAdvanced(previous, observed) || leafStageAdvanced)
 			{
 				session.interactionCommandPending = false;
 				session.interactionCommandOrigin = null;
@@ -570,6 +599,13 @@ public final class NavigationEngine
 			session.pendingInteraction = observed;
 		}
 		RouteInteraction pending = session.pendingInteraction;
+		if (LeafPitPolicy.owns(pending) && "Jump".equals(pending.getAction())
+			&& pending.getCrossingFrom().equals(observation.getPlayerLocation())
+			&& session.stochasticTransitionAttempts >= MAX_STOCHASTIC_TRANSITION_ATTEMPTS)
+		{
+			return requestReplan(RecoveryCause.NO_ACKNOWLEDGEMENT,
+				"stochastic-transition-attempts-exhausted", observation);
+		}
 		if (pending == null)
 		{
 			// Retain the Phase 2 boolean scaffold for shadow-corpus compatibility.
@@ -606,6 +642,9 @@ public final class NavigationEngine
 				"interaction-displaced-behind-origin", observation);
 		}
 
+		if (pending.getKind() == RouteInteraction.Kind.SIMPLE_TELEPORT
+			&& pending.getStatus() == RouteInteraction.Status.CLEARED
+			&& session.equipmentTransaction != null) return awaitEquipmentRestoration(observation);
 		boolean remoteLandingRequired = (pending.getKind() == RouteInteraction.Kind.SIMPLE_TELEPORT
 			|| pending.getKind() == RouteInteraction.Kind.NPC_TRANSPORT
 			|| pending.getKind() == RouteInteraction.Kind.ITEM_TELEPORT
@@ -654,6 +693,10 @@ public final class NavigationEngine
 					"interaction-unavailable-command-in-flight");
 				return publish(NavigationDecision.of(NavigationDecision.Type.WAIT,
 					"interaction-unavailable-command-in-flight"), observation);
+			}
+			if (LeafPitPolicy.owns(pending) && LeafPitPolicy.inPit(observation.getPlayerLocation()))
+			{
+				return failLeafRecovery("leaf-pit-recovery-unavailable", observation);
 			}
 			return requestReplan(RecoveryCause.INTERACTION_UNAVAILABLE,
 				"interaction-unavailable", observation);
@@ -711,6 +754,11 @@ public final class NavigationEngine
 		// An actor interaction may be combat, not a command issued by this walker.
 		if (session.interactionCommandPending)
 		{
+			if (LeafPitPolicy.owns(pending) && LeafPitPolicy.RECOVER.equals(pending.getAction())
+				&& observation.getObservedAtMs() >= session.interactionCommandDeadlineMs)
+			{
+				return failLeafRecovery("leaf-pit-recovery-not-acknowledged", observation);
+			}
 			if (!observation.isMoving()
 				&& observation.getObservedAtMs() >= session.interactionCommandDeadlineMs)
 			{
@@ -735,6 +783,10 @@ public final class NavigationEngine
 		}
 		if (!pending.isReady())
 		{
+			if (LeafPitPolicy.owns(pending) && LeafPitPolicy.inPit(observation.getPlayerLocation()))
+			{
+				return failLeafRecovery("leaf-pit-recovery-out-of-range", observation);
+			}
 			if (observation.isMoving())
 			{
 				session.transitionTo(NavigationPhase.APPROACHING_INTERACTION,
@@ -742,9 +794,12 @@ public final class NavigationEngine
 				return publish(NavigationDecision.of(NavigationDecision.Type.WAIT,
 					"approaching-interaction-frontier"), observation);
 			}
+			WorldPoint approachTile = pending.getKind() == RouteInteraction.Kind.TELEPORTATION_PORTAL
+				&& TeleportationPortalPolicy.isDirectPohObjectId(pending.getObjectId())
+				? pending.getObjectTile() : pending.getFrom();
 			int distance = observation.getPlayerLocation() == null ? -1
-				: observation.getPlayerLocation().distanceTo2D(pending.getFrom());
-			RouteClickSelection approach = new RouteClickSelection(pending.getFrom(),
+				: observation.getPlayerLocation().distanceTo2D(approachTile);
+			RouteClickSelection approach = new RouteClickSelection(approachTile,
 				pending.getRawEdgeIndex(), -1, distance, Math.max(0, distance),
 				"interaction-approach");
 			session.transitionTo(NavigationPhase.APPROACHING_INTERACTION,
@@ -769,6 +824,12 @@ public final class NavigationEngine
 		session.interactionCommandDeadlineMs = 0L;
 		session.interactionClearedObserved = false;
 		session.stochasticTransitionAttempts = 0;
+	}
+
+	private NavigationDecision failLeafRecovery(String reason, NavigationObservation observation)
+	{
+		session.transitionTo(NavigationPhase.FAILED, reason);
+		return publish(NavigationDecision.of(NavigationDecision.Type.FAIL, reason), observation);
 	}
 
 	private static boolean isStochasticCatalogTransition(RouteInteraction interaction)
@@ -796,6 +857,12 @@ public final class NavigationEngine
 			return;
 		}
 		session.lastCommandAtMs = commandAtMs;
+		if (decision.getInteraction() != null
+			&& decision.getInteraction().getKind() == RouteInteraction.Kind.SPELL_EQUIPMENT)
+		{
+			recordEquipmentCommand(decision.getInteraction());
+			return;
+		}
 		session.interactionCommandPending = false;
 		session.interactionCommandOrigin = null;
 		session.interactionCommandDeadlineMs = 0L;
@@ -818,6 +885,11 @@ public final class NavigationEngine
 	private boolean failedShortTransitionMovedBehindOrigin(RouteInteraction pending,
 		WorldPoint player)
 	{
+		if (LeafPitPolicy.owns(pending)
+			&& (LeafPitPolicy.inPit(player) || LeafPitPolicy.RECOVER.equals(pending.getAction())))
+		{
+			return false;
+		}
 		if (!session.interactionCommandPending
 			|| pending.getKind() != RouteInteraction.Kind.CATALOG_TRANSITION
 			|| session.interactionCommandOrigin == null || player == null)
@@ -826,6 +898,9 @@ public final class NavigationEngine
 		}
 		WorldPoint origin = pending.getCrossingFrom();
 		WorldPoint destination = pending.getCrossingTo();
+		if (player.distanceTo2D(session.interactionCommandOrigin) > 1
+			&& net.runelite.client.plugins.microbot.util.walker.transport.NorthernQuestShortcutPolicy
+				.fellToEarlierStage(pending, player)) return true;
 		if (origin.getPlane() != destination.getPlane()
 			|| player.getPlane() != origin.getPlane()
 			|| origin.distanceTo2D(destination) > 4
@@ -890,6 +965,154 @@ public final class NavigationEngine
 		return -1L;
 	}
 
+	public synchronized boolean retainEquipmentTransaction(long requestId, long generation,
+		SpellEquipmentTransaction transaction)
+	{
+		if (session == null || transaction == null || session.phase.isTerminal()
+			|| session.request.getCancellationToken().isCancelled()
+			|| session.request.getRequestId() != requestId || session.generation != generation
+			|| session.executionMode != NavigationExecutionMode.ENGINE_SUPPORTED
+			|| session.equipmentRestorationRequired) return false;
+		if (session.equipmentTransaction != null) return session.equipmentTransaction == transaction;
+		session.equipmentTransaction = transaction;
+		session.equipmentRestorationStartedAtMs = -1L;
+		session.equipmentCommandAttempted = false;
+		session.equipmentTabCommandAttempted = false;
+		return true;
+	}
+
+	/** Caller must supply a confirmed equipment snapshot, not an unavailable cache result. */
+	public synchronized boolean acknowledgeEquipmentRestored(long requestId, long generation,
+		SpellEquipmentTransaction transaction, int weaponId, int offhandId)
+	{
+		if (session == null || transaction == null || session.equipmentTransaction != transaction
+			|| session.request.getRequestId() != requestId || session.generation != generation
+			|| transaction.restore(weaponId, offhandId, java.util.Set.of(), 0, false)
+				!= SpellEquipmentTransaction.Action.RESTORED) return false;
+		session.equipmentTransaction = null;
+		session.equipmentRestorationRequired = false;
+		session.equipmentRestorationStartedAtMs = -1L;
+		session.equipmentCommandAttempted = false;
+		session.equipmentTabCommandAttempted = false;
+		return true;
+	}
+
+	/** Returns null when the normal route-observation path should run instead. */
+	public synchronized NavigationDecision observeEquipmentRestoration(long requestId, long generation,
+		SpellEquipmentTransaction transaction, SpellEquipmentObservation equipment,
+		NavigationObservation observation)
+	{
+		if (session == null || session.phase.isTerminal() || session.request.getCancellationToken().isCancelled()
+			|| observation.getTerminalSignal() != NavigationObservation.TerminalSignal.NONE
+			|| session.executionMode != NavigationExecutionMode.ENGINE_SUPPORTED
+			|| !session.equipmentRestorationRequired || transaction == null
+			|| transaction != session.equipmentTransaction || requestId != session.request.getRequestId()
+			|| generation != session.generation) return null;
+		RoutePlan observedPlan = observation.getRoutePlan();
+		if (observedPlan == null || observedPlan.getRequestId() != requestId
+			|| observedPlan.getGeneration() != generation) return null;
+		long now = observation.getObservedAtMs();
+		if (session.equipmentRestorationStartedAtMs < 0) session.equipmentRestorationStartedAtMs = now;
+		SpellEquipmentTransaction.Action action = equipment == null ? SpellEquipmentTransaction.Action.WAIT
+			: equipment.restorationAction(transaction);
+		if (action == SpellEquipmentTransaction.Action.RESTORED)
+		{
+			acknowledgeEquipmentRestored(requestId, generation, transaction,
+				equipment.getWeaponId(), equipment.getOffhandId());
+			return publish(NavigationDecision.of(NavigationDecision.Type.WAIT, "equipment-restored"), observation);
+		}
+		if (action == SpellEquipmentTransaction.Action.CONFLICT)
+		{
+			// A confirmed different loadout is no longer ours to overwrite.
+			session.equipmentTransaction = null;
+			session.equipmentRestorationRequired = false;
+			session.transitionTo(NavigationPhase.FAILED, "equipment-ownership-lost");
+			return publish(NavigationDecision.of(NavigationDecision.Type.FAIL, "equipment-ownership-lost"), observation);
+		}
+		if (now - session.equipmentRestorationStartedAtMs >= 5_000L)
+		{
+			session.transitionTo(NavigationPhase.FAILED, "equipment-restoration-timeout");
+			return publish(NavigationDecision.of(NavigationDecision.Type.FAIL, "equipment-restoration-timeout"), observation);
+		}
+		WorldPoint player = observation.getPlayerLocation();
+		boolean openingTab = action == SpellEquipmentTransaction.Action.OPEN_INVENTORY
+			|| action == SpellEquipmentTransaction.Action.OPEN_EQUIPMENT;
+		if (session.equipmentCommandAttempted || player == null
+			|| openingTab && session.equipmentTabCommandAttempted
+			|| (action != SpellEquipmentTransaction.Action.RESTORE_WEAPON
+				&& action != SpellEquipmentTransaction.Action.REMOVE_STAFF && !openingTab)) return awaitEquipmentRestoration(observation);
+		int itemId = action == SpellEquipmentTransaction.Action.RESTORE_WEAPON
+			|| action == SpellEquipmentTransaction.Action.OPEN_INVENTORY
+			? transaction.getOriginalWeaponId() : transaction.getStaff().getItemID();
+		RouteInteraction interaction = new RouteInteraction(generation, -1, player, player, player,
+			RouteInteraction.Kind.SPELL_EQUIPMENT, RouteInteraction.Status.AVAILABLE, action.name(), true, itemId);
+		return publish(NavigationDecision.interact(interaction, "equipment-restoration-command"), observation);
+	}
+
+	private void recordEquipmentCommand(RouteInteraction interaction)
+	{
+		if (!session.equipmentRestorationRequired)
+		{
+			if (SpellEquipmentTransaction.Action.OPEN_INVENTORY.name().equals(interaction.getAction()))
+				session.staffTabAttempted = true;
+			else session.staffEquipAttempted = true;
+			return;
+		}
+		if (SpellEquipmentTransaction.Action.OPEN_INVENTORY.name().equals(interaction.getAction())
+			|| SpellEquipmentTransaction.Action.OPEN_EQUIPMENT.name().equals(interaction.getAction()))
+			session.equipmentTabCommandAttempted = true;
+		else session.equipmentCommandAttempted = true;
+	}
+
+	/** Replaces only the current engine-owned spell command; it cannot initiate an unrelated swap. */
+	public synchronized NavigationDecision prepareSpellEquipment(NavigationDecision cast,
+		SpellEquipmentTransaction transaction, SpellEquipmentObservation equipment, boolean equipable,
+		NavigationObservation observation)
+	{
+		if (session == null || session.phase.isTerminal() || session.request.getCancellationToken().isCancelled()
+			|| session.equipmentRestorationRequired || session.executionMode != NavigationExecutionMode.ENGINE_SUPPORTED
+			|| cast == null || cast != session.lastDecision || cast.getInteraction() == null
+			|| cast.getInteraction() != session.pendingInteraction
+			|| cast.getInteraction().getKind() != RouteInteraction.Kind.SIMPLE_TELEPORT
+			|| cast.getInteraction().getObjectId() != net.runelite.client.plugins.microbot.shortestpath.TransportType
+				.TELEPORTATION_SPELL.ordinal() || transaction == null) return cast;
+		if (session.equipmentTransaction != null && session.equipmentTransaction != transaction)
+			return publish(NavigationDecision.of(NavigationDecision.Type.WAIT, "spell-equipment-owner-mismatch"), observation);
+		SpellEquipmentTransaction.Action action = equipment == null ? SpellEquipmentTransaction.Action.WAIT
+			: equipment.preparationAction(transaction, equipable);
+		if (action == SpellEquipmentTransaction.Action.READY_TO_CAST) return cast;
+		if (session.equipmentTransaction == null)
+		{
+			retainEquipmentTransaction(session.request.getRequestId(), session.generation, transaction);
+			session.staffEquipAttempted = false;
+			session.staffTabAttempted = false;
+			session.staffPreparationStartedAtMs = observation.getObservedAtMs();
+		}
+		if (action == SpellEquipmentTransaction.Action.CONFLICT
+			|| observation.getObservedAtMs() - session.staffPreparationStartedAtMs >= 5_000L)
+		{
+			session.transitionTo(NavigationPhase.FAILED, "spell-equipment-preparation-failed");
+			return publish(NavigationDecision.of(NavigationDecision.Type.FAIL, "spell-equipment-preparation-failed"), observation);
+		}
+		boolean open = action == SpellEquipmentTransaction.Action.OPEN_INVENTORY;
+		if (session.staffEquipAttempted || open && session.staffTabAttempted
+			|| (!open && action != SpellEquipmentTransaction.Action.EQUIP_STAFF))
+			return publish(NavigationDecision.of(NavigationDecision.Type.WAIT, "spell-equipment-preparation-pending"), observation);
+		RouteInteraction spell = cast.getInteraction();
+		RouteInteraction command = new RouteInteraction(session.generation, spell.getRawEdgeIndex(),
+			spell.getFrom(), spell.getTo(), spell.getObjectTile(), RouteInteraction.Kind.SPELL_EQUIPMENT,
+			RouteInteraction.Status.AVAILABLE, action.name(), true, transaction.getStaff().getItemID());
+		return publish(NavigationDecision.interact(command, "spell-equipment-preparation"), observation);
+	}
+
+	private NavigationDecision awaitEquipmentRestoration(NavigationObservation observation)
+	{
+		session.equipmentRestorationRequired = true;
+		session.transitionTo(NavigationPhase.VERIFYING_INTERACTION, "equipment-restoration-required");
+		return publish(NavigationDecision.of(NavigationDecision.Type.WAIT,
+			"equipment-restoration-required"), observation);
+	}
+
 	public synchronized NavigationSnapshot cancel(String reason)
 	{
 		if (session == null)
@@ -912,6 +1135,8 @@ public final class NavigationEngine
 
 	private NavigationDecision terminal(NavigationObservation observation)
 	{
+		if (observation.getTerminalSignal() == NavigationObservation.TerminalSignal.ARRIVED
+			&& session.equipmentTransaction != null) return awaitEquipmentRestoration(observation);
 		NavigationPhase phase;
 		NavigationDecision.Type decisionType;
 		switch (observation.getTerminalSignal())

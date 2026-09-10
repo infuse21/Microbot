@@ -1,6 +1,7 @@
 package net.runelite.client.plugins.microbot.util.walker.navigation;
 
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.client.plugins.microbot.util.walker.banking.SpellEquipmentTransaction;
 
 import java.util.Collections;
 import java.util.EnumMap;
@@ -29,6 +30,8 @@ public final class NavigationSnapshot
 	private final int commandRawIndex;
 	private final int commandHandoffDistance;
 	private final RouteInteraction pendingInteraction;
+	private final SpellEquipmentTransaction equipmentTransaction;
+	private final boolean equipmentRestorationRequired;
 	private final Set<Integer> interactionEdgesAwaitingResolution;
 
 	NavigationSnapshot(WalkSession session)
@@ -53,6 +56,8 @@ public final class NavigationSnapshot
 		commandRawIndex = session.commandRawIndex;
 		commandHandoffDistance = session.commandHandoffDistance;
 		pendingInteraction = session.pendingInteraction;
+		equipmentTransaction = session.equipmentTransaction;
+		equipmentRestorationRequired = session.equipmentRestorationRequired;
 		Set<Integer> interactionEdges = new HashSet<>();
 		if (pendingInteraction != null)
 		{
@@ -88,6 +93,8 @@ public final class NavigationSnapshot
 	public int getCommandRawIndex() { return commandRawIndex; }
 	public int getCommandHandoffDistance() { return commandHandoffDistance; }
 	public RouteInteraction getPendingInteraction() { return pendingInteraction; }
+	public SpellEquipmentTransaction getEquipmentTransaction() { return equipmentTransaction; }
+	public boolean isEquipmentRestorationRequired() { return equipmentRestorationRequired; }
 	public boolean isInteractionCollisionProtected(int rawEdgeIndex)
 	{
 		for (int interactionEdge : interactionEdgesAwaitingResolution)

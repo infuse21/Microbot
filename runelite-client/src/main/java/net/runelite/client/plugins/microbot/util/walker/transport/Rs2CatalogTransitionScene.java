@@ -58,6 +58,14 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 		{
 			return null;
 		}
+		if (("Jump".equals(pendingAction) || LeafPitPolicy.RECOVER.equals(pendingAction))
+			&& LeafPitPolicy.isRoute(edge.from(), edge.to()))
+		{
+			CatalogTransition recovery = leafRecovery(edge);
+			if (recovery != null) return recovery;
+			if (LeafPitPolicy.RECOVER.equals(pendingAction)
+				&& !edge.from().equals(Rs2Player.getWorldLocation())) return null;
+		}
 		for (Transport transport : TransportEdgeMatcher.find(Rs2PathApi.getTransports(),
 			edge.from(), edge.to()))
 		{
@@ -81,6 +89,25 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 
 	private static CatalogTransition find(Transport transport, String pendingAction)
 	{
+		if (KaruulmAccessPolicy.ownsObject(transport.getObjectId()) && !karuulmRequirementsReady(transport)) return null;
+		if (CatalogTransitionPolicy.isCanifisTrapdoor(transport)
+			&& Rs2Player.getQuestState(net.runelite.api.Quest.IN_SEARCH_OF_THE_MYREQUE)
+				!= net.runelite.api.QuestState.FINISHED) return null;
+		if (BrimhavenEntrancePolicy.isEligible(transport))
+		{
+			return Microbot.getClientThread().runOnClientThreadOptional(() ->
+				brimhavenTransition(transport, pendingAction)).orElse(null);
+		}
+		if (ResourceAreaGatePolicy.isEligible(transport))
+		{
+			String action = resourceAreaAction(transport, pendingAction);
+			if (action == null) return null;
+			if (ResourceAreaGatePolicy.CONFIRM.equals(action))
+			{
+				return new CatalogTransition(null, transport.getOrigin(), transport.getObjectId(),
+					action, transport.getAction(), transport.getOrigin(), transport.getDestination());
+			}
+		}
 		if (CatalogTransitionPolicy.isEquippedGrappleShortcut(transport)
 			&& !TransportRequirementPolicy.grappleEquipmentReady())
 		{
@@ -160,6 +187,109 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 
 	private static CatalogTransition findSceneTransitionOnClientThread(Transport transport)
 	{
+		WorldPoint tearsAnchor = CatalogTransitionPolicy.tearsTunnelAnchor(transport);
+		if (tearsAnchor != null)
+		{
+			Rs2TileObjectModel object = Microbot.getRs2TileObjectCache().query()
+				.withId(transport.getObjectId()).fromWorldView().toList().stream()
+				.filter(candidate -> tearsAnchor.equals(Rs2SceneLocation.templateLocation(candidate)))
+				.filter(candidate -> matchesCatalogIdentity(candidate, transport)).findFirst().orElse(null);
+			return object == null ? null : transition(object, transport, "Enter", false);
+		}
+		WorldPoint islandStone = CatalogTransitionPolicy.brimhavenIslandStoneAnchor(transport);
+		if (islandStone != null)
+		{
+			if (!Microbot.getClientThread().runOnClientThreadOptional(() ->
+				Rs2Player.getBoostedSkillLevel(Skill.AGILITY)
+					>= transport.getSkillLevels()[Skill.AGILITY.ordinal()]).orElse(false)) return null;
+			Rs2TileObjectModel object = Microbot.getRs2TileObjectCache().query().withId(19040)
+				.fromWorldView().toList().stream()
+				.filter(candidate -> islandStone.equals(Rs2SceneLocation.templateLocation(candidate)))
+				.filter(candidate ->
+				{
+					ObjectSnapshot state = snapshot(candidate);
+					return state != null && "Stepping stone".equals(state.name)
+						&& resolveAction(state.actions, "Cross") != null;
+				}).findFirst().orElse(null);
+			return object == null ? null : transition(object, transport, "Cross", false);
+		}
+		QuestStatePassagePolicy.Entry passage = QuestStatePassagePolicy.entry(transport);
+		if (passage != null)
+		{
+			if (transport.getVarbits().stream().anyMatch(bit ->
+				!bit.matches(Microbot.getVarbitValue(bit.getVarbitId())))) return null;
+			Rs2TileObjectModel object = Microbot.getRs2TileObjectCache().query()
+				.withIds(passage.id, passage.liveId).fromWorldView().toList().stream()
+				.filter(candidate -> passage.anchor.equals(Rs2SceneLocation.templateLocation(candidate)))
+				.filter(candidate ->
+				{
+					ObjectSnapshot state = snapshot(candidate);
+					return state != null && passage.name.equals(state.name)
+						&& resolveAction(state.actions, passage.action) != null;
+				}).findFirst().orElse(null);
+			return object == null ? null : transition(object, transport, passage.action, false);
+		}
+		if (CatalogTransitionPolicy.isEvilDaveBasement(transport))
+		{
+			if (Rs2Player.getQuestState(net.runelite.api.Quest.SHADOW_OF_THE_STORM)
+				!= net.runelite.api.QuestState.FINISHED) return null;
+			Rs2TileObjectModel object = Microbot.getRs2TileObjectCache().query()
+				.withIds(12267, 12268).fromWorldView().toList().stream()
+				.filter(candidate -> transport.getOrigin().equals(Rs2SceneLocation.templateLocation(candidate)))
+				.filter(candidate ->
+				{
+					ObjectSnapshot state = snapshot(candidate);
+					return state != null && (candidate.getId() == 12268
+						? "Open trapdoor".equals(state.name) && resolveAction(state.actions, "Go-down") != null
+						: "Trapdoor".equals(state.name) && resolveAction(state.actions, "Open") != null);
+				})
+				.min(Comparator.comparingInt(candidate -> candidate.getId() == 12268 ? 0 : 1)).orElse(null);
+			return object == null ? null : transition(object, transport,
+				object.getId() == 12268 ? "Go-down" : "Open", false);
+		}
+		if (MolchBarrierPolicy.isEligible(transport))
+		{
+			int state = Microbot.getVarbitValue(MolchBarrierPolicy.varbit(transport.getObjectId()));
+			int budget = MolchBarrierPolicy.damageBudget(state);
+			if (budget < 0 || Rs2Player.getBoostedSkillLevel(Skill.HITPOINTS) <= budget) return null;
+			Rs2TileObjectModel object = Microbot.getRs2TileObjectCache().query()
+				.withIds(transport.getObjectId(), MolchBarrierPolicy.liveId(state)).fromWorldView().toList().stream()
+				.filter(candidate -> MolchBarrierPolicy.anchor(transport.getObjectId())
+					.equals(Rs2SceneLocation.templateLocation(candidate)))
+				.filter(candidate ->
+				{
+					ObjectSnapshot snapshot = snapshot(candidate);
+					return snapshot != null && MolchBarrierPolicy.liveName(state).equals(snapshot.name)
+						&& snapshot.actions != null && java.util.Arrays.asList(snapshot.actions).contains("Pass");
+				}).findFirst().orElse(null);
+			return object == null ? null : transition(object, transport, "Pass", true);
+		}
+		NorthernQuestShortcutPolicy.Entry northern = NorthernQuestShortcutPolicy.entry(transport);
+		if (northern != null)
+		{
+			if (northern.varbit != 0 && Microbot.getVarbitValue(northern.varbit) <= northern.threshold)
+				return null;
+			if (northern.ascending && (Rs2Player.getBoostedSkillLevel(Skill.AGILITY) < 68
+				|| Rs2Player.getBoostedSkillLevel(Skill.HITPOINTS) <= 15)) return null;
+			Rs2TileObjectModel object = Microbot.getRs2TileObjectCache().query()
+				.withIds(northern.id, northern.liveId).fromWorldView().toList().stream()
+				.filter(candidate -> northern.anchor.equals(Rs2SceneLocation.templateLocation(candidate)))
+				.filter(candidate -> matchesCatalogIdentity(candidate, transport)).findFirst().orElse(null);
+			return object == null ? null : transition(object, transport, northern.action, true);
+		}
+		if (CatalogTransitionPolicy.isBrimhavenBackdoor(transport))
+		{
+			int unlock = Microbot.getVarbitValue(net.runelite.api.gameval.VarbitID.KARAM_DUNGEON_BACKDOOR);
+			if (transport.getVarbits().stream().anyMatch(gate -> !gate.matches(unlock))) return null;
+			Rs2TileObjectModel object = sceneCandidates(transport, false).stream()
+				.filter(candidate -> candidate.getId() == transport.getObjectId()
+					|| transport.getObjectId() == 66 && candidate.getId() == 30200)
+				.filter(candidate -> matchesCatalogIdentity(candidate, transport))
+				.min(Comparator.comparingInt(candidate ->
+					Rs2SceneLocation.templateLocation(candidate).distanceTo2D(transport.getOrigin())))
+				.orElse(null);
+			return object == null ? null : transition(object, transport, transport.getAction(), false);
+		}
 		if (CerberusWinchPolicy.isEligible(transport)
 			&& !CerberusWinchPolicy.readAccessSnapshot(Microbot.getClient()).isAvailable())
 		{
@@ -181,6 +311,13 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 		boolean floorboardJump = CatalogTransitionPolicy.isFloorboardJump(transport);
 		boolean tarnsJump = CatalogTransitionPolicy.isTarnsJump(transport);
 		List<Rs2TileObjectModel> candidates = sceneCandidates(transport, pohPortal);
+		if (transport.getObjectId() == LeafPitPolicy.LEAVES)
+		{
+			WorldPoint nearSide = LeafPitPolicy.nearSideLeaves(transport.getOrigin(), transport.getDestination());
+			candidates = candidates.stream().filter(candidate -> candidate.getId() == LeafPitPolicy.LEAVES
+				&& nearSide != null && nearSide.equals(Rs2SceneLocation.templateLocation(candidate)))
+				.collect(Collectors.toList());
+		}
 		Rs2TileObjectModel direct = candidates.stream()
 			.filter(candidate -> !(floorboardJump || tarnsJump || CatalogTransitionPolicy.isShortAgilityCrossing(transport)
 				|| CatalogTransitionPolicy.isIsafdarCrossing(transport)
@@ -262,7 +399,41 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 
 	static boolean hasSafeCurrentHitpoints(Transport transport, int currentHitpoints)
 	{
+		if (transport != null && transport.getObjectId() == LeafPitPolicy.LEAVES) return currentHitpoints > 18;
 		return transport == null || transport.getObjectId() != 3922 || currentHitpoints > 8;
+	}
+
+	private static CatalogTransition leafRecovery(PlannedEdge edge)
+	{
+		try
+		{
+			return Microbot.getClientThread().runOnClientThreadOptional(() ->
+			{
+				WorldPoint player = Rs2Player.getWorldLocation();
+				if (!LeafPitPolicy.inPit(player)) return null;
+				Rs2TileObjectModel handholds = Microbot.getRs2TileObjectCache().query().fromWorldView()
+					.withId(LeafPitPolicy.HANDHOLDS).toList().stream()
+					.filter(object -> LeafPitPolicy.samePit(player, Rs2SceneLocation.templateLocation(object)))
+					.filter(object ->
+					{
+						ObjectSnapshot state = snapshot(object);
+						return state != null && "Protruding rocks".equals(state.name)
+							&& state.actions != null
+							&& java.util.Arrays.asList(state.actions).contains(LeafPitPolicy.RECOVER);
+					})
+					.min(Comparator.comparingInt(object ->
+						player.distanceTo2D(Rs2SceneLocation.templateLocation(object))))
+					.orElse(null);
+				return handholds == null ? null : new CatalogTransition(handholds,
+					Rs2SceneLocation.templateLocation(handholds), LeafPitPolicy.LEAVES,
+					LeafPitPolicy.RECOVER, "Jump", edge.from(), edge.to());
+			}).orElse(null);
+		}
+		catch (RuntimeException ex)
+		{
+			if (Thread.currentThread().isInterrupted() || Rs2SceneLocation.clientThreadUnavailable(ex)) return null;
+			throw ex;
+		}
 	}
 
 	private static List<Rs2TileObjectModel> sceneCandidates(Transport transport, boolean pohPortal)
@@ -307,7 +478,9 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 
 	static boolean permitsCatalogIdentityFallback(Transport transport)
 	{
-		return !isDraynorUnderwallTunnel(transport);
+		return !isDraynorUnderwallTunnel(transport)
+			&& (transport == null || transport.getObjectId() != 30198)
+			&& (transport == null || transport.getObjectId() != ResourceAreaGatePolicy.GATE);
 	}
 
 	private static boolean isDraynorUnderwallTunnel(Transport transport)
@@ -327,6 +500,7 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 
 	private static boolean matchesCatalogIdentity(Rs2TileObjectModel object, Transport transport)
 	{
+		if (transport.getObjectId() == 31892 && object.getId() != 31892) return false;
 		ObjectSnapshot snapshot = snapshot(object);
 		return snapshot != null && sameText(snapshot.name, transport.getName())
 			&& resolveLiveAction(snapshot.actions, transport) != null;
@@ -335,10 +509,60 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 	/** Dispatches one non-blocking preparation or object command for an exact route edge. */
 	public static DispatchResult dispatch(PlannedEdge edge, String action, int catalogObjectId)
 	{
+		// Recovery survives a refresh that removes the jump after its damage drains HP.
+		if (edge != null && catalogObjectId == LeafPitPolicy.LEAVES
+			&& LeafPitPolicy.isRoute(edge.from(), edge.to()) && LeafPitPolicy.RECOVER.equals(action))
+		{
+			CatalogTransition recovery = leafRecovery(edge);
+			return recovery != null && recovery.getObject().click(action)
+				? DispatchResult.ISSUED : DispatchResult.REJECTED;
+		}
 		Transport transport = findTransport(edge, action, catalogObjectId);
 		if (transport == null)
 		{
 			return DispatchResult.REJECTED;
+		}
+		if ((NorthernQuestShortcutPolicy.entry(transport) != null || MolchBarrierPolicy.isEligible(transport))
+			&& !transport.getOrigin().equals(Rs2Player.getWorldLocation())) return DispatchResult.REJECTED;
+		if (BrimhavenEntrancePolicy.isEligible(transport))
+		{
+			String previous = BrimhavenEntrancePolicy.CONFIRM.equals(action) ? "Pay"
+				: BrimhavenEntrancePolicy.CONTINUE.equals(action) ? BrimhavenEntrancePolicy.CONFIRM : null;
+			// Keep every scene read in the explicit client-thread snapshot; input helpers run outside it.
+			CatalogTransition current = Microbot.getClientThread().runOnClientThreadOptional(() ->
+				brimhavenTransition(transport, previous)).orElse(null);
+			if (current == null || !current.getAction().equals(action)) return DispatchResult.REJECTED;
+			if (BrimhavenEntrancePolicy.CONFIRM.equals(action))
+			{
+				int index = Microbot.getClientThread().runOnClientThreadOptional(() ->
+					BrimhavenEntrancePolicy.confirmationIndex(resourceAreaTitle(), zanarisOptions())).orElse(-1);
+				return index >= 0 && Rs2Dialogue.keyPressForDialogueOption(index + 1)
+					? DispatchResult.ISSUED : DispatchResult.REJECTED;
+			}
+			if (BrimhavenEntrancePolicy.CONTINUE.equals(action))
+			{
+				Rs2Dialogue.clickContinue();
+				return DispatchResult.ISSUED;
+			}
+			return current.getObject() != null && current.getObject().click(action)
+				? DispatchResult.ISSUED : DispatchResult.REJECTED;
+		}
+		if (ResourceAreaGatePolicy.isEligible(transport))
+		{
+			String expected = resourceAreaAction(transport,
+				ResourceAreaGatePolicy.CONFIRM.equals(action) ? "Open" : null);
+			if (!java.util.Objects.equals(action, expected) || expected == null)
+			{
+				return DispatchResult.REJECTED;
+			}
+			if (ResourceAreaGatePolicy.CONFIRM.equals(action))
+			{
+				int index = Microbot.getClientThread().runOnClientThreadOptional(() ->
+					ResourceAreaGatePolicy.confirmationIndex(transport.getCurrencyAmount(),
+						resourceAreaTitle(), zanarisOptions())).orElse(-1);
+				return index >= 0 && Rs2Dialogue.keyPressForDialogueOption(index + 1)
+					? DispatchResult.ISSUED : DispatchResult.REJECTED;
+			}
 		}
 		if (CatalogTransitionPolicy.isGhostShipRockJump(transport)
 			&& WAIT_FOR_RUN_ENERGY.equals(action))
@@ -582,6 +806,19 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 			transport.getAction(), transport.getOrigin(), transport.getDestination());
 	}
 
+	static boolean karuulmRequirementsReady(Transport transport)
+	{
+		return Microbot.getClientThread().runOnClientThreadOptional(() ->
+		{
+			if (!KaruulmAccessPolicy.isEligible(transport) || transport.getVarbits().stream().anyMatch(bit ->
+				!bit.matches(Microbot.getVarbitValue(bit.getVarbitId())))) return false;
+			int[] levels = new int[Skill.values().length];
+			for (Skill skill : Skill.values())
+				levels[skill.ordinal()] = Microbot.getClient().getRealSkillLevel(skill);
+			return KaruulmAccessPolicy.skillsMet(transport, levels);
+		}).orElse(false);
+	}
+
 	private static CatalogTransition equipmentPreparation(Transport transport)
 	{
 		java.util.Set<Integer> required =
@@ -604,6 +841,69 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 	{
 		return transport.getItemIdRequirements().stream().flatMap(java.util.Collection::stream)
 			.mapToInt(Integer::intValue).toArray();
+	}
+
+	private static CatalogTransition brimhavenTransition(Transport transport, String pendingAction)
+	{
+		WorldPoint player = Rs2Player.getWorldLocation();
+		if (player == null || player.getPlane() != 0 || player.distanceTo2D(transport.getOrigin()) > 6)
+			return null;
+		int state = Microbot.getVarbitValue(net.runelite.api.gameval.VarbitID.KARAM_DUNGEON_DOORDATA);
+		String action = BrimhavenEntrancePolicy.nextAction(state, Rs2Inventory.itemQuantity(ItemID.COINS),
+			Rs2Dialogue.hasSelectAnOption() || Rs2Dialogue.hasContinue(), resourceAreaTitle(), zanarisOptions(),
+			brimhavenNpcText(4), brimhavenNpcText(6), pendingAction);
+		if (action == null || ("Pay".equals(action) || BrimhavenEntrancePolicy.CONFIRM.equals(action))
+			&& transport.getCurrencyAmount() != BrimhavenEntrancePolicy.FARE) return null;
+		if (BrimhavenEntrancePolicy.CONFIRM.equals(action) || BrimhavenEntrancePolicy.CONTINUE.equals(action))
+			return new CatalogTransition(null, transport.getOrigin(), BrimhavenEntrancePolicy.ENTRANCE,
+				action, transport.getAction(), transport.getOrigin(), transport.getDestination());
+		int transformed = BrimhavenEntrancePolicy.isOpen(state) ? 20876 : 34713;
+		Rs2TileObjectModel object = Microbot.getRs2TileObjectCache().query().fromWorldView().toList().stream()
+			.filter(candidate -> candidate.getId() == BrimhavenEntrancePolicy.ENTRANCE
+				|| candidate.getId() == transformed)
+			.filter(candidate -> BrimhavenEntrancePolicy.ANCHOR.equals(Rs2SceneLocation.templateLocation(candidate)))
+			.filter(candidate ->
+			{
+				ObjectSnapshot snapshot = snapshot(candidate);
+				return snapshot != null && "Dungeon entrance".equals(snapshot.name) && snapshot.actions != null
+					&& java.util.Arrays.asList(snapshot.actions).contains(action);
+			}).findFirst().orElse(null);
+		return object == null ? null : transition(object, transport, action, false);
+	}
+
+	private static String brimhavenNpcText(int child)
+	{
+		return Microbot.getClientThread().runOnClientThreadOptional(() ->
+		{
+			Widget widget = Microbot.getClient().getWidget(net.runelite.api.widgets.InterfaceID.DIALOG_NPC, child);
+			return widget == null || widget.isHidden() ? "" : widget.getText();
+		}).orElse("");
+	}
+
+	private static String resourceAreaTitle()
+	{
+		return Microbot.getClientThread().runOnClientThreadOptional(() ->
+		{
+			Widget menu = Microbot.getClient().getWidget(net.runelite.api.widgets.InterfaceID.DIALOG_OPTION, 1);
+			Widget[] children = menu == null || menu.isHidden() ? null : menu.getDynamicChildren();
+			return children == null || children.length == 0 || children[0] == null ? "" : children[0].getText();
+		}).orElse("");
+	}
+
+	private static String resourceAreaAction(Transport transport, String pendingAction)
+	{
+		return Microbot.getClientThread().runOnClientThreadOptional(() ->
+		{
+			WorldPoint player = Rs2Player.getWorldLocation();
+			boolean nearGate = player != null && player.getPlane() == 0
+				&& player.distanceTo2D(transport.getOrigin()) <= 6;
+			boolean requirementsMet = transport.getVarbits().stream()
+				.allMatch(bit -> bit.matches(Microbot.getVarbitValue(bit.getVarbitId())));
+			return ResourceAreaGatePolicy.nextAction(transport.getCurrencyAmount(),
+				Rs2Inventory.itemQuantity(ItemID.COINS), nearGate && requirementsMet,
+				Rs2Dialogue.hasSelectAnOption() || Rs2Dialogue.hasContinue(),
+				resourceAreaTitle(), zanarisOptions(), pendingAction);
+		}).orElse(null);
 	}
 
 	private static List<String> zanarisOptions()
@@ -684,6 +984,8 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 
 	private static DispatchResult dispatchSafetyEquipment(Transport transport, String action)
 	{
+		if (KaruulmAccessPolicy.ownsObject(transport.getObjectId()) && !karuulmRequirementsReady(transport))
+			return DispatchResult.REJECTED;
 		CatalogTransition expected = Microbot.getClientThread().runOnClientThreadOptional(() ->
 			equipmentPreparation(transport)).orElse(null);
 		if (expected == null)

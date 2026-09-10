@@ -22,7 +22,7 @@ import static org.junit.Assert.assertTrue;
 public class PostQuestCaveAndDoorTransportTest
 {
 	private static final Set<Integer> SUPPORTED_IDS = Set.of(21585, 5056, 5057, 5060, 5061);
-	private static final Set<Integer> REMOVED_IDS = Set.of(21584, 4132, 4133);
+	private static final Set<Integer> REMOVED_IDS = Set.of(4132, 4133);
 
 	private static List<Transport> supportedRows()
 	{
@@ -59,10 +59,30 @@ public class PostQuestCaveAndDoorTransportTest
 	}
 
 	@Test
-	public void inaccessibleEastCavesAndUngatedShadeDoorsAreNotLoaded()
+	public void ungatedShadeDoorsAreNotLoaded()
 	{
 		assertTrue(Transport.loadAllFromResources().values().stream().flatMap(Collection::stream)
 			.noneMatch(row -> REMOVED_IDS.contains(row.getObjectId())));
+	}
+
+	@Test
+	public void eastCaveOnlyPublishesExactPreKingDeathQuestStages()
+	{
+		List<Transport> rows = Transport.loadAllFromResources().values().stream().flatMap(Collection::stream)
+			.filter(row -> row.getObjectId() == 21584).collect(Collectors.toList());
+		assertEquals(6, rows.size());
+		for (Transport row : rows)
+		{
+			assertEquals(RouteEdge.Kind.CATALOG_TRANSITION,
+				PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(row)));
+			assertEquals(1, row.getVarbits().size());
+			var gate = row.getVarbits().iterator().next();
+			assertEquals(3311, gate.getVarbitId());
+			assertTrue(gate.matches(300) || gate.matches(310));
+			assertFalse(gate.matches(290));
+			assertFalse(gate.matches(320));
+			assertFalse(gate.matches(340));
+		}
 	}
 
 	@Test

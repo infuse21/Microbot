@@ -85,17 +85,15 @@ public class AuditedMiscAccessTransportTest
 	public void unsafeRowsRemainOnlyAsCommentedSourceEvidence() throws IOException
 	{
 		Set<Integer> disabledIds = Set.of(
-			26880, 26882, 29868, 29869, 29870, 30198, 32403, 32507);
+			26880, 26882, 32403, 32507);
 		assertEquals(0, ordinaryRows(disabledIds).size());
 
 		String source = new String(getClass().getResourceAsStream(
 			"/net/runelite/client/plugins/microbot/shortestpath/transports.tsv").readAllBytes(),
 			StandardCharsets.UTF_8);
 		assertTrue(source.contains("# 2673 9583 0\t2670 9583 2\tClimb;Vine;26880"));
-		assertTrue(source.contains("# 2263 4048 0\t2263 4040 0\tClimb-down;Ice chunks;29869"));
 		assertTrue(source.contains("# 1483 3549 0\t1483 9951 3\tEnter;Crypt Entrance;32403"));
 		assertTrue(source.contains("# 9363 1050 0\t1214 3557 0\tClimb;Rope;32507"));
-		assertTrue(source.contains("# 2684 9436 0\t2697 9436 0\tEnter;Crevice;30198"));
 	}
 
 	private static List<Transport> ordinaryRows(Set<Integer> ids)

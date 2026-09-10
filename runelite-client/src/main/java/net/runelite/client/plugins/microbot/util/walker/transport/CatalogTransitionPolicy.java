@@ -15,6 +15,12 @@ import java.util.Set;
 /** Conservative eligibility for direct object-backed scene transitions. */
 public final class CatalogTransitionPolicy
 {
+	private static final Set<String> BRIMHAVEN_BACKDOOR_ROUTES = Set.of(
+		"2761,3062,0->2734,9478,0|66|climb|rope",
+		"2761,3063,0->2734,9478,0|66|climb|rope",
+		"2760,3064,0->2734,9478,0|66|climb|rope",
+		"2760,3061,0->2734,9478,0|66|climb|rope",
+		"2734,9478,0->2760,3061,0|30201|use|crevice");
 	private static final Set<String> AUDITED_AGILITY_TRAVERSALS = Set.of(
 		"3604,3550,0->3602,3550,0|16115|jumpto|rock",
 		"3602,3550,0->3604,3550,0|16115|jumpto|rock",
@@ -326,6 +332,8 @@ public final class CatalogTransitionPolicy
 		"2899,3713,0->2904,3720,0|26382|crawlthrough|little crack",
 		"2904,3720,0->2899,3713,0|26382|crawlthrough|little crack");
 	private static final Set<String> AUDITED_MISC_ACCESS_ROUTES = Set.of(
+		"2684,9436,0->2697,9436,0|30198|enter|crevice",
+		"2697,9436,0->2684,9436,0|30198|enter|crevice",
 		"3347,2759,0->3349,2759,0|44003|climbover|rubble",
 		"3349,2759,0->3347,2759,0|44003|climbover|rubble",
 		"1435,3671,0->1435,10077,3|30236|enter|chasm",
@@ -983,6 +991,46 @@ public final class CatalogTransitionPolicy
 
 	public static boolean isEligible(Transport transport)
 	{
+		if (transport != null && (transport.getObjectId() == 6658 || transport.getObjectId() == 6659))
+			return tearsTunnelAnchor(transport) != null;
+		if (transport != null && transport.getObjectId() == 31892) return isOldMuseumExit(transport);
+		if (transport != null && KaruulmAccessPolicy.ownsObject(transport.getObjectId()))
+			return KaruulmAccessPolicy.isEligible(transport);
+		if (transport != null && transport.getObjectId() == 5055)
+			return isCanifisTrapdoor(transport);
+		if (transport != null && transport.getObjectId() == 19040)
+			return brimhavenIslandStoneAnchor(transport) != null;
+		if (transport != null && QuestStatePassagePolicy.ownsObject(transport.getObjectId()))
+			return QuestStatePassagePolicy.entry(transport) != null;
+		if (transport != null && (transport.getObjectId() == 12267 || transport.getObjectId() == 12268))
+			return isEvilDaveBasement(transport);
+		if (transport != null && (MolchBarrierPolicy.ownsObject(transport.getObjectId())
+			|| transport.getObjectId() == 34542)) return MolchBarrierPolicy.isEligible(transport);
+		if (transport != null && NorthernQuestShortcutPolicy.ownsObject(transport.getObjectId()))
+		{
+			return NorthernQuestShortcutPolicy.entry(transport) != null;
+		}
+		if (transport != null && (transport.getObjectId() == BrimhavenEntrancePolicy.ENTRANCE
+			|| transport.getObjectId() == 20876 || transport.getObjectId() == 34713))
+		{
+			return BrimhavenEntrancePolicy.isEligible(transport);
+		}
+		if (transport != null && transport.getObjectId() == 30198)
+		{
+			return isAuditedMiscAccess(transport);
+		}
+		if (transport != null && isBrimhavenBackdoorObject(transport.getObjectId()))
+		{
+			return isBrimhavenBackdoor(transport);
+		}
+		if (transport != null && transport.getObjectId() == LeafPitPolicy.LEAVES)
+		{
+			return LeafPitPolicy.isEligible(transport);
+		}
+		if (transport != null && transport.getObjectId() == ResourceAreaGatePolicy.GATE)
+		{
+			return ResourceAreaGatePolicy.isEligible(transport);
+		}
 		if (ShantayPassPolicy.isEligible(transport))
 		{
 			return true;
@@ -1847,6 +1895,29 @@ public final class CatalogTransitionPolicy
 		return true;
 	}
 
+	static boolean isBrimhavenBackdoorObject(int objectId)
+	{
+		return objectId == 66 || objectId == 30201;
+	}
+
+	static boolean isBrimhavenBackdoor(Transport transport)
+	{
+		return transport != null && transport.getType() == TransportType.TRANSPORT
+			&& transport.getOrigin() != null && transport.getDestination() != null
+			&& transport.isMembers() && transport.getDuration() == 0
+			&& !transport.isConsumable() && transport.getCurrencyAmount() == 0
+			&& transport.getItemIdRequirements().isEmpty() && transport.getQuests().isEmpty()
+			&& transport.getVarplayers().isEmpty()
+			&& java.util.Arrays.stream(transport.getSkillLevels()).allMatch(level -> level == 0)
+			&& BRIMHAVEN_BACKDOOR_ROUTES.contains(routeKey(transport,
+				normalizeDirectAction(transport.getAction()), normalize(transport.getName())))
+			&& transport.getVarbits().size() == 2
+			&& transport.getVarbits().stream().anyMatch(gate -> gate.getVarbitId() == 5629
+				&& gate.getOperator() == TransportVarbit.Operator.GREATER_THAN && gate.getValue() == 0)
+			&& transport.getVarbits().stream().anyMatch(gate -> gate.getVarbitId() == 5629
+				&& gate.getOperator() == TransportVarbit.Operator.LESS_THAN && gate.getValue() == 4);
+	}
+
 	static boolean isUnlockedPassage(Transport transport)
 	{
 		if (transport == null || transport.getType() != TransportType.TRANSPORT
@@ -2178,14 +2249,15 @@ public final class CatalogTransitionPolicy
 				&& transport.getQuests().equals(Map.of(Quest.MAKING_FRIENDS_WITH_MY_ARM,
 					QuestState.IN_PROGRESS));
 		}
-		return objectId == 30236 && transport.getDuration() == 1
+		return (objectId == 30236 && transport.getDuration() == 1
+			|| objectId == 30198 && transport.getDuration() == 0)
 			&& hasOnlySkill(transport, net.runelite.api.Skill.AGILITY, 0)
 			&& transport.getQuests().isEmpty();
 	}
 
 	static boolean isAuditedMiscAccessObject(int objectId)
 	{
-		return objectId == 30236 || objectId == 31626 || objectId == 33262
+		return objectId == 30198 || objectId == 30236 || objectId == 31626 || objectId == 33262
 			|| objectId == 38574 || objectId == 39170 || objectId == 44003;
 	}
 
@@ -2222,6 +2294,7 @@ public final class CatalogTransitionPolicy
 
 	public static boolean isAuditedHazardTransition(Transport transport)
 	{
+		if (LeafPitPolicy.isEligible(transport)) return true;
 		boolean agilityShadow = transport != null
 			&& transport.getType() == TransportType.AGILITY_SHORTCUT
 			&& Set.of(2234, 2236, 3922).contains(transport.getObjectId());
@@ -3218,6 +3291,96 @@ public final class CatalogTransitionPolicy
 			&& java.util.Arrays.stream(transport.getSkillLevels()).allMatch(level -> level == 0)
 			&& LUMBER_YARD_BROKEN_FENCE_ROUTE_KEYS.contains(routeKey(transport,
 				normalizeDirectAction(transport.getAction()), normalize(transport.getName())));
+	}
+
+	static WorldPoint brimhavenIslandStoneAnchor(Transport row)
+	{
+		if (row == null || row.getObjectId() != 19040 || row.getType() != TransportType.AGILITY_SHORTCUT
+			|| row.getOrigin() == null || row.getDestination() == null
+			|| row.getOrigin().getPlane() != 0 || row.getDestination().getPlane() != 0
+			|| !"Cross".equals(row.getAction()) || !"Stepping stone".equals(row.getName())
+			|| row.getDuration() != 4 || row.isConsumable() || row.getCurrencyAmount() != 0
+			|| !row.getItemIdRequirements().isEmpty() || !row.getQuests().isEmpty()
+			|| !row.getVarbits().isEmpty() || !row.getVarplayers().isEmpty()) return null;
+		WorldPoint from = row.getOrigin();
+		WorldPoint to = row.getDestination();
+		WorldPoint anchor;
+		int agility;
+		if (from.equals(new WorldPoint(2682, 9548, 0)) && to.equals(new WorldPoint(2690, 9547, 0)))
+		{ anchor = new WorldPoint(2684, 9548, 0); agility = 56; }
+		else if (from.equals(new WorldPoint(2690, 9547, 0)) && to.equals(new WorldPoint(2682, 9548, 0)))
+		{ anchor = new WorldPoint(2688, 9547, 0); agility = 0; }
+		else if (from.equals(new WorldPoint(2697, 9525, 0)) && to.equals(new WorldPoint(2695, 9533, 0)))
+		{ anchor = new WorldPoint(2696, 9527, 0); agility = 56; }
+		else if (from.equals(new WorldPoint(2695, 9533, 0)) && to.equals(new WorldPoint(2697, 9525, 0)))
+		{ anchor = new WorldPoint(2695, 9531, 0); agility = 0; }
+		else return null;
+		return hasOnlySkill(row, net.runelite.api.Skill.AGILITY, agility) ? anchor : null;
+	}
+
+	static WorldPoint tearsTunnelAnchor(Transport transport)
+	{
+		if (transport == null || transport.getType() != TransportType.TRANSPORT || !transport.isMembers()
+			|| transport.getOrigin() == null || transport.getDestination() == null
+			|| !"Enter".equals(transport.getAction()) || !"Tunnel".equals(transport.getName())
+			|| transport.isConsumable() || transport.getCurrencyAmount() != 0
+			|| !transport.getItemIdRequirements().isEmpty() || !transport.getQuests().isEmpty()
+			|| !transport.getVarbits().isEmpty() || !transport.getVarplayers().isEmpty()
+			|| java.util.Arrays.stream(transport.getSkillLevels()).anyMatch(level -> level != 0)) return null;
+		boolean inward = transport.getObjectId() == 6659;
+		if (!inward && transport.getObjectId() != 6658) return null;
+		WorldPoint from = transport.getOrigin();
+		int centerX = inward ? 3226 : 3219;
+		if (from.getPlane() != (inward ? 0 : 2) || from.getY() != (inward ? 9542 : 9532)
+			|| Math.abs(from.getX() - centerX) > 1
+			|| transport.getDuration() != (from.getX() == centerX ? 0 : 2)
+			|| !(inward ? new WorldPoint(3219, 9532, 2) : new WorldPoint(3226, 9542, 0))
+				.equals(transport.getDestination())) return null;
+		return inward ? new WorldPoint(3225, 9539, 0) : new WorldPoint(3218, 9533, 2);
+	}
+
+	static boolean isOldMuseumExit(Transport transport)
+	{
+		if (transport == null || transport.getObjectId() != 31892
+			|| transport.getType() != TransportType.TRANSPORT || transport.isMembers()
+			|| transport.getOrigin() == null || transport.getDestination() == null
+			|| !"Leave".equals(transport.getAction()) || !"Old passageway".equals(transport.getName())
+			|| transport.getDuration() != 0 || transport.isConsumable() || transport.getCurrencyAmount() != 0
+			|| !transport.getItemIdRequirements().isEmpty() || !transport.getQuests().isEmpty()
+			|| !transport.getVarbits().isEmpty() || !transport.getVarplayers().isEmpty()
+			|| java.util.Arrays.stream(transport.getSkillLevels()).anyMatch(level -> level != 0)) return false;
+		WorldPoint from = transport.getOrigin();
+		if (from.getPlane() != 0 || from.getY() < 9951 || from.getY() > 9952) return false;
+		return from.getX() == 3065 && new WorldPoint(3053, 3382, 0).equals(transport.getDestination())
+			|| from.getX() == 3014 && new WorldPoint(3038, 3382, 0).equals(transport.getDestination());
+	}
+
+	static boolean isCanifisTrapdoor(Transport transport)
+	{
+		return transport != null && transport.getObjectId() == 5055
+			&& transport.getType() == TransportType.TRANSPORT && transport.isMembers()
+			&& Set.of(new WorldPoint(3495, 3465, 0), new WorldPoint(3495, 3464, 0)).contains(transport.getOrigin())
+			&& new WorldPoint(3477, 9845, 0).equals(transport.getDestination())
+			&& "Open".equals(transport.getAction()) && "Trapdoor".equals(transport.getName())
+			&& transport.getDuration() == 0 && !transport.isConsumable()
+			&& transport.getQuests().equals(Map.of(Quest.IN_SEARCH_OF_THE_MYREQUE, QuestState.FINISHED))
+			&& transport.getCurrencyAmount() == 0 && transport.getItemIdRequirements().isEmpty()
+			&& transport.getVarbits().isEmpty() && transport.getVarplayers().isEmpty()
+			&& java.util.Arrays.stream(transport.getSkillLevels()).allMatch(level -> level == 0);
+	}
+
+	static boolean isEvilDaveBasement(Transport transport)
+	{
+		return transport != null && transport.getObjectId() == 12268
+			&& transport.getType() == TransportType.TRANSPORT && transport.isMembers()
+			&& new WorldPoint(3077, 3493, 0).equals(transport.getOrigin())
+			&& new WorldPoint(3077, 9893, 0).equals(transport.getDestination())
+			&& "Go-down".equals(transport.getAction()) && "Open trapdoor".equals(transport.getName())
+			&& transport.getDuration() == 1 && !transport.isConsumable()
+			&& transport.getQuests().equals(Map.of(Quest.SHADOW_OF_THE_STORM, QuestState.FINISHED))
+			&& transport.getCurrencyAmount() == 0 && transport.getItemIdRequirements().isEmpty()
+			&& transport.getVarbits().isEmpty() && transport.getVarplayers().isEmpty()
+			&& java.util.Arrays.stream(transport.getSkillLevels()).allMatch(level -> level == 0);
 	}
 
 	public static boolean supportsClosedVariant(String action)

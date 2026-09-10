@@ -2,6 +2,7 @@ package net.runelite.client.plugins.microbot.util.walker.banking;
 
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.util.walker.WalkerState;
+import net.runelite.client.plugins.microbot.util.magic.Runes;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -53,6 +54,22 @@ public class BankedTransportCoordinatorTest
 		assertEquals(List.of(BANK), operations.walkedTargets);
 		assertFalse(operations.preparedFinalRoute);
 		assertTrue(operations.closedBank);
+	}
+
+	@Test
+	public void insufficientMultiCastRuneCapacityClosesBankBeforeTargetLeg()
+	{
+		FakeOperations operations = new FakeOperations();
+		operations.bank.put(Runes.LAVA.getItemId(), 2);
+		Map<Integer, Integer> requirements = Rs2WalkerBankingPlanner.planRuneWithdrawals(
+			List.of(Map.of(Runes.FIRE, 1), Map.of(Runes.EARTH, 2)), Map.of(), Map.of(Runes.LAVA, 2));
+		BankedTransportCoordinator.Result result = BankedTransportCoordinator.execute(
+			BANK, requirements, TARGET, 10, operations);
+		assertEquals(WalkerState.EXIT, result.getWalkerState());
+		assertEquals(Integer.valueOf(Runes.EARTH.getItemId()), result.getFailedItemId());
+		assertEquals(List.of(BANK), operations.walkedTargets);
+		assertTrue(operations.closedBank);
+		assertFalse(operations.preparedFinalRoute);
 	}
 
 	@Test

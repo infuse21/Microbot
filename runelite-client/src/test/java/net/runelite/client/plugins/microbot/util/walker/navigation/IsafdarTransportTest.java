@@ -81,10 +81,11 @@ public class IsafdarTransportTest
 	}
 
 	@Test
-	public void leafPitsStayDisabledUntilRecoveryIsOwned()
+	public void leafPitsHaveEngineOwnedRecovery()
 	{
 		List<Transport> leaves = Transport.loadAllFromResources().values().stream().flatMap(Collection::stream)
 			.filter(row -> row.getObjectId() == 3925).collect(Collectors.toList());
-		assertTrue(leaves.isEmpty());
+		assertEquals(4, leaves.size());
+		assertTrue(leaves.stream().allMatch(CatalogTransitionPolicy::isEligible));
 	}
 }

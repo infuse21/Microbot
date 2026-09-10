@@ -1,8 +1,365 @@
 # Phase 6 behaviour-based batches
 
-Latest classifier audit: 2026-09-08; older sections below retain their dated snapshots.
+Latest residual metadata audit: 2026-09-09; older sections below retain their dated snapshots.
 This is the execution backlog for
 [walker unification](walker-unification-plan.md), not a new ownership policy.
+
+## September 9 bulk residual metadata audit
+
+September 10 mounted-menu cutover: the three MountedDigsite and four MountedXerics
+destinations now share explicit NavigationEngine portal stages. A base or non-selected
+decorative variant opens Teleport menu, the next observation selects the exact visible and
+unlocked destination, and a destination-specific transformed variant uses its direct action.
+The resolver scans only the current house/world view and approaches the real room object;
+missing or struck-through entries become UNAVAILABLE instead of falling into
+`PohTeleport.execute()`. The fail-first ownership test reported the old zero object identity.
+Compilation, focused mounted/chamber scene and ownership tests, client-thread/queryable
+guardrails, pathfinder benchmark and both Checkstyles pass. The guardrail baseline remains
+903/0 and no exemption was added. Physical testing is deferred; nexus, jewellery, POH
+ring/tree integration and graph generation remain open.
+
+September 10 POH network-generator correction: permutation-expanded transports now retain
+their source and destination endpoint components. `createTransportsToPoh` enumerates every
+unique external origin and destination, creates one inbound and outbound house connection
+per endpoint, and combines only the applicable endpoint requirements. This replaces the
+`findFirst()` behavior and avoids both missing inbound origins and requirement contamination
+from an unrelated destination/source. A fail-first two-origin/two-destination test pins all
+four house connections, item isolation and outbound de-duplication; focused POH,
+transport-cost and route-calculation tests pass. Runtime POH fairy-ring/spirit-tree ownership
+is still separate implementation work.
+
+Direct mounted facilities: four MountedGlory routes (13523) and one MountedMythical route
+(31986) now share the direct house portal lifecycle and resolved-room approach. Their exact
+cache actions are Edgeville/Karamja/Draynor Village/Al Kharid and Teleport respectively.
+This brings the direct typed POH slice to 45 destinations. Mounted digsite and Xeric's were
+subsequently admitted by the staged September 10 cutover above. Focused engine, scene, ownership,
+portal, guardrail and benchmark checks plus compilation and both Checkstyles pass (1m30s).
+
+Chamber ownership follow-up: all 40 typed chamber destinations now publish the engine's
+TELEPORTATION_PORTAL lifecycle. Resolution checks house presence, current world view, base
+or active object identity and exact destination action. The engine approaches the actual
+room portal rather than the synthetic house anchor. All variant and rejection cases, source
+unloading and selected landing have headless coverage. A 2,212-test full suite passed before
+the final approach correction; the final 90-test engine/portal/guardrail/benchmark selection,
+compilation and both Checkstyles passed afterward. Physical house-layout/diary/destination
+checks remain in the live ledger; other POH facility families and graph generation remain open.
+
+POH chamber prerequisite correction: `PohPortal.execute()` no longer hard-codes Enter for
+every destination. Varrock, Grand Exchange, Camelot and Watchtower expose named destination
+actions; `getAction()` now supplies those exact names, with Enter for the other chamber entries.
+The offline cache audit resolved all 149 referenced constants across ObjectID's inherited
+source files and inspected 160 definitions including transforms. Varrock bases transform on
+4585 and Camelot bases on 4560; their active variants offer destination actions, Toggle and
+Remove, not Enter. Watchtower variants likewise offer Watchtower/Yanille actions.
+`PohChamberActionTest` exercises dispatch for all 40 enum entries with mocked object helpers.
+This fixes shared action metadata only: chamber route ownership, instance-local approach,
+transformed-ID resolution and directed-landing acknowledgement still require migration.
+Compilation, both focused POH tests and both Checkstyles pass (1m6s). No physical test or
+client restart was performed for this headless prerequisite correction.
+
+Historical POH generation audit (fixed 2026-09-10): `PohPanel.createTransportsToPoh` selected only the first matching
+origin group with `findFirst()`. `Transport(origin, destination)` retains `origin.origin`,
+so every generated inbound house edge is still from that single selected source; iterating
+its destination rows does not create inbound edges from those destinations. The map keys
+match those edges, but other network origins receive no inbound connection. Simply iterating
+all groups is insufficient as a complete fix: already-expanded rows merge both endpoint
+requirements, and Transport uses identity equality, so naive rebuilding also duplicates
+house-outbound edges and could retain an unrelated source's requirements. The endpoint-retention
+correction above now has multi-origin and source-only/destination-only requirement coverage.
+This remains independent of whether a test account owns a house ring/tree.
+
+POH facility dispatch is also separate: `PohTransport.execute()` delegates directly to the
+facility's `PohTeleport.execute()` through the legacy `Rs2Walker.handlePohTransport` path.
+The first bounded runtime migration should cover deterministic chamber portals, whose
+`PohPortal` enum already identifies destination-specific object IDs; nexus and jewellery
+interfaces need their own staged protocols rather than reclassifying the whole POH type.
+
+Acceptance scope now follows the user's September 9 amendment in the unification plan:
+unavailable live tests remain deferred and do not block Phase 6 implementation/headless closure.
+
+Post-Ice-Troll historical inventory: 49 exact identity matches (requirements not compared),
+36 nearby-ID candidates, six same-direction candidates and 64 rows with no local match.
+These are diagnostic row counts, not remaining implementation counts: duplicate approaches,
+malformed identities and replacement geometry still require individual contract decisions.
+The full-suite bridge regression now covers all 15 loaded Fremennik crossings (ten surface,
+five underground), restricts the level-40 assertion to mine-shortcut IDs 21314/21315, and
+checks incomplete positions using each route's actual direction and plane.
+
+Implemented batch: six Tears-cave approaches (6659 inward, 6658 outward). The
+[Chasm of Tears](https://oldschool.runescape.wiki/w/Chasm_of_Tears) explicitly needs no light
+source and is accessible before Tears of Guthix completion; the adjacent
+[Lumbridge Swamp Caves](https://oldschool.runescape.wiki/w/Lumbridge_Swamp_Caves) need light
+unless their eternal fire is lit. Do not conflate access to Juna with the quest-gated minigame,
+games-necklace destination or light-creature ride. Player/plugin owns protective loadouts;
+neither tunnel inherently consumes a travel item. The missing members metadata is corrected.
+
+Offline cache probe `TearsPlacement.java` in the existing temporary cache-probe directory finds
+6659 at (3225,9539,0), bridge flags 8 (not a bridge-plane adjustment), and 6658 at (3218,9533,2),
+flags 0; both expose Enter. The inward anchor is three tiles from the old Y=9542 approaches,
+beyond the generic two-tile resolver radius. The scene now uses an exact per-direction anchor rather than a
+broad Tunnel-name search. Quest helpers independently target these same objects at nearby
+footprint points (3226,9540,0) and (3219,9534,2). Source durations disagree (central 0, side 2);
+physical timing and landings remain unverified. The six rows retain their individual historical
+durations and source comments; no invented canonical timing is substituted. No quest gate,
+automatic light-source banking or quest-solving interaction is added.
+
+Bulk cache definitions also identify swapped Shayzien source IDs: 31967 is Rope/Climb
+(`shayzienquest_lab_exit`), whereas 32507 is Magic Gate/Pass (`shayzienquest_cave_door`).
+The disabled rows use the opposite identities, and the rope origin (9363,1050,0) is not a
+verified template coordinate. Correct placement/unlock contracts before restoring either.
+
+Placement follow-up: `ShayzienPlacement.java` (temporary offline cache probe) confirms the
+climbable rope 31967 at (1168,9973,0), with an actionless rope prop 31968 directly above on
+plane 1. Tile flags are 8, not the bridge-plane bit. Magic Gate 32507 is at (1171,9946,0)
+with Pass; the historical supposed gate origin (1169,9973,0) is actually beside the exit rope.
+Surface crevice base 32502 is at (1214,3558,0), with Inspect/Enter variants 31965/31966.
+The old rope destination (1214,3557,0) is adjacent to that surface placement, but adjacency
+does not establish the server's exact landing. Do not simply swap IDs and activate both rows.
+The local TaleOfTheRighteous quest helper independently targets exit rope 31967 at the same
+template anchor. Its barrier step and the
+[wiki walkthrough](https://oldschool.runescape.wiki/w/Tale_of_the_Righteous#Another_expedition)
+identify the corrupt-lizardman encounter separately. Remaining implementation decisions are
+the outward rope's landing contract and the gate's post-unlock crossing contract, not automatic
+combat or quest solving. Neither is marked implemented or live-passed by this metadata audit.
+
+Fremennik cave 21584 is now supported for three exact approaches at quest varbit 3311 values
+300 and 310 (six variants), using the existing quest-state passage dispatcher and cache anchor
+(2401,3889,0). QuestHelper routes entry at those pre-king-death stages. Stage 320 and later
+are not assigned the old landing: the [quest guide](https://oldschool.runescape.wiki/w/The_Fremennik_Isles)
+describes direct return to the corpse, and the [caves](https://oldschool.runescape.wiki/w/Ice_Troll_Caves)
+are western-entrance-only after completion. No combat or equipment preparation is added.
+
+The five underground bridge rows now use exact quest-state passage ownership.
+Cache anchors (plane 1, tile flags 1) are 21316=(2385,10263), 21317=(2385,10260),
+21318=(2397,10258), 21319=(2394,10258). QuestHelper's boss-entry step uses 21316 and
+requires FRIS_TASK/3312=0 after ten trolls; only that southbound boss-entry row carries this
+requirement. The return and east/west passage rows carry no item or surface bridge-repair gate.
+The quest guide explicitly describes leaving via the east bridge or returning the way entered
+after the fight. Static metadata does not prove pre-victory retreat or post-quest traversal;
+those physical states remain in the live ledger. No combat or automatic quest progression occurs.
+
+Museum evidence correction: the [Old passageway](https://oldschool.runescape.wiki/w/Old_passageway)
+Wiki page distinguishes upstairs object 31892 (Leave to the Falador Party Room) from downstairs
+object 47316 (decorative, no Leave). The earlier source comment calling 31892 an unusable prop
+was not supported. Offline cache inspection places the exits at (3013,9951,1) and (3066,9951,1),
+both with bridge flag 2, giving effective plane 0 beside the four historical approaches.
+Those four directed exits are now restored under exact catalog ownership; item, fare, quest,
+skill and membership requirements remain absent. Landing acknowledgement requires the selected
+historical surface tile. Source comments retain the original four rows as audit evidence.
+The OSRS MCP loctype index independently distinguishes `31892 osb5_passageway_leave` from
+`47316 osb5_passageway_noop`; it does not provide placement or landing verification.
+The separate offline cache probe confirms Leave versus no actions and the placements above.
+Its path is `%TEMP%/microbot-debug-probes/leaf-pit-cache-20260909/MuseumPlacement.java`.
+Actual server landing and a rebuilt-client journey remain live gates.
+
+Karuulm implementation follow-up supersedes the research deferral below: the 24 directed
+elevator/rock/stair contracts now have 54 exact variants, with free safe-entry/escape directions
+and equipment/claimed-diary gating for onward heat travel. Real equip levels are rechecked in
+the scene adapter before input; the existing non-blocking equipment stages own boot preparation.
+The original ungated elevator/stair comments remain audit evidence. Compilation, 47 selected
+tests including the benchmark and guardrails, and both Checkstyle tasks passed. Loader count:
+6,139 origins. The live ledger retains all unproved physical boundary, banking and landing cases.
+
+Karuulm boundary research: the [dungeon](https://oldschool.runescape.wiki/w/Karuulm_Slayer_Dungeon)
+and [mountain](https://oldschool.runescape.wiki/w/Mount_Karuulm) pages explicitly distinguish the
+safe entrance chamber from the damaging floor beyond it. The elevator's four disabled approach/
+landing variants are therefore not inherently heat-gated; an implementation must not require
+boots just to visit the Tasakaal. The bundled Ascent of Arceuus helper anchors its Activate
+object at `(1311,3807,0)`. Eight disabled upper-floor stair rows remain a separate hot-floor
+contract. The resource already has twelve object-34544 rock crossings around the entrance;
+audit their directed geometry, warning handling and protective requirements together before
+making deeper routes newly reachable through the elevator. The shared equipment adapter chooses
+the first carried alternative without checking equip levels, so reusing it unchanged would not
+establish readiness: [boots of stone](https://oldschool.runescape.wiki/w/Boots_of_stone) require
+44 Slayer; [granite boots](https://oldschool.runescape.wiki/w/Granite_boots) require 50 Defence/
+Strength; [Boots of Brimstone](https://oldschool.runescape.wiki/w/Boots_of_Brimstone) require
+44 Slayer and 70 Defence/Magic/Ranged.
+Elite diary *reward* immunity must be distinguished from task completion. No elevator, stair or
+rock contract was changed by this research, and no physical boundary traversal was performed.
+
+Mushtree candidate audit: all 12 historical rows have nearby generated `MAGIC_MUSHTREE`
+edges with engine ownership, but the attempted transport-free connectivity proof failed.
+All four historical source tiles expose no cardinal exits in the bundled collision map;
+none of the 12 old-origin-to-generated-origin checks succeeded. This is not evidence that the
+current generated routes fail, nor proof that the old tiles are valid player standing tiles.
+The audit therefore records, rather than assumes, connectivity in
+`runelite-client/build/reports/walker-mushtree-connectivity.tsv`. The historical ordinary rows
+remain disabled; do not count this audit as 12 new migrations or re-enable them to bypass the
+network configuration/unlock handler. The 20 selected inventory, mushtree-policy/scanner and
+feature-toggle tests plus Checkstyle passed in 23s. Physical/scene confirmation of the old
+anchors remains separate from the already implemented generated-network protocol.
+
+Loaded-graph follow-up: `DisabledTransportInventoryTest` now emits
+`runelite-client/build/reports/walker-disabled-transports.tsv` from the real resource loader,
+including generated family edges. Of 155 historical comments, 19 have exact directed identity
+matches (requirements are not compared), six have same-direction/different-identity candidates,
+36 have same-object candidates within three tiles at both ends, and 94 have no such local match.
+The nearby group includes 12 mushtrees, 16 jungle rows, four rock slides, two vines and two portals.
+Those candidates require geometry/protocol review; neither 94 nor 130 is a remaining-migration
+count. The audit asserts all exact aliases still classify as engine-owned and pins both Canifis
+approaches. The test and Checkstyle passed in 18s. It does not enable any historical row or prove
+account availability, requirements equivalence or live travel.
+
+Post-Canifis cross-resource recount: 155 commented numeric rows remain; 19 match an active TSV
+origin/destination/action/name/object-ID signature after normalizing case, spaces and hyphens.
+Twenty-five match an active direction regardless of identity. These are candidate aliases, not
+proof of equivalent requirements. This scan excludes dynamically generated families, so its
+130 unmatched directions are not a remaining-work count either. In particular, historical
+mushtree and jungle rows must be checked against their specialized resource loaders. Keep the
+74-contract historical tally explicitly non-authoritative until a loaded-graph audit reconciles
+all generated families, quest variants and malformed entries.
+
+Canifis follow-up: the two 5055/Open approaches now have post-Myreque quest-gated catalog
+ownership with dispatch-time quest checks and exact cellar landing. The historical ungated
+comments stay disabled. Loader count is 6,129 origins. Earlier quest-stage access and physical
+acceptance remain open; the older 74-source-contract tally below has not been re-audited into
+a count of fully resolved routes. See the live ledger for source evidence and remaining gates.
+
+Eastern Brimhaven stones audit: the four commented ordinary rows duplicate four already-active
+`AGILITY_SHORTCUT` rows, all of which incorrectly required 56 Agility. A transport-free flood
+fill of the collision map proves 2690,9547 and 2695,9533 share the island, disconnected from
+2682,9548 and 2697,9525. The [wiki](https://oldschool.runescape.wiki/w/Stepping_stones_(Eastern_Brimhaven_Dungeon))
+requires 56 only towards the island. The canonical agility rows now encode that asymmetry,
+retain their four-tick cost and feature switch, resolve the exact source-side stone and require
+the exact destination. No duplicate ordinary rows were enabled.
+
+Copied-cache source anchors, in directed-origin order: 2682,9548 -> 2684,9548;
+2690,9547 -> 2688,9547; 2697,9525 -> 2696,9527; 2695,9533 -> 2695,9531.
+Only 19040 has Cross; 19041 is actionless scenery between the active endpoint stones.
+Compilation, all 36 focused tests, benchmark and both Checkstyle tasks passed in 1m 48s.
+The first run exposed a guardrail attribution issue on the skill ordinal lookup; making its
+client-thread snapshot explicit resolved it without exemptions. This corrects the earlier backlog count: its 78 “genuine disabled
+traversals” included these four active duplicates. The remaining **74 unresolved source
+contracts are not a verified count of distinct missing runtime routes**; further deduplication
+and protocol audits are required before using that number as a Phase 6 completion measure.
+
+Quest-state passage batch: five directed contracts publish eleven disjoint variants. Zogre's
+already-crushed barricade requires 496=1 (6878 -> 6882); Slug Menace's already-open wall requires
+2618=1 (19124 -> 18360), with the static reverse passage 18412 ungated for escape. Enakhra rubble
+33342 exposes Climb-over 33340 only at quest states 50, 60, 65 and 70; both directions encode those
+four exact values rather than a broad >=50 gate admitting absent transforms. Cache placements and
+the bundled quest helpers establish the exact anchors. The walker does not crush the barricade,
+push the quest wall, build the temple or fight anything. Compilation, all 25 focused tests,
+benchmark, unchanged guardrail and both Checkstyle tasks passed in 1m 42s. The latest totals
+are 6,127 loaded origins / 78 genuine disabled traversals; physical acceptance remains open.
+
+The placement audit also disproved a tempting Grand Tree substitution: varp-150 wrapper 2444
+(which changes to Climb-down 26243 at 130-160) is at Glough's house, 2487,3464,2. The central
+2463,3497,0 entrance is static 2446/Open, so that wrapper cannot establish its access protocol.
+Likewise 18342 is Slug Menace lair-wall scenery, not Enakhra bones; those two malformed bone
+rows remain disabled. Probe: `%TEMP%/microbot-debug-probes/leaf-pit-cache-20260909/QuestAccessCache.java`.
+
+Quest-trapdoor protocol audit (after the Molch batch):
+
+| Entry | Verified evidence | Required before cutover |
+| --- | --- | --- |
+| Basement of Doom | Cache 12267 is Trapdoor/Open; 12268 is Open trapdoor/Go-down/Close. Both bundled Evil Dave helpers explicitly pair these IDs at 3077,3493,0. The wiki requires completed Shadow of the Storm. | Publish the actual Go-down traversal with exact closed-state preparation, retain its quest gate, and test that Open alone never acknowledges descent. Confirm underground landing. |
+| Grand Tree | Cache 2446 is GRANDTREE_TRAPDOORUNDER with Open, no transform array. The wiki allows the tunnels during and after the quest, but the northern mine specifically after completion. Nearby constants 2444/2445 are separate objects, not demonstrated transforms of 2446. | Verify the exact central entrance protocol and quest stage; do not assume opening always exposes a second object or equate all tunnel access with completed-quest mine access. |
+| Canifis tavern | Cache 5055 has Open and no transform array; 5054 is the underground Climb-up ladder. The Myreque helper exits via 5054 at 3477,9846,0. | Establish the surface Open outcome and entry unlock before choosing direct versus staged handling; an actionless transform was not found by this audit. |
+
+Sources: [Basement of Doom](https://oldschool.runescape.wiki/w/Basement_of_Doom),
+[Grand Tree Tunnels](https://oldschool.runescape.wiki/w/Grand_Tree_Tunnels), copied-cache object
+definitions, and the bundled RFDEvilDave/MakeEvilStew/InSearchOfTheMyreque helpers.
+Implementation follow-up: Evil Dave's corrected 12268/Go-down row is now active under the exact
+quest-gated catalog handler; its old 12267/Open row remains commented historical evidence.
+Compilation, 110 focused tests, benchmark, unchanged guardrail and both Checkstyle tasks passed
+in 1m 45s. The loader reports 6,122 origins; resolving this historical entry leaves 83 genuine
+disabled traversals. The three Grand Tree/Canifis approaches remain implementation work.
+The shared handler must distinguish a preparatory Open
+from a direct Open-triggered traversal using evidence, rather than installing a universal second
+click for every object named trapdoor.
+
+Molch batch: all 20 directed crossings now use the catalog handler, including four restored
+barrier-34642 rows previously mislabelled as Karuulm object 34542. The copied cache identifies
+34542 as lava scenery and 34642-34646 as five independent wrappers using varbits 7942-7946.
+States 0-2/3-5/6-10 expose green/orange/red objects 34432/34433/34434; unknown states are refused.
+Cache placements have the bridge flag, yielding the existing effective plane-0 coordinates.
+The [Lizardman Temple documentation](https://oldschool.runescape.wiki/w/Lizardman_Temple) describes
+increasing crossing damage and decay, not Karuulm heat. Dispatch budgets a possible next-colour
+increase and requires HP above that budget. Exact geometry, membership, live colour/action and
+opposite-side acknowledgement replace the old generic adjacent shortcut. Compilation, 89 focused
+tests (zero failures/errors/skips), benchmark, unchanged guardrail and both Checkstyle tasks passed
+in 1m 10s. Loaded origins are now **6,121**, with **84 genuine disabled traversals** after resolving
+the four mistyped entries; their commented aliases remain historical evidence, not open routes.
+Physical colour/damage/counter acceptance remains in the live ledger. Older counts below describe
+the earlier checkpoints.
+
+Revenant payment audit: the [cave documentation](https://oldschool.runescape.wiki/w/Revenant_Caves)
+confirms a 100,000-coin fee that the server can deduct directly from the bank. It persists until
+any death inside the caves or a PvP death elsewhere in the Wilderness; ordinary death elsewhere
+is not the documented invalidation rule. Do not implement this as an unconditional withdrawal
+or a fee for every traversal. Wiki MCP varbit/varp searches and the generated gameval catalog
+did not establish a Revenant paid-state variable. `6506` is `wilderness_cave_mid_warning`, not
+payment; `14693` is `wbr_entrance_fee_paid`, not evidence for the Revenant contract. The 16
+object-40386 approaches remain disabled, and the 88-traversal remainder is unchanged. Required
+evidence before cutover: exact unpaid/paid confirmation frames, bank-only deduction behavior,
+and a confirmed paid-state signal or an explicit protocol that handles unknown state without
+excluding already-paid access or charging again. No client input or payment was issued.
+
+Northern shortcut batch: four Ungael side passages and all ten Weiss cliff directions now use
+exact NavigationEngine catalog ownership. The copied cache confirms the three Ungael base/transform
+pairs and anchors; `DragonSlayerII` identifies `DS2_FREM >= 30` as defeated quest Vorkath, matching
+their actionless-to-actionable transform boundary. The Weiss rope transforms activate at quest
+stage 45, also matched by `MakingFriendsWithMyArm`'s scaling-the-mountain steps. Static rockslides
+and ledge do not gain an invented completed-quest gate. No rope is withdrawn or installed.
+
+The [rockslide](https://oldschool.runescape.wiki/w/Rockslide_(Weiss)),
+[tree](https://oldschool.runescape.wiki/w/Tree_(Weiss)) and
+[ledge](https://oldschool.runescape.wiki/w/Ledge_(Weiss)) articles distinguish 68-Agility ascents
+from unrestricted descents; the [quest guide](https://oldschool.runescape.wiki/w/Making_Friends_with_My_Arm)
+documents up to 15 damage on rockslides. The engine now recognizes an exact earlier Weiss stage
+after an issued crossing, including zig-zag falls missed by a simple direction projection, and
+requests a replan rather than reissuing the later crossing. All 14 directions require the exact
+source tile before dispatch and exact destination before acknowledgement. The live ledger retains
+actual fall positions, damage, crossings and rebuilt-client acceptance as unproved.
+Validation passed in one combined run: compilation, 142 tests, unchanged guardrail baseline and
+both Checkstyle tasks, 1m 35s. The benchmark's total best-route times were 1,343ms. The latest
+production totals are **6,117 loaded origins / 88 genuine disabled traversals**; physical acceptance
+remains deferred and no client restart or commit was performed.
+
+Brimhaven payment contract follow-up: copied cache varbit definitions place 5628 at varp 393
+bit 0 (single-entry fee), 5629 at bits 1-2 (southern backdoor), and 8123 at bits 0-3 (door data).
+`KARAM_DUNGEON_PERMANENTACCESS` is 8122; the bundled Rag and Bone Man II helper independently
+records door data changing 0 -> 8 on permanent purchase. Thus southern unlock bits must not
+affect the entry fare. The new pure `BrimhavenEntrancePolicy` covers all 16 valid door states,
+coin shortfalls, the Yes/No and million-coin-holder menus, scoped Saniboch receipt continuation,
+and refusal to pay again after confirmation. It never selects permanent purchase. Dialogue
+evidence: [Saniboch transcript](https://oldschool.runescape.wiki/w/Transcript:Saniboch).
+**Integrated follow-up:** scene dispatch and graph requirements now cover 21 canonical variants
+across the seven approaches, replacing 14 disabled aliases. Paid, already-paid and permanent
+access use disjoint predicates; exact underground landing clears the NavigationEngine leg.
+The conflicting exit landing remains unresolved and its rows remain disabled. The Brimhaven checkpoint
+totals were 6,106 loaded origins and 102 genuine disabled traversals. Physical acceptance is still open.
+Validation: compilation, all 12 focused Brimhaven tests and both Checkstyle tasks passed
+in 1m 25s. No client restart, gameplay input, full-suite run or commit was performed.
+Integrated validation: the initial 87-test batch passed production classification and the
+pathfinder benchmark (2,656ms total best-route times), but exposed an explicit widget-wrapper
+guardrail issue and an incomplete scene fixture. After correcting the wrapper and fixture
+(including its Supplier overload), compilation, all 14 Brimhaven/guardrail checks and both
+Checkstyle tasks passed in 59s. The guardrail remains at 903 with no new exemptions. The scene
+test exercises all 21 variants, payment/receipt/entry, refreshed access without coins, object
+identity/anchor rejection and no repeated confirmation. No live crossing is claimed.
+
+The copied game cache was queried in one pass for every object ID extracted from commented
+numeric transport rows, plus its direct transforms. This includes historical duplicates and
+malformed rows, so it is not a new count of genuine disabled traversals. Current implementation
+counts at that metadata-only audit were 6,099 loaded origins and 116 genuine disabled traversals;
+the integrated Brimhaven follow-up above supersedes those counts.
+Probe: `%TEMP%/microbot-debug-probes/leaf-pit-cache-20260909/DeferredTransportCache.java`.
+
+| Shared batch | Verified cache evidence | Remaining implementation evidence |
+| --- | --- | --- |
+| Paid Brimhaven entrance | Base 20877 uses varbit 8123: values 0/2/4/6 resolve to Pay 34713; 1/3/5/7 and 8-15 resolve to Enter 20876; fallback absent. Exit 20878 has Leave. | Decode temporary/permanent access, payment outcome and conflicting exit landings; 20876/20877 are not stale IDs. |
+| Quest-transformed passages | Ungael bases 29868/29869/29870 use 6108: values 0-29 are actionless, fallback transforms 31994/31996/31998 have Climb-over/Climb-down/Climb-up. Weiss 33327/33328 use 6528: 0-44 actionless, fallback 33187/33188 has Climb. | Verify quest semantics and placements before defining access bounds; fallback action alone does not prove a safe route or failure recovery. |
+| Other quest transforms | Barricade 6878 uses 496; wall 19124 uses 2618; Harmony door 22119 uses 3393; statue 22355 uses 3401; rubble 33342 uses 1560. | Freeze eligible quest states and exact landings together, reusing the existing catalog scene snapshot. |
+| Non-transforming obstacles | Crevice 40386 has Jump-Down; bridges 21316-21319 have Walk-across; elevator 34359 has Activate; steps 34530/34531 have Climb. | Their payment, repair, equipment or destination contracts still need evidence; having an action does not establish eligibility. |
+| Malformed/obsolete identity rows | 31967 is Rope/Climb while 32507 is Magic Gate/Pass; 17900, 18342 and 34542 have no actions. | Do not simply uncomment or swap IDs: geometry and actual route identity must be resolved first. |
+
+Wiki MCP varbit lookup independently confirms the names `karam_dungeon_doordata` (8123),
+`ds2_frem` (6108), and `my2arm_status` (6528), matching `VarbitID`. This is metadata evidence,
+not live crossing acceptance. Source deferral comments for Brimhaven and Ungael are corrected.
+Implement related contracts in batches with one focused validation run; reserve full-suite runs
+for major checkpoints. Existing live-only entries remain open in the acceptance ledger.
 
 ## September 8 Max-cape duplicate cleanup
 

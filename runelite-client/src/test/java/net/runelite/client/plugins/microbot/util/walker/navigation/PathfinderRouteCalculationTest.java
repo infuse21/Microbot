@@ -27,6 +27,23 @@ import static org.junit.Assert.fail;
 public class PathfinderRouteCalculationTest
 {
 	@Test
+	public void resourceAreaPaidAndFreeVariantsPublishCatalogOwnership()
+	{
+		int count = 0;
+		for (Set<Transport> group : Transport.loadAllFromResources().values())
+		{
+			for (Transport row : group)
+			{
+				if (row.getObjectId() != 26760) continue;
+				assertEquals(RouteEdge.Kind.CATALOG_TRANSITION,
+					PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(row)));
+				count++;
+			}
+		}
+		assertEquals(5, count);
+	}
+
+	@Test
 	public void everyLoadedLadderIsEngineOwnedIncludingEquipmentPreparation()
 	{
 		int ladders = 0;
@@ -879,7 +896,11 @@ public class PathfinderRouteCalculationTest
 			.filter(candidate -> "Enter".equals(candidate.getAction()))
 			.filter(candidate -> "Tunnel".equals(candidate.getName()))
 			.collect(java.util.stream.Collectors.toList());
-		assertEquals(34, tunnels.size());
+		assertEquals(40, tunnels.size());
+		assertEquals(6, tunnels.stream().filter(candidate -> candidate.getObjectId() == 6658
+			|| candidate.getObjectId() == 6659)
+			.filter(candidate -> PathfinderRouteCalculation.classifyTransportEdge(
+				Collections.singleton(candidate)) == RouteEdge.Kind.CATALOG_TRANSITION).count());
 		assertEquals(3, tunnels.stream().filter(candidate -> candidate.getObjectId() == 2141)
 			.filter(candidate -> PathfinderRouteCalculation.classifyTransportEdge(
 				Collections.singleton(candidate)) == RouteEdge.Kind.CATALOG_TRANSITION).count());
@@ -941,6 +962,7 @@ public class PathfinderRouteCalculationTest
 			.flatMap(java.util.Collection::stream)
 			.filter(row -> row.getType() == TransportType.TRANSPORT)
 			.filter(row -> "Climb".equals(row.getAction()) && "Steps".equals(row.getName()))
+			.filter(row -> row.getObjectId() != 34530 && row.getObjectId() != 34531)
 			.collect(java.util.stream.Collectors.toList());
 		assertEquals(12, steps.size());
 		java.util.Map<String, WorldPoint> inputs = new HashMap<>();
@@ -1284,7 +1306,7 @@ public class PathfinderRouteCalculationTest
 	}
 
 	@Test
-	public void molchMysticalBarriersPublishAndKaruulmHazardIsRemoved()
+	public void correctedMolchMysticalBarriersUseCatalogOwnership()
 	{
 		java.util.List<Transport> barriers = Transport.loadAllFromResources().values()
 			.stream().flatMap(java.util.Collection::stream)
@@ -1293,10 +1315,10 @@ public class PathfinderRouteCalculationTest
 			.filter(candidate -> "Mystical barrier".equals(candidate.getName()))
 			.collect(java.util.stream.Collectors.toList());
 
-		assertEquals(16, barriers.size());
-		assertEquals(16, barriers.stream().filter(candidate ->
+		assertEquals(20, barriers.size());
+		assertEquals(20, barriers.stream().filter(candidate ->
 			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(candidate))
-				== RouteEdge.Kind.ADJACENT_TRANSPORT).count());
+				== RouteEdge.Kind.CATALOG_TRANSITION).count());
 		assertEquals(0, barriers.stream().filter(candidate -> candidate.getObjectId() == 34542)
 			.filter(candidate -> PathfinderRouteCalculation.classifyTransportEdge(
 				Collections.singleton(candidate)) == RouteEdge.Kind.TRANSPORT).count());
@@ -1337,11 +1359,12 @@ public class PathfinderRouteCalculationTest
 			.filter(candidate -> "Rocks".equals(candidate.getName()))
 			.collect(java.util.stream.Collectors.toList());
 
-		assertEquals(55, rocks.size());
-		assertEquals(4, rocks.stream().filter(candidate ->
+		assertEquals(73, rocks.size());
+		assertEquals(30, rocks.stream().filter(candidate -> candidate.getObjectId() == 34544).count());
+		assertEquals(0, rocks.stream().filter(candidate ->
 			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(candidate))
 				== RouteEdge.Kind.ADJACENT_TRANSPORT).count());
-		assertEquals(51, rocks.stream().filter(candidate ->
+		assertEquals(73, rocks.stream().filter(candidate ->
 			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(candidate))
 				== RouteEdge.Kind.CATALOG_TRANSITION).count());
 		assertEquals(2, rocks.stream().filter(candidate -> candidate.getObjectId() == 3748)
@@ -1351,6 +1374,24 @@ public class PathfinderRouteCalculationTest
 			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(candidate))
 				== RouteEdge.Kind.TRANSPORT).collect(java.util.stream.Collectors.toList());
 		assertEquals(0, locked.size());
+	}
+
+	@Test
+	public void karuulmFreeDiaryAndEquipmentVariantsPublishEngineOwnership()
+	{
+		java.util.List<Transport> rows = Transport.loadAllFromResources().values().stream()
+			.flatMap(java.util.Collection::stream)
+			.filter(row -> row.getObjectId() == 34359 || row.getObjectId() == 34544
+				|| row.getObjectId() == 34530 || row.getObjectId() == 34531)
+			.collect(java.util.stream.Collectors.toList());
+		assertEquals(54, rows.size());
+		assertEquals(20, rows.stream().filter(row -> "Steps".equals(row.getName())).count());
+		assertEquals(30, rows.stream().filter(row -> !row.getItemIdRequirements().isEmpty()).count());
+		for (Transport row : rows)
+		{
+			assertEquals(RouteEdge.Kind.CATALOG_TRANSITION,
+				PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(row)));
+		}
 	}
 
 	@Test
@@ -1680,6 +1721,35 @@ public class PathfinderRouteCalculationTest
 		assertTrue(door != null);
 		assertEquals(RouteEdge.Kind.ADJACENT_TRANSPORT,
 			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(door)));
+	}
+
+	@Test
+	public void southernBrimhavenBackdoorPublishesFiveEngineOwnedRows()
+	{
+		java.util.List<Transport> rows = Transport.loadAllFromResources().values().stream()
+			.flatMap(java.util.Collection::stream)
+			.filter(row -> row.getObjectId() == 66 || row.getObjectId() == 30201)
+			.collect(java.util.stream.Collectors.toList());
+		assertEquals(5, rows.size());
+		for (Transport row : rows)
+		{
+			assertEquals(RouteEdge.Kind.CATALOG_TRANSITION,
+				PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(row)));
+		}
+	}
+
+	@Test
+	public void brimhavenCrevicePassagesPublishEngineOwnershipWithoutASlayerTaskGate()
+	{
+		java.util.List<Transport> rows = Transport.loadAllFromResources().values().stream()
+			.flatMap(java.util.Collection::stream).filter(row -> row.getObjectId() == 30198)
+			.collect(java.util.stream.Collectors.toList());
+		assertEquals(2, rows.size());
+		for (Transport row : rows)
+		{
+			assertEquals(RouteEdge.Kind.CATALOG_TRANSITION,
+				PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(row)));
+		}
 	}
 
 	private static PathfinderConfig config()

@@ -133,13 +133,13 @@ public class TransportFeatureToggleTest
 	}
 
 	@Test
-	public void enabledStochasticHazardsRespectAgilityToggleAndUnsafeLeavesStayDisabled()
+	public void stochasticHazardsIncludingRecoveredLeafJumpsRespectAgilityToggle()
 		throws Exception
 	{
 		assertShadowRows("Well stacked rocks", "useAgilityShortcuts", Set.of(2234), 1);
 		assertShadowRows("Climbing rocks", "useAgilityShortcuts", Set.of(2236), 1);
 		assertShadowRows("Sticks", "useAgilityShortcuts", Set.of(3922), 6);
-		assertShadowRows("Leaves", "useAgilityShortcuts", Set.of(3925), 0);
+		assertShadowRows("Leaves", "useAgilityShortcuts", Set.of(3925), 4);
 	}
 
 	@Test
@@ -181,6 +181,15 @@ public class TransportFeatureToggleTest
 			}
 		}
 		assertEquals(10, found);
+	}
+
+	@Test
+	public void weissCliffDirectionsRespectAgilityToggle() throws Exception
+	{
+		assertShadowRows("Rockslide", "useAgilityShortcuts", Set.of(33184, 33185, 33191), 6);
+		assertShadowRows("Rope", "useAgilityShortcuts", Set.of(33328), 1);
+		assertShadowRows("Roped tree", "useAgilityShortcuts", Set.of(33327), 1);
+		assertShadowRows("Ledge", "useAgilityShortcuts", Set.of(33190), 2);
 	}
 
 	private static void assertShadowRows(String name, String toggle, Set<Integer> ids,

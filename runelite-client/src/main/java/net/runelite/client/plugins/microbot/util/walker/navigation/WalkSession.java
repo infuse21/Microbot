@@ -1,6 +1,7 @@
 package net.runelite.client.plugins.microbot.util.walker.navigation;
 
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.client.plugins.microbot.util.walker.banking.SpellEquipmentTransaction;
 
 import java.util.EnumMap;
 import java.util.HashSet;
@@ -43,6 +44,14 @@ final class WalkSession
 	int lastProgressRawIndex = -1;
 	int routeDistance = Integer.MAX_VALUE;
 	RouteInteraction pendingInteraction;
+	SpellEquipmentTransaction equipmentTransaction;
+	boolean equipmentRestorationRequired;
+	long equipmentRestorationStartedAtMs = -1L;
+	boolean equipmentCommandAttempted;
+	boolean equipmentTabCommandAttempted;
+	boolean staffEquipAttempted;
+	boolean staffTabAttempted;
+	long staffPreparationStartedAtMs = -1L;
 	final List<RouteInteraction> clearedInteractionsAwaitingCrossing = new ArrayList<>();
 	boolean interactionCommandPending;
 	WorldPoint interactionCommandOrigin;
@@ -71,6 +80,7 @@ final class WalkSession
 
 	void install(RoutePlan plan)
 	{
+		if (equipmentTransaction != null) equipmentRestorationRequired = true;
 		routePlan = plan;
 		generation = plan.getGeneration();
 		rawProgressIndex = -1;

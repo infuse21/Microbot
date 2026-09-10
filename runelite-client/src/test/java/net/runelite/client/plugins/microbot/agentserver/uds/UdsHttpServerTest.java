@@ -9,6 +9,7 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+import org.junit.rules.Timeout;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -40,6 +41,9 @@ public class UdsHttpServerTest {
 
     @Rule
     public TemporaryFolder tempFolder = new TemporaryFolder();
+
+    @Rule
+    public Timeout socketTestDeadline = new Timeout(15, TimeUnit.SECONDS);
 
     private UdsHttpServer server;
     private ExecutorService executor;

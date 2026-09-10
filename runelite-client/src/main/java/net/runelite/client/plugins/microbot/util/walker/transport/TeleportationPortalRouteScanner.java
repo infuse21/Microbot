@@ -72,13 +72,16 @@ public final class TeleportationPortalRouteScanner
 	private static RouteInteraction interaction(long generation, RouteEdge edge,
 		TeleportationPortal portal, WorldPoint player, int interactionDistance)
 	{
-		boolean ready = player != null
+		boolean unavailable = TeleportationPortalPolicy.POH_DESTINATION_UNAVAILABLE
+			.equals(portal.getAction());
+		boolean ready = !unavailable && player != null
 			&& player.getPlane() == portal.getObjectTile().getPlane()
 			&& player.distanceTo2D(portal.getObjectTile()) <= interactionDistance;
 		return new RouteInteraction(generation, edge.getRawIndex(), edge.getFrom(),
 			edge.getTo(), portal.getObjectTile(),
 			RouteInteraction.Kind.TELEPORTATION_PORTAL,
-			RouteInteraction.Status.AVAILABLE, portal.getAction(), ready,
+			unavailable ? RouteInteraction.Status.UNAVAILABLE
+				: RouteInteraction.Status.AVAILABLE, portal.getAction(), ready,
 			portal.getCatalogObjectId(), portal.getOrigin(), portal.getDestination());
 	}
 

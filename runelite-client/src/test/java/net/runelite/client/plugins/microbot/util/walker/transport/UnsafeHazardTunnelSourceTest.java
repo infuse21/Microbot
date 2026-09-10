@@ -23,11 +23,11 @@ public class UnsafeHazardTunnelSourceTest
 	private static final Set<Integer> UNSUPPORTED_IDS = Set.of(6658, 6659, 23596);
 
 	@Test
-	public void hazardTunnelRowsAreNotLoaded()
+	public void unresolvedDorgeshKaanTunnelRowsAreNotLoaded()
 	{
 		assertTrue(Transport.loadAllFromResources().values().stream()
 			.flatMap(java.util.Collection::stream)
-			.noneMatch(row -> UNSUPPORTED_IDS.contains(row.getObjectId())));
+			.noneMatch(row -> row.getObjectId() == 23596));
 	}
 
 	@Test

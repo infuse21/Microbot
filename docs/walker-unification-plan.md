@@ -21,11 +21,372 @@ headless batches, outstanding branches of representative live passes, and contra
 implementation. As of 2026-09-06 the user requests headless-first progress; deferred physical tests
 remain open rather than blocking each batch or being silently marked complete.
 
+Acceptance amendment (user instruction, 2026-09-09): Phase 6 may close on implementation and
+headless verification while unavailable-item/high-stat/endgame live tests remain deferred in
+the live ledger. They are not live-passed and no account progression is required to close this
+phase. This supersedes earlier physical-gate closure wording. Remaining implementation defects,
+ownership gaps and unsupported-route decisions still require resolution before Phase 7.
+
 ## Active-graph classification closure and resolver hardening - 2026-09-09
 
-The current production resource set loads **6,086 transport origins** and has no active route edge left
+Mounted-menu follow-up (2026-09-10): all three mounted Digsite pendant and all four
+mounted Xeric's talisman destinations now use the retained TELEPORTATION_PORTAL lifecycle.
+The scene publishes explicit object-menu and exact-destination stages, accepts a transformed
+object's direct destination action, resolves the decorative object in the current house/world
+view and approaches its actual room tile. Missing or struck-through menu destinations publish
+UNAVAILABLE; source disappearance is not arrival and the selected remote landing remains the
+completion condition. The fail-first ownership test saw object ID 0/TRANSPORT before the
+cutover. Compilation, all mounted/chamber ownership and scene tests, both client-thread
+guardrails, the pathfinder benchmark and both Checkstyles pass; the guardrail baselines remain
+903/0. Physical use remains deferred, and nexus, jewellery, house ring/tree integration and
+the POH graph-generator correction remain open.
+
+POH network-generator follow-up (2026-09-10): `createTransportsToPoh` no longer stops at
+the first external origin. Permutation expansion now retains its source and destination
+endpoint components, allowing the house generator to publish exactly one inbound edge from
+every external origin and one outbound edge to every external destination without copying an
+unrelated endpoint's item/skill/quest/var requirement. A fail-first four-endpoint test lacked
+the second inbound edge and then pins all four directed house connections, exact requirement
+isolation and two non-duplicated outbound edges. Focused POH, transport-cost and route tests
+pass. House fairy-ring and spirit-tree execution ownership remains open; this correction proves
+their graph topology and requirement provenance only.
+
+Post-mounted/generator full-suite checkpoint: **2,216 tests, zero failures/errors and four
+skips** passed with both Checkstyle tasks in 1m52s. The expected PluginManager fixture errors
+remain test-local noise; the suite completed successfully. No live client was available and no
+physical POH acceptance is claimed.
+
+Mounted-direct follow-up adds four glory destinations and the mythical cape to the same
+house-only TELEPORTATION_PORTAL lifecycle, bringing the typed direct POH slice to 45
+destinations. Decorative-object IDs/actions are cache-verified and re-resolved in the current
+world view; engine approach uses the room object, not the house anchor. Mounted digsite and
+Xeric's retain their unsupported classification pending staged menu ownership. Compilation,
+focused engine/scene/portal/ownership/guardrail/benchmark checks and both Checkstyles pass
+(1m30s); no guardrail exemptions or live-pass claims were added.
+
+POH chamber cutover: all 40 typed chamber enum destinations now use the existing
+TELEPORTATION_PORTAL classifier/scanner/dispatch lifecycle. The cache-backed adapter resolves
+only inside a house, within the player's world view, using the base or active composition ID
+and the named destination action. Stable canonical IDs identify the pending command across
+decorative variants; actual template object tiles determine approach readiness. Tests cover
+all enum destinations and object-ID variants, transformed identity, Grand Exchange with
+Varrock preferred, wrong world/object/action, distant approach and source unloading until
+the selected landing. Other POH facility types and untyped lookalikes remain legacy-classified.
+Physical tests remain deferred under the amended acceptance scope, not live-passed.
+
+Chamber validation checkpoint: full suite passed with 2,212 tests, zero failures/errors and
+four skips; compilation and both Checkstyles passed (4m6s). A preceding run found one
+guardrail finding from a nested stream predicate reading ObjectComposition.getId; the ID
+is now captured directly in the client-thread snapshot, retaining the 903-entry baseline.
+The subsequent engine approach correction targets the resolved chamber object rather than
+the synthetic house anchor and has a dedicated engine execution regression; its focused
+validation is separate from this full-suite checkpoint.
+That final focused run passed all 90 engine/portal/chamber/guardrail/benchmark tests with
+zero failures/errors/skips, compilation and both Checkstyles (1m24s). No exemptions were added.
+
+Closure-audit qualification: the zero-legacy assertion in RemainingTransportClassificationTest
+covers `Transport.loadAllFromResources()`, not every runtime-generated edge. It now requires
+all resource transport types to be present, so silently missing families cannot yield a false
+green result. POH facilities are added separately by `PohPanel.getAvailableTransports()`:
+configured chamber/nexus/jewellery/mounted destinations become `PohTransport` rows, and house
+rings/trees are connected through generated maps. FairyRingPolicy and SpiritTreePolicy still
+exclude the configured house anchor and their house destinations. Advanced POH is therefore
+an implementation/ownership audit priority, not merely an unavailable-live-test entry.
+Historical disabled-row research remains separate; its 64 no-local-match rows are not the
+denominator for current runtime migration completeness. Do not infer Phase 6 closure from
+the resource-only classifier result.
+
+Post-Ice-Troll full-suite checkpoint: compilation, all 2,208 unit tests (zero failures/errors,
+four skips) and both Checkstyle tasks pass in 3m32s. The first run exposed three stale
+FremennikBridgeTransportTest assumptions after the underground additions: surface-only count,
+an overbroad agility-ID range and hard-coded plane-0 geometry. Assertions now cover all 15
+crossings, preserve the mine-only level-40 requirement, and reject incomplete/wrong-plane
+landings in each direction. No runtime code or guardrail exemption changed for this correction;
+the guardrail reports 903 known violations and no regressions. This supersedes the earlier
+2,204-test checkpoint below, without claiming physical acceptance or Phase 6 completion.
+
+Ice Troll bridge follow-up restores all five underground directions through exact quest-state
+passage ownership. Only the southbound boss-entry bridge carries the completed ten-troll
+counter requirement (3312=0); the four other directions do not inherit that entrance gate.
+Shared tests now cover 13 directed contracts/22 state variants, including stale-state rejection
+when zero is the valid counter value. Selected scene/policy, route, source-audit and benchmark
+tests, compilation and both Checkstyles pass (1m58s). Physical cutscene/retreat/post-quest
+behaviour stays explicitly deferred in the ledger rather than being claimed live-complete.
+
+Eastern Ice Troll cave follow-up adds three approaches with two exact quest-state variants
+each (3311=300/310), reusing QuestStatePassagePolicy and its existing dispatcher. Placement
+matches anchor (2401,3889,0); old completed-quest exclusions now distinguish the legitimate
+quest-time entry from the unchanged western post-quest entrance. Stage 320/corpse return and
+the five underground bridge directions are not declared implemented. The selected route,
+quest-scene/policy, source-audit and benchmark tests pass with compilation and both Checkstyle
+tasks (2m12s). Deferred physical checks follow the amended acceptance scope.
+
+Tears-cave follow-up restores six member-only Enter approaches under catalog ownership, using
+exact template anchors rather than the generic radius that misses the inward object's footprint.
+No quest, item or automatic protective-loadout requirement is added. The scanner acknowledges
+only the selected remote landing; source durations/comments are preserved. A fail-first scene
+test reported zero loaded routes. After implementation, all six scene and policy cases passed;
+the broader inventory assertion was updated from 34 to 40 and explicitly pins all six new
+classifications. Compilation, 79 selected tests (route/source/scene/audit/benchmark) and both
+Checkstyle tasks pass (1m9s). Loader count is 6,149 origins. Physical timing/landing remains
+deferred under the user's revised acceptance scope; the full-suite checkpoint below predates
+the museum and Tears batches.
+
+Museum follow-up restores four upstairs Leave exits after offline placement proved effective
+plane-0 anchors beside the historical approaches. Exact policy and object-ID checks exclude the
+downstairs prop, and the scanner requires the chosen surface landing. A fail-first source test
+reported zero rather than four rows; a subsequent scene test exposed name-fallback acceptance of
+the wrong ID, now rejected. The 78-test route/scene/source/audit/benchmark selection, compilation
+and both Checkstyle tasks pass (1m42s). Loader count is 6,143 origins. Physical landings remain
+pending; the full-suite checkpoint below predates this museum batch.
+
+Latest full-suite checkpoint after restoring Karuulm protection and fixing classifier precedence:
+**2,204 tests, zero failures/errors, four skips**, BUILD SUCCESSFUL in 4m15s. Compilation and
+both Checkstyle tasks passed; client-thread/queryable guardrails remained 903/0 with no regressions.
+This supersedes the failed checkpoints below, including the intermittent UDS timeout, but does
+not prove that timeout cannot recur or close any physical-live gate. The museum comment/test-name
+correction was made while this run executed and is validated separately.
+
+Withdrawal audit: walker/shortestpath has one direct bank-withdrawal call, behind
+`withdrawBankedTransportRequirement`; the coordinator delegates to it. Both each withdrawal
+and the banked-walk entry point require `walkWithBankedTransports()`, including forced bank
+route comparisons. No alternate inventory-setup or rune-pouch refill call was found in this scope.
+
+User scope clarification: retain Karuulm protection preparation. Banked boots, like Dramen/Lunar
+staffs for fairy-ring travel, may only be withdrawn while Walk with banked transports is enabled.
+Already-carried required equipment remains usable without banking; optional elemental spell
+staff withdrawals remain separately opt-in. The briefly applied Karuulm removal was restored
+before validation and did not become the intended implementation.
+
+Full-suite follow-up exposed stale Steps/Rocks inventory assertions and, after splitting the
+Karuulm variants into a dedicated ownership assertion, a real classifier-precedence gap: four
+one-tile free/diary northern rock variants selected ADJACENT_TRANSPORT before the dedicated
+catalog handler. Karuulm object identities now reject generic adjacent ownership, so all 54
+variants reach the catalog dispatcher and its requirement rechecks. The focused route,
+Karuulm scene/policy, adjacent-policy and benchmark run passes with compilation and both
+Checkstyle tasks (37 seconds). This is headless evidence, not a physical acceptance trace.
+
+The latest full run before that fix had 2,203 tests, two failures and four skips: the new
+ownership assertion and a 15-second socket-read timeout in UdsHttpServerTest.malformedRequestYields400.
+The preceding 2,202-test run failed only the two outdated inventory assertions. The full suite
+must be rerun after the ownership fix; no green full-suite claim is made from the focused pass.
+
+Karuulm follow-up now owns safe elevator entry and protected onward travel across 24 directed
+contracts (54 equipment/diary/free variants). Escape directions remain equipment-free. The
+47-test focused validation, benchmark, unchanged guardrails and both Checkstyle tasks pass;
+physical acceptance remains open in the live ledger. Loader count is 6,139 origins. The earlier
+full-suite timeout checkpoint below predates this batch and is not superseded by a focused run.
+
+Canifis tavern follow-up restores the two post-Myreque object-5055 entry approaches under
+CatalogTransition ownership, rechecking the quest at dispatch and acknowledging only the exact
+underground landing. Loader count is now 6,129 origins. The earlier quest-stage unlock and
+physical acceptance remain open; historical counts below are not a current completion percentage.
+
+Latest full-suite run after Canifis and the staff option: 2,197 tests, one failure, four skips.
+The failure was a 15-second socket-read timeout in `UdsHttpServerTest.authTokenAccepted`; its
+six-test class passed immediately in isolation without a source change. All other tests passed,
+and guardrails remained 903/0 with no regressions. Full-suite stability is not proved by that
+isolated rerun; the latest full run is not green.
+
+Earlier passing full-suite checkpoint, including the eastern stones, entrance pipe, rune reservations,
+banked-staff integration and withdrawal-config guard: **2,193 tests, zero failures/errors, four
+skips**. XML reports were inspected and Gradle confirmed `runUnitTests`, compilation and both
+Checkstyle tasks successful/up-to-date on 2026-09-09. This supersedes the earlier 2,159-test
+checkpoint, but does not close any physical-live or unfinished implementation gate.
+
+Banking follow-up: a fail-first production-collector regression reproduced two lava runes
+planned for Varrock plus Watchtower instead of three. Ordered per-cast physical-rune reservations
+now preserve those consumption boundaries across carried, pouch and bank stock, leaving equipped
+infinite supplies non-consuming. The collector requests unexpanded rune counts and preserves the
+coordinator's inventory-target contract. Mixed overlapping combination types and actual server
+consumption order remain unproved; see the live ledger's multi-cast entry. Banked staff
+equipment/restoration now has a headlessly tested selection, preparation and restoration path;
+whole-journey bank-only-staff acceptance and the remaining edge cases in the live ledger stay open.
+Compilation, all 56 banking tests and both Checkstyle tasks passed (zero failures/errors/skips,
+39s final combined run); no runtime restart or physical acceptance is claimed.
+
+Bulk cross-resource duplicate audit: of 155 commented numeric traversal rows, 17 match an
+active numeric origin/destination/action/name/object-ID contract after normalizing action/name
+spacing and hyphens. This is an inventory check, not proof of equivalent requirements or live
+behaviour. Matches comprise two Slug passages, four eastern Brimhaven stones, two entrance
+pipes, two Enakhra rubble rows, one Zogre barricade, two Wilderness Slayer Cave crevice
+comments and four Fremennik strange-floor rows. Keep historical comments disabled; enabling
+their ordinary variants could bypass the active agility or quest requirements.
+
+Wiki ID checks confirm that the active strange floor `16544` correctly requires 43 Agility
+([Fremennik floor](https://oldschool.runescape.wiki/w/Strange_floor_(Fremennik_Slayer_Dungeon)))
+and crevice `53259` correctly requires 77
+([Wilderness crevice](https://oldschool.runescape.wiki/w/Crevice_(Wilderness_Slayer_Cave))).
+The entrance pipe `21728` had an asymmetric-requirement defect: both active
+directions required 22, but only travel toward the moss giants requires 22; the reverse is free
+([entrance pipe](https://oldschool.runescape.wiki/w/Pipe_(Brimhaven_Dungeon_entrance))).
+The northbound `(2655,9566,0)->(2655,9573,0)` row now has no skill requirement; southbound
+retains 22. `BrimhavenEntrancePipeTest` first reproduced the incorrect requirement, and a
+transport-free collision flood connects the south endpoint to the Wiki moss-giant area but
+not the north endpoint. The flood bounds must include the connecting corridor east of x2670;
+the Wiki monster marker is a map centre, not a guaranteed walkable tile. Both rows retain
+agility classification and CatalogTransition ownership. Do not confuse this with the separate
+object `21727` pipe, whose inward requirement is 34. Physical crossing remains unproved,
+and the bookkeeping count below is deliberately not reduced again without reconciling the
+original inventory.
+
+Entrance-pipe validation: compilation, 19 Brimhaven/benchmark tests and both Checkstyle tasks
+passed in 1m 25s with zero failures/errors/skips. The change is resource-only in production;
+the existing NavigationEngine interaction remains unchanged. Live acceptance stays deferred.
+
+Eastern Brimhaven stones follow-up: the four “disabled” ordinary rows already had active agility
+counterparts. Their inward/outward skill requirement was wrong. The collision map proves which
+two endpoints share the island, so the canonical rows now require 56 only inward, with exact
+source-stone resolution, current-level revalidation and landing acknowledgement. Compilation,
+36 focused tests, benchmark, unchanged guardrail and both Checkstyle tasks passed in 1m 48s.
+Do not count this as four new routes: loaded origins stay at the prior count, and the
+remaining 74 unresolved source contracts are not yet a deduplicated runtime-gap inventory.
+
+Full-suite checkpoint after the quest-state batch: the first run completed 2,143 tests in
+3m 18s with two failures and four skips.
+
+**Follow-up checkpoint passed:** after correcting those expectations and adding a test-only
+15-second deadline to the UDS smoke tests, all 2,143 tests completed with zero failures/errors
+and four skips in 3m 27s; both Checkstyle tasks passed. All six UDS tests also passed in isolation.
+The timeout converts a future unbounded socket read into a failing test; it does not prove the
+intermittent missing-response cause was fixed. No production Agent Server code changed.
+This supersedes the incomplete full-rerun status below, but not any open live acceptance gates.
+
+Initial checkpoint detail:
+Both failures were stale Weiss source tests still
+requiring the migrated rope/ledge rows to be disabled. They now pin all four exact directed
+rows, ascent skills and installed-rope requirements, including rejection after gate mutation.
+The full rerun did not finish: a thread dump proved the test worker blocked in
+`UdsHttpServerTest.unknownPathReturns404 -> roundTrip:136 -> SocketChannel.read`, while the UDS
+accept thread waited for another connection. Only that verified Gradle test worker was stopped;
+the live client was untouched. A subsequent focused run passed all 50 Weiss/northern/engine
+checks and both Checkstyle tasks in 27s. **A successful full-suite rerun remains outstanding**;
+do not report this checkpoint as globally green or treat the UDS stall as a walker regression.
+
+Quest-state passage follow-up: Zogre barricade (496=1), opened Slug wall (2618=1), static reverse
+passage and both Enakhra rubble directions (1560 exactly 50/60/65/70) now share an exact catalog
+resolver. Eleven variants represent five directed contracts; no puzzle/setup actions are added.
+The copied cache confirms anchors and absent intermediate quest transforms. Compilation, 25 focused
+tests, benchmark, unchanged guardrail and both Checkstyle tasks passed in 1m 42s. Current totals
+are 6,127 loaded origins / 78 genuine disabled traversals;
+rebuilt-client crossings and state-change rejection remain open in the live ledger.
+
+Quest-trapdoor follow-up: Basement of Doom now has an exact staged catalog entry,
+12267/Open -> 12268/Go-down -> underground landing, with the completed Shadow of the Storm
+requirement retained and rechecked. Opening is not crossing. Compilation, 110 focused tests,
+benchmark, unchanged guardrail and both Checkstyle tasks passed in 1m 45s. Current totals:
+6,122 loaded origins / 83 genuine disabled traversals. Live
+closed/open entry and cancellation remain open. Grand Tree/Canifis entry protocols are not
+inferred from this pair and remain disabled pending their own evidence.
+
+Molch barrier follow-up: 20 directed rows now share exact catalog ownership and colour-dependent
+damage checks. Four disabled entries had a one-digit object-ID typo (34542 lava scenery instead
+of Molch barrier 34642); the remaining 16 previously used the adjacent handler without those
+checks. Copied-cache transforms/anchors support five independently coloured barriers, not a
+Karuulm heat entrance. Compilation, 89 focused tests, benchmark, unchanged guardrail and both
+Checkstyle tasks passed in 1m 10s; the production loader reports 6,121 origins, with 84 genuine
+disabled traversals remaining after resolving the four typo rows. Keep rebuilt-client colour changes, repeated
+crossing damage, both lanes/directions and counter decay open in the live ledger; this is not
+acceptance of the separate Karuulm stairs/elevator contract.
+
+Resource Area follow-up audit and cutover: the five gate-26760 rows already put the tiered fares
+on the correct inward edge, `(3184,3945,0) -> (3184,3944,0)`; do not reverse them. Offline
+cache region 12605 places the gate at `(3184,3944,0)` with `Open`/`Peek`, and the area's gold
+rocks, anvil and furnace lie south of it. The bundled Wilderness diary helpers independently
+identify those interior resource coordinates. The [gate wiki](https://oldschool.runescape.wiki/w/Gate_(Resource_Area))
+and [area wiki](https://oldschool.runescape.wiki/w/Resource_Area) confirm membership and the
+7,500/6,000/3,750/free tiers. All five retained rows now explicitly carry the members flag;
+their source regression pins direction, fare, diary predicates, membership and duration.
+The old reverse-fare comment was incorrect. The user's screenshot and manual crossing now establish
+`Open -> Pay 7500 coins to enter? -> Yes -> inward crossing`. All five rows are restored with
+catalogue/NavigationEngine ownership, an exact fare-title and unique Yes/No menu check, current
+coin/diary checks, and exact directed landing. Confirmation disappearance cannot reopen the gate;
+ordinary adjacent-door ownership is excluded, and a blocked edge prevents coin-free ground routing.
+Paid variants use the existing shared bank-planning predicate; the free exit and elite entry do not
+request coins. The 6,000/3,750 prompt forms are headless expectations based on the diary fares,
+not separately observed interfaces. Rebuilt-engine crossing, withdrawal/fare deduction and
+discounted/elite/free-exit acceptance remain open; the user's manual input is not engine acceptance.
+
+Resource Area verification follow-up: all eight medium/hard/elite flag combinations select exactly
+one inward fare plus the unconditional free exit, and production route publication classifies all
+five variants as `CATALOG_TRANSITION`. The actual scene adapter is exercised with synthetic widgets:
+only its pending Open exposes the exact 7,500-coin confirmation, successful dispatch issues one Yes,
+and a changed price or lost coin shortfall rejects further input. These eight Resource Area tests,
+the route-publication suite and test Checkstyle pass. This extends the prior 728-test green batch;
+it does not replace rebuilt-client acceptance. No client restart or gameplay input was issued.
+
+Full-suite follow-up: `:client:runUnitTests :client:checkstyleMain :client:checkstyleTest`
+passed in 1m 10s with 2,122 tests, zero failures/errors and four skipped. This run includes the
+Resource Area changes; the running client was left untouched and physical acceptance remains open.
+
+Southern Brimhaven backdoor research (2026-09-09): the earlier statement that no client unlock
+variable is known is superseded. `VarbitID.KARAM_DUNGEON_BACKDOOR` and the Wiki MCP data both
+identify varbit `5629`. An offline copy of the game cache resolves base object `66` through
+`[30199, 30200, 30200, 30200, -1]`: value zero is an actionless `Hole` (30199), values 1-3 are
+`Rope` (30200) with `Climb`, and the fallback has no object. Interior object `30201` is a
+non-transforming `Crevice` with `Use`, so its presence alone cannot prove access. The
+[Banisoch wiki](https://oldschool.runescape.wiki/w/Banisoch) explicitly requires the one-time
+5,000-trading-stick payment for both entering and exiting. The four inward approaches and one
+outward row are now restored with members-only, bounded `5629>0;5629<4` requirements. Exact
+catalogue ownership rejects ungated/foreign rows; one client-thread scene snapshot rechecks the
+unlock and resolves only base rope 66 or transformed rope 30200 with the correct name/action,
+or exact exit crevice 30201. Dispatch repeats that snapshot, and the common scanner requires the
+exact directed landing. No purchase or recurring fare is inferred. Focused scene/source/route
+publication tests, compilation, Checkstyle and the client-thread guardrail pass; physical crossing
+and the first-time purchase protocol remain unaccepted. Probe:
+`%TEMP%/microbot-debug-probes/leaf-pit-cache-20260909/BrimhavenBackdoorCache.java`.
+
+Southern Brimhaven validation: after correcting a missing test type qualification, compilation,
+the focused policy/scene/publication checks, both Checkstyle tasks and the full unit suite pass.
+The final run completed in 1m 55s: 2,125 tests, zero failures/errors and four skipped, including
+the production classification boundary and pathfinder benchmark. No guardrail exemptions were
+added, no client restart/gameplay input was issued, and no commit was made.
+
+Brimhaven metal-dragon passage correction (2026-09-09): the previous task-gate deferral conflated
+combat permission with movement. [Hieve](https://oldschool.runescape.wiki/w/Hieve) and his
+[transcript](https://oldschool.runescape.wiki/w/Transcript:Hieve) describe checks when attacking;
+the original [Diverse Dungeons update](https://oldschool.runescape.wiki/w/Update:Diverse_Dungeons)
+states that the area's monsters are only killable on task. The
+[crevice page](https://oldschool.runescape.wiki/w/Crevice_(Brimhaven_Dungeon)) identifies the two
+passage objects separately from the paid southern exit. Offline cache object 30198 is a static
+`Crevice` with `Enter`, anchored at `(2685,9436,0)` and `(2696,9436,0)`. Both catalogue directions,
+`(2684,9436,0) <-> (2697,9436,0)`, now use exact members-only catalogue ownership with no invented
+task requirement. The scene requires object 30198, and only exact directed landing clears it.
+This supports traversal, not combat permission; physical crossing without a task remains live-pending.
+Compilation, 86 focused Brimhaven/route-classification/benchmark/guardrail tests and both Checkstyle
+tasks passed in 1m 16s with no failures or skips. The guardrail remains at 903 with no new exemptions.
+This is a focused run after the earlier 2,125-test full-suite pass, not a new full-suite claim.
+
+Main Brimhaven entrance batch (2026-09-09): the 14 disabled entrance aliases are replaced by
+21 canonical base-20877 variants across seven approaches. Each approach has disjoint 875-coin,
+already-paid single-visit (`5628=1;8122=0`) and permanent (`8122=1`) requirements. The paid variant
+requires both flags zero and participates in shared bank planning. Door-data varbit 8123 includes
+the unrelated southern-door bits; only bits 0 and 3 indicate main-entry access. The scene resolves
+only the exact cache anchor `(2743,3153,0)` and the matching Pay/Enter transform, scopes both
+payment menus to a pending Pay, never buys permanent access, and continues only the owned
+Saniboch payment receipt. Confirmation cannot cause another payment, even before access refreshes.
+Only `(2713,9564,0)` clears the pending leg. The conflicting object-20878 exit rows remain disabled.
+Physical payment, bank withdrawal, receipt/entry timing and permanent-access entry remain live-pending.
+Validation: production classification and the benchmark passed in the initial batch. After fixing
+the explicit NPC-widget wrapper and scene-test fixture, compilation, 14 focused Brimhaven/guardrail
+tests and both Checkstyle tasks passed in 59s; the guardrail baseline remains unchanged at 903.
+
+Northern shortcut batch (2026-09-09): all ten Weiss cliff directions and four Ungael side passages
+are headless-migrated together. Ungael uses the defeated-quest-Vorkath unlock `6108>29`, not a
+combat-crater entrance. Weiss's installed rope uses `6528>44`; first-time installation remains
+quest-helper work. Ascents require 68 Agility and current HP above 15, descents do not, and all
+Weiss rows respect the agility toggle. Exact source readiness and object anchors prevent ranged
+skips; exact earlier-stage falls force a replan even when the zig-zag geometry fools the generic
+direction projection. Exact destination alone clears the crossing. Compilation, 142 focused
+tests, the unchanged 903-entry guardrail and both Checkstyle tasks passed in 1m 35s. Benchmark
+total best-route times were 1,343ms. All physical crossings and failure observations remain open
+in the live ledger; no gameplay input, client restart or commit was performed.
+
+The current production resource set loads **6,117 transport origins** and has no active route edge left
 classified as the generic legacy `TRANSPORT` kind. This closes the active-graph classification
-boundary only: a source audit still identifies **132 genuine disabled traversals** whose quest,
+boundary only: after restoring the four leaf jumps, five Resource Area rows, five southern Brimhaven rows
+and two metal-dragon passage rows, replacing 14 main-entrance aliases and restoring 14 northern
+shortcuts, **88 genuine disabled traversals** remain whose quest,
 equipment, safety, payment, failure or staged-interaction contracts remain implementation work.
 Phase 6 therefore remains open, and Phase 7 deletion has not started.
 
@@ -84,8 +445,21 @@ directions and both Karamja wooden-log directions. Failed attempts leave the pla
 side, so NavigationEngine retains the pending edge and retries until the exact destination is
 observed. Six Regicide stick crossings similarly retain ownership after an 8-damage knockback, but
 their live scene resolver rechecks that current Hitpoints exceed 8 before every dispatch. The four
-Regicide leaf rows are source-disabled because failure enters a spike pit whose same-side climb-out
-is not yet engine-owned.
+Regicide leaf rows now also retain the same pending edge through failure and recovery. Offline game-cache
+inspection confirms the near-side `Jump;Leaves;3925` anchors and the separate two-by-two pits whose
+`Climb;Protruding rocks;3927` anchors begin at `(2313,9656)`, `(2336,9656)`, `(2354,9656)` and
+`(2354,9643)`, all on plane zero. The resolver selects only the exact object within the player's
+current pit, even if HP loss removes the original jump from the filtered catalogue. Returning to the
+exact original surface tile permits a new jump only above 18 current HP; only the opposite destination
+clears the crossing. Five failed jumps exhaust the retry budget after climbing out, not while stranded
+below. Missing/rejected/timed-out recovery stops without issuing an unrelated ground walk in the pit.
+The strict route policy rejects missing quest/skill gates instead of falling through generic agility
+classification. These four restored rows remain live-deferred: verify the actual fall position and
+same-side return in both directions, then normal success, low-HP refusal and cancellation.
+
+Leaf recovery validation: compilation, 692 navigation/transport/toggle/guardrail tests and both
+Checkstyle tasks passed. The client-thread baseline remains 903 with no new exemptions. No game
+input was issued and no live acceptance is claimed; the Agent Server was unavailable during this batch.
 
 Six unique post-quest Darkmeyer wall directions are restored with 63 Agility, completed Sins of the
 Father and both permanent-rope varbits (`10449=1`, `10450=1`). The catalogue's construction-state
@@ -171,8 +545,8 @@ geometry, object/action identity, requirements and observed destination; the rou
 ownership until that destination is reached.
 
 Fourteen incomplete or malformed source rows no longer enter the runtime graph. These are four
-equipped-sled Trollweiss slopes, five Resource Area gate rows with fares attached to the wrong
-direction, one remote odd-wall duplicate that conflicts with the canonical goo-vine route, and four
+equipped-sled Trollweiss slopes, five Resource Area gate rows then lacking a payment protocol
+(their fares were correctly directed; see the 2026-09-09 correction), one remote odd-wall duplicate that conflicts with the canonical goo-vine route, and four
 southern Brimhaven rope approaches that omit Banisoch's one-time 5,000-trading-stick unlock. OSRS
 Wiki/cache MCP evidence and focused policy, source-shape, classification and landing tests cover the
 batch. The classifier floor is now **204 legacy entries**: 181 ordinary `TRANSPORT` and 23

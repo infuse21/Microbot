@@ -40,6 +40,10 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.reflect.Method;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -59,6 +63,7 @@ import okhttp3.Request;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import org.junit.Before;
+import org.junit.After;
 import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
@@ -88,10 +93,22 @@ public class PluginManagerTest
 
 	private Set<Class<?>> pluginClasses;
 	private Set<Class<?>> configClasses;
+	private final Map<Field, Object> previousMicrobotServices = new HashMap<>();
+	private Injector previousInjector;
 
 	@Before
-	public void before() throws IOException
+	public void before() throws IOException, IllegalAccessException
 	{
+		previousInjector = RuneLite.getInjector();
+		for (Field field : Microbot.class.getDeclaredFields())
+		{
+			if (Modifier.isStatic(field.getModifiers()) && field.isAnnotationPresent(javax.inject.Inject.class))
+			{
+				field.setAccessible(true);
+				previousMicrobotServices.put(field, field.get(null));
+			}
+		}
+
 		OkHttpClient okHttpClient = mock(OkHttpClient.class);
 		when(okHttpClient.newCall(any(Request.class)))
 			.thenThrow(new RuntimeException("in plugin manager test"));
@@ -134,6 +151,16 @@ public class PluginManagerTest
 				configClasses.add(clazz);
 			}
 		}
+	}
+
+	@After
+	public void restoreStaticServices() throws IllegalAccessException
+	{
+		for (Map.Entry<Field, Object> entry : previousMicrobotServices.entrySet())
+		{
+			entry.getKey().set(null, entry.getValue());
+		}
+		RuneLite.setInjector(previousInjector);
 	}
 
 	@Test

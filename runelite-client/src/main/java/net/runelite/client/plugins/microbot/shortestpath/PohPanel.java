@@ -331,22 +331,31 @@ public class PohPanel extends PluginPanel {
         WorldPoint pohExitPortal = pohTempTransport.getOrigin();
         TransportType type = pohTempTransport.getType();
         Map<WorldPoint, Set<Transport>> newTransportsMap = new HashMap<>();
-        transportsMap.entrySet().stream()
-                .filter(e -> e.getValue().stream().anyMatch(t -> t.getType() == type)).findFirst().ifPresent(e -> {
-                    WorldPoint existingRingPoint = e.getKey();
-                    for (Transport existingRingTransport : new HashSet<>(e.getValue())) {
-                        if (existingRingTransport.getType() != type) continue;
-                        // add from poh
-                        newTransportsMap
-                                .computeIfAbsent(pohExitPortal, k -> new HashSet<>())
-                                .add(new Transport(pohTempTransport, existingRingTransport));
-
-                        // add to poh
-                        newTransportsMap
-                                .computeIfAbsent(existingRingPoint, k -> new HashSet<>())
-                                .add(new Transport(existingRingTransport, pohTempTransport));
-                    }
-                });
+        Map<WorldPoint, Transport> origins = new HashMap<>();
+        Map<WorldPoint, Transport> destinations = new HashMap<>();
+        for (Set<Transport> transports : transportsMap.values()) {
+            for (Transport transport : transports) {
+                if (transport.getType() != type) continue;
+                Transport origin = transport.getOriginEndpoint();
+                Transport destination = transport.getDestinationEndpoint();
+                if (origin.getOrigin() != null) {
+                    origins.putIfAbsent(origin.getOrigin(), origin);
+                }
+                if (destination.getDestination() != null) {
+                    destinations.putIfAbsent(destination.getDestination(), destination);
+                }
+            }
+        }
+        for (Map.Entry<WorldPoint, Transport> origin : origins.entrySet()) {
+            if (origin.getKey().equals(pohExitPortal)) continue;
+            newTransportsMap.computeIfAbsent(origin.getKey(), k -> new HashSet<>())
+                    .add(new Transport(origin.getValue(), pohTempTransport));
+        }
+        for (Map.Entry<WorldPoint, Transport> destination : destinations.entrySet()) {
+            if (destination.getKey().equals(pohExitPortal)) continue;
+            newTransportsMap.computeIfAbsent(pohExitPortal, k -> new HashSet<>())
+                    .add(new Transport(pohTempTransport, destination.getValue()));
+        }
 
         return newTransportsMap;
     }

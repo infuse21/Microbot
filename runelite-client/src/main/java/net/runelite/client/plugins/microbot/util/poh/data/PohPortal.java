@@ -165,7 +165,22 @@ public enum PohPortal implements PohTeleport {
     @Override
     public boolean execute() {
         GameObject portal = getPortal();
-        return Rs2GameObject.interact(portal, "enter");
+        return Rs2GameObject.interact(portal, getAction());
+    }
+
+    public String getAction() {
+        switch (this) {
+            case VARROCK:
+                return "Varrock";
+            case GRAND_EXCHANGE:
+                return "Grand Exchange";
+            case CAMELOT:
+                return "Camelot";
+            case WATCHTOWER:
+                return "Watchtower";
+            default:
+                return "Enter";
+        }
     }
 
     private static final Map<Integer, PohPortal> BY_OBJECT_ID;

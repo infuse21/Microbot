@@ -191,10 +191,10 @@
 2670 9583 2	2674 9583 0	Climb;Vine;26882	87 Agility				3
 2674 9583 0	2670 9583 2	Climb;Vine;26880	87 Agility				3
 2655 9573 0	2655 9566 0	Squeeze-through;Pipe;21728	22 Agility				3
-2655 9566 0	2655 9573 0	Squeeze-through;Pipe;21728	22 Agility				3
+2655 9566 0	2655 9573 0	Squeeze-through;Pipe;21728					3
 2682 9548 0	2690 9547 0	Cross;Stepping stone;19040	56 Agility				4
-2690 9547 0	2682 9548 0	Cross;Stepping stone;19040	56 Agility				4
-2695 9533 0	2697 9525 0	Cross;Stepping stone;19040	56 Agility				4
+2690 9547 0	2682 9548 0	Cross;Stepping stone;19040					4
+2695 9533 0	2697 9525 0	Cross;Stepping stone;19040					4
 2697 9525 0	2695 9533 0	Cross;Stepping stone;19040	56 Agility				4
 1648 10009 0	1646 10000 0	Squeeze-through;Crack;28892	17 Agility				4
 1646 10000 0	1648 10009 0	Squeeze-through;Crack;28892	17 Agility				4

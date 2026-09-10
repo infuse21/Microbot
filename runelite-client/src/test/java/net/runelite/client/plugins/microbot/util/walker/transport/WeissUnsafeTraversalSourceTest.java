@@ -1,69 +1,66 @@
 package net.runelite.client.plugins.microbot.util.walker.transport;
 
-import net.runelite.client.plugins.microbot.shortestpath.Transport;
-import org.junit.Test;
-
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-
+import net.runelite.api.Skill;
+import net.runelite.api.coords.WorldPoint;
+import net.runelite.client.plugins.microbot.shortestpath.Transport;
+import org.junit.Test;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 public class WeissUnsafeTraversalSourceTest
 {
-	private static final String TRANSPORT_RESOURCE =
-		"/net/runelite/client/plugins/microbot/shortestpath/transports.tsv";
-	private static final Set<Integer> UNSAFE_IDS = Set.of(33190, 33327, 33328);
-
-	@Test
-	public void unsafeTraversalRowsAreNotLoaded()
+	private static List<Transport> rows()
 	{
-		assertTrue(Transport.loadAllFromResources().values().stream()
-			.flatMap(java.util.Collection::stream)
-			.noneMatch(row -> UNSAFE_IDS.contains(row.getObjectId())));
+		return Transport.loadAllFromResources().values().stream().flatMap(Set::stream)
+			.filter(row -> Set.of(33190, 33327, 33328).contains(row.getObjectId())).collect(Collectors.toList());
 	}
 
 	@Test
-	public void allFourRowsRemainAsExactSourceEvidence()
-		throws IOException
+	public void restoredRowsRequireExactAscentAndInstalledRopeContracts()
 	{
-		Set<String> expected = Set.of(
+		List<Transport> rows = rows();
+		assertEquals(4, rows.size());
+		for (Transport row : rows)
+		{
+			NorthernQuestShortcutPolicy.Entry entry = NorthernQuestShortcutPolicy.entry(row);
+			assertNotNull(entry);
+			assertTrue(row.isMembers());
+			assertTrue(CatalogTransitionPolicy.isEligible(row));
+			assertFalse(AdjacentTransportPolicy.isEligible(row));
+			assertEquals(entry.ascending ? 68 : 0, row.getSkillLevels()[Skill.AGILITY.ordinal()]);
+			if (row.getObjectId() == 33327 || row.getObjectId() == 33328)
+			{
+				assertEquals(1, row.getVarbits().size());
+				assertEquals(6528, row.getVarbits().iterator().next().getVarbitId());
+				assertFalse(row.getVarbits().iterator().next().matches(44));
+				assertTrue(row.getVarbits().iterator().next().matches(45));
+				row.getVarbits().clear();
+			}
+			else row.getSkillLevels()[Skill.AGILITY.ordinal()] = entry.ascending ? 0 : 68;
+			assertFalse(CatalogTransitionPolicy.isEligible(row));
+		}
+	}
+
+	@Test
+	public void allFourRowsRetainTheirExactDirectedSourceGeometry()
+	{
+		assertEquals(Set.of(
 			"2855 3964 0>2853 3961 0:Climb;Rope;33328",
 			"2853 3961 0>2855 3964 0:Climb;Roped tree;33327",
 			"2853 3961 0>2857 3961 0:Cross;Ledge;33190",
-			"2857 3961 0>2853 3961 0:Cross;Ledge;33190");
-		InputStream resource = WeissUnsafeTraversalSourceTest.class
-			.getResourceAsStream(TRANSPORT_RESOURCE);
-		assertNotNull(resource);
-		try (BufferedReader reader = new BufferedReader(new InputStreamReader(resource,
-			StandardCharsets.UTF_8)))
-		{
-			Set<String> disabled = reader.lines()
-				.filter(line -> line.startsWith("# ")
-					&& UNSAFE_IDS.stream().anyMatch(id -> line.contains(";" + id)))
-				.map(line -> line.substring(2).split("\\t", -1))
-				.peek(columns -> assertTrue(noRequirements(columns)))
-				.map(columns -> columns[0] + ">" + columns[1] + ":" + columns[2])
-				.collect(Collectors.toSet());
-			assertEquals(expected, disabled);
-		}
+			"2857 3961 0>2853 3961 0:Cross;Ledge;33190"),
+			rows().stream().map(row -> point(row.getOrigin()) + ">" + point(row.getDestination())
+				+ ":" + row.getAction() + ";" + row.getName() + ";" + row.getObjectId())
+				.collect(Collectors.toSet()));
 	}
 
-	private static boolean noRequirements(String[] columns)
+	private static String point(WorldPoint point)
 	{
-		for (int index = 3; index <= 10; index++)
-		{
-			if (index < columns.length && !columns[index].trim().isEmpty())
-			{
-				return false;
-			}
-		}
-		return true;
+		return point.getX() + " " + point.getY() + " " + point.getPlane();
 	}
 }

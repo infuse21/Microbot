@@ -9,6 +9,12 @@ import net.runelite.client.plugins.microbot.shortestpath.Transport;
 import net.runelite.client.plugins.microbot.shortestpath.TransportType;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.policy.TransportRequirementPolicy;
 import net.runelite.client.plugins.microbot.util.magic.Runes;
+import net.runelite.client.plugins.microbot.util.magic.Rs2Magic;
+import net.runelite.client.plugins.microbot.util.magic.Rs2Spells;
+import net.runelite.client.plugins.microbot.util.magic.RuneFilter;
+import net.runelite.client.plugins.microbot.util.bank.Rs2Bank;
+import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
+import org.mockito.MockedStatic;
 import net.runelite.client.plugins.microbot.util.walker.transport.ElidCrevicePolicy;
 import net.runelite.client.plugins.microbot.util.walker.transport.LumbridgeSwampCavePolicy;
 import org.junit.AfterClass;
@@ -475,6 +481,58 @@ public class BankedTransportItemPlanningTest {
 	}
 
     @Test
+    public void differentSpellCastsCannotShareOneCombinationRune() {
+        try (org.mockito.MockedStatic<net.runelite.client.plugins.microbot.util.bank.Rs2Bank> bank =
+                org.mockito.Mockito.mockStatic(net.runelite.client.plugins.microbot.util.bank.Rs2Bank.class)) {
+            bank.when(() -> net.runelite.client.plugins.microbot.util.bank.Rs2Bank.count(ItemID.LAVARUNE))
+                    .thenReturn(3);
+            bank.when(() -> net.runelite.client.plugins.microbot.util.bank.Rs2Bank.count(ItemID.AIRRUNE))
+                    .thenReturn(3);
+            bank.when(() -> net.runelite.client.plugins.microbot.util.bank.Rs2Bank.count(ItemID.LAWRUNE))
+                    .thenReturn(3);
+            Map<Integer, Integer> requirements =
+                    Rs2WalkerBankingPlanner.getMissingTransportItemIdsWithQuantities(
+                            List.of(teleport("Varrock Teleport"), teleport("Watchtower Teleport")));
+
+            assertEquals(3, requirements.getOrDefault(ItemID.LAVARUNE, 0).intValue());
+            assertEquals(3, requirements.getOrDefault(ItemID.AIRRUNE, 0).intValue());
+            assertEquals(3, requirements.getOrDefault(ItemID.LAWRUNE, 0).intValue());
+        }
+    }
+
+    @Test
+    public void collectorKeepsPhysicalPouchAndInventoryCountsDistinct() {
+        for (boolean inPouch : new boolean[]{false, true}) {
+            try (MockedStatic<Rs2Bank> bank = org.mockito.Mockito.mockStatic(Rs2Bank.class);
+                    MockedStatic<Rs2Magic> magic = org.mockito.Mockito.mockStatic(Rs2Magic.class);
+                    MockedStatic<Rs2Inventory> inventory = org.mockito.Mockito.mockStatic(Rs2Inventory.class)) {
+                bank.when(() -> Rs2Bank.count(ItemID.LAVARUNE)).thenReturn(2);
+                inventory.when(() -> Rs2Inventory.itemQuantity(ItemID.LAVARUNE)).thenReturn(inPouch ? 0 : 1);
+                magic.when(() -> Rs2Magic.getRs2Spell("Varrock Teleport")).thenReturn(Rs2Spells.VARROCK_TELEPORT);
+                magic.when(() -> Rs2Magic.getRs2Spell("Watchtower Teleport")).thenReturn(Rs2Spells.WATCHTOWER_TELEPORT);
+                magic.when(() -> Rs2Magic.getRequiredRunes(Rs2Spells.VARROCK_TELEPORT, 1))
+                        .thenReturn(Map.of(Runes.FIRE, 1));
+                magic.when(() -> Rs2Magic.getRequiredRunes(Rs2Spells.WATCHTOWER_TELEPORT, 1))
+                        .thenReturn(Map.of(Runes.EARTH, 2));
+                magic.when(() -> Rs2Magic.getRunes(org.mockito.ArgumentMatchers.any(RuneFilter.class)))
+                        .thenAnswer(call -> {
+                            RuneFilter filter = call.getArgument(0);
+                            assertFalse(filter.isIncludeComboRunes());
+                            assertFalse(filter.isIncludeBank());
+                            assertTrue(filter.isIncludeRunePouch());
+                            assertTrue(filter.isIncludeInventory());
+                            assertTrue(filter.isIncludeEquipment());
+                            return Map.of(Runes.LAVA, 1);
+                        });
+                Map<Integer, Integer> requirements = Rs2WalkerBankingPlanner.getMissingTransportItemIdsWithQuantities(
+                        List.of(teleport("Varrock Teleport"), teleport("Watchtower Teleport")));
+                // Coordinator subtracts inventory again, but must not subtract pouch quantities.
+                assertEquals(Map.of(ItemID.LAVARUNE, inPouch ? 2 : 3), requirements);
+            }
+        }
+    }
+
+    @Test
     public void combinationRunesCanCoverBothElementalRequirements() {
         Map<Integer, Integer> withdrawals = Rs2WalkerBankingPlanner.planRuneWithdrawals(
                 Map.of(Runes.AIR, 3, Runes.WATER, 2, Runes.LAW, 1),
@@ -496,6 +554,47 @@ public class BankedTransportItemPlanningTest {
 
         assertFalse(withdrawals.containsKey(ItemID.AIRRUNE));
         assertEquals(1, withdrawals.getOrDefault(ItemID.LAWRUNE, 0).intValue());
+    }
+
+    @Test
+    public void bankedStaffSelectionFeedsCollectorAndHonorsTheEngineToggle() {
+        net.runelite.client.plugins.microbot.shortestpath.ShortestPathConfig previous =
+                net.runelite.client.plugins.microbot.util.walker.Rs2Walker.config;
+        net.runelite.client.plugins.microbot.shortestpath.ShortestPathConfig config =
+                org.mockito.Mockito.mock(net.runelite.client.plugins.microbot.shortestpath.ShortestPathConfig.class);
+        net.runelite.client.plugins.microbot.util.walker.Rs2Walker.config = config;
+        try (MockedStatic<Rs2SpellEquipmentScene> scene = org.mockito.Mockito.mockStatic(Rs2SpellEquipmentScene.class);
+                MockedStatic<Rs2Inventory> inventory = org.mockito.Mockito.mockStatic(Rs2Inventory.class);
+                MockedStatic<Rs2Bank> bank = org.mockito.Mockito.mockStatic(Rs2Bank.class)) {
+            org.mockito.Mockito.when(config.navigationEngineOrdinaryWalking()).thenReturn(true);
+            org.mockito.Mockito.when(config.walkWithBankedTransports()).thenReturn(true);
+            org.mockito.Mockito.when(config.useBankedElementalStaffs()).thenReturn(true);
+            BankedSpellEquipmentPlanner.Plan selected = BankedSpellEquipmentPlanner.choose(
+                    List.of(Map.of(Runes.AIR, 3, Runes.FIRE, 1, Runes.LAW, 1)), Map.of(Runes.FIRE, 1),
+                    Map.of(Runes.LAW, 1), Set.of(net.runelite.client.plugins.microbot.util.magic.Rs2Staff.STAFF_OF_AIR.getItemID()),
+                    net.runelite.client.plugins.microbot.util.magic.Rs2Staff.NONE, 1, 25, false);
+            scene.when(() -> Rs2SpellEquipmentScene.plan(org.mockito.ArgumentMatchers.anyList(),
+                    org.mockito.ArgumentMatchers.eq(true))).thenReturn(selected);
+            Map<Integer, Integer> planned = Rs2WalkerBankingPlanner.getMissingTransportItemIdsWithQuantities(
+                    List.of(teleport("Varrock Teleport")));
+            assertEquals(Map.of(ItemID.STAFF_OF_AIR, 1, ItemID.LAWRUNE, 1), planned);
+            inventory.when(() -> Rs2Inventory.hasItem(ItemID.STAFF_OF_AIR)).thenReturn(true);
+            assertEquals(Map.of(ItemID.LAWRUNE, 1), Rs2WalkerBankingPlanner.getMissingTransportItemIdsWithQuantities(
+                    List.of(teleport("Varrock Teleport"))));
+            org.mockito.Mockito.when(config.navigationEngineOrdinaryWalking()).thenReturn(false);
+            scene.clearInvocations();
+            Rs2WalkerBankingPlanner.getMissingTransportItemIdsWithQuantities(List.of(teleport("Varrock Teleport")));
+            scene.verifyNoInteractions();
+            org.mockito.Mockito.when(config.navigationEngineOrdinaryWalking()).thenReturn(true);
+            org.mockito.Mockito.when(config.useBankedElementalStaffs()).thenReturn(false);
+            Map<Integer, Integer> runeOnly = Rs2WalkerBankingPlanner.getMissingTransportItemIdsWithQuantities(
+                    List.of(teleport("Varrock Teleport")));
+            assertFalse(runeOnly.containsKey(ItemID.STAFF_OF_AIR));
+            assertEquals(Map.of(ItemID.AIRRUNE, 3, ItemID.FIRERUNE, 1, ItemID.LAWRUNE, 1), runeOnly);
+            scene.verifyNoInteractions();
+        } finally {
+            net.runelite.client.plugins.microbot.util.walker.Rs2Walker.config = previous;
+        }
     }
 
     @Test

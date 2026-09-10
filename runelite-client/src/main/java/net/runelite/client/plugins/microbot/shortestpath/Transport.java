@@ -117,6 +117,9 @@ public class Transport {
     @Getter
     private boolean isMembers = false;
 
+    private Transport originEndpoint;
+    private Transport destinationEndpoint;
+
 
 
     /**
@@ -126,6 +129,9 @@ public class Transport {
     public Transport(Transport origin, Transport destination) {
         this.origin = origin.origin;
         this.destination = destination.destination;
+        this.originEndpoint = origin.originEndpoint == null ? origin : origin.originEndpoint;
+        this.destinationEndpoint = destination.destinationEndpoint == null
+                ? destination : destination.destinationEndpoint;
 
         for (int i = 0; i < skillLevels.length; i++) {
             this.skillLevels[i] = Math.max(
@@ -168,6 +174,14 @@ public class Transport {
         this.currencyAmount = origin.getCurrencyAmount();
         this.isMembers = origin.isMembers;
         //END microbot variables
+    }
+
+    Transport getOriginEndpoint() {
+        return originEndpoint == null ? this : originEndpoint;
+    }
+
+    Transport getDestinationEndpoint() {
+        return destinationEndpoint == null ? this : destinationEndpoint;
     }
 
     /**

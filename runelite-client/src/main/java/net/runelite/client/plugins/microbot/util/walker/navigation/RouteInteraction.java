@@ -30,7 +30,8 @@ public final class RouteInteraction
 		MAGIC_MUSHTREE,
 		HOT_AIR_BALLOON,
 		ADJACENT_TRANSPORT,
-		CATALOG_TRANSITION
+		CATALOG_TRANSITION,
+		SPELL_EQUIPMENT
 	}
 
 	public enum Status

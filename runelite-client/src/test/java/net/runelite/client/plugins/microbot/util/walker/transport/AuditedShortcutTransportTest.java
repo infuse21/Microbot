@@ -130,8 +130,7 @@ public class AuditedShortcutTransportTest
 	@Test
 	public void incompleteAndShadowRowsRemainOnlyAsSourceEvidence() throws IOException
 	{
-		Set<Integer> disabledIds = Set.of(21316, 21317, 21318, 21319,
-			21728, 53259);
+		Set<Integer> disabledIds = Set.of(21728, 53259);
 		assertEquals(0, ordinaryRows(disabledIds).size());
 
 		String source = new String(getClass().getResourceAsStream(

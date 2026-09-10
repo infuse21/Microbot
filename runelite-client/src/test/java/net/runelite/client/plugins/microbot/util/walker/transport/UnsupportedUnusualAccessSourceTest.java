@@ -38,12 +38,13 @@ public class UnsupportedUnusualAccessSourceTest
 		entry("3050 4829 0>1816 3856 0:Exit-through;Soul rift;25382", "|0"));
 
 	@Test
-	public void allSixteenUnsafeRowsAreDisabledAndPreserveSourceShape()
+	public void historicalRowsRemainDisabledUnlessTheirExactStateContractWasMigrated()
 		throws IOException
 	{
 		assertFalse(Transport.loadAllFromResources().values().stream()
 			.flatMap(java.util.Collection::stream)
 			.filter(row -> row.getOrigin() != null && row.getDestination() != null)
+			.filter(row -> QuestStatePassagePolicy.entry(row) == null)
 			.anyMatch(row -> EXPECTED.containsKey(key(row))));
 		InputStream resource = UnsupportedUnusualAccessSourceTest.class
 			.getResourceAsStream(RESOURCE);

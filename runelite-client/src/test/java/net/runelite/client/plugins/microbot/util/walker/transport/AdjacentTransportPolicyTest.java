@@ -116,12 +116,12 @@ public class AdjacentTransportPolicyTest
 	}
 
 	@Test
-	public void acceptsOnlyExactMolchMysticalBarrierContract()
+	public void molchBarriersRequireCatalogDamageHandling()
 	{
 		WorldPoint twoTilesAway = new WorldPoint(100, 102, 0);
-		for (int objectId : Set.of(34643, 34644, 34645, 34646))
+		for (int objectId : Set.of(34642, 34643, 34644, 34645, 34646))
 		{
-			assertTrue(AdjacentTransportPolicy.isEligible(new Transport(A, twoTilesAway, "test",
+			assertFalse(AdjacentTransportPolicy.isEligible(new Transport(A, twoTilesAway, "test",
 				TransportType.TRANSPORT, false, "Pass", "Mystical barrier", objectId)));
 		}
 

@@ -25,10 +25,12 @@ public class FremennikBridgeTransportTest
 	}
 
 	@Test
-	public void allRemainingSurfaceCrossingsAreOwned()
+	public void allSurfaceAndUndergroundCrossingsAreOwned()
 	{
 		List<Transport> rows = rows();
-		assertEquals(10, rows.size());
+		assertEquals(15, rows.size());
+		assertEquals(10, rows.stream().filter(row -> row.getOrigin().getPlane() == 0).count());
+		assertEquals(5, rows.stream().filter(row -> row.getOrigin().getPlane() == 1).count());
 		for (Transport row : rows)
 		{
 			assertEquals(RouteEdge.Kind.CATALOG_TRANSITION,
@@ -45,7 +47,7 @@ public class FremennikBridgeTransportTest
 	{
 		for (Transport row : rows())
 		{
-			boolean shortcut = row.getObjectId() >= 21314;
+			boolean shortcut = row.getObjectId() == 21314 || row.getObjectId() == 21315;
 			assertEquals(shortcut ? 40 : 0, row.getSkillLevels()[Skill.AGILITY.ordinal()]);
 			if (shortcut)
 			{
@@ -69,8 +71,9 @@ public class FremennikBridgeTransportTest
 			CatalogTransition object = new CatalogTransition(null, from, row.getObjectId(),
 				row.getAction(), row.getAction(), from, to);
 			for (WorldPoint incomplete : new WorldPoint[]{from,
-				new WorldPoint(to.getX(), to.getY() - Integer.signum(to.getY() - from.getY()), 0),
-				new WorldPoint(to.getX(), to.getY(), 1)})
+				new WorldPoint(to.getX() - Integer.signum(to.getX() - from.getX()),
+					to.getY() - Integer.signum(to.getY() - from.getY()), to.getPlane()),
+				new WorldPoint(to.getX(), to.getY(), to.getPlane() + 1)})
 			{
 				assertEquals(RouteInteraction.Status.AVAILABLE,
 					scanner.observePending(pending, incomplete, edge -> object, 13).getStatus());

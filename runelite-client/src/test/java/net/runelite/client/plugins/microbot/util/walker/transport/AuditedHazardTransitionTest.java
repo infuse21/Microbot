@@ -11,8 +11,6 @@ import net.runelite.client.plugins.microbot.util.walker.navigation.RouteInteract
 import net.runelite.client.plugins.microbot.util.walker.transport.model.CatalogTransition;
 import org.junit.Test;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -30,7 +28,7 @@ public class AuditedHazardTransitionTest
 	public void exactRowsHaveCompleteDirectedRequirements()
 	{
 		List<Transport> rows = rows();
-		assertEquals(12, rows.size());
+		assertEquals(16, rows.size());
 		assertTrue(rows.stream().allMatch(Transport::isMembers));
 		assertTrue(rows.stream().allMatch(CatalogTransitionPolicy::isAuditedHazardTransition));
 		assertTrue(rows.stream().allMatch(CatalogTransitionPolicy::isEligible));
@@ -48,7 +46,7 @@ public class AuditedHazardTransitionTest
 			deadTree.getQuests().get(Quest.WATERFALL_QUEST));
 
 		assertEquals(6, count(rows, 3922));
-		assertEquals(0, count(rows, 3925));
+		assertEquals(4, count(rows, 3925));
 		for (Transport trap : rows.stream().filter(row -> row.getObjectId() == 3922)
 			.collect(Collectors.toList()))
 		{
@@ -83,15 +81,14 @@ public class AuditedHazardTransitionTest
 	}
 
 	@Test
-	public void leafPitRowsRemainDisabledUntilRecoveryIsOwned() throws IOException
+	public void leafPitRowsRequireExactDirectedRecoveryContracts()
 	{
-		String source = new String(getClass().getResourceAsStream(
-			"/net/runelite/client/plugins/microbot/shortestpath/transports.tsv").readAllBytes(),
-			StandardCharsets.UTF_8);
-		assertTrue(source.contains("# 2274 3172 0\t2274 3176 0\tJump;Leaves;3925"));
-		assertTrue(source.contains("# 2274 3176 0\t2274 3172 0\tJump;Leaves;3925"));
-		assertTrue(source.contains("# 2267 3201 0\t2267 3205 0\tJump;Leaves;3925"));
-		assertTrue(source.contains("# 2267 3205 0\t2267 3201 0\tJump;Leaves;3925"));
+		List<Transport> leaves = rows().stream().filter(row -> row.getObjectId() == 3925)
+			.collect(Collectors.toList());
+		assertEquals(4, leaves.size());
+		assertTrue(leaves.stream().allMatch(LeafPitPolicy::isEligible));
+		assertTrue(leaves.stream().allMatch(row ->
+			onlySkills(row, Map.of(Skill.AGILITY, 1, Skill.HITPOINTS, 19))));
 	}
 
 	@Test

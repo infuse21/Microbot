@@ -74,8 +74,8 @@ public class AuditedStepsAndClimbObstaclePolicyTest
 			.flatMap(Set::stream).collect(Collectors.toList());
 		assertTrue(all.stream().noneMatch(row -> row.getObjectId() == 8729
 			&& row.getName().equals("Steps")));
-		assertTrue(all.stream().noneMatch(row -> row.getObjectId() == 6878
-			&& row.getName().equals("Crushed barricade")));
+		assertEquals(1, all.stream().filter(row -> row.getObjectId() == 6878)
+			.filter(row -> QuestStatePassagePolicy.entry(row) != null).count());
 	}
 
 	@Test

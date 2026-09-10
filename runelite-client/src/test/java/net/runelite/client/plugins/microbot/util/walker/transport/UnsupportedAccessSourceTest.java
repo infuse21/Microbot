@@ -23,11 +23,11 @@ public class UnsupportedAccessSourceTest
 		20878, 2446, 5055, 12267, 30842, 23552, 23554, 3762, 3780);
 
 	@Test
-	public void allUnsupportedRowsAreNotLoaded()
+	public void remainingUnsupportedRowsAreNotLoaded()
 	{
 		assertTrue(Transport.loadAllFromResources().values().stream()
 			.flatMap(java.util.Collection::stream)
-			.noneMatch(row -> IDS.contains(row.getObjectId())));
+			.noneMatch(row -> IDS.contains(row.getObjectId()) && row.getObjectId() != 5055));
 	}
 
 	@Test

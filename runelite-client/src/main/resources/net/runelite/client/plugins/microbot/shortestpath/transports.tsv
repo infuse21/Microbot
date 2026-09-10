@@ -1,5 +1,17 @@
 # Origin	Destination	menuOption menuTarget objectID	Skills	Item IDs	Currency	Quests	Varbits	Varplayers	isMembers	Duration	Display info	Consumable
-# Tutorial Island											
+# Quest-state passages: traversal only after the exact open/cleared transform; no puzzle setup.
+2700 9688 0	2323 5104 0	Enter;Wall opening;19124					2618=1		Y	2
+2323 5104 0	2700 9688 0	Enter;Passage;18412							Y	2
+2457 3048 0	2455 3048 0	Climb-over;Crushed barricade;6878					496=1		Y	0
+3105 9308 2	3105 9306 2	Climb-over;Pile of rubble;33342					1560=50		Y	0
+3105 9306 2	3105 9308 2	Climb-over;Pile of rubble;33342					1560=50		Y	0
+3105 9308 2	3105 9306 2	Climb-over;Pile of rubble;33342					1560=60		Y	0
+3105 9306 2	3105 9308 2	Climb-over;Pile of rubble;33342					1560=60		Y	0
+3105 9308 2	3105 9306 2	Climb-over;Pile of rubble;33342					1560=65		Y	0
+3105 9306 2	3105 9308 2	Climb-over;Pile of rubble;33342					1560=65		Y	0
+3105 9308 2	3105 9306 2	Climb-over;Pile of rubble;33342					1560=70		Y	0
+3105 9306 2	3105 9308 2	Climb-over;Pile of rubble;33342					1560=70		Y	0
+# Tutorial Island
 3097 3107 0	3098 3107 0	Open;Door;9398								1	
 3098 3107 0	3097 3107 0	Open;Door;9398								1	
 3090 3092 0	3089 3092 0	Open;Gate;9470								1	
@@ -235,7 +247,11 @@
 											
 # Falador											
 3054 3382 0	3065 9951 0	Climb-down;Staircase;24249								1	
-# Removed seasonal prop: the Old School Museum passageway's Leave option only reports that it cannot be used.
+# Upstairs Leave exits: cached plane-1 anchors have bridge flag 2 (effective plane 0). Historical rows retained below.
+3065 9951 0	3053 3382 0	Leave;Old passageway;31892
+3065 9952 0	3053 3382 0	Leave;Old passageway;31892
+3014 9952 0	3038 3382 0	Leave;Old passageway;31892
+3014 9951 0	3038 3382 0	Leave;Old passageway;31892
 # 3065 9951 0	3053 3382 0	Leave;Old passageway;31892
 3053 3382 0	3065 9951 0	Climb-down;Staircase;24249								1	
 # 3065 9952 0	3053 3382 0	Leave;Old passageway;31892
@@ -659,7 +675,7 @@
 # Witchaven Dungeon											
 2697 3283 0	2696 9683 0	Climb-down;Old ruin entrance;18270							Y	1
 2696 9683 0	2697 3283 0	Climb-up;Exit;18354							Y
-# Unsupported: Slug Menace wall opening requires a quest-time false-wall transform not encoded by these rows.
+# Historical ungated Slug Menace rows; exact opened-wall and reverse-passage contracts are above.
 # 2700 9688 0	2323 5104 0	Enter;Wall opening;19124								2
 # 2323 5104 0	2700 9688 0	Enter;Passage;18412								2
 											
@@ -1582,16 +1598,29 @@
 2775 3234 1	2776 3235 0	Climb-down;Ship's ladder;9745									
 2808 3162 0	2808 3162 1	Climb-up;Ladder;16683								3	
 2808 3162 1	2808 3162 0	Climb-down;Ladder;16679								3	
-# DEFERRED: stale Brimhaven entrance object; current object 34713 requires
-# separate handling for 875-coin payment, temporary state and permanent access.
-# 2744 3154 0	2713 9564 0	Enter;Dungeon entrance;20877			875 Coins
-# 2744 3153 0	2713 9564 0	Enter;Dungeon entrance;20877			875 Coins
-# 2745 3154 0	2713 9564 0	Enter;Dungeon entrance;20877			875 Coins
-# 2743 3154 0	2713 9564 0	Enter;Dungeon entrance;20877			875 Coins
-# 2744 3154 0	2713 9564 0	Enter;Dungeon entrance;20877
-# 2744 3153 0	2713 9564 0	Enter;Dungeon entrance;20877
-# 2745 3154 0	2713 9564 0	Enter;Dungeon entrance;20877
-# 2743 3154 0	2713 9564 0	Enter;Dungeon entrance;20877
+# Brimhaven: one-visit payment, already-paid visit and permanent-access variants.
+# Base 20877 resolves Pay 34713 / Enter 20876; NavigationEngine owns payment through landing.
+2744 3154 0	2713 9564 0	Enter;Dungeon entrance;20877			875 Coins		5628=0;8122=0		Y	2
+2744 3154 0	2713 9564 0	Enter;Dungeon entrance;20877					5628=1;8122=0		Y	2
+2744 3154 0	2713 9564 0	Enter;Dungeon entrance;20877					8122=1		Y	2
+2744 3153 0	2713 9564 0	Enter;Dungeon entrance;20877			875 Coins		5628=0;8122=0		Y	2
+2744 3153 0	2713 9564 0	Enter;Dungeon entrance;20877					5628=1;8122=0		Y	2
+2744 3153 0	2713 9564 0	Enter;Dungeon entrance;20877					8122=1		Y	2
+2745 3154 0	2713 9564 0	Enter;Dungeon entrance;20877			875 Coins		5628=0;8122=0		Y	2
+2745 3154 0	2713 9564 0	Enter;Dungeon entrance;20877					5628=1;8122=0		Y	2
+2745 3154 0	2713 9564 0	Enter;Dungeon entrance;20877					8122=1		Y	2
+2743 3154 0	2713 9564 0	Enter;Dungeon entrance;20877			875 Coins		5628=0;8122=0		Y	2
+2743 3154 0	2713 9564 0	Enter;Dungeon entrance;20877					5628=1;8122=0		Y	2
+2743 3154 0	2713 9564 0	Enter;Dungeon entrance;20877					8122=1		Y	2
+2744 3152 0	2713 9564 0	Enter;Dungeon entrance;20877			875 Coins		5628=0;8122=0		Y	2
+2744 3152 0	2713 9564 0	Enter;Dungeon entrance;20877					5628=1;8122=0		Y	2
+2744 3152 0	2713 9564 0	Enter;Dungeon entrance;20877					8122=1		Y	2
+2745 3152 0	2713 9564 0	Enter;Dungeon entrance;20877			875 Coins		5628=0;8122=0		Y	2
+2745 3152 0	2713 9564 0	Enter;Dungeon entrance;20877					5628=1;8122=0		Y	2
+2745 3152 0	2713 9564 0	Enter;Dungeon entrance;20877					8122=1		Y	2
+2746 3152 0	2713 9564 0	Enter;Dungeon entrance;20877			875 Coins		5628=0;8122=0		Y	2
+2746 3152 0	2713 9564 0	Enter;Dungeon entrance;20877					5628=1;8122=0		Y	2
+2746 3152 0	2713 9564 0	Enter;Dungeon entrance;20877					8122=1		Y	2
 # Exit from inside
 # Unsupported: duplicate Karamja dungeon exits disagree on landing and duration, so completion cannot be frozen safely.
 # 2713 9564 0	2744 3153 0	Leave;Exit;20878
@@ -1618,7 +1647,7 @@
 # Stepping Stones
 2647 9557 0	2649 9562 0	Jump-from;Stepping stone;21739							Y	1
 2649 9562 0	2647 9557 0	Jump-from;Stepping stone;21738	12 Agility						Y	1
-# Unsupported: island-bound eastern Brimhaven stepping stones require 56 Agility, but these rows do not identify the asymmetric direction.
+# Historical ordinary duplicates: the four canonical agility_shortcuts.tsv rows require 56 Agility only toward the island.
 # 2695 9533 0	2697 9525 0	Cross;Stepping stone;19040
 # 2697 9525 0	2695 9533 0	Cross;Stepping stone;19040
 # 2690 9547 0	2682 9548 0	Cross;Stepping stone;19040
@@ -1633,18 +1662,16 @@
 # 2655 9573 0	2655 9566 0	Squeeze-through;Pipe;21728
 # 2655 9566 0	2655 9573 0	Squeeze-through;Pipe;21728
 # Crevice
-# Unsupported: this passage enters Brimhaven Dungeon's Slayer-only metal-dragon area, but the rows encode no active-task gate.
-# 2684 9436 0	2697 9436 0	Enter;Crevice;30198
-# 2697 9436 0	2684 9436 0	Enter;Crevice;30198
+# Hieve restricts attacking the dragons, not passage through these crevices.
+2684 9436 0	2697 9436 0	Enter;Crevice;30198							Y
+2697 9436 0	2684 9436 0	Enter;Crevice;30198							Y
 # Brimhaven Dungeon - CKR Fairy Ring Alternate Entrance
-# Unsupported: Brimhaven's southern entrance requires a one-time 5,000-trading-stick Banisoch unlock absent from these rows.
-# 2761 3062 0	2734 9478 0	Climb;Rope;66
-# 2761 3063 0	2734 9478 0	Climb;Rope;66
-# 2760 3064 0	2734 9478 0	Climb;Rope;66
-# 2760 3061 0	2734 9478 0	Climb;Rope;66
-# DEFERRED: Brimhaven backdoor requires Banisoch's permanent 5,000-trading-stick unlock;
-# no reliable client varbit/varplayer gate is currently identified for this source row.
-# 2734 9478 0	2760 3061 0	Use;Crevice;30201
+# Banisoch's permanent unlock gates both directions; values 1-3 expose rope transform 30200.
+2761 3062 0	2734 9478 0	Climb;Rope;66					5629>0;5629<4		Y
+2761 3063 0	2734 9478 0	Climb;Rope;66					5629>0;5629<4		Y
+2760 3064 0	2734 9478 0	Climb;Rope;66					5629>0;5629<4		Y
+2760 3061 0	2734 9478 0	Climb;Rope;66					5629>0;5629<4		Y
+2734 9478 0	2760 3061 0	Use;Crevice;30201					5629>0;5629<4		Y
 
 # Karamja Volcano											
 2855 3169 0	2855 9569 0	Climb-down;Rocks;11441									
@@ -1961,7 +1988,7 @@
 2465 3495 3	2465 3495 2	Climb-down;Ladder;56229									
 2466 3496 2	2466 3496 3	Climb-up;Ladder;56232									
 2466 3496 3	2466 3496 2	Climb-down;Ladder;56229									
-# Unsupported: the Grand Tree trapdoor requires The Grand Tree completion and Open only transforms it before descent.
+# Deferred: central Grand Tree entry needs an exact quest-stage and Open outcome; mine completion rules do not prove this entrance's protocol.
 # 2464 3497 0	2464 9897 0	Open;Trapdoor;2446
 2464 9897 0	2464 3497 0	Climb-up;Ladder;17385									
 2467 9903 0	2467 9905 0	Push;Roots;2451				The Grand Tree=FINISHED			Y	1
@@ -3672,7 +3699,9 @@
 3831 9462 0	3829 3061 0	Climb-up;Staircase;5269								1	
 											
 # Mort'ton											
-# Unsupported: the Canifis tavern trapdoor is quest-gated and Open only reveals the descent; neither contract is encoded.
+# Post-quest Canifis entry: Open directly enters the cellar. Earlier quest-stage unlock remains unverified.
+3495 3465 0	3477 9845 0	Open;Trapdoor;5055				In Search of the Myreque=FINISHED			Y	0
+3495 3464 0	3477 9845 0	Open;Trapdoor;5055				In Search of the Myreque=FINISHED			Y	0
 # 3495 3465 0	3477 9845 0	Open;Trapdoor;5055
 3477 9845 0	3495 3465 0	Climb-up;Ladder;5054								2
 3478 9846 0	3495 3465 0	Climb-up;Ladder;5054								2	
@@ -4060,7 +4089,7 @@
 3104 9331 2	3105 9332 1	Climb-down;Ladder;11042								2	
 3104 9333 2	3105 9332 1	Climb-down;Ladder;11042								2	
 3103 9332 2	3105 9332 1	Climb-down;Ladder;11042								2	
-# Unsupported: Enakhra temple rubble and bone piles are quest-created puzzle states absent from these rows.
+# Historical ungated rubble rows: exact available states are above. ID 18342 is Slug lair-wall scenery, not an Enakhra bone pile.
 # 3105 9308 2	3105 9306 2	Climb-over;Pile of rubble;33342
 # 3105 9306 2	3105 9308 2	Climb-over;Pile of rubble;33342
 # 3104 9308 2	3104 9306 2	Climb-over;Pile of bones;18342
@@ -4192,11 +4221,12 @@
 2505 3850 2	2504 3849 3	Climb-up;Staircase;16676								1	
 											
 # Ungael											
-# Obsolete: these Ungael shortcut IDs are null objects; the live Vorkath ice chunks use 31990/31822 and have quest-fight safety semantics.
-# 2266 4039 0	2264 4039 0	Climb-over;Ice chunks;29868
-# 2264 4039 0	2266 4039 0	Climb-over;Ice chunks;29868
-# 2263 4040 0	2263 4048 0	Climb-up;Ice chunks;29870
-# 2263 4048 0	2263 4040 0	Climb-down;Ice chunks;29869
+# Ungael side passages unlock after quest Vorkath is defeated (6108 >= 30).
+# Exact transformed ice chunks and directed landings; not the combat crater entrance.
+2266 4039 0	2264 4039 0	Climb-over;Ice chunks;29868					6108>29		Y	0
+2264 4039 0	2266 4039 0	Climb-over;Ice chunks;29868					6108>29		Y	0
+2263 4040 0	2263 4048 0	Climb-up;Ice chunks;29870					6108>29		Y	0
+2263 4048 0	2263 4040 0	Climb-down;Ice chunks;29869					6108>29		Y	0
 2247 4078 0	2259 10482 0	Enter;Cave;31999									
 2259 10482 0	2247 4078 0	Enter;Cave Entrance;32047									
 											
@@ -4235,11 +4265,22 @@
 2420 10279 1	2319 3892 0	Climb-up;Stone ladder;21592									
 2316 3893 0	2420 10279 1	Open;Cave;21585				The Fremennik Isles=FINISHED			Y	1
 2315 3894 0	2420 10279 1	Open;Cave;21585				The Fremennik Isles=FINISHED			Y	1
-# DEFERRED: post-quest Ice Troll Caves access is western-entrance only.
+# Eastern quest-time entry: exact pre-king-death stages. Post-quest access remains western-only; stage 320 can redirect to the corpse.
+2400 3889 0	2394 10300 1	Open;Cave;21584					3311=300		Y	0
+2400 3889 0	2394 10300 1	Open;Cave;21584					3311=310		Y	0
+2401 3888 0	2394 10300 1	Open;Cave;21584					3311=300		Y	0
+2401 3888 0	2394 10300 1	Open;Cave;21584					3311=310		Y	0
+2403 3889 0	2394 10300 1	Open;Cave;21584					3311=300		Y	0
+2403 3889 0	2394 10300 1	Open;Cave;21584					3311=310		Y	0
 # 2400 3889 0	2394 10300 1	Open;Cave;21584
 # 2401 3888 0	2394 10300 1	Open;Cave;21584
 # 2403 3889 0	2394 10300 1	Open;Cave;21584
-# Deferred: underground Fremennik Isles bridges include quest repair and boss-entry state absent from these rows.
+# Underground bridges: boss-entry direction requires the completed ten-troll task; no surface bridge-repair requirement.
+2398 10258 1	2393 10258 1	Walk-across;Rope bridge;21318							Y	0
+2393 10258 1	2398 10258 1	Walk-across;Rope bridge;21319							Y	0
+2385 10259 1	2385 10264 1	Walk-across;Rope bridge;21317							Y	0
+2385 10260 1	2385 10264 1	Walk-across;Rope bridge;21317							Y	0
+2385 10264 1	2385 10260 1	Walk-across;Rope bridge;21316					3312=0		Y	0
 # 2398 10258 1	2393 10258 1	Walk-across;Rope bridge;21318
 # 2393 10258 1	2398 10258 1	Walk-across;Rope bridge;21319
 # 2385 10259 1	2385 10264 1	Walk-across;Rope bridge;21317
@@ -4271,18 +4312,19 @@
 2639 10424 0	2638 10424 0	Open;Door;21167									
 											
 # Weiss
-# Unsupported: Weiss upward rockslides require 68 Agility and can fail for up to 15 damage; the rows omit directional gates and failure recovery.
-# 2852 3966 0	2852 3964 0	Climb;Rockslide;33184
-# 2852 3964 0	2852 3966 0	Climb;Rockslide;33184
-# 2852 3964 0	2855 3964 0	Climb;Rockslide;33185
-# 2855 3964 0	2852 3964 0	Climb;Rockslide;33185
-# Unsupported: Weiss ascent rope and ledge require 68 Agility and can fail to earlier stages; the rows omit directional gates and recovery.
-# 2855 3964 0	2853 3961 0	Climb;Rope;33328
-# 2853 3961 0	2855 3964 0	Climb;Roped tree;33327
-# 2853 3961 0	2857 3961 0	Cross;Ledge;33190
-# 2857 3961 0	2853 3961 0	Cross;Ledge;33190
-# 2859 3962 0	2859 3960 0	Climb;Rockslide;33191
-# 2859 3960 0	2859 3962 0	Climb;Rockslide;33191
+# Weiss cliff: ascent needs 68 Agility and current HP above 15; descent has no Agility gate.
+# Exact prior-stage falls replan from the lower platform instead of repeating a later obstacle.
+2852 3966 0	2852 3964 0	Climb;Rockslide;33184	68 Agility						Y	0
+2852 3964 0	2852 3966 0	Climb;Rockslide;33184							Y	0
+2852 3964 0	2855 3964 0	Climb;Rockslide;33185	68 Agility						Y	0
+2855 3964 0	2852 3964 0	Climb;Rockslide;33185							Y	0
+# Installed rope uses 6528 >= 45; first-time installation belongs to the quest helper.
+2855 3964 0	2853 3961 0	Climb;Rope;33328	68 Agility				6528>44		Y	0
+2853 3961 0	2855 3964 0	Climb;Roped tree;33327					6528>44		Y	0
+2853 3961 0	2857 3961 0	Cross;Ledge;33190	68 Agility						Y	0
+2857 3961 0	2853 3961 0	Cross;Ledge;33190							Y	0
+2859 3962 0	2859 3960 0	Climb;Rockslide;33191	68 Agility						Y	0
+2859 3960 0	2859 3962 0	Climb;Rockslide;33191							Y	0
 2857 3957 0	2857 3954 0	Pass;Fallen Tree;33192				Making Friends with My Arm=FINISHED			yes
 2857 3954 0	2857 3957 0	Pass;Fallen Tree;33192				Making Friends with My Arm=FINISHED			yes
 2852 3936 0	2850 3936 0	Cross;Little boulder;33312				Making Friends with My Arm=FINISHED			yes
@@ -4768,7 +4810,13 @@
 3221 9618 0	3219 9618 0	Squeeze-through;Hole;6899				The Lost Tribe=FINISHED			Y	1
 3224 9604 0	3224 9600 0	Squeeze-through;Hole;6912				The Lost Tribe=FINISHED			Y	1
 3224 9600 0	3224 9604 0	Squeeze-through;Hole;6912				The Lost Tribe=FINISHED			Y	1
-# Unsupported: Tears-cave tunnels omit members and safe light-source/fire state; duplicate approaches also disagree on duration.
+# Tears-cave traversal: exact anchors, members; protective loadouts remain the caller's responsibility. Original durations preserved.
+3226 9542 0	3219 9532 2	Enter;Tunnel;6659							Y	0
+3219 9532 2	3226 9542 0	Enter;Tunnel;6658							Y	0
+3225 9542 0	3219 9532 2	Enter;Tunnel;6659							Y	2
+3227 9542 0	3219 9532 2	Enter;Tunnel;6659							Y	2
+3218 9532 2	3226 9542 0	Enter;Tunnel;6658							Y	2
+3220 9532 2	3226 9542 0	Enter;Tunnel;6658							Y	2
 # 3226 9542 0	3219 9532 2	Enter;Tunnel;6659
 # 3219 9532 2	3226 9542 0	Enter;Tunnel;6658
 3317 9603 0	2748 5374 0	Open;Door;6919				Death to the Dorgeshuun					
@@ -5012,9 +5060,9 @@
 2234 3149 0	2231 3149 0	Enter;Dense forest;3937									
 2237 3149 0	2234 3149 0	Enter;Dense forest;3938									
 2240 3149 0	2237 3149 0	Enter;Dense forest;3939									
-# Leaf failure enters a spike pit; keep disabled until the same-side climb-out is engine-owned.
-# 2274 3172 0	2274 3176 0	Jump;Leaves;3925	1 Agility;19 Hitpoints			Regicide=IN_PROGRESS			Y
-# 2274 3176 0	2274 3172 0	Jump;Leaves;3925	1 Agility;19 Hitpoints			Regicide=IN_PROGRESS			Y
+# Leaf jumps retain engine ownership through pit recovery and verified same-side return.
+2274 3172 0	2274 3176 0	Jump;Leaves;3925	1 Agility;19 Hitpoints			Regicide=IN_PROGRESS			Y
+2274 3176 0	2274 3172 0	Jump;Leaves;3925	1 Agility;19 Hitpoints			Regicide=IN_PROGRESS			Y
 2234 3181 0	2238 3181 0	Pass;Sticks;3922	1 Agility;9 Hitpoints			Regicide=IN_PROGRESS			Y
 2238 3181 0	2234 3181 0	Pass;Sticks;3922	1 Agility;9 Hitpoints			Regicide=IN_PROGRESS			Y
 2238 3219 0	2235 3219 0	Enter;Dense forest;3939									
@@ -5031,8 +5079,8 @@
 2271 3192 0	2274 3192 0	Enter;Dense forest;3937									
 2268 3192 0	2271 3192 0	Enter;Dense forest;3939									
 2265 3192 0	2268 3192 0	Enter;Dense forest;3938									
-# 2267 3201 0	2267 3205 0	Jump;Leaves;3925	1 Agility;19 Hitpoints			Regicide=IN_PROGRESS			Y
-# 2267 3205 0	2267 3201 0	Jump;Leaves;3925	1 Agility;19 Hitpoints			Regicide=IN_PROGRESS			Y
+2267 3201 0	2267 3205 0	Jump;Leaves;3925	1 Agility;19 Hitpoints			Regicide=IN_PROGRESS			Y
+2267 3205 0	2267 3201 0	Jump;Leaves;3925	1 Agility;19 Hitpoints			Regicide=IN_PROGRESS			Y
 2284 3188 0	2287 3188 0	Step-over;Tripwire;3921									
 2287 3188 0	2284 3188 0	Step-over;Tripwire;3921									
 2306 3194 0	2304 3194 0	Pass;Tree;8742				Mourning's End Part I=IN_PROGRESS		517>1	Y	5
@@ -5170,27 +5218,70 @@
 3225 12445 0	3225 6046 0	Exit;Steps;36691							yes
 											
 # Mount Karuulm Dungeon											
-# DEFERRED: Karuulm route requires route-wide heat-protection readiness.
-# 1311 3806 0	1311 10189 0	Activate;Elevator;34359
-# 1311 3808 0	1311 10189 0	Activate;Elevator;34359
-# 1311 3806 0	1312 10189 0	Activate;Elevator;34359
-# 1311 3808 0	1312 10189 0	Activate;Elevator;34359
+# Safe entrance and escapes; onward heat crossings require equipable boots or the elite diary reward.
+1311 3806 0	1311 10189 0	Activate;Elevator;34359							Y	0
+1311 3808 0	1311 10189 0	Activate;Elevator;34359							Y	0
+1311 3806 0	1312 10189 0	Activate;Elevator;34359							Y	0
+1311 3808 0	1312 10189 0	Activate;Elevator;34359							Y	0
+1303 10205 0	1301 10205 0	Climb;Rocks;34544	44 Slayer	23037			7932=0		Y	0
+1303 10205 0	1301 10205 0	Climb;Rocks;34544	44 Slayer;70 Defence;70 Magic;70 Ranged	22951			7932=0		Y	0
+1303 10205 0	1301 10205 0	Climb;Rocks;34544	50 Defence;50 Strength	21643			7932=0		Y	0
+1303 10205 0	1301 10205 0	Climb;Rocks;34544					7932>0		Y	0
+1303 10206 0	1301 10206 0	Climb;Rocks;34544	44 Slayer	23037			7932=0		Y	0
+1303 10206 0	1301 10206 0	Climb;Rocks;34544	44 Slayer;70 Defence;70 Magic;70 Ranged	22951			7932=0		Y	0
+1303 10206 0	1301 10206 0	Climb;Rocks;34544	50 Defence;50 Strength	21643			7932=0		Y	0
+1303 10206 0	1301 10206 0	Climb;Rocks;34544					7932>0		Y	0
+1301 10205 0	1303 10205 0	Climb;Rocks;34544							Y	0
+1301 10206 0	1303 10206 0	Climb;Rocks;34544							Y	0
+1311 10214 0	1311 10215 0	Climb;Rocks;34544	44 Slayer	23037			7932=0		Y	0
+1311 10214 0	1311 10215 0	Climb;Rocks;34544	44 Slayer;70 Defence;70 Magic;70 Ranged	22951			7932=0		Y	0
+1311 10214 0	1311 10215 0	Climb;Rocks;34544	50 Defence;50 Strength	21643			7932=0		Y	0
+1311 10214 0	1311 10215 0	Climb;Rocks;34544					7932>0		Y	0
+1312 10214 0	1312 10215 0	Climb;Rocks;34544	44 Slayer	23037			7932=0		Y	0
+1312 10214 0	1312 10215 0	Climb;Rocks;34544	44 Slayer;70 Defence;70 Magic;70 Ranged	22951			7932=0		Y	0
+1312 10214 0	1312 10215 0	Climb;Rocks;34544	50 Defence;50 Strength	21643			7932=0		Y	0
+1312 10214 0	1312 10215 0	Climb;Rocks;34544					7932>0		Y	0
+1311 10215 0	1311 10214 0	Climb;Rocks;34544							Y	0
+1312 10215 0	1312 10214 0	Climb;Rocks;34544							Y	0
+1320 10205 0	1322 10205 0	Climb;Rocks;34544	44 Slayer	23037			7932=0		Y	0
+1320 10205 0	1322 10205 0	Climb;Rocks;34544	44 Slayer;70 Defence;70 Magic;70 Ranged	22951			7932=0		Y	0
+1320 10205 0	1322 10205 0	Climb;Rocks;34544	50 Defence;50 Strength	21643			7932=0		Y	0
+1320 10205 0	1322 10205 0	Climb;Rocks;34544					7932>0		Y	0
+1320 10206 0	1322 10206 0	Climb;Rocks;34544	44 Slayer	23037			7932=0		Y	0
+1320 10206 0	1322 10206 0	Climb;Rocks;34544	44 Slayer;70 Defence;70 Magic;70 Ranged	22951			7932=0		Y	0
+1320 10206 0	1322 10206 0	Climb;Rocks;34544	50 Defence;50 Strength	21643			7932=0		Y	0
+1320 10206 0	1322 10206 0	Climb;Rocks;34544					7932>0		Y	0
+1322 10205 0	1320 10205 0	Climb;Rocks;34544							Y	0
+1322 10206 0	1320 10206 0	Climb;Rocks;34544							Y	0
+1329 10205 0	1334 10205 1	Climb;Steps;34530	44 Slayer	23037			7932=0		Y	0
+1329 10205 0	1334 10205 1	Climb;Steps;34530	44 Slayer;70 Defence;70 Magic;70 Ranged	22951			7932=0		Y	0
+1329 10205 0	1334 10205 1	Climb;Steps;34530	50 Defence;50 Strength	21643			7932=0		Y	0
+1329 10205 0	1334 10205 1	Climb;Steps;34530					7932>0		Y	0
+1329 10206 0	1334 10206 1	Climb;Steps;34530	44 Slayer	23037			7932=0		Y	0
+1329 10206 0	1334 10206 1	Climb;Steps;34530	44 Slayer;70 Defence;70 Magic;70 Ranged	22951			7932=0		Y	0
+1329 10206 0	1334 10206 1	Climb;Steps;34530	50 Defence;50 Strength	21643			7932=0		Y	0
+1329 10206 0	1334 10206 1	Climb;Steps;34530					7932>0		Y	0
+1334 10205 1	1329 10205 0	Climb;Steps;34531							Y	0
+1334 10206 1	1329 10206 0	Climb;Steps;34531							Y	0
+1313 10188 1	1318 10188 2	Climb;Steps;34530	44 Slayer	23037			7932=0		Y	0
+1313 10188 1	1318 10188 2	Climb;Steps;34530	44 Slayer;70 Defence;70 Magic;70 Ranged	22951			7932=0		Y	0
+1313 10188 1	1318 10188 2	Climb;Steps;34530	50 Defence;50 Strength	21643			7932=0		Y	0
+1313 10188 1	1318 10188 2	Climb;Steps;34530					7932>0		Y	0
+1313 10189 1	1318 10189 2	Climb;Steps;34530	44 Slayer	23037			7932=0		Y	0
+1313 10189 1	1318 10189 2	Climb;Steps;34530	44 Slayer;70 Defence;70 Magic;70 Ranged	22951			7932=0		Y	0
+1313 10189 1	1318 10189 2	Climb;Steps;34530	50 Defence;50 Strength	21643			7932=0		Y	0
+1313 10189 1	1318 10189 2	Climb;Steps;34530					7932>0		Y	0
+1318 10188 2	1313 10188 1	Climb;Steps;34531							Y	0
+1318 10189 2	1313 10189 1	Climb;Steps;34531							Y	0
 1311 10189 0	1311 3806 0	Exit;Cave exit;34514									
 1311 10189 0	1311 3808 0	Exit;Cave exit;34514									
 1312 10189 0	1311 3806 0	Exit;Cave exit;34514									
 1312 10189 0	1311 3808 0	Exit;Cave exit;34514									
-1303 10205 0	1301 10205 0	Climb;Rocks;34544
-1303 10206 0	1301 10206 0	Climb;Rocks;34544
-1301 10205 0	1303 10205 0	Climb;Rocks;34544
-1301 10206 0	1303 10206 0	Climb;Rocks;34544
-1311 10214 0	1311 10215 0	Climb;Rocks;34544
-1312 10214 0	1312 10215 0	Climb;Rocks;34544									
-1311 10215 0	1311 10214 0	Climb;Rocks;34544									
-1312 10215 0	1312 10214 0	Climb;Rocks;34544									
-1320 10205 0	1322 10205 0	Climb;Rocks;34544									
-1320 10206 0	1322 10206 0	Climb;Rocks;34544									
-1322 10205 0	1320 10205 0	Climb;Rocks;34544									
-1322 10206 0	1320 10205 0	Climb;Rocks;34544									
+# Historical ungated elevator/stair definitions (do not reactivate):
+# 1311 3806 0	1311 10189 0	Activate;Elevator;34359
+# 1311 3808 0	1311 10189 0	Activate;Elevator;34359
+# 1311 3806 0	1312 10189 0	Activate;Elevator;34359
+# 1311 3808 0	1312 10189 0	Activate;Elevator;34359
 # 1329 10205 0	1334 10205 1	Climb;Steps;34530
 # 1329 10206 0	1334 10206 1	Climb;Steps;34530
 # 1334 10205 1	1329 10205 0	Climb;Steps;34531
@@ -5231,27 +5322,32 @@
 1314 3665 0	1314 10063 0	Enter;Lizard dwelling;34403									
 1329 3670 0	1330 10069 0	Enter;Lizard dwelling;34403									
 1329 3669 0	1330 10069 0	Enter;Lizard dwelling;34403									
-# Unsupported: this barrier enters Karuulm's extreme-heat floor and needs boot/elite-diary protection plus warning handling.
+# Historical ID typo: 34542 is Karuulm lava scenery; the corrected Molch barrier rows use 34642 below.
 # 1293 10091 0	1293 10093 0	Pass;Mystical barrier;34542
 # 1292 10091 0	1292 10093 0	Pass;Mystical barrier;34542
 # 1293 10093 0	1293 10091 0	Pass;Mystical barrier;34542
 # 1292 10093 0	1292 10091 0	Pass;Mystical barrier;34542
-1296 10096 0	1298 10096 0	Pass;Mystical barrier;34643
-1296 10097 0	1298 10097 0	Pass;Mystical barrier;34643
-1298 10096 0	1296 10096 0	Pass;Mystical barrier;34643
-1298 10097 0	1296 10097 0	Pass;Mystical barrier;34643
-1307 10097 0	1309 10097 0	Pass;Mystical barrier;34644
-1307 10096 0	1309 10096 0	Pass;Mystical barrier;34644
-1309 10097 0	1307 10097 0	Pass;Mystical barrier;34644
-1309 10096 0	1307 10096 0	Pass;Mystical barrier;34644
-1316 10097 0	1318 10097 0	Pass;Mystical barrier;34645
-1316 10096 0	1318 10096 0	Pass;Mystical barrier;34645
-1318 10097 0	1316 10097 0	Pass;Mystical barrier;34645
-1318 10096 0	1316 10096 0	Pass;Mystical barrier;34645
-1324 10097 0	1326 10097 0	Pass;Mystical barrier;34646
-1324 10096 0	1326 10096 0	Pass;Mystical barrier;34646
-1326 10097 0	1324 10097 0	Pass;Mystical barrier;34646
-1326 10096 0	1324 10096 0	Pass;Mystical barrier;34646
+# Molch barriers: exact colour/counter, crossing damage and landing are owned by the catalog handler.
+1293 10091 0	1293 10093 0	Pass;Mystical barrier;34642							Y	0
+1293 10093 0	1293 10091 0	Pass;Mystical barrier;34642							Y	0
+1292 10091 0	1292 10093 0	Pass;Mystical barrier;34642							Y	0
+1292 10093 0	1292 10091 0	Pass;Mystical barrier;34642							Y	0
+1296 10096 0	1298 10096 0	Pass;Mystical barrier;34643							Y	0
+1296 10097 0	1298 10097 0	Pass;Mystical barrier;34643							Y	0
+1298 10096 0	1296 10096 0	Pass;Mystical barrier;34643							Y	0
+1298 10097 0	1296 10097 0	Pass;Mystical barrier;34643							Y	0
+1307 10097 0	1309 10097 0	Pass;Mystical barrier;34644							Y	0
+1307 10096 0	1309 10096 0	Pass;Mystical barrier;34644							Y	0
+1309 10097 0	1307 10097 0	Pass;Mystical barrier;34644							Y	0
+1309 10096 0	1307 10096 0	Pass;Mystical barrier;34644							Y	0
+1316 10097 0	1318 10097 0	Pass;Mystical barrier;34645							Y	0
+1316 10096 0	1318 10096 0	Pass;Mystical barrier;34645							Y	0
+1318 10097 0	1316 10097 0	Pass;Mystical barrier;34645							Y	0
+1318 10096 0	1316 10096 0	Pass;Mystical barrier;34645							Y	0
+1324 10097 0	1326 10097 0	Pass;Mystical barrier;34646							Y	0
+1324 10096 0	1326 10096 0	Pass;Mystical barrier;34646							Y	0
+1326 10097 0	1324 10097 0	Pass;Mystical barrier;34646							Y	0
+1326 10096 0	1324 10096 0	Pass;Mystical barrier;34646							Y	0
 											
 # f2p altars (earth, air, fire, body, water)											
 2793 4828 0	2980 3511 0	Use;Portal;34749									
@@ -5327,7 +5423,9 @@
 3126 3832 0	3241 10233 0	Enter;Cavern;31556
 3126 3833 0	3241 10233 0	Enter;Cavern;31556
 3126 3834 0	3241 10233 0	Enter;Cavern;31556
-# DEFERRED: Revenant Caves entry requires a paid-since-last-death protocol.
+# DEFERRED: Revenant fee is 100000 coins, payable directly from the bank.
+# Payment expires on any cave death or PvP death elsewhere in the Wilderness, not every death.
+# Paid-state and exact confirmation still need evidence; warning 6506 is not a paid flag.
 # 3069 3739 0	3187 10127 0	Jump-Down;Crevice;40386
 # 3069 3740 0	3187 10127 0	Jump-Down;Crevice;40386
 # 3069 3741 0	3187 10127 0	Jump-Down;Crevice;40386
@@ -5419,8 +5517,9 @@
 2585 3088 0	2584 3088 0	Open;Magic guild door;1732								1	
 2683 3271 0	2683 3268 1	Cross;Gangplank;2085								3	
 2683 3268 1	2683 3271 0	Cross;Gangplank;2086								3	
-# Unsupported: Basement of Doom Open only transforms the trapdoor before descent; the row incorrectly treats it as traversal.
+# Basement of Doom: 12267/Open is preparation for the corrected 12268/Go-down row; acknowledge only landing.
 # 3077 3493 0	3077 9893 0	Open;trapdoor;12267				Shadow of the Storm				1
+3077 3493 0	3077 9893 0	Go-down;Open trapdoor;12268				Shadow of the Storm			Y	1
 3077 9893 0	3077 3493 0	Climb;Cellar stairs;12265								1	
 3295 3428 0	3296 3428 0	Open;Gate;24560					3637>152			2	
 3296 3428 0	3295 3428 0	Open;Gate;24560					3637>152			2	
@@ -5532,12 +5631,13 @@
 # 3068 3739 0	3187 10127 0	Jump-down;Crevice;40386
 3217 10058 0	3102 3655 0	Climb-up;Stairs;31558								2	
 3246 10215 0	3124 3805 0	Climb-up;Stairs;43868								2	
-# Unsupported: Resource Area entry requires a payment dialogue, but these rows put the tiered entry fares on the reverse edge.
-# 3184 3944 0	3184 3945 0	Open;Gate;26760								2
-# 3184 3945 0	3184 3944 0	Open;Gate;26760			7500 Coins		4469=0;4468=0;4467=0;			2
-# 3184 3945 0	3184 3944 0	Open;Gate;26760			6000 Coins		4469=0;4468=0;4467=1			2
-# 3184 3945 0	3184 3944 0	Open;Gate;26760			3750 Coins		4469=0;4468=1			2
-# 3184 3945 0	3184 3944 0	Open;Gate;26760					4469=1			2
+# Resource Area: Open -> exact diary-priced payment confirmation -> directed landing; exit is free.
+# The enclosure is south of the gate: 3945 -> 3944 is correctly the paid entry; 3944 -> 3945 is the free exit.
+3184 3944 0	3184 3945 0	Open;Gate;26760							Y	2
+3184 3945 0	3184 3944 0	Open;Gate;26760			7500 Coins		4469=0;4468=0;4467=0;		Y	2
+3184 3945 0	3184 3944 0	Open;Gate;26760			6000 Coins		4469=0;4468=0;4467=1		Y	2
+3184 3945 0	3184 3944 0	Open;Gate;26760			3750 Coins		4469=0;4468=1		Y	2
+3184 3945 0	3184 3944 0	Open;Gate;26760					4469=1		Y	2
 2800 5160 0	2166 4409 2	Climb-down;Ladder;20278								2	
 2166 4409 2	2800 5160 0	Climb-up;Ladder;20281								2	
 2705 5363 0	2705 5366 1	Climb-up;Stairs;22931								1	
@@ -5668,12 +5768,7 @@
 1361 3309 0	1486 3232 0	Follow;Mountain Guide;14529					17226=1		Y	5
 3280 3412 0	1700 3141 0	Travel;Primio;12888				Children of the Sun				6	Civitas illa Fortis
 1703 3140 0	3280 3412 0	Travel;Primio;12889				Children of the Sun				6	Varrock
-# 2744 3152 0	2713 9564 0	Enter;Dungeon entrance;20876			875 Coins					2
-# 2744 3152 0	2713 9564 0	Enter;Dungeon entrance;20876					5628=1			2
-# 2745 3152 0	2713 9564 0	Enter;Dungeon entrance;20876			875 Coins					2
-# 2745 3152 0	2713 9564 0	Enter;Dungeon entrance;20876					5628=1			2
-# 2746 3152 0	2713 9564 0	Enter;Dungeon entrance;20876			875 Coins					2
-# 2746 3152 0	2713 9564 0	Enter;Dungeon entrance;20876					5628=1			2
+# Brimhaven entrance aliases consolidated into the canonical base-20877 rows above.
 # 2713 9564 0	2745 3152 0	Leave;exit;20878								2
 2835 2987 0	2835 2987 1	Climb-up;Ladder;16684								2	
 2835 2987 1	2835 2987 0	Climb-down;Ladder;16679								2	

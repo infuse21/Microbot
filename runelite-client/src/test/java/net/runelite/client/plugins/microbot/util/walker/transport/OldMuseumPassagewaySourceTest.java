@@ -20,11 +20,32 @@ public class OldMuseumPassagewaySourceTest
 		"/net/runelite/client/plugins/microbot/shortestpath/transports.tsv";
 
 	@Test
-	public void unusablePropRowsAreNotLoaded()
+	public void fourExactExitRowsUseCatalogOwnershipAndRequireTheirLanding()
 	{
-		assertTrue(Transport.loadAllFromResources().values().stream()
+		java.util.List<Transport> rows = Transport.loadAllFromResources().values().stream()
 			.flatMap(java.util.Collection::stream)
-			.noneMatch(row -> row.getObjectId() == 31892));
+			.filter(row -> row.getObjectId() == 31892).collect(Collectors.toList());
+		assertEquals(4, rows.size());
+		for (Transport row : rows)
+		{
+			assertTrue(CatalogTransitionPolicy.isEligible(row));
+			org.junit.Assert.assertFalse(AdjacentTransportPolicy.isEligible(row));
+			org.junit.Assert.assertFalse(net.runelite.client.plugins.microbot.util.walker.banking.Rs2WalkerBankingPlanner.requiresBankPlanning(row));
+			net.runelite.client.plugins.microbot.util.walker.navigation.RouteInteraction pending =
+				new net.runelite.client.plugins.microbot.util.walker.navigation.RouteInteraction(1, 0,
+					row.getOrigin(), row.getDestination(), row.getOrigin(),
+					net.runelite.client.plugins.microbot.util.walker.navigation.RouteInteraction.Kind.CATALOG_TRANSITION,
+					net.runelite.client.plugins.microbot.util.walker.navigation.RouteInteraction.Status.AVAILABLE,
+					"Leave", true, 31892, row.getOrigin(), row.getDestination());
+			CatalogTransitionRouteScanner scanner = new CatalogTransitionRouteScanner();
+			CatalogTransitionScene scene = org.mockito.Mockito.mock(CatalogTransitionScene.class);
+			org.junit.Assert.assertNotEquals(net.runelite.client.plugins.microbot.util.walker.navigation.RouteInteraction.Status.CLEARED,
+				scanner.observePending(pending, row.getOrigin(), scene, 6).getStatus());
+			assertEquals(net.runelite.client.plugins.microbot.util.walker.navigation.RouteInteraction.Status.CLEARED,
+				scanner.observePending(pending, row.getDestination(), scene, 6).getStatus());
+			row.getItemIdRequirements().add(Set.of(995));
+			org.junit.Assert.assertFalse(CatalogTransitionPolicy.isEligible(row));
+		}
 	}
 
 	@Test

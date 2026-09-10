@@ -1,80 +1,69 @@
 package net.runelite.client.plugins.microbot.util.walker.transport;
 
-import net.runelite.client.plugins.microbot.shortestpath.Transport;
-import org.junit.Test;
-
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-
+import net.runelite.api.coords.WorldPoint;
+import net.runelite.client.plugins.microbot.shortestpath.Transport;
+import net.runelite.client.plugins.microbot.util.walker.banking.Rs2WalkerBankingPlanner;
+import net.runelite.client.plugins.microbot.util.walker.navigation.RouteInteraction;
+import org.junit.Test;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class BrimhavenDungeonEntranceSourceTest
 {
-	private static final String TRANSPORT_RESOURCE =
-		"/net/runelite/client/plugins/microbot/shortestpath/transports.tsv";
-
-	@Test
-	public void staleEntranceObjectsAreNotLoaded()
+	static List<Transport> rows()
 	{
-		assertTrue(Transport.loadAllFromResources().values().stream()
-			.flatMap(java.util.Collection::stream)
-			.noneMatch(row -> row.getObjectId() == 20876 || row.getObjectId() == 20877));
+		return Transport.loadAllFromResources().values().stream().flatMap(Set::stream)
+			.filter(row -> row.getObjectId() == 20877).collect(Collectors.toList());
 	}
 
 	@Test
-	public void staleEntranceRowsRemainAsExactSourceEvidence()
-		throws IOException
+	public void allApproachesHaveDisjointPaidTemporaryAndPermanentVariants()
 	{
-		Set<String> expected = Set.of(
-			"2744 3154 0>2713 9564 0:20877:875 Coins",
-			"2744 3153 0>2713 9564 0:20877:875 Coins",
-			"2745 3154 0>2713 9564 0:20877:875 Coins",
-			"2743 3154 0>2713 9564 0:20877:875 Coins",
-			"2744 3154 0>2713 9564 0:20877:ungated",
-			"2744 3153 0>2713 9564 0:20877:ungated",
-			"2745 3154 0>2713 9564 0:20877:ungated",
-			"2743 3154 0>2713 9564 0:20877:ungated",
-			"2744 3152 0>2713 9564 0:20876:875 Coins",
-			"2744 3152 0>2713 9564 0:20876:5628=1",
-			"2745 3152 0>2713 9564 0:20876:875 Coins",
-			"2745 3152 0>2713 9564 0:20876:5628=1",
-			"2746 3152 0>2713 9564 0:20876:875 Coins",
-			"2746 3152 0>2713 9564 0:20876:5628=1");
-		InputStream resource = BrimhavenDungeonEntranceSourceTest.class
-			.getResourceAsStream(TRANSPORT_RESOURCE);
-		assertNotNull(resource);
-		try (BufferedReader reader = new BufferedReader(new InputStreamReader(resource,
-			StandardCharsets.UTF_8)))
+		List<Transport> rows = rows();
+		assertEquals(21, rows.size());
+		assertEquals(7, rows.stream().map(Transport::getOrigin).distinct().count());
+		for (Transport row : rows)
 		{
-			Set<String> disabled = reader.lines()
-				.filter(line -> line.startsWith("# ")
-					&& (line.contains(";20876") || line.contains(";20877")))
-				.map(line -> sourceSignature(line.substring(2)))
-				.collect(Collectors.toSet());
-			assertEquals(expected, disabled);
+			assertTrue(BrimhavenEntrancePolicy.isEligible(row));
+			assertTrue(CatalogTransitionPolicy.isEligible(row));
+			assertFalse(AdjacentTransportPolicy.isEligible(row));
+			assertEquals(row.getCurrencyAmount() == 875, Rs2WalkerBankingPlanner.requiresBankPlanning(row));
+			RouteInteraction pending = new RouteInteraction(1, 0, row.getOrigin(), row.getDestination(),
+				row.getOrigin(), RouteInteraction.Kind.CATALOG_TRANSITION, RouteInteraction.Status.AVAILABLE,
+				"Pay", true, 20877, row.getOrigin(), row.getDestination());
+			CatalogTransitionRouteScanner scanner = new CatalogTransitionRouteScanner();
+			assertEquals(RouteInteraction.Status.UNAVAILABLE,
+				scanner.observePending(pending, row.getOrigin(), edge -> null, 6).getStatus());
+			assertEquals(RouteInteraction.Status.UNAVAILABLE,
+				scanner.observePending(pending, new WorldPoint(2712, 9564, 0), edge -> null, 6).getStatus());
+			assertEquals(RouteInteraction.Status.CLEARED,
+				scanner.observePending(pending, row.getDestination(), edge -> null, 6).getStatus());
+		}
+		for (int state = 0; state < 16; state++)
+		{
+			int paid = state & 1;
+			int permanent = (state >> 3) & 1;
+			List<Transport> eligible = rows.stream().filter(row -> row.getVarbits().stream()
+				.allMatch(bit -> bit.matches(bit.getVarbitId() == 5628 ? paid : permanent)))
+				.collect(Collectors.toList());
+			assertEquals(7, eligible.size());
+			assertEquals(7, eligible.stream().map(Transport::getOrigin).distinct().count());
+			assertTrue(eligible.stream().allMatch(row -> row.getCurrencyAmount()
+				== (paid == 1 || permanent == 1 ? 0 : 875)));
 		}
 	}
 
-	private static String sourceSignature(String line)
+	@Test
+	public void removingAccessPredicatesCannotGainOwnership()
 	{
-		String[] columns = line.split("\\t");
-		String display = columns[2];
-		String objectId = display.substring(display.lastIndexOf(';') + 1);
-		String currency = field(columns, 5);
-		String state = field(columns, 7);
-		String gate = !currency.isEmpty() ? currency : !state.isEmpty() ? state : "ungated";
-		return columns[0] + ">" + columns[1] + ":" + objectId + ":" + gate;
-	}
-
-	private static String field(String[] columns, int index)
-	{
-		return index < columns.length ? columns[index].trim() : "";
+		for (Transport row : rows())
+		{
+			row.getVarbits().clear();
+			assertFalse(CatalogTransitionPolicy.isEligible(row));
+		}
 	}
 }

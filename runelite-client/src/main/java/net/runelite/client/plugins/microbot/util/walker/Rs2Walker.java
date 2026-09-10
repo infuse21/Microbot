@@ -81,6 +81,10 @@ import net.runelite.client.plugins.microbot.util.walker.door.model.AwaitTicket;
 import net.runelite.client.plugins.microbot.util.walker.door.model.DoorResolution;
 import net.runelite.client.plugins.microbot.util.walker.banking.Rs2WalkerBankingPlanner;
 import net.runelite.client.plugins.microbot.util.walker.banking.BankedTransportCoordinator;
+import net.runelite.client.plugins.microbot.util.walker.banking.Rs2SpellEquipmentScene;
+import net.runelite.client.plugins.microbot.util.walker.banking.SpellEquipmentObservation;
+import net.runelite.client.plugins.microbot.util.walker.banking.SpellEquipmentTransaction;
+import net.runelite.client.plugins.microbot.util.walker.banking.SpellEquipmentPreparation;
 import net.runelite.client.plugins.microbot.util.walker.awaits.Rs2WalkerRuntimeAwaits;
 import net.runelite.client.plugins.microbot.util.walker.puzzles.DraynorBasementSolver;
 import net.runelite.client.plugins.microbot.util.walker.stall.Rs2WalkerStallPolicy;
@@ -8688,6 +8692,24 @@ public class Rs2Walker {
     private static final WalkerActions NAVIGATION_WALKER_ACTIONS = new WalkerActions() {
         private String lastActionType = "none";
 
+		@Override
+		public SpellEquipmentObservation observeEquipment() {
+			return Rs2SpellEquipmentScene.observe();
+		}
+
+		@Override
+		public SpellEquipmentPreparation observeSpellEquipment(RouteInteraction spell, SpellEquipmentTransaction retained) {
+			return Rs2SpellEquipmentScene.prepare(spell, retained);
+		}
+
+		@Override
+		public boolean interactEquipment(RouteInteraction interaction, SpellEquipmentTransaction transaction,
+			java.util.function.BooleanSupplier permitted) {
+			boolean issued = Rs2SpellEquipmentScene.dispatch(interaction, transaction, permitted);
+			lastActionType = issued ? "spell-equipment" : "spell-equipment-rejected";
+			return issued;
+		}
+
         @Override
         public boolean clickTile(WorldPoint target) {
             if (walkMiniMap(target)) {
@@ -13175,6 +13197,9 @@ public class Rs2Walker {
     }
 
     private static WalkerState walkWithBankedTransportsAndStateLocked(WorldPoint target, int distance, boolean forceBanking) {
+        if (config == null || !config.walkWithBankedTransports()) {
+            return walkWithStateInternal(target, distance);
+        }
         WorldPoint pl = Rs2Player.getWorldLocation();
         if (pl == null) {
             // Transient snapshot; main walk / `processWalk` exits when not logged in — MOVING retries next beat.
@@ -13384,7 +13409,7 @@ public class Rs2Walker {
 							return Rs2Bank.hasBankItem(itemId, amount);
 						}
 						@Override public boolean withdraw(int itemId, int amount) {
-							return Rs2Bank.withdrawX(itemId, amount);
+							return withdrawBankedTransportRequirement(itemId, amount);
 						}
 						@Override public boolean awaitInventoryQuantity(int itemId, int amount) {
 							return sleepUntil(() -> Rs2Inventory.itemQuantity(itemId) >= amount, 3000);
@@ -13409,6 +13434,13 @@ public class Rs2Walker {
             log.error("Error in banking workflow: " + e.getMessage(), e);
             return WalkerState.EXIT;
         }
+    }
+
+    static boolean withdrawBankedTransportRequirement(int itemId, int amount) {
+        return config != null && config.walkWithBankedTransports()
+                && (Rs2Magic.getRs2Staff(itemId) == net.runelite.client.plugins.microbot.util.magic.Rs2Staff.NONE
+                    || config.useBankedElementalStaffs())
+                && amount > 0 && Rs2Bank.withdrawX(itemId, amount);
     }
 
     public static boolean closeWorldMap() {
