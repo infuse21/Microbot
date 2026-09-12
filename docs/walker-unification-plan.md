@@ -29,6 +29,21 @@ ownership gaps and unsupported-route decisions still require resolution before P
 
 ## Active-graph classification closure and resolver hardening - 2026-09-09
 
+Nexus initial-cutover checkpoint (2026-09-12): the current tree passes **2,223 unit tests,
+zero failures/errors, four skips**, and both Checkstyles in 2m50s. The 32 existing nexus
+enum destinations now use the retained portal menu/hotkey/confirmation lifecycle, and saved
+slot discovery includes slots 36-45. This supersedes the blanket nexus-ownership absence
+below, not the remaining facility audit: ten newer destination mappings, dynamic destinations,
+menu/variant edge cases, jewellery destination contracts and house ring/tree execution remain
+open. No physical nexus acceptance or Phase 6 closure is claimed.
+
+Full-suite checkpoint (2026-09-12): the accumulated cancellation-lock, Draynor tunnel and
+jewellery-box changes pass **2,220 unit tests, zero failures/errors, four skips**, with both
+Checkstyles, in 2m29s. Client-thread/queryable guardrails remain **903/0**, without regressions
+or new exemptions. This verifies the current headless tree, not all generated POH protocols:
+nexus and house fairy-ring/spirit-tree ownership remain open, as does the jewellery destination
+eligibility/menu-contract audit recorded in the live-testing ledger. Phase 6 is not closed.
+
 Wintertodt multi-tile-door follow-up (2026-09-10): the rebuilt client now enters the live
 `Enter;Doors of Dinh;29322` boundary successfully. The catalogue identity is corrected to the live
 plural name, and exact-ID catalogue lookup now measures the normal approach radius from a game

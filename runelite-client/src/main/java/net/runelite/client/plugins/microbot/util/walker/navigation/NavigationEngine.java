@@ -796,6 +796,8 @@ public final class NavigationEngine
 			}
 			WorldPoint approachTile = pending.getKind() == RouteInteraction.Kind.TELEPORTATION_PORTAL
 				&& TeleportationPortalPolicy.isDirectPohObjectId(pending.getObjectId())
+				|| pending.getKind() == RouteInteraction.Kind.SPIRIT_TREE && pending.getObjectId() == 29227
+				|| pending.getKind() == RouteInteraction.Kind.FAIRY_RING
 				? pending.getObjectTile() : pending.getFrom();
 			int distance = observation.getPlayerLocation() == null ? -1
 				: observation.getPlayerLocation().distanceTo2D(approachTile);

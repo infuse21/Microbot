@@ -25,6 +25,171 @@ additive totals; source rows, generated edges and duplicated approaches must not
 
 ## Latest work versus earlier headless batches
 
+### Jewellery-box engine handler - 2026-09-12
+
+Destination audit findings: the generated Farming Guild row currently inherits the shared
+enum landing `(1249,3717,0)`. Resource skills-necklace rows distinguish `(1248,3725,0)` with
+45 Farming from the outside landing `(1248,3719,0)`; the Wiki skills-necklace page confirms
+the inside/outside level-dependent behaviour. Verify the box's landing contract before
+closing this facility; one generic destination is not proof of both outcomes. Dondakan's
+resource item route requires Between a Rock..., also documented on the ring-of-wealth page,
+whereas its generated POH row currently has no quest requirement. Confirm box-specific
+parity before applying the gate rather than inferring it from a similar item protocol.
+Sources: https://oldschool.runescape.wiki/w/Skills_necklace and
+https://oldschool.runescape.wiki/w/Ring_of_wealth. These are unresolved implementation-audit
+questions, not deferred physical acceptance alone.
+
+Menu-label follow-up: the Wiki MCP's Ornate jewellery box table confirms box-specific
+labels for Emir's Arena, Castle Wars Arena, Burthorpe, Barbarian Outpost, Chasm of Tears,
+Cooks' Guild and Dondakan's Rock. The policy now uses these labels without changing the
+shared item enum, and exact matching accepts a single displayed alphanumeric hotkey prefix
+only for jewellery boxes. The regression rejects unrelated suffixes and keeps mounted-menu
+matching unchanged. Compilation, PohMountedMenuSceneTest, PohChamberOwnershipTest and both
+Checkstyles passed in 46s. This focused run follows, rather than replaces, the 2,220-test
+checkpoint. Source: https://oldschool.runescape.wiki/w/Ornate_jewellery_box.
+Cache metadata also distinguishes the ornate wrapper (29156) from its active variants
+(37520-37546 and 50712). Follow-up source inspection confirms the model retains the raw
+tile-object ID separately from the active composition. The scene regression now covers all
+28 ornate compositions across all 27 destinations, as well as prefixed menu selection and
+locked entries; both focused tests and test Checkstyle pass in 33s. No broader runtime ID
+allowlist was needed. Remaining destination prerequisites still need closure evidence, and
+no physical jewellery-box use is claimed.
+
+Planning-requirement follow-up: generated jewellery rows now carry Fortis's Colosseum glory
+varplayer 4130 >= 12000, completed Tears of Guthix for that destination, and completed Throne
+of Miscellania for Miscellania. These use the existing generic planner quest/varplayer filters;
+the normal menu lock check remains an additional dispatch safeguard. Headless assertions cover
+11999/12000/12001 glory, both quest mappings and an unrestricted Castle Wars control. The other
+destination prerequisites and real interface labels remain part of the open facility audit.
+
+All 27 typed jewellery-box destinations now publish TELEPORTATION_PORTAL ownership. A stable
+catalogue identity is separate from the live BASIC/FANCY/ORNATE object; scene candidates are
+restricted to tiers supporting the selected destination. The engine approaches the actual room
+object and uses retained menu-open, exact selection and remote-landing stages. Selection reads
+POH_JEWELLERY_BOX rather than the mounted MENU interface and rejects struck-through destinations.
+The arena label is Emir's Arena, without changing the shared equipment enum.
+
+The shared scene regression now exercises seven mounted plus 27 jewellery destinations, all
+box tiers, locked menus, stale routes and foreign identity/action rejection. Compilation,
+focused engine/POH scene tests and both Checkstyles pass. The explicit generated-route ownership
+assertions are also extended to jewellery-box entries. No physical box was available for this
+batch and no live use is claimed. Exact live menu formatting and planning-time destination
+unlock filtering (including Fortis) remain audit work before the facility gate is closed.
+This supersedes the jewellery-box allowlist/identity absence recorded in the earlier audit below;
+nexus and house fairy-ring/spirit-tree ownership remain open.
+
+### Remaining generated POH protocol audit - 2026-09-12
+
+Outbound POH fairy rings: house-origin edges now use the existing equipment/dial/teleport/
+restoration lifecycle. Scene resolution is house- and world-view-scoped, with exact standalone
+29228 and compound 29229/40779/27097 identities, template room coordinates and Configure or
+Ring-configure actions. Engine approach uses the resolved ring tile, including ordinary
+rings; equipment stages remain immediately eligible and retain original-weapon identity.
+The scene test covers all four house variants and rejects Tree actions and non-house use.
+Compilation passed; the initial regression run found only the historical outbound-house
+exclusion assertion, now updated while retaining inbound exclusion. All 59 selected tests
+and both Checkstyles then passed in 30s. DIQ house arrival and
+the generated-ring graph audit remain open; no live house-ring travel is claimed.
+
+House spirit-tree identity prerequisite: generated outbound house edges previously carried
+object ID 0 and no action. Their endpoint now supplies canonical POH_SPIRIT_TREE (29227),
+Travel, member-only state and the original five-tick duration. The regression verifies the
+outbound identity and selected external destination, while inbound edges retain their
+external tree ID and Your house selection. Scene template mapping, compound-tree variants,
+engine room approach and house-arrival observation still need migration before removing
+the existing house-edge policy exclusion. This does not declare house-tree execution complete.
+
+Runtime definition probe (2026-09-12 14:57 BST): standalone tree IDs 29227, 40778 and 44936
+offer Travel; compound tree/ring IDs 29229, 40779 and 27097 offer Tree instead, alongside
+Ring-Zanaris/Ring-configure/Ring-last-destination. The house scene adapter must dispatch the
+observed tree action while retaining canonical 29227 route identity, not use Travel on a
+compound tree or accidentally select a ring action. All six definitions were read without
+gameplay input and the temporary probe was undeployed. This is runtime metadata, not travel.
+
+Outbound house-tree initial cutover: canonical 29227 house-origin edges now pass the tree
+policy; inbound Your house edges remain excluded. The scene uses the current world view and
+actual template room tile, resolves all six verified variants and dispatches Travel or Tree
+while retaining canonical identity. Engine approach targets the resolved tree tile rather
+than the exit-portal anchor. Compilation and seven focused scene/policy/scanner tests pass,
+with both Checkstyles; the initial test failure was a missing client-thread mock fixture.
+Follow-up verifies the engine chooses the resolved room tile for canonical house-tree
+interactions, transformed identity fallback, foreign-world rejection and removed-route
+dispatch rejection. All 49 engine execution tests, the house-tree scene test and the
+client-thread guardrail pass, with both Checkstyles (32s). House-specific arrival/menu
+edge cases remain open. No live journey is claimed, and inbound house landing still
+requires implementation.
+
+Inbound house-tree cutover: Your house edges targeting the configured house anchor now
+pass policy. The scanner delegates landing observation to the scene; ordinary routes keep
+their three-tile directed landing, while inbound house travel requires a loaded POH tree
+in the current house within three tiles on the player's plane. The exit anchor alone is
+not arrival. Scene tests reject wrong-plane, distant and non-house coordinates and accept
+the actual room tree. Compilation, tree/engine tests and the client-thread guardrail pass;
+no physical travel is claimed. Remaining menu and generated-classification audit cases
+must still be closed before declaring the facility fully accepted.
+
+Generated tree ownership follow-up: a resource-backed test feeds the complete loaded
+transport map through createSpiritTreeMap and verifies every generated house edge is
+classified SPIRIT_TREE in both directions. Destination dispatch now revalidates the exact
+directed enabled route and matching destination before widget selection; regressions reject
+removed routes and foreign destinations. Compilation and all six selected POH scene/ownership
+tests pass, with both Checkstyles. Physical house-tree travel remains deferred.
+
+Initial nexus executor cutover: all 32 existing enum destinations are now typed portal
+interactions, using current-house object resolution, menu group 17, exact labelled hotkeys,
+and a separate confirmation action for the three existing Wilderness destinations. Widget
+snapshots are captured on the client thread; keyboard/mouse dispatch remains outside it.
+The scene suite now exercises 66 mounted/jewellery/nexus entries, locked menus, stale routes
+and Wilderness confirmation isolation. Compilation, focused scene/ownership tests and both
+Checkstyles passed in 47s. Explicit nexus classifier assertions were then added; the full
+suite passed 2,223 tests with zero failures/errors and four skips, plus both Checkstyles,
+in 2m50s. No physical nexus test is claimed.
+New destination mappings, dynamic landings and broader menu-format/variant checks remain
+open; this is not a claim that the whole nexus facility gate is complete.
+
+Nexus decoder hardening: a headless slot fixture reproduced ArrayIndexOutOfBoundsException
+when a slot contained an unknown positive value, preventing a later known Lumbridge slot
+from being returned. The decoder now bounds-checks against its enum snapshot and continues
+collecting known destinations. The fail-first regression and all PohPanelTest cases pass.
+Unknown values are not newly supported, and this does not close nexus execution ownership;
+menu hotkeys, wilderness confirmation and selected-landing stages remain to be migrated.
+
+Extended-slot audit: the checked-in VarbitID defines saved nexus slots 36-45 (20111-20120),
+but NexusPortal read only slots 1-35. Its saved-slot list now includes all 45, with an
+independent numeric regression placing known Lumbridge in each extended slot. Temporary
+configuration varbits 20121-20130 are not included. The current Wiki nexus page also records
+ten added teleports in February 2026, absent from the 32-entry enum: Trollheim, Paddewwa,
+Lassar, Dareeyak, Ourania, Barbarian, Khazard, Ice Plateau, Respawn and Boat. Their value
+mapping and dynamic landing contracts remain part of implementation scope; the bounds
+guard does not declare them migrated. Source: https://oldschool.runescape.wiki/w/Portal_nexus.
+
+Menu-dispatch prerequisite: destination actions now re-resolve the directed enabled route,
+require its canonical object ID and destination name, and re-observe the live menu stage before
+clicking. Regression assertions reject removed routes, foreign IDs and foreign destinations.
+This hardens the shared mounted-menu dispatcher but does not yet migrate jewellery/nexus rows.
+Fortis has a populated client destination at (1793,3107,0), so the legacy missing-coordinates
+message is stale; its unlock requirement still needs explicit integration.
+
+Source inspection confirms nexus and jewellery-box routes are still outside
+`TeleportationPortalPolicy.isDirectPoh`/`isMenuPoh`; `PohTransport` does not yet supply their
+object/action identities. Do not enable their classifier without the matching scene protocol.
+
+- Jewellery box: use `POH_JEWELLERY_BOX`, not the mounted teleport `MENU` interface. Resolve
+  the actual BASIC/FANCY/ORNATE object and verify that the selected destination is available
+  in that tier. Reject struck-through or absent destinations and retain the directed landing.
+  `PohTeleports.useJewelleryBox` explicitly rejects FORTIS_COLOSSEUM despite the enum publishing
+  it; verify its destination and interface contract before claiming the whole enum migrated.
+- Nexus: use `TELENEXUS_TELEPORT`; the existing executor selects the displayed hotkey because
+  destination entries can be outside the visible scroll area. Preserve that capability and
+  model any wilderness confirmation as a separate retained stage, not a blocking helper call.
+- The current mounted-menu scene reads only `MENU` child 3 and dispatches captured bounds.
+  Extending the type allowlist alone would publish routes whose menus it cannot operate.
+
+Next implementation batch: jewellery-box identity, tier-aware scene and destination stages,
+with headless tests covering all enum entries and explicit treatment of the Fortis exception;
+then nexus hotkey/confirmation stages. These findings are implementation work, not live-only
+deferrals. House fairy-ring and spirit-tree interaction ownership also remains open.
+
 ### Mounted Digsite and Xeric's menus - 2026-09-10
 
 All three mounted Digsite pendant and four mounted Xeric's talisman destinations are

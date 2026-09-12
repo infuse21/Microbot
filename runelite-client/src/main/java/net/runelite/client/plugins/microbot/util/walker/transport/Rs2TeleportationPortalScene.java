@@ -12,6 +12,8 @@ import net.runelite.client.plugins.microbot.util.walker.obstacle.PlannedEdge;
 import net.runelite.client.plugins.microbot.util.walker.obstacle.Rs2SceneLocation;
 import net.runelite.client.plugins.microbot.util.poh.PohTeleports;
 import net.runelite.client.plugins.microbot.util.poh.data.PohPortal;
+import net.runelite.client.plugins.microbot.util.poh.data.NexusPortal;
+import net.runelite.client.plugins.microbot.util.keyboard.Rs2Keyboard;
 import net.runelite.client.plugins.microbot.util.walker.transport.model.TeleportationPortal;
 
 import java.util.Arrays;
@@ -59,9 +61,26 @@ public final class Rs2TeleportationPortalScene implements TeleportationPortalSce
 		{
 			return false;
 		}
-		if (TeleportationPortalPolicy.isDestinationAction(expectedAction))
+		boolean confirmation = expectedAction != null
+			&& expectedAction.startsWith(TeleportationPortalPolicy.POH_CONFIRM_NEXUS_PREFIX);
+		if (TeleportationPortalPolicy.isDestinationAction(expectedAction) || confirmation)
 		{
-			return clickDestination(TeleportationPortalPolicy.destinationName(expectedAction));
+			String destination = confirmation
+				? expectedAction.substring(TeleportationPortalPolicy.POH_CONFIRM_NEXUS_PREFIX.length())
+				: TeleportationPortalPolicy.destinationName(expectedAction);
+			for (Transport transport : findTransports(edge))
+			{
+				if (transport.getObjectId() != catalogObjectId
+					|| !TeleportationPortalPolicy.isMenuPoh(transport)
+					|| !destination.equals(TeleportationPortalPolicy.pohDestinationName(transport)))
+				{
+					continue;
+				}
+				TeleportationPortal current = portal(transport);
+				return current != null && expectedAction.equals(current.getAction())
+					&& clickDestination(transport, destination);
+			}
+			return false;
 		}
 		TeleportationPortal portal = new Rs2TeleportationPortalScene().find(edge);
 		return portal != null && portal.getCatalogObjectId() == catalogObjectId
@@ -87,7 +106,7 @@ public final class Rs2TeleportationPortalScene implements TeleportationPortalSce
 		boolean menuPoh = TeleportationPortalPolicy.isMenuPoh(transport);
 		String destination = menuPoh
 			? TeleportationPortalPolicy.pohDestinationName(transport) : null;
-		MenuDestination menu = menuPoh ? menuDestination(destination)
+		MenuDestination menu = menuPoh ? menuDestination(transport, destination)
 			: MenuDestination.HIDDEN;
 		PortalObject object = Microbot.getClientThread().runOnClientThreadOptional(() ->
 		{
@@ -142,8 +161,9 @@ public final class Rs2TeleportationPortalScene implements TeleportationPortalSce
 					{
 						if (menu.visible)
 						{
-							action = menu.available
-								? TeleportationPortalPolicy.destinationAction(destination)
+								action = menu.available
+									? menu.confirmation ? TeleportationPortalPolicy.POH_CONFIRM_NEXUS_PREFIX + destination
+										: TeleportationPortalPolicy.destinationAction(destination)
 								: TeleportationPortalPolicy.POH_DESTINATION_UNAVAILABLE;
 						}
 						else
@@ -179,11 +199,26 @@ public final class Rs2TeleportationPortalScene implements TeleportationPortalSce
 			transport.getDestination());
 	}
 
-	private static MenuDestination menuDestination(String destination)
+	private static MenuDestination menuDestination(Transport transport, String destination)
 	{
 		return Microbot.getClientThread().runOnClientThreadOptional(() ->
 		{
-			Widget root = Microbot.getClient().getWidget(InterfaceID.MENU, 3);
+			boolean jewellery = TeleportationPortalPolicy.pohTeleport(transport)
+				instanceof net.runelite.client.plugins.microbot.util.poh.data.JewelleryBox;
+			boolean nexus = TeleportationPortalPolicy.pohTeleport(transport) instanceof NexusPortal;
+			if (nexus && (TeleportationPortalPolicy.pohTeleport(transport) == NexusPortal.ANNAKARL
+				|| TeleportationPortalPolicy.pohTeleport(transport) == NexusPortal.GHORROCK
+				|| TeleportationPortalPolicy.pohTeleport(transport) == NexusPortal.CARRALLANGER))
+			{
+				Widget warning = Microbot.getClient().getWidget(475, 11);
+				if (warning != null && !warning.isHidden())
+				{
+					return new MenuDestination(true, true, warning.getBounds(), null, true);
+				}
+			}
+			Widget root = nexus ? Microbot.getClient().getWidget(InterfaceID.TELENEXUS_TELEPORT, 0)
+				: jewellery ? Microbot.getClient().getWidget(InterfaceID.POH_JEWELLERY_BOX, 0)
+				: Microbot.getClient().getWidget(InterfaceID.MENU, 3);
 			if (root == null || root.isHidden() || destination == null)
 			{
 				return MenuDestination.HIDDEN;
@@ -194,12 +229,12 @@ public final class Rs2TeleportationPortalScene implements TeleportationPortalSce
 			{
 				Widget current = pending.pop();
 				String text = current.getText();
-				if (text != null && text.replaceAll("<[^>]+>", "").trim()
-					.equalsIgnoreCase(destination))
+				String hotkey = nexus ? nexusHotkey(text, destination) : null;
+				if (nexus ? hotkey != null : TeleportationPortalPolicy.menuTextMatches(text, destination, jewellery))
 				{
 					return new MenuDestination(true,
 						!text.toLowerCase(java.util.Locale.ROOT).contains("<str>"),
-						current.getBounds());
+						current.getBounds(), hotkey, false);
 				}
 				Widget[][] groups = {current.getChildren(), current.getNestedChildren(),
 					current.getDynamicChildren(), current.getStaticChildren()};
@@ -216,9 +251,14 @@ public final class Rs2TeleportationPortalScene implements TeleportationPortalSce
 		}).orElse(MenuDestination.HIDDEN);
 	}
 
-	private static boolean clickDestination(String destination)
+	private static boolean clickDestination(Transport transport, String destination)
 	{
-		MenuDestination state = menuDestination(destination);
+		MenuDestination state = menuDestination(transport, destination);
+		if (state.available && state.hotkey != null)
+		{
+			Rs2Keyboard.typeString(state.hotkey);
+			return true;
+		}
 		Rectangle bounds = state.available ? state.bounds : null;
 		if (bounds == null)
 		{
@@ -228,6 +268,16 @@ public final class Rs2TeleportationPortalScene implements TeleportationPortalSce
 		return true;
 	}
 
+	static String nexusHotkey(String text, String destination)
+	{
+		if (text == null || destination == null) return null;
+		java.util.regex.Matcher key = java.util.regex.Pattern.compile(
+			"^\\s*<col=ffffff>([0-9A-Za-z])</col>[.):]?\\s*(.*)$",
+			java.util.regex.Pattern.CASE_INSENSITIVE).matcher(text);
+		return key.matches() && key.group(2).replaceAll("<[^>]+>", "").trim()
+			.equalsIgnoreCase(destination) ? key.group(1) : null;
+	}
+
 	private static final class MenuDestination
 	{
 		private static final MenuDestination HIDDEN =
@@ -235,12 +285,22 @@ public final class Rs2TeleportationPortalScene implements TeleportationPortalSce
 		private final boolean visible;
 		private final boolean available;
 		private final Rectangle bounds;
+		private final String hotkey;
+		private final boolean confirmation;
 
 		private MenuDestination(boolean visible, boolean available, Rectangle bounds)
+		{
+			this(visible, available, bounds, null, false);
+		}
+
+		private MenuDestination(boolean visible, boolean available, Rectangle bounds,
+			String hotkey, boolean confirmation)
 		{
 			this.visible = visible;
 			this.available = available;
 			this.bounds = bounds;
+			this.hotkey = hotkey;
+			this.confirmation = confirmation;
 		}
 	}
 

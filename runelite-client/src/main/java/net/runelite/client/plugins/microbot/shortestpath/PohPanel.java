@@ -309,7 +309,11 @@ public class PohPanel extends PluginPanel {
             Map<WorldPoint, Set<Transport>> transportsMap
     ) {
         //Only used to build actual transports (needs ORIGIN and DESTINATION same)
-        Transport pohSpiritTransport = new Transport(pohSpiritTree, pohSpiritTree, "C: Your house", SPIRIT_TREE, true, 5);
+        String coordinate = pohSpiritTree.getX() + " " + pohSpiritTree.getY() + " " + pohSpiritTree.getPlane();
+        Transport pohSpiritTransport = new Transport(Map.of(
+                "Origin", coordinate, "Destination", coordinate,
+                "menuOption menuTarget objectID", "Travel;Spirit tree;" + net.runelite.api.gameval.ObjectID.POH_SPIRIT_TREE,
+                "Display info", "C: Your house", "Duration", "5", "isMembers", "Y"), SPIRIT_TREE);
         return createTransportsToPoh(pohSpiritTransport, transportsMap);
     }
 

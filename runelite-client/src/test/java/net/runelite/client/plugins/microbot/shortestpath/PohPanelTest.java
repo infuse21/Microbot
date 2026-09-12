@@ -16,6 +16,41 @@ import static org.junit.Assert.assertTrue;
 public class PohPanelTest
 {
 	@Test
+	public void unknownNexusSlotDoesNotDiscardKnownDestinations()
+	{
+		try (org.mockito.MockedStatic<net.runelite.client.plugins.microbot.Microbot> client =
+			org.mockito.Mockito.mockStatic(net.runelite.client.plugins.microbot.Microbot.class))
+		{
+			int[] slots = net.runelite.client.plugins.microbot.util.poh.data.NexusPortal.VARBITS;
+			client.when(() -> net.runelite.client.plugins.microbot.Microbot.getVarbitValue(slots[0]))
+				.thenReturn(Integer.MAX_VALUE);
+			client.when(() -> net.runelite.client.plugins.microbot.Microbot.getVarbitValue(slots[1]))
+				.thenReturn(2);
+			assertEquals(java.util.List.of(net.runelite.client.plugins.microbot.util.poh.data.NexusPortal.LUMBRIDGE),
+				net.runelite.client.plugins.microbot.util.poh.data.NexusPortal.getAvailableTeleports());
+		}
+	}
+
+	@Test
+	public void nexusReadsTheExtendedSavedSlots()
+	{
+		try (org.mockito.MockedStatic<net.runelite.client.plugins.microbot.Microbot> client =
+			org.mockito.Mockito.mockStatic(net.runelite.client.plugins.microbot.Microbot.class))
+		{
+			for (int slot = 20111; slot <= 20120; slot++)
+			{
+				client.reset();
+				int savedSlot = slot;
+				client.when(() -> net.runelite.client.plugins.microbot.Microbot.getVarbitValue(savedSlot))
+					.thenReturn(2);
+				assertEquals("slot " + slot,
+					java.util.List.of(net.runelite.client.plugins.microbot.util.poh.data.NexusPortal.LUMBRIDGE),
+					net.runelite.client.plugins.microbot.util.poh.data.NexusPortal.getAvailableTeleports());
+			}
+		}
+	}
+
+	@Test
 	public void housePortalGraphContainsBothDirectedEdgesInTheirOwningSets()
     {
         WorldPoint inside = new WorldPoint(1859, 7051, 0);
@@ -68,6 +103,27 @@ public class PohPanelTest
 		assertRequirements(houseToB, 22, 11, 33, 44);
 		assertRequirements(houseToD, 44, 11, 22, 33);
 		assertEquals(2, generated.get(house).size());
+	}
+
+	@Test
+	public void houseSpiritTreeHasItsOwnOutboundIdentityOnly()
+	{
+		WorldPoint house = new WorldPoint(1859, 7051, 0);
+		WorldPoint outside = new WorldPoint(2545, 3169, 0);
+		Transport external = new Transport(outside, outside, "1: Tree Gnome Village",
+			TransportType.SPIRIT_TREE, true, "Travel", "Spirit Tree", 1293);
+		Map<WorldPoint, Set<Transport>> graph = PohPanel.createSpiritTreeMap(house,
+			Map.of(outside, Set.of(external)));
+		Transport outbound = find(graph.get(house), outside);
+		assertEquals(29227, outbound.getObjectId());
+		assertEquals("Travel", outbound.getAction());
+		assertEquals("Spirit tree", outbound.getName());
+		assertEquals(5, outbound.getDuration());
+		assertTrue(outbound.isMembers());
+		assertEquals("1: Tree Gnome Village", outbound.getDisplayInfo());
+		Transport inbound = find(graph.get(outside), house);
+		assertEquals(1293, inbound.getObjectId());
+		assertEquals("C: Your house", inbound.getDisplayInfo());
 	}
 
 	private static Transport endpoint(String coordinateField, WorldPoint point,

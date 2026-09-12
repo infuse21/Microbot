@@ -29,6 +29,74 @@ public class NavigationEngineExecutionTest
 	}
 
 	@Test
+	public void cancelDoesNotWaitForMovementDispatch() throws Exception
+	{
+		assertCancellationDuringDispatch(false);
+	}
+
+	@Test
+	public void cancelDoesNotWaitForInteractionDispatch() throws Exception
+	{
+		assertCancellationDuringDispatch(true);
+	}
+
+	private void assertCancellationDuringDispatch(boolean interaction) throws Exception
+	{
+		startEngineRequest();
+		java.util.concurrent.CountDownLatch entered = new java.util.concurrent.CountDownLatch(1);
+		java.util.concurrent.CountDownLatch release = new java.util.concurrent.CountDownLatch(1);
+		java.util.concurrent.ExecutorService executor = java.util.concurrent.Executors.newFixedThreadPool(2);
+		WalkerActions actions = new WalkerActions()
+		{
+			@Override
+			public boolean clickTile(WorldPoint target)
+			{
+				entered.countDown();
+				try
+				{
+					return release.await(5, java.util.concurrent.TimeUnit.SECONDS);
+				}
+				catch (InterruptedException ex)
+				{
+					Thread.currentThread().interrupt();
+					return false;
+				}
+			}
+
+			@Override
+			public boolean interact(RouteInteraction routeInteraction)
+			{
+				return clickTile(routeInteraction.getObjectTile());
+			}
+		};
+		NavigationObservation input = observation(1, A, ordinaryPlan(1), false, false);
+		if (interaction) input = input.withRouteInteraction(new RouteInteraction(1, 0, A, B, B,
+			RouteInteraction.Kind.MINEABLE, RouteInteraction.Status.AVAILABLE, "mine", true));
+		final NavigationObservation dispatchInput = input;
+		try
+		{
+			java.util.concurrent.Future<NavigationExecutionResult> dispatch = executor.submit(
+				() -> NavigationEngineRuntime.execute(dispatchInput, actions));
+			assertTrue(entered.await(2, java.util.concurrent.TimeUnit.SECONDS));
+			NavigationExecutionResult duplicate = NavigationEngineRuntime.execute(dispatchInput,
+				target -> { throw new AssertionError("Concurrent command dispatched"); });
+			assertFalse(duplicate.isCommandIssued());
+			executor.submit(() -> NavigationEngineRuntime.finishFromLegacy("hotkey:ctrl+x"))
+				.get(1, java.util.concurrent.TimeUnit.SECONDS);
+			assertTrue(NavigationEngineRuntime.getSnapshot().isTerminal());
+			release.countDown();
+			assertFalse(dispatch.get(2, java.util.concurrent.TimeUnit.SECONDS).isCommandIssued());
+			assertTrue(NavigationEngineRuntime.getSnapshot().isTerminal());
+		}
+		finally
+		{
+			release.countDown();
+			executor.shutdownNow();
+			assertTrue(executor.awaitTermination(3, java.util.concurrent.TimeUnit.SECONDS));
+		}
+	}
+
+	@Test
 	public void ordinaryRequestIssuesOnlyOneCommandWhileAwaitingAcknowledgement()
 	{
 		startEngineRequest();
@@ -229,12 +297,14 @@ public class NavigationEngineExecutionTest
 	@Test
 	public void chamberApproachTargetsTheResolvedRoomInsteadOfTheHouseAnchor()
 	{
-		for (int objectId : new int[]{13622, 13523, 31986})
+		for (int objectId : new int[]{13622, 13523, 31986, 29227, -1})
 		{
 			startEngineRequest();
 			WorldPoint room = A.dx(40);
 			RouteInteraction portal = new RouteInteraction(1, 0, A, B, room,
-				RouteInteraction.Kind.TELEPORTATION_PORTAL, RouteInteraction.Status.AVAILABLE,
+				objectId == -1 ? RouteInteraction.Kind.FAIRY_RING
+					: objectId == 29227 ? RouteInteraction.Kind.SPIRIT_TREE : RouteInteraction.Kind.TELEPORTATION_PORTAL,
+				RouteInteraction.Status.AVAILABLE,
 				"Teleport", false, objectId, A, B);
 			NavigationExecutionResult result = NavigationEngineRuntime.execute(
 				observation(1, A, ordinaryPlan(1), false, false).withRouteInteraction(portal), target -> true);

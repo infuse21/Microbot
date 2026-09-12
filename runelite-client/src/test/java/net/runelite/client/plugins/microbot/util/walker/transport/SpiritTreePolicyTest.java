@@ -32,7 +32,7 @@ public class SpiritTreePolicyTest
 		WorldPoint poh = new WorldPoint(3200, 3200, 0);
 		assertFalse(SpiritTreePolicy.isEligible(
 			transport(poh, DESTINATION, "2: Gnome Stronghold", 1295), poh));
-		assertFalse(SpiritTreePolicy.isEligible(
+		assertTrue(SpiritTreePolicy.isEligible(
 			transport(ORIGIN, poh, "C: Your house", 1295), poh));
 		assertFalse(SpiritTreePolicy.isEligible(
 			transport(ORIGIN, DESTINATION, "", 1295), null));

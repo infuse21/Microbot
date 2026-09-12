@@ -100,7 +100,13 @@ public class PathfinderRouteCalculationTest
 			.filter(row -> row.getObjectId() == 19032 || row.getObjectId() == 19036)
 			.collect(java.util.stream.Collectors.toList());
 
-		assertEquals(8, rows.size());
+		assertEquals(2, rows.size());
+		for (Transport row : rows)
+		{
+			boolean eastbound = row.getObjectId() == 19032;
+			assertEquals(new WorldPoint(eastbound ? 3066 : 3070, 3257, 0), row.getOrigin());
+			assertEquals(new WorldPoint(eastbound ? 3070 : 3066, 3257, 0), row.getDestination());
+		}
 		assertTrue(rows.stream().allMatch(row ->
 			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(row))
 				== RouteEdge.Kind.CATALOG_TRANSITION));
@@ -618,9 +624,9 @@ public class PathfinderRouteCalculationTest
 				== RouteEdge.Kind.TRANSPORT)
 			.collect(java.util.stream.Collectors.toList());
 
-		assertEquals(265, shortcuts.size());
+		assertEquals(259, shortcuts.size());
 		assertEquals(12, adjacent);
-		assertEquals(253, transitions);
+		assertEquals(247, transitions);
 		assertEquals(0, locked.size());
 		assertTrue(shortcuts.stream().noneMatch(candidate -> Set.of(5842, 16533, 31850)
 			.contains(candidate.getObjectId())));

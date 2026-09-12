@@ -10,6 +10,7 @@ Each guide lists known pitfalls when working with one specific game entity type.
 |--------|------|--------------|
 | Items (inventory, bank, ground, equipment, shops) | [items.md](items.md) | Any code calling `Rs2Inventory`, `Rs2Bank`, `Rs2Equipment`, `Rs2GroundItem`, `Rs2Shop`, or `Rs2DepositBox` interaction helpers, or any helper that takes a list of item names and applies a single action to all of them |
 | Movement (walker, minimap, pathing) | [movement.md](movement.md) | Any code calling or modifying `Rs2Walker`, `Rs2MiniMap`, shortest-path marker handling, or minimap/canvas walk-click logic |
+| Objects (game objects, walls, decorations) | [objects.md](objects.md) | Any code querying scene tile objects or converting them to local coordinates |
 
 ## Format
 

@@ -56,17 +56,36 @@ public final class Rs2SpiritTreeScene implements SpiritTreeScene
 		return objectStage(transport);
 	}
 
+	@Override
+	public boolean hasLanded(PlannedEdge edge, WorldPoint player)
+	{
+		Transport transport = findTransport(edge);
+		if (transport == null) return false;
+		if (!"Your house".equalsIgnoreCase(destinationName(transport)))
+		{
+			return SpiritTreeScene.super.hasLanded(edge, player);
+		}
+		Transport houseTree = new Transport(transport.getDestination(), transport.getDestination(),
+			"", net.runelite.client.plugins.microbot.shortestpath.TransportType.SPIRIT_TREE,
+			true, "Travel", "Spirit tree", 29227);
+		TreeObject tree = findTreeObject(houseTree);
+		return tree != null && player != null && player.getPlane() == tree.tile.getPlane()
+			&& player.distanceTo2D(tree.tile) <= 3;
+	}
+
 	public static boolean interactObject(PlannedEdge edge, String expectedAction, int objectId)
 	{
 		Transport transport = findTransport(edge);
 		TreeObject tree = transport == null ? null : findTreeObject(transport);
 		return tree != null && tree.id == objectId
-			&& transport.getAction().equalsIgnoreCase(expectedAction)
-			&& tree.object.click(transport.getAction());
+			&& tree.action.equalsIgnoreCase(expectedAction)
+			&& tree.object.click(tree.action);
 	}
 
-	public static boolean selectDestination(String destination)
+	public static boolean selectDestination(PlannedEdge edge, String destination)
 	{
+		Transport transport = findTransport(edge);
+		if (transport == null || !destinationName(transport).equalsIgnoreCase(destination)) return false;
 		Widget widget = findDestinationWidget(destination);
 		return widget != null && isSelectable(widget) && Rs2Widget.clickWidget(widget);
 	}
@@ -115,7 +134,9 @@ public final class Rs2SpiritTreeScene implements SpiritTreeScene
 		TreeObject tree = findTreeObject(transport);
 		if (tree != null)
 		{
-			return stage(transport, tree.tile, SpiritTree.Stage.OBJECT);
+			return new SpiritTree(transport.getOrigin(), transport.getDestination(),
+				transport.getObjectId(), tree.action, destinationName(transport),
+				tree.tile, SpiritTree.Stage.OBJECT);
 		}
 		WorldPoint player = Rs2Player.getWorldLocation();
 		if (player == null || player.getPlane() != transport.getOrigin().getPlane()
@@ -135,25 +156,34 @@ public final class Rs2SpiritTreeScene implements SpiritTreeScene
 	{
 		return Microbot.getClientThread().runOnClientThreadOptional(() ->
 		{
+			boolean house = transport.getObjectId() == 29227;
+			if (house && !net.runelite.client.plugins.microbot.util.poh.PohTeleports.isInHouse()) return null;
 			TreeObject best = null;
 			int bestDistance = Integer.MAX_VALUE;
-			for (Rs2TileObjectModel object : Microbot.getRs2TileObjectCache().query()
-				.withId(transport.getObjectId())
-				.within(transport.getOrigin(), OBJECT_SEARCH_RADIUS).toList())
+			var query = Microbot.getRs2TileObjectCache().query();
+			if (house) query.fromWorldView();
+			else query.withId(transport.getObjectId()).within(transport.getOrigin(), OBJECT_SEARCH_RADIUS);
+			for (Rs2TileObjectModel object : query.toList())
 			{
 				net.runelite.api.ObjectComposition composition = object.getObjectComposition();
+				String action = house ? SpiritTreePolicy.pohTreeAction(object.getId()) : transport.getAction();
+				if (house && action == null && composition != null) action = SpiritTreePolicy.pohTreeAction(composition.getId());
+				if (action == null) continue;
 				String[] actions = composition == null ? null : composition.getActions();
-				WorldPoint tile = object.getWorldLocation();
+				WorldPoint tile = house
+					? net.runelite.client.plugins.microbot.util.walker.obstacle.Rs2SceneLocation.templateLocation(object)
+					: object.getWorldLocation();
+				String expectedAction = action;
 				if (tile == null || actions == null || Arrays.stream(actions)
 					.filter(java.util.Objects::nonNull)
-					.noneMatch(action -> action.equalsIgnoreCase(transport.getAction())))
+					.noneMatch(candidate -> candidate.equalsIgnoreCase(expectedAction)))
 				{
 					continue;
 				}
 				int distance = tile.distanceTo2D(transport.getOrigin());
 				if (distance < bestDistance)
 				{
-					best = new TreeObject(object, object.getId(), tile);
+					best = new TreeObject(object, transport.getObjectId(), tile, action);
 					bestDistance = distance;
 				}
 			}
@@ -198,12 +228,14 @@ public final class Rs2SpiritTreeScene implements SpiritTreeScene
 		private final Rs2TileObjectModel object;
 		private final int id;
 		private final WorldPoint tile;
+		private final String action;
 
-		private TreeObject(Rs2TileObjectModel object, int id, WorldPoint tile)
+		private TreeObject(Rs2TileObjectModel object, int id, WorldPoint tile, String action)
 		{
 			this.object = object;
 			this.id = id;
 			this.tile = tile;
+			this.action = action;
 		}
 	}
 }

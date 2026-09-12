@@ -10,6 +10,8 @@ import net.runelite.client.plugins.microbot.util.poh.data.MountedMythical;
 import net.runelite.client.plugins.microbot.util.poh.data.MountedDigsite;
 import net.runelite.client.plugins.microbot.util.poh.data.MountedXerics;
 import net.runelite.client.plugins.microbot.util.poh.data.PohTeleport;
+import net.runelite.client.plugins.microbot.util.poh.data.JewelleryBox;
+import net.runelite.client.plugins.microbot.util.poh.data.NexusPortal;
 import net.runelite.api.gameval.ObjectID;
 
 import java.util.Collection;
@@ -24,6 +26,7 @@ public final class TeleportationPortalPolicy
 		"poh-mounted-select-destination:";
 	public static final String POH_DESTINATION_UNAVAILABLE =
 		"poh-mounted-destination-unavailable";
+	public static final String POH_CONFIRM_NEXUS_PREFIX = "poh-nexus-confirm:";
 	public static final int LIVE_OBJECT_ORIGIN_TOLERANCE = 4;
 
 	private static final Set<String> SUPPORTED_SHAPES = Set.of(
@@ -99,18 +102,28 @@ public final class TeleportationPortalPolicy
 		Object teleport = ((PohTransport) transport).getTeleport();
 		return teleport instanceof PohPortal || teleport instanceof MountedGlory
 			|| teleport instanceof MountedMythical || teleport instanceof MountedDigsite
-			|| teleport instanceof MountedXerics;
+			|| teleport instanceof MountedXerics || teleport instanceof JewelleryBox || teleport instanceof NexusPortal;
 	}
 
 	static boolean isMenuPoh(Transport transport)
 	{
 		PohTeleport teleport = pohTeleport(transport);
-		return teleport instanceof MountedDigsite || teleport instanceof MountedXerics;
+		return teleport instanceof MountedDigsite || teleport instanceof MountedXerics
+			|| teleport instanceof JewelleryBox || teleport instanceof NexusPortal;
 	}
 
 	static int[] pohObjectIds(Transport transport)
 	{
 		PohTeleport teleport = pohTeleport(transport);
+		if (teleport instanceof NexusPortal)
+		{
+			return java.util.Arrays.stream(NexusPortal.PORTAL_IDS).mapToInt(Integer::intValue).toArray();
+		}
+		if (teleport instanceof JewelleryBox)
+		{
+			return ((JewelleryBox) teleport).getAvailableInBoxTypes().stream()
+				.mapToInt(net.runelite.client.plugins.microbot.util.poh.data.JewelleryBoxType::getObjectId).toArray();
+		}
 		if (teleport instanceof PohPortal)
 		{
 			return java.util.Arrays.stream(((PohPortal) teleport).getObjectIds())
@@ -143,6 +156,22 @@ public final class TeleportationPortalPolicy
 	static String pohDestinationName(Transport transport)
 	{
 		PohTeleport teleport = pohTeleport(transport);
+		if (teleport instanceof NexusPortal) return ((NexusPortal) teleport).getText();
+		if (teleport instanceof JewelleryBox)
+		{
+			switch ((JewelleryBox) teleport)
+			{
+				case PVP_ARENA: return "Emir's Arena";
+				case CASTLE_WARS: return "Castle Wars Arena";
+				case BURTHORPE_GAMES_ROOM: return "Burthorpe";
+				case BARBARIAN_ASSAULT: return "Barbarian Outpost";
+				case TEARS_OF_GUTHIX: return "Chasm of Tears";
+				case COOKING_GUILD: return "Cooks' Guild";
+				case DONDAKAN: return "Dondakan's Rock";
+				default: break;
+			}
+			return ((JewelleryBox) teleport).getLocation().getDestination();
+		}
 		if (teleport instanceof MountedDigsite)
 		{
 			return ((MountedDigsite) teleport).getDestinationName();
@@ -154,6 +183,14 @@ public final class TeleportationPortalPolicy
 	static String destinationAction(String destination)
 	{
 		return POH_SELECT_DESTINATION_PREFIX + destination;
+	}
+
+	static boolean menuTextMatches(String text, String destination, boolean jewellery)
+	{
+		if (text == null || destination == null) return false;
+		String label = text.replaceAll("<[^>]+>", "").trim();
+		if (jewellery) label = label.replaceFirst("^[0-9A-Za-z]\\.\\s*", "");
+		return label.equalsIgnoreCase(destination);
 	}
 
 	static boolean isDestinationAction(String action)
@@ -170,6 +207,8 @@ public final class TeleportationPortalPolicy
 	public static boolean isDirectPohObjectId(int objectId)
 	{
 		if (objectId == ObjectID.POH_TROPHY_AMULETOFGLORY_4
+			|| objectId == NexusPortal.PORTAL_IDS[0]
+			|| objectId == ObjectID.POH_JEWELLERY_BOX_1
 			|| objectId == ObjectID.POH_TROPHY_MYTHICAL_CAPE
 			|| objectId == MountedDigsite.IDS[0]
 			|| objectId == MountedXerics.IDS[0]) return true;

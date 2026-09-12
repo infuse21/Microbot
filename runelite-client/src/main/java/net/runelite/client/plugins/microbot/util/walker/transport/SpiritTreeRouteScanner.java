@@ -12,7 +12,6 @@ import java.util.List;
 /** Route-order scanner and staged landing observer for spirit-tree travel. */
 public final class SpiritTreeRouteScanner
 {
-	private static final int LANDING_TOLERANCE = 3;
 
 	public RouteInteraction scan(RoutePlan plan, int startRawIndex, int maxEdges,
 		WorldPoint player, SpiritTreeScene scene, int interactionDistance)
@@ -48,7 +47,7 @@ public final class SpiritTreeRouteScanner
 		{
 			return null;
 		}
-		if (hasLanded(pending, player))
+		if (scene.hasLanded(new PlannedEdge(pending.getFrom(), pending.getCrossingTo()), player))
 		{
 			return pending.withStatus(RouteInteraction.Status.CLEARED, false);
 		}
@@ -96,10 +95,4 @@ public final class SpiritTreeRouteScanner
 			RouteEdge.Kind.SPIRIT_TREE);
 	}
 
-	private static boolean hasLanded(RouteInteraction pending, WorldPoint player)
-	{
-		WorldPoint destination = pending.getCrossingTo();
-		return player != null && player.getPlane() == destination.getPlane()
-			&& player.distanceTo2D(destination) <= LANDING_TOLERANCE;
-	}
 }

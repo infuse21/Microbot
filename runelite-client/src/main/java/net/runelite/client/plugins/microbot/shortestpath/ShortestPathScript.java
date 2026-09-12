@@ -66,11 +66,11 @@ public class ShortestPathScript extends Script {
 					? stopReason
 					: "shortest-path-script:trigger-null";
 			triggerWalker = null;
-			Rs2Walker.clearWalkingRoute(r);
             Future<?> future = walkTaskFuture;
             if (future != null && !future.isDone()) {
                 future.cancel(true);
             }
+			Rs2Walker.clearWalkingRoute(r);
             walkTaskRunning.set(false);
 		} else {
 			if (!point.equals(triggerWalker))

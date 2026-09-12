@@ -104,9 +104,10 @@ public enum NexusPortal implements PohTeleport {
 
     public static List<NexusPortal> getAvailableTeleports() {
         List<NexusPortal> teleports = new ArrayList<>();
+        NexusPortal[] destinations = values();
         for (int varbit : VARBITS) {
             int value = Microbot.getVarbitValue(varbit);
-            if (value <= 0) continue;
+            if (value <= 0 || value >= destinations.length) continue;
 
             if (value == 1) {
                 teleports.add(NexusPortal.VARROCK);
@@ -115,7 +116,7 @@ public enum NexusPortal implements PohTeleport {
                 }
                 continue;
             }
-            NexusPortal tp = NexusPortal.values()[value];
+            NexusPortal tp = destinations[value];
             teleports.add(tp);
         }
         return teleports;
@@ -157,6 +158,16 @@ public enum NexusPortal implements PohTeleport {
             VarbitID.POH_NEXUS_TELE_33,
             VarbitID.POH_NEXUS_TELE_34,
             VarbitID.POH_NEXUS_TELE_35,
+            VarbitID.POH_NEXUS_TELE_36,
+            VarbitID.POH_NEXUS_TELE_37,
+            VarbitID.POH_NEXUS_TELE_38,
+            VarbitID.POH_NEXUS_TELE_39,
+            VarbitID.POH_NEXUS_TELE_40,
+            VarbitID.POH_NEXUS_TELE_41,
+            VarbitID.POH_NEXUS_TELE_42,
+            VarbitID.POH_NEXUS_TELE_43,
+            VarbitID.POH_NEXUS_TELE_44,
+            VarbitID.POH_NEXUS_TELE_45,
     };
 
     @Override

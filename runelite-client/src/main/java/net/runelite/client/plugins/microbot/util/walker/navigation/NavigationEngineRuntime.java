@@ -13,7 +13,7 @@ public final class NavigationEngineRuntime
 	private static NavigationEngine engine;
 	private static volatile NavigationSnapshot snapshot;
 	private static PendingBlockedEdge pendingBlockedEdge;
-	private static volatile NavigationDecision equipmentDispatch;
+	private static volatile NavigationDecision commandDispatch;
 
 	private NavigationEngineRuntime()
 	{
@@ -89,6 +89,7 @@ public final class NavigationEngineRuntime
 			&& observedSpell.getKind() == RouteInteraction.Kind.SIMPLE_TELEPORT
 			? actions.observeSpellEquipment(observedSpell, equipmentOwner.getEquipmentTransaction()) : null;
 		NavigationSnapshot deferredOwner;
+		long commandObservedAt;
 		synchronized (MUTEX)
 		{
 			if (engine == null || snapshot == null)
@@ -97,11 +98,12 @@ public final class NavigationEngineRuntime
 					NavigationDecision.Type.NO_ACTION, "engine-session-not-started"), false, false,
 					"none");
 			}
-			if (equipmentDispatch != null)
+			if (commandDispatch != null)
 				return new NavigationExecutionResult(NavigationDecision.of(NavigationDecision.Type.WAIT,
 					"equipment-dispatch-in-flight"), snapshot.getExecutionMode()
 					== NavigationExecutionMode.ENGINE_SUPPORTED, false, "none");
 			NavigationObservation effectiveObservation = applyPendingRecovery(observation);
+			commandObservedAt = effectiveObservation.getObservedAtMs();
 			NavigationDecision decision = equipmentOwner == null ? null : engine.observeEquipmentRestoration(
 				equipmentOwner.getRequestId(), equipmentOwner.getGeneration(),
 				equipmentOwner.getEquipmentTransaction(), equipment, effectiveObservation);
@@ -117,15 +119,16 @@ public final class NavigationEngineRuntime
 			clearHandledRecovery(effectiveObservation, decision);
 			snapshot = engine.snapshot();
 			boolean engineOwned = snapshot.getExecutionMode() == NavigationExecutionMode.ENGINE_SUPPORTED;
-			boolean issued = false;
-			if (engineOwned && decision.getInteraction() != null
-				&& decision.getInteraction().getKind() == RouteInteraction.Kind.SPELL_EQUIPMENT)
+			if (engineOwned && (decision.getType() == NavigationDecision.Type.CLICK_TILE
+				|| decision.getType() == NavigationDecision.Type.INTERACT && decision.getInteraction() != null))
 			{
-				equipmentDispatch = decision;
+				commandDispatch = decision;
 				deferredCommand = decision;
 				deferredOwner = snapshot;
 				// Reserve the attempt before releasing ownership; observations acknowledge completion.
-				engine.recordCommandResult(decision, false, effectiveObservation.getObservedAtMs());
+				if (decision.getInteraction() != null
+					&& decision.getInteraction().getKind() == RouteInteraction.Kind.SPELL_EQUIPMENT)
+					engine.recordCommandResult(decision, false, effectiveObservation.getObservedAtMs());
 				snapshot = engine.snapshot();
 			}
 			else
@@ -133,45 +136,44 @@ public final class NavigationEngineRuntime
 				deferredCommand = null;
 				deferredOwner = null;
 			}
-			if (engineOwned && decision.getType() == NavigationDecision.Type.CLICK_TILE)
-			{
-				issued = actions.clickTile(decision.getTarget(), decision.getTargetSelection());
-				engine.recordCommandResult(decision, issued, effectiveObservation.getObservedAtMs());
-				snapshot = engine.snapshot();
-			}
-			else if (engineOwned && decision.getType() == NavigationDecision.Type.INTERACT
-				&& decision.getInteraction() != null && deferredCommand == null)
-			{
-				issued = actions.interact(decision.getInteraction());
-				if (actions.interactionPreparedOnly())
-				{
-					engine.recordInteractionPreparation(decision,
-						effectiveObservation.getObservedAtMs());
-				}
-				else
-				{
-					engine.recordCommandResult(decision, issued,
-						effectiveObservation.getObservedAtMs());
-				}
-				snapshot = engine.snapshot();
-			}
-			if (deferredCommand == null) return new NavigationExecutionResult(decision, engineOwned, issued,
-				decision.getType() == NavigationDecision.Type.CLICK_TILE
-					|| decision.getType() == NavigationDecision.Type.INTERACT
-					? actions.getLastActionType() : "none");
+			if (deferredCommand == null) return new NavigationExecutionResult(decision, engineOwned, false, "none");
 		}
 		try
 		{
-			boolean issued = equipmentPermission(deferredOwner, deferredCommand)
-				&& actions.interactEquipment(deferredCommand.getInteraction(), deferredOwner.getEquipmentTransaction(),
-					() -> equipmentPermission(deferredOwner, deferredCommand));
+			boolean equipmentCommand = deferredCommand.getInteraction() != null
+				&& deferredCommand.getInteraction().getKind() == RouteInteraction.Kind.SPELL_EQUIPMENT;
+			boolean issued = false;
+			boolean prepared = false;
+			if (equipmentPermission(deferredOwner, deferredCommand))
+			{
+				if (equipmentCommand)
+					issued = actions.interactEquipment(deferredCommand.getInteraction(), deferredOwner.getEquipmentTransaction(),
+						() -> equipmentPermission(deferredOwner, deferredCommand));
+				else if (deferredCommand.getType() == NavigationDecision.Type.CLICK_TILE)
+					issued = actions.clickTile(deferredCommand.getTarget(), deferredCommand.getTargetSelection());
+				else
+				{
+					issued = actions.interact(deferredCommand.getInteraction());
+					prepared = actions.interactionPreparedOnly();
+				}
+			}
+			synchronized (MUTEX)
+			{
+				if (!equipmentPermission(deferredOwner, deferredCommand)) issued = false;
+				else if (!equipmentCommand)
+				{
+					if (prepared) engine.recordInteractionPreparation(deferredCommand, commandObservedAt);
+					else engine.recordCommandResult(deferredCommand, issued, commandObservedAt);
+					snapshot = engine.snapshot();
+				}
+			}
 			return new NavigationExecutionResult(deferredCommand, true, issued, actions.getLastActionType());
 		}
 		finally
 		{
 			synchronized (MUTEX)
 			{
-				if (equipmentDispatch == deferredCommand) equipmentDispatch = null;
+				if (commandDispatch == deferredCommand) commandDispatch = null;
 			}
 		}
 	}
@@ -179,7 +181,7 @@ public final class NavigationEngineRuntime
 	private static boolean equipmentPermission(NavigationSnapshot owner, NavigationDecision command)
 	{
 		NavigationSnapshot current = snapshot;
-		return equipmentDispatch == command && current != null && !current.isTerminal()
+		return commandDispatch == command && current != null && !current.isTerminal()
 			&& current.getRequest() == owner.getRequest()
 			&& !owner.getRequest().getCancellationToken().isCancelled()
 			&& current.getGeneration() == owner.getGeneration()
@@ -260,7 +262,7 @@ public final class NavigationEngineRuntime
 		{
 			engine = null;
 			snapshot = null;
-			equipmentDispatch = null;
+			commandDispatch = null;
 			pendingBlockedEdge = null;
 		}
 	}

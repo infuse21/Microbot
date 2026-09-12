@@ -33,9 +33,24 @@ public final class SpiritTreePolicy
 			&& "travel".equals(normalize(transport.getAction()))
 			&& "spirit tree".equals(normalize(transport.getName()))
 			&& !destinationName(transport.getDisplayInfo()).isEmpty()
-			&& !"your house".equals(normalize(destinationName(transport.getDisplayInfo())))
+			&& (!"your house".equals(normalize(destinationName(transport.getDisplayInfo())))
+				|| pohAnchor != null && pohAnchor.equals(transport.getDestination()))
 			&& (pohAnchor == null || !pohAnchor.equals(transport.getOrigin())
-				&& !pohAnchor.equals(transport.getDestination()));
+				&& !pohAnchor.equals(transport.getDestination())
+				|| pohAnchor.equals(transport.getOrigin()) && transport.getObjectId() == 29227
+					&& !pohAnchor.equals(transport.getDestination())
+				|| pohAnchor.equals(transport.getDestination())
+					&& "your house".equals(normalize(destinationName(transport.getDisplayInfo()))));
+	}
+
+	static String pohTreeAction(int id)
+	{
+		switch (id)
+		{
+			case 29227: case 40778: case 44936: return "Travel";
+			case 29229: case 40779: case 27097: return "Tree";
+			default: return null;
+		}
 	}
 
 	public static String destinationAction(String destinationName)

@@ -206,15 +206,24 @@ public final class Rs2FairyRingScene implements FairyRingScene
 		}
 		return Microbot.getClientThread().runOnClientThreadOptional(() ->
 		{
-			List<Rs2TileObjectModel> candidates = Microbot.getRs2TileObjectCache().query()
-				.within(anchor, 2).toList();
+			boolean house = anchor.equals(transport.getOrigin())
+				&& anchor.equals(net.runelite.client.plugins.microbot.shortestpath.PohPanel.getExitPortalTile());
+			if (house && !net.runelite.client.plugins.microbot.util.poh.PohTeleports.isInHouse()) return null;
+			var query = Microbot.getRs2TileObjectCache().query();
+			if (house) query.fromWorldView();
+			else query.within(anchor, 2);
+			List<Rs2TileObjectModel> candidates = query.toList();
 			RingObject best = null;
 			int bestDistance = Integer.MAX_VALUE;
 			for (Rs2TileObjectModel object : candidates)
 			{
 				ObjectComposition composition = object.getObjectComposition();
+				if (house && !isHouseRingId(object.getId())
+					&& (composition == null || !isHouseRingId(composition.getId()))) continue;
 				String[] actions = composition == null ? null : composition.getActions();
-				WorldPoint tile = object.getWorldLocation();
+				WorldPoint tile = house
+					? net.runelite.client.plugins.microbot.util.walker.obstacle.Rs2SceneLocation.templateLocation(object)
+					: object.getWorldLocation();
 				if (tile == null || actions == null || Arrays.stream(actions)
 					.filter(java.util.Objects::nonNull)
 					.noneMatch(Rs2FairyRingScene::isFairyRingAction))
@@ -230,6 +239,11 @@ public final class Rs2FairyRingScene implements FairyRingScene
 			}
 			return best;
 		}).orElse(null);
+	}
+
+	private static boolean isHouseRingId(int id)
+	{
+		return id == 29228 || id == 29229 || id == 40779 || id == 27097;
 	}
 
 	private static DialState dialState(String code)

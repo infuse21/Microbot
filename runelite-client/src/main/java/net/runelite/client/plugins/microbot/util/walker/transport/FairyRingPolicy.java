@@ -48,8 +48,7 @@ public final class FairyRingPolicy
 			&& ((isCode(transport.getDisplayInfo())
 				&& !"DIQ".equals(normalizeCode(transport.getDisplayInfo())))
 				|| isHideoutSequence(transport))
-			&& (pohAnchor == null || !pohAnchor.equals(transport.getOrigin())
-				&& !pohAnchor.equals(transport.getDestination()));
+			&& (pohAnchor == null || !pohAnchor.equals(transport.getDestination()));
 	}
 
 	public static boolean isHideoutSequence(Transport transport)

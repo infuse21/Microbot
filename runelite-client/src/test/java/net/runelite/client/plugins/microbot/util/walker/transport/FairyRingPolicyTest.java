@@ -36,8 +36,10 @@ public class FairyRingPolicyTest
 			"AKR", TransportType.SPIRIT_TREE, true, 5)));
 		assertFalse(FairyRingPolicy.isEligible(new Transport(origin, destination,
 			"DIQ", TransportType.FAIRY_RING, true, 5), null));
-		assertFalse(FairyRingPolicy.isEligible(new Transport(origin, destination,
+		assertTrue(FairyRingPolicy.isEligible(new Transport(origin, destination,
 			"AKR", TransportType.FAIRY_RING, true, 5), origin));
+		assertFalse(FairyRingPolicy.isEligible(new Transport(origin, destination,
+			"AKR", TransportType.FAIRY_RING, true, 5), destination));
 	}
 
 	@Test

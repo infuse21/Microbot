@@ -1348,7 +1348,7 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
          * Therefor CTRL + X seemed a bit more robust and userfriendly
          */
         if (e.getKeyCode() == KeyEvent.VK_X && e.isControlDown()) {
-			shortestPathScript.setTriggerWalker(null);
+			shortestPathScript.setTriggerWalker(null, "hotkey:ctrl+x");
             e.consume();
         }
     }

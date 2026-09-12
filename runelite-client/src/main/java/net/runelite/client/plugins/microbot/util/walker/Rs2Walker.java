@@ -8966,6 +8966,7 @@ public class Rs2Walker {
 				boolean issued;
 				if (SpiritTreePolicy.isDestinationAction(interaction.getAction())) {
 					issued = Rs2SpiritTreeScene.selectDestination(
+						new PlannedEdge(interaction.getFrom(), interaction.getTo()),
 						interaction.getAction().substring(
 							SpiritTreePolicy.DESTINATION_ACTION_PREFIX.length()));
 				} else {

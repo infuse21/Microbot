@@ -20,6 +20,57 @@ import static org.mockito.Mockito.*;
 public class PohChamberOwnershipTest
 {
 	@Test
+	public void generatedHouseTreeEdgesAreEngineOwnedInBothDirections()
+	{
+		WorldPoint house = new WorldPoint(1859, 7051, 0);
+		var resources = Transport.loadAllFromResources();
+		var graph = net.runelite.client.plugins.microbot.shortestpath.PohPanel.createSpiritTreeMap(house, resources);
+		try (org.mockito.MockedStatic<net.runelite.client.plugins.microbot.shortestpath.PohPanel> panel =
+			mockStatic(net.runelite.client.plugins.microbot.shortestpath.PohPanel.class))
+		{
+			panel.when(net.runelite.client.plugins.microbot.shortestpath.PohPanel::getExitPortalTile).thenReturn(house);
+			assertFalse(graph.get(house).isEmpty());
+			assertTrue(graph.size() > 1);
+			for (Set<Transport> rows : graph.values())
+			{
+				for (Transport row : rows)
+				{
+					assertEquals(RouteEdge.Kind.SPIRIT_TREE,
+						PathfinderRouteCalculation.classifyTransportEdge(Set.of(row)));
+					assertTrue(house.equals(row.getOrigin()) || house.equals(row.getDestination()));
+				}
+			}
+		}
+	}
+
+	@Test
+	public void jewelleryRowsCarryDestinationUnlocksBeforeRoutePlanning()
+	{
+		WorldPoint house = new WorldPoint(1859, 7051, 0);
+		PohTransport fortis = new PohTransport(house,
+			net.runelite.client.plugins.microbot.util.poh.data.JewelleryBox.FORTIS_COLOSSEUM);
+		assertEquals(1, fortis.getVarplayers().size());
+		net.runelite.client.plugins.microbot.shortestpath.TransportVarPlayer glory =
+			fortis.getVarplayers().iterator().next();
+		assertEquals(net.runelite.api.gameval.VarPlayerID.COLOSSEUM_GLORY, glory.getVarplayerId());
+		assertFalse(glory.matches(11999));
+		assertTrue(glory.matches(12000));
+		assertTrue(glory.matches(12001));
+		PohTransport tears = new PohTransport(house,
+			net.runelite.client.plugins.microbot.util.poh.data.JewelleryBox.TEARS_OF_GUTHIX);
+		assertEquals(net.runelite.api.QuestState.FINISHED,
+			tears.getQuests().get(net.runelite.api.Quest.TEARS_OF_GUTHIX));
+		PohTransport miscellania = new PohTransport(house,
+			net.runelite.client.plugins.microbot.util.poh.data.JewelleryBox.MISCELLANIA);
+		assertEquals(net.runelite.api.QuestState.FINISHED,
+			miscellania.getQuests().get(net.runelite.api.Quest.THRONE_OF_MISCELLANIA));
+		PohTransport ordinary = new PohTransport(house,
+			net.runelite.client.plugins.microbot.util.poh.data.JewelleryBox.CASTLE_WARS);
+		assertTrue(ordinary.getQuests().isEmpty());
+		assertTrue(ordinary.getVarplayers().isEmpty());
+	}
+
+	@Test
 	public void allFortyChamberDestinationsPublishPortalOwnershipOnly()
 	{
 		WorldPoint house = new WorldPoint(1859, 7051, 0);
@@ -46,6 +97,22 @@ public class PohChamberOwnershipTest
 	public void allMountedRoutesPublishPortalOwnership()
 	{
 		WorldPoint house = new WorldPoint(1859, 7051, 0);
+		for (net.runelite.client.plugins.microbot.util.poh.data.NexusPortal nexus
+			: net.runelite.client.plugins.microbot.util.poh.data.NexusPortal.values())
+		{
+			PohTransport row = new PohTransport(house, nexus);
+			assertEquals("Teleport menu", row.getAction());
+			assertEquals(RouteEdge.Kind.TELEPORTATION_PORTAL,
+				PathfinderRouteCalculation.classifyTransportEdge(Set.of(row)));
+		}
+		for (net.runelite.client.plugins.microbot.util.poh.data.JewelleryBox box
+			: net.runelite.client.plugins.microbot.util.poh.data.JewelleryBox.values())
+		{
+			PohTransport row = new PohTransport(house, box);
+			assertEquals("Teleport menu", row.getAction());
+			assertEquals(RouteEdge.Kind.TELEPORTATION_PORTAL,
+				PathfinderRouteCalculation.classifyTransportEdge(Set.of(row)));
+		}
 		for (MountedGlory glory : MountedGlory.values())
 		{
 			PohTransport row = new PohTransport(house, glory);

@@ -151,6 +151,7 @@ public class VirtualMouse extends Mouse {
 
         Runnable clickAction = () -> {
             Point newPoint = point;
+            if (Thread.currentThread().isInterrupted()) return;
             if (shouldMoveNaturally(point)) {
                 Microbot.naturalMouse.moveTo(point.getX(), point.getY());
 
@@ -172,6 +173,7 @@ public class VirtualMouse extends Mouse {
                 }
             }
 
+            if (Thread.currentThread().isInterrupted()) return;
             Microbot.targetMenu = entry;
             handleClick(newPoint, rightClick);
         };

@@ -2040,6 +2040,16 @@ vertical transition.
 
 ## 111. Snapshot catalogue candidates in one cancellable client-thread call
 
+Do not hold the navigation runtime mutex across mouse or interaction callbacks: they can wait for
+client-thread clickbox reads while Ctrl+X tries to acquire the same mutex. Reserve one in-flight
+command, dispatch outside the mutex, and validate request/generation ownership before recording
+its result. Interrupt the walk task before route cleanup; interrupted mouse work must not click.
+
+Rebuilt-client check, 2026-09-12: the temporary probe invoked the real Ctrl+X handler on AWT during
+the underwall interaction. It returned in 0 measured milliseconds, published a terminal snapshot,
+and the interrupted interaction reported `issued=false`. Latch-based headless tests also hold
+movement and interaction callbacks in flight while cancellation completes independently.
+
 Resolve the candidate set, template anchors, object compositions and live actions inside one
 client-thread callback. Do not stream candidate models on a worker while each predicate makes its
 own synchronous client-thread call. If cancellation interrupts the worker or the client-thread
@@ -2295,6 +2305,15 @@ applicable fragment. Never use the first origin group as a proxy for the whole n
 assert all connections exist, requirements remain directional, and outbound edges are unique.
 
 ## 129. Resolve large shared transport objects by their cache anchor
+
+An enlarged lookup radius does not make stale route endpoints valid. Draynor's underwall tunnel
+had six northern rows at Y=3259..3261 alongside the actual Y=3257 crossing; those rows resolved the
+object but failed landing acknowledgement and prompted a second entrance click. Keep only the
+canonical directed crossing, (3066,3257,0) <-> (3070,3257,0), rather than widening landing tolerance.
+
+Rebuilt-client check, 2026-09-12: westbound clicked at 13:43:40 BST and arrived at 13:43:43;
+eastbound clicked at 13:45:13, continued to (3074,3257,0) at 13:45:15 and arrived at 13:45:17.
+Both used NavigationEngine with one entrance interaction and no tunnel replan or backtracking.
 
 A multi-tile object can expose several catalogue approach lanes while the object cache reports only
 one south-west anchor. Searching within the normal radius of each route origin can therefore miss

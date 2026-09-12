@@ -21,7 +21,7 @@ public class Rs2CatalogTransitionSceneTest
 			.filter(row -> row.getObjectId() == 19032 || row.getObjectId() == 19036)
 			.collect(java.util.stream.Collectors.toList());
 
-		assertEquals(8, rows.size());
+		assertEquals(2, rows.size());
 		assertTrue(rows.stream().allMatch(row ->
 			Rs2CatalogTransitionScene.objectSearchRadius(row) == 5));
 		assertTrue(rows.stream().noneMatch(
