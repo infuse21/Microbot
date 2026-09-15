@@ -218,7 +218,7 @@ public class ItemTeleportRouteScannerTest
 		RouteInteraction interaction)
 	{
 		return NavigationObservation.route(time, player, plan, false, false, false, false,
-			false, false, null, "item-test").withRouteInteraction(interaction);
+			false, false, "item-test").withRouteInteraction(interaction);
 	}
 
 	private static ItemTeleportScene restoringScene(ItemTeleport restoration)

@@ -24,7 +24,6 @@ import net.runelite.client.plugins.microbot.util.tabs.Rs2Tab;
 import net.runelite.client.plugins.microbot.util.walker.Rs2PathApi;
 import net.runelite.client.plugins.microbot.util.walker.navigation.NavigationDecision;
 import net.runelite.client.plugins.microbot.util.walker.navigation.NavigationEngine;
-import net.runelite.client.plugins.microbot.util.walker.navigation.NavigationExecutionMode;
 import net.runelite.client.plugins.microbot.util.walker.navigation.NavigationObservation;
 import net.runelite.client.plugins.microbot.util.walker.navigation.NavigationRequest;
 import net.runelite.client.plugins.microbot.util.walker.navigation.NavigationRouteOptions;
@@ -87,7 +86,7 @@ public class MapOfAlacrityOwnershipTest
 			assertEquals(RouteInteraction.Status.CLEARED, landed.getStatus());
 			assertEquals("interaction-edge-crossed", engine.observe(observation(8, landed, TO)).getReason());
 			assertEquals(NavigationDecision.Type.COMPLETE, engine.observe(observation(9, null, TO)).getType());
-			assertEquals(NavigationExecutionMode.ENGINE_SUPPORTED, engine.snapshot().getExecutionMode());
+			assertTrue(engine.snapshot().isTerminal());
 			verifyNoInteractions(f.mouse);
 		}
 	}
@@ -229,7 +228,7 @@ public class MapOfAlacrityOwnershipTest
 	{
 		NavigationEngine engine = new NavigationEngine();
 		engine.start(new NavigationRequest(1, Set.of(TO), 0,
-			new NavigationRouteOptions(true, true, false, true), "map-test"));
+			new NavigationRouteOptions(true, true, false), "map-test"));
 		return engine;
 	}
 
@@ -242,7 +241,7 @@ public class MapOfAlacrityOwnershipTest
 	private static NavigationObservation observation(long time, RouteInteraction interaction, WorldPoint player)
 	{
 		return NavigationObservation.route(time, player, plan(), false, false, false, false,
-			false, false, null, "map-test").withRouteInteraction(interaction);
+			false, false, "map-test").withRouteInteraction(interaction);
 	}
 
 	private static final class Fixture implements AutoCloseable

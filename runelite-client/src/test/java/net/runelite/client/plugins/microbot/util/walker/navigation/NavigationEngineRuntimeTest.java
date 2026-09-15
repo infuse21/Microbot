@@ -28,7 +28,7 @@ public class NavigationEngineRuntimeTest
 			Collections.singletonList(start), Collections.singletonList(start), false);
 
 		NavigationDecision decision = NavigationEngineRuntime.observe(NavigationObservation.route(
-			1, start, plan, false, false, false, false, false, false, null, "test"));
+			1, start, plan, false, false, false, false, false, false, "test"));
 
 		assertEquals(NavigationDecision.Type.REQUEST_REPLAN, decision.getType());
 		assertNotNull(NavigationEngineRuntime.getSnapshot());

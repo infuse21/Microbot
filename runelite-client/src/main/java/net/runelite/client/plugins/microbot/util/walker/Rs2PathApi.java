@@ -1,12 +1,14 @@
 package net.runelite.client.plugins.microbot.util.walker;
 
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.client.plugins.microbot.shortestpath.ShortestPathConfig;
 import net.runelite.client.plugins.microbot.shortestpath.ShortestPathPlugin;
 import net.runelite.client.plugins.microbot.shortestpath.TeleportationItem;
 import net.runelite.client.plugins.microbot.shortestpath.Transport;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.Pathfinder;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.PathfinderConfig;
 import net.runelite.client.plugins.microbot.util.walker.navigation.RoutePlannerRuntime;
+import net.runelite.client.plugins.microbot.util.walker.navigation.NavigationWalkRuntime;
 import net.runelite.client.ui.overlay.worldmap.WorldMapPoint;
 
 import java.awt.image.BufferedImage;
@@ -40,6 +42,12 @@ import java.util.Set;
  */
 public final class Rs2PathApi
 {
+	private static volatile PathfinderConfig pathfinderConfig;
+	private static volatile boolean startPointSet;
+	private static volatile int reachedDistance;
+	private static volatile WorldPoint lastLocation = new WorldPoint(0, 0, 0);
+	private static volatile WorldMapPoint marker;
+
 	private Rs2PathApi()
 	{
 	}
@@ -67,13 +75,28 @@ public final class Rs2PathApi
 	/** @return the shared pathfinder configuration (transports, restrictions, toggles). */
 	public static PathfinderConfig getPathfinderConfig()
 	{
-		return ShortestPathPlugin.getPathfinderConfig();
+		return pathfinderConfig;
+	}
+
+	public static void setPathfinderConfig(PathfinderConfig nextPathfinderConfig)
+	{
+		pathfinderConfig = nextPathfinderConfig;
+	}
+
+	public static void configureWalker(ShortestPathConfig config)
+	{
+		Rs2Walker.setConfig(config);
 	}
 
 	/** Distance from the target at which the path is considered reached. */
 	public static void setReachedDistance(int reachedDistance)
 	{
-		ShortestPathPlugin.setReachedDistance(reachedDistance);
+		Rs2PathApi.reachedDistance = reachedDistance;
+	}
+
+	public static int getReachedDistance()
+	{
+		return reachedDistance;
 	}
 
 	public static boolean override(String configOverrideKey, boolean defaultValue)
@@ -95,26 +118,31 @@ public final class Rs2PathApi
 	// Target / walker state
 	// ------------------------------------------------------------------
 
-	/** Clears the active target and tears down the current path (see {@link ShortestPathPlugin#exit()}). */
+	/** Clears the active target and tears down the current path. */
 	public static void exit()
 	{
-		ShortestPathPlugin.exit();
+		NavigationWalkRuntime.cancel("path-api:exit");
 	}
 
 	public static boolean isStartPointSet()
 	{
-		return ShortestPathPlugin.isStartPointSet();
+		return startPointSet;
 	}
 
 	public static void setStartPointSet(boolean startPointSet)
 	{
-		ShortestPathPlugin.setStartPointSet(startPointSet);
+		Rs2PathApi.startPointSet = startPointSet;
 	}
 
 	/** Records the player's last known world location (write-only on the plugin). */
 	public static void setLastLocation(WorldPoint lastLocation)
 	{
-		ShortestPathPlugin.setLastLocation(lastLocation);
+		Rs2PathApi.lastLocation = lastLocation;
+	}
+
+	public static WorldPoint getLastLocation()
+	{
+		return lastLocation;
 	}
 
 	// ------------------------------------------------------------------
@@ -123,12 +151,12 @@ public final class Rs2PathApi
 
 	public static WorldMapPoint getMarker()
 	{
-		return ShortestPathPlugin.getMarker();
+		return marker;
 	}
 
 	public static void setMarker(WorldMapPoint marker)
 	{
-		ShortestPathPlugin.setMarker(marker);
+		Rs2PathApi.marker = marker;
 	}
 
 	// ------------------------------------------------------------------
@@ -138,6 +166,7 @@ public final class Rs2PathApi
 	/** @return the transport graph keyed by origin tile. */
 	public static Map<WorldPoint, Set<Transport>> getTransports()
 	{
-		return ShortestPathPlugin.getTransports();
+		PathfinderConfig config = pathfinderConfig;
+		return config == null ? Map.of() : config.getTransports();
 	}
 }

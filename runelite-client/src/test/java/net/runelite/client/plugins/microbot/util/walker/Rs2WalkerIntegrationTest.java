@@ -6,7 +6,6 @@ import net.runelite.api.GameState;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.RuneLite;
 import net.runelite.client.plugins.microbot.Microbot;
-import net.runelite.client.plugins.microbot.shortestpath.ShortestPathPlugin;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.security.LoginManager;
 import org.junit.BeforeClass;
@@ -68,8 +67,8 @@ public class Rs2WalkerIntegrationTest {
         log.info("ShortestPathPlugin config ready.");
 
         waitForCondition("PathfinderConfig", 30, () ->
-            ShortestPathPlugin.getPathfinderConfig() != null
-                && ShortestPathPlugin.getPathfinderConfig().getMap() != null
+            Rs2PathApi.getPathfinderConfig() != null
+                && Rs2PathApi.getPathfinderConfig().getMap() != null
         );
         log.info("PathfinderConfig and collision map ready.");
 
@@ -136,33 +135,33 @@ public class Rs2WalkerIntegrationTest {
 
         Rs2Walker.clearWalkingRoute("test:cleanup");
         long clearDeadline = System.currentTimeMillis() + 2000;
-        while (ShortestPathPlugin.getPathfinder() != null && System.currentTimeMillis() < clearDeadline) {
+        while (Rs2PathApi.getPathfinder() != null && System.currentTimeMillis() < clearDeadline) {
             Thread.sleep(100);
         }
-        assertNull("Pathfinder should clear during cleanup", ShortestPathPlugin.getPathfinder());
+        assertNull("Pathfinder should clear during cleanup", Rs2PathApi.getPathfinder());
 
         log.info("Setting target...");
         Rs2Walker.setTarget(nearbyTarget);
 
         log.info("Waiting for pathfinder to be created...");
         long deadline = System.currentTimeMillis() + 5000;
-        while (ShortestPathPlugin.getPathfinder() == null && System.currentTimeMillis() < deadline) {
+        while (Rs2PathApi.getPathfinder() == null && System.currentTimeMillis() < deadline) {
             Thread.sleep(100);
         }
-        assertNotNull("Pathfinder should be created after setTarget", ShortestPathPlugin.getPathfinder());
-        log.info("Pathfinder created: {}", ShortestPathPlugin.getPathfinder());
+        assertNotNull("Pathfinder should be created after setTarget", Rs2PathApi.getPathfinder());
+        log.info("Pathfinder created: {}", Rs2PathApi.getPathfinder());
 
         log.info("Waiting for pathfinder.isDone()...");
         deadline = System.currentTimeMillis() + 15000;
-        while (!ShortestPathPlugin.getPathfinder().isDone() && System.currentTimeMillis() < deadline) {
+        while (!Rs2PathApi.getPathfinder().isDone() && System.currentTimeMillis() < deadline) {
             Thread.sleep(100);
         }
 
-        boolean done = ShortestPathPlugin.getPathfinder().isDone();
+        boolean done = Rs2PathApi.getPathfinder().isDone();
         log.info("Pathfinder isDone: {}", done);
 
         if (done) {
-            var path = ShortestPathPlugin.getPathfinder().getPath();
+            var path = Rs2PathApi.getPathfinder().getPath();
             log.info("Path size: {}, first: {}, last: {}",
                 path != null ? path.size() : "null",
                 path != null && !path.isEmpty() ? path.get(0) : "N/A",
@@ -173,10 +172,10 @@ public class Rs2WalkerIntegrationTest {
 
         Rs2Walker.clearWalkingRoute("test:cleanup");
         clearDeadline = System.currentTimeMillis() + 2000;
-        while (ShortestPathPlugin.getPathfinder() != null && System.currentTimeMillis() < clearDeadline) {
+        while (Rs2PathApi.getPathfinder() != null && System.currentTimeMillis() < clearDeadline) {
             Thread.sleep(100);
         }
-        assertNull("Pathfinder should clear during final cleanup", ShortestPathPlugin.getPathfinder());
+        assertNull("Pathfinder should clear during final cleanup", Rs2PathApi.getPathfinder());
 
         assertTrue("Pathfinder should complete within 15 seconds", done);
     }

@@ -705,13 +705,13 @@ public class ShortestPathPanel extends PluginPanel
 	void startWalking(WorldPoint point)
 	{
 		Microbot.log("Web walking starting. Traveling to Custom Location (" + point.getX() + ", " + point.getY() + ", " + point.getPlane() + ").");
-		plugin.getShortestPathScript().setTriggerWalker(point);
+		plugin.startWalking(point);
 	}
 
 	void stopWalking()
 	{
 		Microbot.log("Web walking stopping..");
-		plugin.getShortestPathScript().setTriggerWalker(null, "panel:stop-walking-button");
+		plugin.stopWalking("panel:stop-walking-button");
 	}
 
 	/* ------------------------------------------------------------------

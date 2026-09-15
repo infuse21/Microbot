@@ -6,7 +6,7 @@ import net.runelite.api.Perspective;
 import net.runelite.api.Point;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
-import net.runelite.client.plugins.microbot.shortestpath.pathfinder.Pathfinder;
+import net.runelite.client.plugins.microbot.util.walker.navigation.RoutePlan;
 import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayPosition;
@@ -36,14 +36,14 @@ public class PathMinimapOverlay extends Overlay {
 			return null;
 		}
 
-        final Pathfinder pathfinder = ShortestPathPlugin.getPathfinder();
-        if (pathfinder == null) return null;
+        final RoutePlan routePlan = plugin.getRoutePlan();
+        if (routePlan == null) return null;
 
         graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
         graphics.setClip(plugin.getMinimapClipArea());
 
-        List<WorldPoint> pathPoints = pathfinder.getPath();
-        Color pathColor = pathfinder.isDone() ? plugin.colourPath : plugin.colourPathCalculating;
+        List<WorldPoint> pathPoints = routePlan.getRawPath();
+        Color pathColor = routePlan.isComplete() ? plugin.colourPath : plugin.colourPathCalculating;
         for (WorldPoint pathPoint : pathPoints) {
             if (pathPoint.getPlane() != client.getPlane()) {
                 continue;

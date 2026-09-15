@@ -136,10 +136,10 @@ public class BankedStaffJourneyTest
 	}
 
 	private static NavigationRequest request(long id, WorldPoint target) {
-		return new NavigationRequest(id, Set.of(target), 0, new NavigationRouteOptions(true, true, true, true), "banked-staff-test");
+		return new NavigationRequest(id, Set.of(target), 0, new NavigationRouteOptions(true, true, true), "banked-staff-test");
 	}
 
 	private static NavigationObservation observation(WorldPoint player, RoutePlan plan) {
-		return NavigationObservation.route(1, player, plan, false, false, false, false, false, false, null, "banked-staff-test");
+		return NavigationObservation.route(1, player, plan, false, false, false, false, false, false, "banked-staff-test");
 	}
 }

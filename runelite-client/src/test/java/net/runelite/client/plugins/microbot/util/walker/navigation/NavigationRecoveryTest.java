@@ -215,7 +215,7 @@ public class NavigationRecoveryTest
 		List<WorldPoint> raw = rawPath();
 		NavigationRequest request = new NavigationRequest(41,
 			Collections.singleton(raw.get(raw.size() - 1)), 0,
-			new NavigationRouteOptions(true, true, false, true, 100),
+			new NavigationRouteOptions(true, true, false, 100),
 			"no-progress-no-rejoin-test");
 		NavigationEngineRuntime.ensureRequest(request);
 		RoutePlan plan = plan(1);
@@ -300,14 +300,14 @@ public class NavigationRecoveryTest
 	{
 		List<WorldPoint> raw = rawPath();
 		return new NavigationRequest(41, Collections.singleton(raw.get(raw.size() - 1)), 0,
-			new NavigationRouteOptions(true, true, false, true), "phase-4-test");
+			new NavigationRouteOptions(true, true, false), "phase-4-test");
 	}
 
 	private static NavigationObservation observation(long time, WorldPoint player,
 		RoutePlan plan, boolean moving)
 	{
 		return NavigationObservation.route(time, player, plan, moving, false, false,
-			false, false, false, null, "phase-4-test");
+			false, false, false, "phase-4-test");
 	}
 
 	private static RoutePlan plan(long generation)

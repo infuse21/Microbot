@@ -247,9 +247,9 @@ public class DirectItemTeleportOwnershipTest
 		RoutePlan plan() { return new RoutePlan(1, 1, FROM, Set.of(target), List.of(FROM, target), List.of(FROM, target), true,
 			List.of(new RouteEdge(0, FROM, target, RouteEdge.Kind.ITEM_TELEPORT))); }
 		NavigationEngine engine() { NavigationEngine e = new NavigationEngine(); e.start(new NavigationRequest(1, Set.of(target), 0,
-			new NavigationRouteOptions(true, true, false, true), "direct-item-test")); return e; }
+			new NavigationRouteOptions(true, true, false), "direct-item-test")); return e; }
 		NavigationObservation observation(long time, RouteInteraction interaction, WorldPoint at) { return NavigationObservation.route(time,
-			at, plan(), false, false, false, false, false, false, null, "direct-item-test").withRouteInteraction(interaction); }
+			at, plan(), false, false, false, false, false, false, "direct-item-test").withRouteInteraction(interaction); }
 		RouteInteraction scan() { return scanner.scan(plan(), 0, 1, scene); }
 		RouteInteraction observe(RouteInteraction pending, WorldPoint at) { return scanner.observePending(pending, at, scene); }
 		void noItemInput() { microbot.verify(() -> Microbot.doInvoke(any(NewMenuEntry.class), any(Rectangle.class)), never()); }

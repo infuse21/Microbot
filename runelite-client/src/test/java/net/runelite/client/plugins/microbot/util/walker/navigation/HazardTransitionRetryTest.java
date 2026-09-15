@@ -57,7 +57,7 @@ public class HazardTransitionRetryTest
 		RouteInteraction interaction)
 	{
 		return NavigationObservation.route(observedAt, ORIGIN, plan, false, false, false,
-			false, false, false, null, "stochastic-well")
+			false, false, false, "stochastic-well")
 			.withRouteInteraction(interaction);
 	}
 }

@@ -1,17 +1,14 @@
 package net.runelite.client.plugins.microbot.shortestpath;
 
-import net.runelite.api.coords.WorldPoint;
-import net.runelite.client.plugins.microbot.util.player.Rs2Player;
+import net.runelite.client.plugins.microbot.util.walker.navigation.NavigationSnapshot;
+import net.runelite.client.plugins.microbot.util.walker.navigation.RoutePlan;
 import net.runelite.client.plugins.runenergy.RunEnergyPlugin;
 import net.runelite.client.ui.overlay.OverlayPanel;
 import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.ui.overlay.components.LineComponent;
 
 import javax.inject.Inject;
-import java.util.Comparator;
-import java.util.List;
 import java.awt.*;
-import java.util.stream.IntStream;
 
 public class ETAOverlayPanel extends OverlayPanel {
     
@@ -30,13 +27,12 @@ public class ETAOverlayPanel extends OverlayPanel {
             panelComponent.setBackgroundColor(new Color(0, 0, 0, 0));
             panelComponent.setPreferredSize(new Dimension(160, 100));
 
-            if (ShortestPathPlugin.getPathfinder() != null && ShortestPathPlugin.getPathfinder().isDone()) {
-                List<WorldPoint> path = ShortestPathPlugin.getPathfinder().getPath();
-                WorldPoint playerLocation = Rs2Player.getWorldLocation();
-
-                int progressIndex = findClosestPointIndex(playerLocation, path);
-
-                int remainingPathLength = path.size() - progressIndex;
+            NavigationSnapshot snapshot = plugin.getNavigationSnapshot();
+            RoutePlan routePlan = plugin.getRoutePlan();
+            if (snapshot != null && routePlan != null) {
+                int progressIndex = Math.max(0, Math.min(snapshot.getRawProgressIndex(),
+                        routePlan.getRawPath().size()));
+                int remainingPathLength = routePlan.getRawPath().size() - progressIndex;
 
                 String remainingTime = RunEnergyPlugin.calculateTravelTime(remainingPathLength, plugin.getConfig().showInSeconds());
 
@@ -55,10 +51,4 @@ public class ETAOverlayPanel extends OverlayPanel {
         return super.render(graphics);
     }
 
-    private int findClosestPointIndex(WorldPoint playerLocation, List<WorldPoint> path) {
-        return IntStream.range(0, path.size())
-                .boxed()
-                .min(Comparator.comparingInt(i -> playerLocation.distanceTo(path.get(i))))
-                .orElse(0); 
-    }
 }

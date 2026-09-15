@@ -5,7 +5,7 @@ import net.runelite.client.plugins.microbot.util.walker.banking.SpellEquipmentOb
 import net.runelite.client.plugins.microbot.util.walker.banking.SpellEquipmentTransaction;
 import net.runelite.client.plugins.microbot.util.walker.banking.SpellEquipmentPreparation;
 
-/** Process bridge for shadow comparison and opt-in ordinary-route execution. */
+/** Process-wide bridge to the sole NavigationEngine executor. */
 @Slf4j
 public final class NavigationEngineRuntime
 {
@@ -44,15 +44,15 @@ public final class NavigationEngineRuntime
 			if (engine == null || snapshot == null)
 			{
 				return NavigationDecision.of(NavigationDecision.Type.NO_ACTION,
-					"shadow-session-not-started");
+					"navigation-session-not-started");
 			}
 			NavigationDecision decision = engine.observe(observation);
 			snapshot = engine.snapshot();
 			if (log.isDebugEnabled() && decision.getType() != NavigationDecision.Type.NO_ACTION)
 			{
-				log.debug("[NavShadow] req={} gen={} phase={} decision={} reason={} comparison={}",
+				log.debug("[Navigation] req={} gen={} phase={} decision={} reason={}",
 					snapshot.getRequestId(), snapshot.getGeneration(), snapshot.getPhase(),
-					decision.getType(), decision.getReason(), snapshot.getComparison());
+					decision.getType(), decision.getReason());
 			}
 			return decision;
 		}
@@ -70,7 +70,7 @@ public final class NavigationEngineRuntime
 		}
 	}
 
-	/** Executes at most one command, and only for a request locked to ENGINE_SUPPORTED. */
+	/** Executes at most one command for the active NavigationEngine request. */
 	public static NavigationExecutionResult execute(NavigationObservation observation,
 		WalkerActions actions)
 	{
@@ -100,8 +100,7 @@ public final class NavigationEngineRuntime
 			}
 			if (commandDispatch != null)
 				return new NavigationExecutionResult(NavigationDecision.of(NavigationDecision.Type.WAIT,
-					"equipment-dispatch-in-flight"), snapshot.getExecutionMode()
-					== NavigationExecutionMode.ENGINE_SUPPORTED, false, "none");
+					"equipment-dispatch-in-flight"), true, false, "none");
 			NavigationObservation effectiveObservation = applyPendingRecovery(observation);
 			commandObservedAt = effectiveObservation.getObservedAtMs();
 			NavigationDecision decision = equipmentOwner == null ? null : engine.observeEquipmentRestoration(
@@ -118,9 +117,8 @@ public final class NavigationEngineRuntime
 					null, false, effectiveObservation);
 			clearHandledRecovery(effectiveObservation, decision);
 			snapshot = engine.snapshot();
-			boolean engineOwned = snapshot.getExecutionMode() == NavigationExecutionMode.ENGINE_SUPPORTED;
-			if (engineOwned && (decision.getType() == NavigationDecision.Type.CLICK_TILE
-				|| decision.getType() == NavigationDecision.Type.INTERACT && decision.getInteraction() != null))
+			if (decision.getType() == NavigationDecision.Type.CLICK_TILE
+				|| decision.getType() == NavigationDecision.Type.INTERACT && decision.getInteraction() != null)
 			{
 				commandDispatch = decision;
 				deferredCommand = decision;
@@ -136,7 +134,7 @@ public final class NavigationEngineRuntime
 				deferredCommand = null;
 				deferredOwner = null;
 			}
-			if (deferredCommand == null) return new NavigationExecutionResult(decision, engineOwned, false, "none");
+			if (deferredCommand == null) return new NavigationExecutionResult(decision, true, false, "none");
 		}
 		try
 		{
@@ -195,7 +193,6 @@ public final class NavigationEngineRuntime
 		synchronized (MUTEX)
 		{
 			if (rawEdgeIndex < 0 || snapshot == null || snapshot.isTerminal()
-				|| snapshot.getExecutionMode() != NavigationExecutionMode.ENGINE_SUPPORTED
 				|| snapshot.getRoutePlan() == null)
 			{
 				return false;
@@ -214,11 +211,10 @@ public final class NavigationEngineRuntime
 		}
 	}
 
-	public static boolean isOrdinaryExecutionActive()
+	public static boolean isExecutionActive()
 	{
 		NavigationSnapshot current = snapshot;
-		return current != null && !current.isTerminal()
-			&& current.getExecutionMode() == NavigationExecutionMode.ENGINE_SUPPORTED;
+		return current != null && !current.isTerminal();
 	}
 
 	public static boolean hasUnobservedRecovery()
@@ -229,10 +225,10 @@ public final class NavigationEngineRuntime
 		}
 	}
 
-	public static void finishFromLegacy(String reason)
+	public static void finish(String reason)
 	{
 		NavigationObservation.TerminalSignal signal = terminalSignal(reason);
-		observe(NavigationObservation.terminal(signal, reason == null ? "legacy-clear" : reason));
+		observe(NavigationObservation.terminal(signal, reason == null ? "navigation-clear" : reason));
 		synchronized (MUTEX)
 		{
 			pendingBlockedEdge = null;

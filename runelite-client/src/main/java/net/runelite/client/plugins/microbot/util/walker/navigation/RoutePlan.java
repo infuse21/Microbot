@@ -19,6 +19,41 @@ import java.util.Set;
  */
 public final class RoutePlan
 {
+	/** Immutable diagnostics copied from the completed pathfinder run. */
+	public static final class Diagnostics
+	{
+		private final int nodesChecked;
+		private final int transportsChecked;
+		private final long elapsedTimeNanos;
+
+		public Diagnostics(int nodesChecked, int transportsChecked, long elapsedTimeNanos)
+		{
+			this.nodesChecked = nodesChecked;
+			this.transportsChecked = transportsChecked;
+			this.elapsedTimeNanos = elapsedTimeNanos;
+		}
+
+		public int getNodesChecked()
+		{
+			return nodesChecked;
+		}
+
+		public int getTransportsChecked()
+		{
+			return transportsChecked;
+		}
+
+		public int getTotalNodesChecked()
+		{
+			return nodesChecked + transportsChecked;
+		}
+
+		public long getElapsedTimeNanos()
+		{
+			return elapsedTimeNanos;
+		}
+	}
+
 	private final long requestId;
 	private final long generation;
 	private final WorldPoint start;
@@ -28,16 +63,25 @@ public final class RoutePlan
 	private final List<RouteEdge> routeEdges;
 	private final int[] smoothedToRaw;
 	private final boolean complete;
+	private final Diagnostics diagnostics;
 
 	public RoutePlan(long requestId, long generation, WorldPoint start, Set<WorldPoint> targets,
 		List<WorldPoint> rawPath, List<WorldPoint> smoothedPath, boolean complete)
 	{
-		this(requestId, generation, start, targets, rawPath, smoothedPath, complete, null);
+		this(requestId, generation, start, targets, rawPath, smoothedPath, complete, null, null);
 	}
 
 	public RoutePlan(long requestId, long generation, WorldPoint start, Set<WorldPoint> targets,
 		List<WorldPoint> rawPath, List<WorldPoint> smoothedPath, boolean complete,
 		List<RouteEdge> routeEdges)
+	{
+		this(requestId, generation, start, targets, rawPath, smoothedPath, complete,
+			routeEdges, null);
+	}
+
+	public RoutePlan(long requestId, long generation, WorldPoint start, Set<WorldPoint> targets,
+		List<WorldPoint> rawPath, List<WorldPoint> smoothedPath, boolean complete,
+		List<RouteEdge> routeEdges, Diagnostics diagnostics)
 	{
 		if (requestId <= 0)
 		{
@@ -59,6 +103,7 @@ public final class RoutePlan
 		validateEdges(this.rawPath, this.routeEdges);
 		this.smoothedToRaw = mapSmoothedToRaw(this.smoothedPath, this.rawPath);
 		this.complete = complete;
+		this.diagnostics = diagnostics;
 	}
 
 	private static List<WorldPoint> immutablePath(List<WorldPoint> path, String name)
@@ -191,6 +236,11 @@ public final class RoutePlan
 	public boolean isComplete()
 	{
 		return complete;
+	}
+
+	public Diagnostics getDiagnostics()
+	{
+		return diagnostics;
 	}
 
 	public WorldPoint getEndpoint()

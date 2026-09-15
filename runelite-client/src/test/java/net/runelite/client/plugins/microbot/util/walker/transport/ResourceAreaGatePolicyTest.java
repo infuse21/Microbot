@@ -50,7 +50,7 @@ public class ResourceAreaGatePolicyTest
 	private static NavigationObservation observation(long time, WorldPoint player, RoutePlan plan, RouteInteraction interaction)
 	{
 		return NavigationObservation.route(time, player, plan, false, false, false, false, false, false,
-			null, "resource-gate-test").withRouteInteraction(interaction);
+			"resource-gate-test").withRouteInteraction(interaction);
 	}
 
 	@Test

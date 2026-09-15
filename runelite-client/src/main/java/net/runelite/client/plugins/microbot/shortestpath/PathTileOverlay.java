@@ -8,7 +8,8 @@ import net.runelite.api.Tile;
 import net.runelite.api.coords.LocalPoint;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.CollisionMap;
-import net.runelite.client.plugins.microbot.shortestpath.pathfinder.Pathfinder;
+import net.runelite.client.plugins.microbot.util.walker.Rs2PathApi;
+import net.runelite.client.plugins.microbot.util.walker.navigation.RoutePlan;
 import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayPosition;
@@ -36,10 +37,9 @@ public class PathTileOverlay extends Overlay {
 
     private void renderTransports(Graphics2D graphics) {
         if (plugin == null) return;
-        if (ShortestPathPlugin.getTransports() == null) return;
-        Pathfinder pathfinder = ShortestPathPlugin.getPathfinder();
-        if (pathfinder == null || !pathfinder.isDone()) return;
-        for (WorldPoint a : ShortestPathPlugin.getTransports().keySet()) {
+        if (Rs2PathApi.getTransports() == null) return;
+        if (plugin.getRoutePlan() == null) return;
+        for (WorldPoint a : Rs2PathApi.getTransports().keySet()) {
             drawTile(graphics, a, plugin.colourTransports, -1, true);
 
             Point ca = tileCenter(a);
@@ -49,7 +49,7 @@ public class PathTileOverlay extends Overlay {
             }
 
             StringBuilder s = new StringBuilder();
-            for (Transport b : ShortestPathPlugin.getTransports().getOrDefault(a, new HashSet<>())) {
+            for (Transport b : Rs2PathApi.getTransports().getOrDefault(a, new HashSet<>())) {
                 for (WorldPoint destination : WorldPoint.toLocalInstance(client, b.getDestination())) {
                     Point cb = tileCenter(destination);
                     if (cb != null) {
@@ -118,9 +118,9 @@ public class PathTileOverlay extends Overlay {
             this.renderCollisionMap(graphics);
         }
 
-        final Pathfinder pathfinder = ShortestPathPlugin.getPathfinder();
-        if (plugin.drawTiles && pathfinder != null) {
-            final List<WorldPoint> path = pathfinder.getPath();
+        final RoutePlan routePlan = plugin.getRoutePlan();
+        if (plugin.drawTiles && routePlan != null) {
+            final List<WorldPoint> path = routePlan.getRawPath();
 
             int counter = 0;
             if (TileStyle.LINES.equals(plugin.pathStyle)) {
@@ -237,10 +237,11 @@ public class PathTileOverlay extends Overlay {
     }
 
     private void drawCounter(Graphics2D graphics, double x, double y, int counter) {
-        if (ShortestPathPlugin.getPathfinder() == null) return;
+        RoutePlan routePlan = plugin.getRoutePlan();
+        if (routePlan == null) return;
         if (counter >= 0 && !TileCounter.DISABLED.equals(plugin.showTileCounter)) {
             int n = plugin.tileCounterStep > 0 ? plugin.tileCounterStep : 1;
-            int s = ShortestPathPlugin.getPathfinder().getPath().size();
+            int s = routePlan.getRawPath().size();
             if ((counter % n != 0) && (s != (counter + 1))) {
                 return;
             }
@@ -270,7 +271,7 @@ public class PathTileOverlay extends Overlay {
                 }
 
                 int vertical_offset = 0;
-                for (Transport transport : ShortestPathPlugin.getTransports().getOrDefault(point, new HashSet<>())) {
+                for (Transport transport : Rs2PathApi.getTransports().getOrDefault(point, new HashSet<>())) {
                     if (pointEnd == null || !pointEnd.equals(transport.getDestination())) {
                         continue;
                     }

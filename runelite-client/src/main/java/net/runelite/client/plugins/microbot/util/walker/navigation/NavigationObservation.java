@@ -2,7 +2,7 @@ package net.runelite.client.plugins.microbot.util.walker.navigation;
 
 import net.runelite.api.coords.WorldPoint;
 
-/** Immutable game/legacy state sampled for one shadow-engine pass. */
+/** Immutable game state sampled for one NavigationEngine pass. */
 public final class NavigationObservation
 {
 	public enum TerminalSignal
@@ -24,8 +24,7 @@ public final class NavigationObservation
 	private final boolean interactionCommandInFlight;
 	private final boolean replanRequested;
 	private final TerminalSignal terminalSignal;
-	private final NavigationDecision.Type legacyDecisionType;
-	private final String legacyReason;
+	private final String reason;
 	private final RecoveryCause recoveryCause;
 	private final int blockedEdgeIndex;
 	private final WorldPoint movementDestination;
@@ -35,18 +34,18 @@ public final class NavigationObservation
 	public NavigationObservation(long observedAtMs, WorldPoint playerLocation, RoutePlan routePlan,
 		boolean moving, boolean animating, boolean interacting, boolean interactionFrontier,
 		boolean interactionCommandInFlight, boolean replanRequested, TerminalSignal terminalSignal,
-		NavigationDecision.Type legacyDecisionType, String legacyReason)
+		String reason)
 	{
 		this(observedAtMs, playerLocation, routePlan, moving, animating, interacting,
 			interactionFrontier, interactionCommandInFlight, replanRequested, terminalSignal,
-			legacyDecisionType, legacyReason, RecoveryCause.NONE, -1, null, null, null);
+			reason, RecoveryCause.NONE, -1, null, null, null);
 	}
 
 	private NavigationObservation(long observedAtMs, WorldPoint playerLocation, RoutePlan routePlan,
 		boolean moving, boolean animating, boolean interacting, boolean interactionFrontier,
 		boolean interactionCommandInFlight, boolean replanRequested, TerminalSignal terminalSignal,
-		NavigationDecision.Type legacyDecisionType, String legacyReason, RecoveryCause recoveryCause,
-		int blockedEdgeIndex, WorldPoint movementDestination, RouteInteraction routeInteraction,
+		String reason, RecoveryCause recoveryCause, int blockedEdgeIndex,
+		WorldPoint movementDestination, RouteInteraction routeInteraction,
 		RouteInteraction nextRouteInteraction)
 	{
 		this.observedAtMs = observedAtMs;
@@ -59,8 +58,7 @@ public final class NavigationObservation
 		this.interactionCommandInFlight = interactionCommandInFlight;
 		this.replanRequested = replanRequested;
 		this.terminalSignal = terminalSignal == null ? TerminalSignal.NONE : terminalSignal;
-		this.legacyDecisionType = legacyDecisionType;
-		this.legacyReason = legacyReason == null ? "" : legacyReason;
+		this.reason = reason == null ? "" : reason;
 		this.recoveryCause = recoveryCause == null ? RecoveryCause.NONE : recoveryCause;
 		this.blockedEdgeIndex = blockedEdgeIndex;
 		this.movementDestination = movementDestination;
@@ -71,33 +69,33 @@ public final class NavigationObservation
 	public static NavigationObservation route(long observedAtMs, WorldPoint playerLocation,
 		RoutePlan routePlan, boolean moving, boolean animating, boolean interacting,
 		boolean interactionFrontier, boolean interactionCommandInFlight, boolean replanRequested,
-		NavigationDecision.Type legacyDecisionType, String legacyReason)
+		String reason)
 	{
 		return new NavigationObservation(observedAtMs, playerLocation, routePlan, moving, animating,
 			interacting, interactionFrontier, interactionCommandInFlight, replanRequested,
-			TerminalSignal.NONE, legacyDecisionType, legacyReason);
+			TerminalSignal.NONE, reason);
 	}
 
 	public static NavigationObservation terminal(TerminalSignal signal, String reason)
 	{
 		return new NavigationObservation(System.currentTimeMillis(), null, null, false, false,
-			false, false, false, false, signal, null, reason);
+			false, false, false, false, signal, reason);
 	}
 
 	public NavigationObservation withRecovery(RecoveryCause cause, int edgeIndex)
 	{
 		return new NavigationObservation(observedAtMs, playerLocation, routePlan, moving, animating,
 			interacting, interactionFrontier, interactionCommandInFlight, replanRequested,
-			terminalSignal, legacyDecisionType, legacyReason, cause, edgeIndex,
-			movementDestination, routeInteraction, nextRouteInteraction);
+			terminalSignal, reason, cause, edgeIndex, movementDestination, routeInteraction,
+			nextRouteInteraction);
 	}
 
 	public NavigationObservation withMovementDestination(WorldPoint destination)
 	{
 		return new NavigationObservation(observedAtMs, playerLocation, routePlan, moving, animating,
 			interacting, interactionFrontier, interactionCommandInFlight, replanRequested,
-			terminalSignal, legacyDecisionType, legacyReason, recoveryCause, blockedEdgeIndex,
-			destination, routeInteraction, nextRouteInteraction);
+			terminalSignal, reason, recoveryCause, blockedEdgeIndex, destination, routeInteraction,
+			nextRouteInteraction);
 	}
 
 	public NavigationObservation withRouteInteraction(RouteInteraction interaction)
@@ -110,8 +108,8 @@ public final class NavigationObservation
 	{
 		return new NavigationObservation(observedAtMs, playerLocation, routePlan, moving, animating,
 			interacting, interaction != null || interactionFrontier, interactionCommandInFlight,
-			replanRequested, terminalSignal, legacyDecisionType, legacyReason, recoveryCause,
-			blockedEdgeIndex, movementDestination, interaction, nextInteraction);
+			replanRequested, terminalSignal, reason, recoveryCause, blockedEdgeIndex,
+			movementDestination, interaction, nextInteraction);
 	}
 
 	public long getObservedAtMs() { return observedAtMs; }
@@ -124,8 +122,7 @@ public final class NavigationObservation
 	public boolean isInteractionCommandInFlight() { return interactionCommandInFlight; }
 	public boolean isReplanRequested() { return replanRequested; }
 	public TerminalSignal getTerminalSignal() { return terminalSignal; }
-	public NavigationDecision.Type getLegacyDecisionType() { return legacyDecisionType; }
-	public String getLegacyReason() { return legacyReason; }
+	public String getReason() { return reason; }
 	public RecoveryCause getRecoveryCause() { return recoveryCause; }
 	public int getBlockedEdgeIndex() { return blockedEdgeIndex; }
 	public WorldPoint getMovementDestination() { return movementDestination; }

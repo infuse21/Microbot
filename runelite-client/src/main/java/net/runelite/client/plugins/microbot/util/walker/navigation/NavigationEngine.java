@@ -109,8 +109,7 @@ public final class NavigationEngine
 		{
 			session.install(observedPlan);
 			session.lastObservedDestination = observation.getMovementDestination();
-			if (session.executionMode == NavigationExecutionMode.ENGINE_SUPPORTED
-				&& !observedPlan.isEngineSupported())
+			if (!observedPlan.isEngineSupported())
 			{
 				session.transitionTo(NavigationPhase.FAILED,
 					"unsupported-route");
@@ -240,7 +239,7 @@ public final class NavigationEngine
 					"replan-deferred-command-in-flight"), observation);
 			}
 			return requestReplan(RecoveryCause.EXTERNAL_REPLAN,
-				"legacy-requested-replan", observation);
+				"external-replan-requested", observation);
 		}
 
 		boolean proximityHandoff = isProximityHandoff(observation);
@@ -415,8 +414,7 @@ public final class NavigationEngine
 			NavigationDecision rejoin = tryRouteRejoin(observation, attempts, ageMs);
 			if (rejoin != null) return rejoin;
 		}
-		if (session.executionMode == NavigationExecutionMode.ENGINE_SUPPORTED
-			&& attempts > MAX_COMMAND_DESTINATION_MISMATCH_ATTEMPTS)
+		if (attempts > MAX_COMMAND_DESTINATION_MISMATCH_ATTEMPTS)
 		{
 			String reason = "command-destination-mismatch-budget-exhausted";
 			session.transitionTo(NavigationPhase.UNREACHABLE, reason);
@@ -464,8 +462,7 @@ public final class NavigationEngine
 		long ageMs = recoveryAgeMs(cause, observation);
 		int blockedEdgeIndex = cause == RecoveryCause.BLOCKED_EDGE
 			? observation.getBlockedEdgeIndex() : -1;
-		if (session.executionMode == NavigationExecutionMode.ENGINE_SUPPORTED
-			&& attempts > budget)
+		if (attempts > budget)
 		{
 			String terminalReason = recoveryReason(cause) + "-budget-exhausted";
 			session.transitionTo(NavigationPhase.UNREACHABLE, terminalReason);
@@ -515,8 +512,7 @@ public final class NavigationEngine
 			return null;
 		}
 		int attempts = session.incrementRecovery(RecoveryCause.NO_TILE_PROGRESS);
-		if (session.executionMode == NavigationExecutionMode.ENGINE_SUPPORTED
-			&& attempts > MAX_NO_TILE_PROGRESS_ATTEMPTS)
+		if (attempts > MAX_NO_TILE_PROGRESS_ATTEMPTS)
 		{
 			clearCommandTarget();
 			String reason = "no-tile-progress-budget-exhausted";
@@ -631,7 +627,7 @@ public final class NavigationEngine
 		}
 		if (pending == null)
 		{
-			// Retain the Phase 2 boolean scaffold for shadow-corpus compatibility.
+			// A frontier without a resolved interaction still owns approach/dispatch timing.
 			if (!observation.isInteractionFrontier())
 			{
 				return null;
@@ -1013,7 +1009,6 @@ public final class NavigationEngine
 		if (session == null || transaction == null || session.phase.isTerminal()
 			|| session.request.getCancellationToken().isCancelled()
 			|| session.request.getRequestId() != requestId || session.generation != generation
-			|| session.executionMode != NavigationExecutionMode.ENGINE_SUPPORTED
 			|| session.equipmentRestorationRequired) return false;
 		if (session.equipmentTransaction != null) return session.equipmentTransaction == transaction;
 		session.equipmentTransaction = transaction;
@@ -1046,7 +1041,6 @@ public final class NavigationEngine
 	{
 		if (session == null || session.phase.isTerminal() || session.request.getCancellationToken().isCancelled()
 			|| observation.getTerminalSignal() != NavigationObservation.TerminalSignal.NONE
-			|| session.executionMode != NavigationExecutionMode.ENGINE_SUPPORTED
 			|| !session.equipmentRestorationRequired || transaction == null
 			|| transaction != session.equipmentTransaction || requestId != session.request.getRequestId()
 			|| generation != session.generation) return null;
@@ -1112,7 +1106,7 @@ public final class NavigationEngine
 		NavigationObservation observation)
 	{
 		if (session == null || session.phase.isTerminal() || session.request.getCancellationToken().isCancelled()
-			|| session.equipmentRestorationRequired || session.executionMode != NavigationExecutionMode.ENGINE_SUPPORTED
+			|| session.equipmentRestorationRequired
 			|| cast == null || cast != session.lastDecision || cast.getInteraction() == null
 			|| cast.getInteraction() != session.pendingInteraction
 			|| cast.getInteraction().getKind() != RouteInteraction.Kind.SIMPLE_TELEPORT
@@ -1201,9 +1195,9 @@ public final class NavigationEngine
 				decisionType = NavigationDecision.Type.NO_ACTION;
 				break;
 		}
-		String reason = observation.getLegacyReason().isEmpty()
-			? "legacy-terminal-" + phase.name().toLowerCase()
-			: observation.getLegacyReason();
+		String reason = observation.getReason().isEmpty()
+			? "terminal-" + phase.name().toLowerCase()
+			: observation.getReason();
 		session.transitionTo(phase, reason);
 		return publish(NavigationDecision.of(decisionType, reason), observation);
 	}
@@ -1215,34 +1209,7 @@ public final class NavigationEngine
 		{
 			session.lastCommandAtMs = observation.getObservedAtMs();
 		}
-		session.comparison = compare(decision.getType(), observation.getLegacyDecisionType());
 		return decision;
-	}
-
-	private static NavigationComparison compare(NavigationDecision.Type shadow,
-		NavigationDecision.Type legacy)
-	{
-		if (legacy == null)
-		{
-			return NavigationComparison.NOT_OBSERVED;
-		}
-		if (shadow == legacy)
-		{
-			return NavigationComparison.MATCH;
-		}
-		boolean shadowPassive = shadow == NavigationDecision.Type.NO_ACTION
-			|| shadow == NavigationDecision.Type.WAIT;
-		boolean legacyPassive = legacy == NavigationDecision.Type.NO_ACTION
-			|| legacy == NavigationDecision.Type.WAIT;
-		if (!shadowPassive && legacyPassive)
-		{
-			return NavigationComparison.SHADOW_ONLY;
-		}
-		if (shadowPassive && !legacyPassive)
-		{
-			return NavigationComparison.LEGACY_ONLY;
-		}
-		return NavigationComparison.DIVERGED;
 	}
 
 	private void updateProgress(WorldPoint player, long observedAtMs)

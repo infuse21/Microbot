@@ -3,6 +3,7 @@ package net.runelite.client.plugins.microbot.shortestpath;
 import net.runelite.api.GameState;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.PathfinderConfig;
+import net.runelite.client.plugins.microbot.util.walker.Rs2PathApi;
 import org.junit.After;
 import org.junit.Test;
 
@@ -32,7 +33,7 @@ public class ShortestPathTier1RegressionTest {
 
     @After
     public void resetStaticPluginState() {
-        ShortestPathPlugin.pathfinderConfig = null;
+        Rs2PathApi.setPathfinderConfig(null);
     }
 
     // --- Bug #1: PrimitiveIntHashMap.rehash() data loss ------------------------------------
@@ -251,7 +252,7 @@ public class ShortestPathTier1RegressionTest {
     public void bug5_pendingRefreshConsumedExactlyOncePerLogin() {
         ShortestPathPlugin plugin = new ShortestPathPlugin();
         PathfinderConfig cfg = mock(PathfinderConfig.class);
-        ShortestPathPlugin.pathfinderConfig = cfg;
+        Rs2PathApi.setPathfinderConfig(cfg);
 
         plugin.onGameStateChanged(gameStateEvent(GameState.LOGGED_IN));
         plugin.handlePendingLoginRefresh();
@@ -265,7 +266,7 @@ public class ShortestPathTier1RegressionTest {
     @Test
     public void bug5_nullConfigLeavesFlagSoRefreshHappensWhenConfigArrives() {
         ShortestPathPlugin plugin = new ShortestPathPlugin();
-        ShortestPathPlugin.pathfinderConfig = null;
+        Rs2PathApi.setPathfinderConfig(null);
         plugin.pendingLoginRefresh = true;
 
         plugin.handlePendingLoginRefresh();
@@ -279,7 +280,7 @@ public class ShortestPathTier1RegressionTest {
         ShortestPathPlugin plugin = new ShortestPathPlugin();
         PathfinderConfig cfg = mock(PathfinderConfig.class);
         org.mockito.Mockito.doThrow(new RuntimeException("boom")).when(cfg).refresh();
-        ShortestPathPlugin.pathfinderConfig = cfg;
+        Rs2PathApi.setPathfinderConfig(cfg);
         plugin.pendingLoginRefresh = true;
 
         plugin.handlePendingLoginRefresh();
@@ -293,7 +294,7 @@ public class ShortestPathTier1RegressionTest {
     public void bug5_multipleLoginTransitionsEachRefreshOnce() {
         ShortestPathPlugin plugin = new ShortestPathPlugin();
         PathfinderConfig cfg = mock(PathfinderConfig.class);
-        ShortestPathPlugin.pathfinderConfig = cfg;
+        Rs2PathApi.setPathfinderConfig(cfg);
 
         plugin.onGameStateChanged(gameStateEvent(GameState.LOGGED_IN));
         plugin.handlePendingLoginRefresh();
@@ -311,7 +312,7 @@ public class ShortestPathTier1RegressionTest {
     public void bug5_handleRefreshWhenFlagClearDoesNothing() {
         ShortestPathPlugin plugin = new ShortestPathPlugin();
         PathfinderConfig cfg = mock(PathfinderConfig.class);
-        ShortestPathPlugin.pathfinderConfig = cfg;
+        Rs2PathApi.setPathfinderConfig(cfg);
         plugin.pendingLoginRefresh = false;
 
         plugin.handlePendingLoginRefresh();

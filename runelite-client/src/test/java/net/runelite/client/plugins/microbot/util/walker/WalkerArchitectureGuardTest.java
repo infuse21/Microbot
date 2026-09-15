@@ -15,6 +15,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -32,9 +33,6 @@ public class WalkerArchitectureGuardTest
 		"util/walker/Rs2Walker.java";
 	private static final String PATH_API_RELATIVE =
 		"util/walker/Rs2PathApi.java";
-
-	/** Current legacy ceiling. New behaviour belongs in NavigationEngine, not processWalk. */
-	private static final int MAX_LEGACY_PROCESS_WALK_LINES = 1628;
 
 	private static final Pattern NON_CODE = Pattern.compile(
 		"(?s)/\\*.*?\\*/|(?m)//[^\\r\\n]*|\"(?:\\\\.|[^\"\\\\])*\"|'(?:\\\\.|[^'\\\\])*'");
@@ -77,12 +75,24 @@ public class WalkerArchitectureGuardTest
 		"ShortestPathPlugin.setPathfinder("
 	);
 
-	private static final List<String> SHADOW_ENGINE_INPUT_ACCESS = Arrays.asList(
+	private static final List<String> NAVIGATION_ENGINE_INPUT_ACCESS = Arrays.asList(
 		"Rs2Walker.",
 		"Rs2MiniMap.",
 		"Rs2GameObject.",
 		"invokeMenuAction(",
 		"Microbot.getClient("
+	);
+
+	private static final List<String> SHORTEST_PATH_UI_FILES = Arrays.asList(
+		"ShortestPathPlugin.java",
+		"ShortestPathPanel.java",
+		"NavigationPresentation.java",
+		"PathTileOverlay.java",
+		"PathMapOverlay.java",
+		"PathMapTooltipOverlay.java",
+		"PathMinimapOverlay.java",
+		"ETAOverlayPanel.java",
+		"DebugOverlayPanel.java"
 	);
 
 	@Test
@@ -126,15 +136,30 @@ public class WalkerArchitectureGuardTest
 	}
 
 	@Test
-	public void legacyProcessWalkCannotGrow() throws IOException
+	public void retiredWalkerOrchestrationCannotReturn() throws IOException
 	{
+		Path microbotRoot = microbotSourceRoot();
 		Path walker = microbotSourceRoot().resolve(WALKER_RELATIVE);
-		String source = new String(Files.readAllBytes(walker), StandardCharsets.UTF_8);
-		int lines = methodLineCount(source,
-			"private static WalkerState processWalk(WorldPoint target, int distance, int partialRetries)");
-		assertTrue("Legacy processWalk grew to " + lines + " lines; migrate behaviour into the new engine "
-				+ "or document a temporary exception instead of adding another branch",
-			lines <= MAX_LEGACY_PROCESS_WALK_LINES);
+		String walkerCode = codeOnly(walker);
+		assertFalse("The retired processWalk executor must not return", walkerCode.contains("processWalk("));
+
+		Path navigationRoot = microbotRoot.resolve("util/walker/navigation");
+		List<String> violations = new ArrayList<>();
+		for (Path source : javaSources(navigationRoot))
+		{
+			collectMatches(relative(navigationRoot, source), codeOnly(source), Arrays.asList(
+				"NavigationExecutionMode",
+				"NavigationComparison",
+				"ordinaryEngineEnabled",
+				"isOrdinaryEngineEnabled",
+				"ignoredLegacyDecision",
+				"finishFromLegacy"), violations);
+		}
+		assertNoViolations("Retired dual-executor compatibility state must not return", violations);
+		assertTrue("NavigationExecutionMode must remain deleted",
+			Files.notExists(navigationRoot.resolve("NavigationExecutionMode.java")));
+		assertTrue("NavigationComparison must remain deleted",
+			Files.notExists(navigationRoot.resolve("NavigationComparison.java")));
 	}
 
 	@Test
@@ -163,7 +188,7 @@ public class WalkerArchitectureGuardTest
 		for (String file : Arrays.asList("NavigationEngine.java", "NavigationEngineRuntime.java"))
 		{
 			Path source = navigationRoot.resolve(file);
-			collectMatches(file, codeOnly(source), SHADOW_ENGINE_INPUT_ACCESS, violations);
+			collectMatches(file, codeOnly(source), NAVIGATION_ENGINE_INPUT_ACCESS, violations);
 		}
 		assertNoViolations("NavigationEngine must send Phase 3 input only through WalkerActions", violations);
 	}
@@ -177,6 +202,58 @@ public class WalkerArchitectureGuardTest
 		collectMatches("PathfinderConfig.java", code,
 			Arrays.asList("Rs2Inventory.interact(", "Rs2Equipment.interact("), violations);
 		assertNoViolations("Route calculation must remain read-only", violations);
+	}
+
+	@Test
+	public void shortestPathUiCannotReachLegacyWalkerImplementation() throws IOException
+	{
+		Path uiRoot = microbotSourceRoot().resolve("shortestpath");
+		List<String> violations = new ArrayList<>();
+		for (String file : SHORTEST_PATH_UI_FILES)
+		{
+			collectMatches(file, codeOnly(uiRoot.resolve(file)),
+				Arrays.asList("Rs2Walker.", "ShortestPathScript"), violations);
+		}
+		assertNoViolations("Shortest-path UI must publish intent through NavigationEngine", violations);
+	}
+
+	@Test
+	public void navigationCoreCannotDependOnShortestPathUi() throws IOException
+	{
+		Path navigationRoot = microbotSourceRoot().resolve("util/walker/navigation");
+		List<String> violations = new ArrayList<>();
+		for (Path source : javaSources(navigationRoot))
+		{
+			collectMatches(relative(navigationRoot, source), codeOnly(source), Arrays.asList(
+				"shortestpath.ShortestPathPlugin",
+				"shortestpath.ShortestPathPanel",
+				"shortestpath.ShortestPathConfig",
+				"ui.overlay."), violations);
+		}
+		assertNoViolations("Navigation core must not depend on shortest-path UI", violations);
+	}
+
+	@Test
+	public void shortestPathPluginCannotOwnNavigationLifecycleFields() throws IOException
+	{
+		Path plugin = microbotSourceRoot().resolve("shortestpath/ShortestPathPlugin.java");
+		String code = codeOnly(plugin);
+		List<String> violations = new ArrayList<>();
+		collectMatches("ShortestPathPlugin.java", code, Arrays.asList(
+			"private static Pathfinder ",
+			"private static Future<",
+			"private static ExecutorService ",
+			"private static WorldPoint target",
+			"private static WorldMapPoint marker"), violations);
+		assertNoViolations("ShortestPathPlugin cannot own navigation lifecycle state", violations);
+	}
+
+	@Test
+	public void legacyShortestPathScriptIsRetired()
+	{
+		Path script = microbotSourceRoot().resolve("shortestpath/ShortestPathScript.java");
+		assertTrue("ShortestPathScript retry and terminal policy must stay retired",
+			Files.notExists(script));
 	}
 
 	private static void collectMatches(String relative, String code, List<String> forbidden,
@@ -197,35 +274,6 @@ public class WalkerArchitectureGuardTest
 		{
 			fail(message + ":\n  " + String.join("\n  ", violations));
 		}
-	}
-
-	private static int methodLineCount(String source, String signature)
-	{
-		String code = blankNonCode(source);
-		int signatureStart = code.indexOf(signature);
-		if (signatureStart < 0)
-		{
-			throw new AssertionError("Method signature not found: " + signature);
-		}
-		int bodyStart = code.indexOf('{', signatureStart + signature.length());
-		if (bodyStart < 0)
-		{
-			throw new AssertionError("Method body not found: " + signature);
-		}
-		int depth = 0;
-		for (int i = bodyStart; i < code.length(); i++)
-		{
-			char c = code.charAt(i);
-			if (c == '{')
-			{
-				depth++;
-			}
-			else if (c == '}' && --depth == 0)
-			{
-				return (int) source.substring(signatureStart, i + 1).chars().filter(ch -> ch == '\n').count() + 1;
-			}
-		}
-		throw new AssertionError("Unclosed method body: " + signature);
 	}
 
 	private static String codeOnly(Path source) throws IOException

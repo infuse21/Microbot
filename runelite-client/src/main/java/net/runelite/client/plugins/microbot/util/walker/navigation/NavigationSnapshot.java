@@ -9,7 +9,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-/** Immutable diagnostics/overlay view of the active shadow session. */
+/** Immutable diagnostics/overlay view of the active navigation session. */
 public final class NavigationSnapshot
 {
 	private final NavigationRequest request;
@@ -23,8 +23,6 @@ public final class NavigationSnapshot
 	private final Map<RecoveryCause, Integer> recoveryAttemptsByCause;
 	private final String transitionReason;
 	private final String terminalReason;
-	private final NavigationComparison comparison;
-	private final NavigationExecutionMode executionMode;
 	private final int routeDistance;
 	private final WorldPoint commandTarget;
 	private final int commandRawIndex;
@@ -49,8 +47,6 @@ public final class NavigationSnapshot
 		recoveryAttemptsByCause = Collections.unmodifiableMap(attempts);
 		transitionReason = session.transitionReason;
 		terminalReason = session.terminalReason;
-		comparison = session.comparison;
-		executionMode = session.executionMode;
 		routeDistance = session.routeDistance;
 		commandTarget = session.commandTarget;
 		commandRawIndex = session.commandRawIndex;
@@ -86,8 +82,6 @@ public final class NavigationSnapshot
 	}
 	public String getTransitionReason() { return transitionReason; }
 	public String getTerminalReason() { return terminalReason; }
-	public NavigationComparison getComparison() { return comparison; }
-	public NavigationExecutionMode getExecutionMode() { return executionMode; }
 	public int getRouteDistance() { return routeDistance; }
 	public WorldPoint getCommandTarget() { return commandTarget; }
 	public int getCommandRawIndex() { return commandRawIndex; }

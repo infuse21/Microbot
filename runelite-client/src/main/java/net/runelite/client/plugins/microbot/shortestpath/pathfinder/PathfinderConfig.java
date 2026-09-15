@@ -28,6 +28,7 @@ import net.runelite.client.plugins.microbot.util.leaguetransport.Rs2LeaguesTrans
 import net.runelite.client.plugins.microbot.util.leaguetransport.SeasonalTransportHandlers;
 import net.runelite.client.plugins.microbot.util.poh.PohTeleports;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
+import net.runelite.client.plugins.microbot.util.walker.Rs2PathApi;
 import net.runelite.client.plugins.microbot.util.walker.WebWalkLog;
 import net.runelite.client.plugins.microbot.util.walker.transport.CatalogTransitionPolicy;
 import net.runelite.client.plugins.microbot.util.walker.transport.CerberusWinchPolicy;
@@ -473,7 +474,7 @@ public class PathfinderConfig {
                 && !QuestState.NOT_STARTED.equals(Rs2Player.getQuestState(Quest.FAIRYTALE_II__CURE_A_QUEEN))
                 && (Rs2Inventory.contains(ItemID.DRAMEN_STAFF, ItemID.LUNAR_MOONCLAN_LIMINAL_STAFF)
                 || Rs2Equipment.isWearing(ItemID.DRAMEN_STAFF, ItemID.LUNAR_MOONCLAN_LIMINAL_STAFF)
-                || (ShortestPathPlugin.getPathfinderConfig().useBankItems && (Rs2Bank.hasItem(ItemID.DRAMEN_STAFF) || Rs2Bank.hasItem(ItemID.LUNAR_MOONCLAN_LIMINAL_STAFF)))
+                || (Rs2PathApi.getPathfinderConfig().useBankItems && (Rs2Bank.hasItem(ItemID.DRAMEN_STAFF) || Rs2Bank.hasItem(ItemID.LUNAR_MOONCLAN_LIMINAL_STAFF)))
                 || Microbot.getVarbitValue(VarbitID.LUMBRIDGE_DIARY_ELITE_COMPLETE) == 1);
         useGnomeGliders = ShortestPathPlugin.override("useGnomeGliders", config.useGnomeGliders())
                 && QuestState.FINISHED.equals(Rs2Player.getQuestState(Quest.THE_GRAND_TREE));
@@ -1824,11 +1825,11 @@ public class PathfinderConfig {
 		boolean primary = primaryRequirements.isEmpty() || primaryRequirements
                 .stream()
                 .flatMap(Collection::stream)
-                .anyMatch(itemId -> Rs2Equipment.isWearing(itemId) || Rs2Inventory.hasItem(itemId) || (ShortestPathPlugin.getPathfinderConfig().useBankItems && Rs2Bank.hasItem(itemId)));
+                .anyMatch(itemId -> Rs2Equipment.isWearing(itemId) || Rs2Inventory.hasItem(itemId) || (Rs2PathApi.getPathfinderConfig().useBankItems && Rs2Bank.hasItem(itemId)));
 		return primary && (additional.isEmpty() || additional.stream()
 				.anyMatch(itemId -> Rs2Equipment.isWearing(itemId)
 					|| Rs2Inventory.hasItem(itemId)
-					|| ShortestPathPlugin.getPathfinderConfig().useBankItems
+					|| Rs2PathApi.getPathfinderConfig().useBankItems
 						&& Rs2Bank.hasItem(itemId)));
     }
 

@@ -7,9 +7,9 @@ parts of `shortestpath/`. This supersedes the architectural direction in
 ## Decision
 
 Rewrite the walker's orchestration and state ownership incrementally. Preserve the mature
-pathfinding, collision, transport-data, and interaction knowledge. Do not replace the
-working system in one cutover, and do not continue adding independent recovery paths to
-`Rs2Walker.processWalk`.
+pathfinding, collision, transport-data, and interaction knowledge. The retired
+`Rs2Walker.processWalk` loop must not return; new recovery belongs to NavigationEngine and its
+specialised adapters.
 
 The migration is complete only when the old orchestration is deleted. Adapters that leave
 both systems permanently active are not completion.
@@ -32,9 +32,45 @@ regressions. The preceding full run had one known intermittent Agent Server UDS 
 all six UDS tests passed immediately in isolation before the clean repeat. Physical tests that
 need unavailable items, levels, unlocks, endgame POH facilities or League worlds remain deferred
 in `walker-live-testing-backlog.md` and are not claimed live-passed. Boat/Last Boat and unresolved
-dynamic Respawn behavior remain in the separate future-feature backlog by user decision. This
-closes Phase 6 only: Phase 7 has not started, and the unreachable compatibility body beneath the
-engine return in `processWalk` remains for the explicitly separate Phase 8 facade collapse.
+dynamic Respawn behavior remain in the separate future-feature backlog by user decision.
+
+2026-09-15 Phase 7 closure: `ShortestPathPlugin` is now a UI/live-data adapter over the shared
+navigation runtimes. Map and hotkey requests publish immutable engine requests; the blocking
+compatibility call is isolated in `NavigationWalkRuntime` with serialized target replacement,
+cancellation and shutdown. `ShortestPathScript` and its independent terminal retry loop are
+deleted. Path, target marker, ETA and debug overlays read `NavigationSnapshot`/immutable
+`RoutePlan` state, including copied calculation diagnostics. Live-collision conflicts publish a
+blocked-edge observation to `NavigationEngineRuntime` instead of directly asking the walker to
+recalculate. Login screen, connection loss and world hop invalidate the active session, while a
+subsequent login still performs the deferred transport refresh. Architecture guards enforce that
+shortest-path UI code does not reach into `Rs2Walker`, navigation code does not depend on plugin UI,
+and the deleted script and plugin-owned lifecycle fields cannot return. Target set/replace/clear,
+Ctrl+X cancellation, in-flight shutdown/restart, login/world-hop policy and empty/terminal overlay
+state are covered headlessly. The full client suite passes **2,289 tests, zero failures/errors and
+four skips** (`BUILD SUCCESSFUL`, 2m 44s); both Checkstyle tasks and `git diff --check` pass.
+No gameplay acceptance is claimed for this architectural phase; Phase 8 supplies the final
+facade/deletion acceptance below.
+
+2026-09-16 Phase 8 closure: `Rs2Walker` retains the established plugin-facing walking signatures,
+but blocking route calls now enter a single `NavigationWalkCoordinator` lifecycle backed only by
+NavigationEngine. The unreachable `processWalk` executor and its large transport/recovery branches
+are deleted. `NavigationExecutionMode`, `NavigationComparison`, the ordinary-engine toggle,
+ignored legacy decisions and the shadow executor corpus are removed; unsupported routes terminate
+without an ownership handoff. `walkFastCanvas`, `walkCanvas`, `walkMiniMap`, `walkFastLocal` and
+`walkStep` remain explicit caller-owned direct movement conveniences, not hidden route executors.
+Compatibility and architecture guards pin those public signatures, the deleted executor/classes,
+the single planner owner and the UI/engine dependency boundary. Focused lifecycle, route corpus,
+banking and compatibility validation passes **541 tests with zero failures/errors/skips**. The
+clean full client repeat passes **2,280 tests, zero failures/errors and four skips**; both Checkstyle
+tasks and `git diff --check` pass. Regenerating the reviewed client-thread baseline removed 41 stale
+entries and added only the two renumbered existing wall-distance lambdas, reducing it to **867**.
+Rebuilt-client acceptance on world 538 issued request 2 from `(2932,10195,0)` to the known reachable
+tile `(2930,10195,0)`: one `nav_cmd` was issued at `00:12:51`, followed by
+`clear | rs2walker:navigation-engine:arrived` at `00:12:52`, with no `processWalk`, `LEGACY_LOCKED`
+or fallback marker. A preceding blocked exact tile terminated through bounded
+`ROUTE_EXHAUSTED` replans and `navigation-engine:route-exhausted-budget-exhausted`, also without
+legacy ownership. Existing deferred item/stat/League/POH physical scenarios remain in the live
+testing backlog; Phase 8 does not reclassify them as live-passed.
 
 2026-09-15 direct-item staged cutover: all 74 non-colon item rows (45 tablets, 18 scrolls,
 11 other rows) now classify as ITEM_TELEPORT through `DirectItemTeleportPolicy` and
@@ -4457,6 +4493,9 @@ logic remains explicitly scoped to Phase 8.
 
 ### Phase 7 - Make ShortestPathPlugin an adapter
 
+Status: **complete (2026-09-15)**. The UI publishes navigation intent, reads immutable engine
+state, and satisfies the deletion gate below. Phase 8 remains deliberately untouched.
+
 - Route map-click/hotkey requests through `NavigationEngine`.
 - Render the path, target marker, ETA, and debug information from `NavigationSnapshot` and
   immutable `RoutePlan`.
@@ -4478,6 +4517,10 @@ the engine has no dependency on plugin UI classes.
 
 ### Phase 8 - Collapse the facade and remove legacy orchestration
 
+Status: **complete (2026-09-16)**. Supported plugin APIs are preserved, NavigationEngine is the
+only executor, the legacy loop/dual-mode state is deleted, and the headless plus rebuilt-client
+acceptance gates below pass.
+
 - Make supported static `Rs2Walker` methods thin delegates to the injected/service-owned
   engine boundary.
 - Move banking, route-analysis, location-enum, puzzle, and unrelated convenience APIs out of
@@ -4490,11 +4533,12 @@ the engine has no dependency on plugin UI classes.
 
 Exit gate:
 
-- no legacy `processWalk` orchestration remains;
-- one owner exists for request, session, calculation, and cancellation state;
-- old and new executor flags are gone;
-- the compatibility facade contains no route logic;
-- full route corpus and live acceptance suite pass.
+- [x] no legacy `processWalk` orchestration remains;
+- [x] one owner exists for request, session, calculation, and cancellation state;
+- [x] old and new executor flags are gone;
+- [x] the compatibility facade delegates lifecycle decisions and retains only public API plus
+  live-scene/input adaptation;
+- [x] full route corpus and rebuilt-client acceptance pass.
 
 ## Verification strategy
 

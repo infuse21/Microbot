@@ -12,6 +12,8 @@ import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.ui.overlay.OverlayPriority;
+import net.runelite.client.plugins.microbot.util.walker.navigation.RoutePlan;
+import net.runelite.client.plugins.microbot.util.walker.Rs2PathApi;
 
 import javax.annotation.Nullable;
 import java.awt.*;
@@ -46,15 +48,16 @@ public class PathMapTooltipOverlay extends Overlay {
             return null;
         }
 
-        if (ShortestPathPlugin.getPathfinder() != null && ShortestPathPlugin.getPathfinder().isDone()) {
-            List<WorldPoint> path = ShortestPathPlugin.getPathfinder().getPath();
+        RoutePlan routePlan = plugin.getRoutePlan();
+        if (routePlan != null) {
+            List<WorldPoint> path = routePlan.getRawPath();
             Point cursorPos = client.getMouseCanvasPosition();
             for (int i = 0; i < path.size(); i++) {
                 WorldPoint nextPoint = null;
                 if (path.size() > i + 1) {
                     nextPoint = path.get(i + 1);
                 }
-                if (drawTooltip(graphics, cursorPos, path.get(i), nextPoint, i + 1)) {
+                if (drawTooltip(graphics, cursorPos, path.get(i), nextPoint, i + 1, path.size())) {
                     return null;
                 }
             }
@@ -63,7 +66,8 @@ public class PathMapTooltipOverlay extends Overlay {
         return null;
     }
 
-    private boolean drawTooltip(Graphics2D graphics, Point cursorPos, WorldPoint point, @Nullable WorldPoint nextPoint, int n) {
+    private boolean drawTooltip(Graphics2D graphics, Point cursorPos, WorldPoint point,
+                                @Nullable WorldPoint nextPoint, int n, int pathSize) {
         Point start = plugin.mapWorldPointToGraphicsPoint(point);
         Point end = plugin.mapWorldPointToGraphicsPoint(point.dx(1).dy(-1));
 
@@ -78,9 +82,9 @@ public class PathMapTooltipOverlay extends Overlay {
             return false;
         }
 
-        List<String> rows = new ArrayList<>(Arrays.asList("Shortest path:", "Step " + n + " of " + ShortestPathPlugin.getPathfinder().getPath().size()));
+        List<String> rows = new ArrayList<>(Arrays.asList("Shortest path:", "Step " + n + " of " + pathSize));
         if (nextPoint != null) {
-            for (Transport transport : ShortestPathPlugin.getTransports().getOrDefault(point, new HashSet<>())) {
+            for (Transport transport : Rs2PathApi.getTransports().getOrDefault(point, new HashSet<>())) {
                 if (nextPoint.equals(transport.getDestination())
                         && transport.getDisplayInfo() != null && !transport.getDisplayInfo().isEmpty()) {
                     rows.add(transport.getDisplayInfo());

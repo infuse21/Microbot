@@ -79,116 +79,6 @@ public class Rs2WalkerUnitTest {
     }
 
     @Test
-    public void adjacentTransportSuppression_onlyAdjacentSamePlaneTransports() {
-        Transport door = new Transport(
-                new WorldPoint(3123, 3360, 0),
-                new WorldPoint(3123, 3361, 0),
-                "Door",
-                TransportType.TRANSPORT,
-                false,
-                "Open",
-                "Door",
-                136);
-
-        assertEquals(new HashSet<>(Arrays.asList(
-                        new WorldPoint(3123, 3360, 0),
-                        new WorldPoint(3123, 3361, 0))),
-                Rs2Walker.adjacentSamePlaneTransportSuppressionPoints(door, null));
-    }
-
-    /**
-     * Agility shortcuts catalogued as two opposing adjacent entries must be suppressible like doors.
-     * Observed live near (3150..3151, 3363): the walker crossed the shortcut, the strict landing
-     * check failed because it landed a tile off the catalogued destination, so suppression was
-     * skipped — leaving the inverse entry immediately eligible. It took the same shortcut straight
-     * back and could not recover. Suppression is deliberately type-agnostic; only adjacency and
-     * plane matter.
-     */
-    @Test
-    public void adjacentTransportSuppression_coversAgilityShortcuts() {
-        Transport shortcut = new Transport(
-                new WorldPoint(3151, 3363, 0),
-                new WorldPoint(3150, 3363, 0),
-                "Shortcut",
-                TransportType.AGILITY_SHORTCUT,
-                false,
-                "Climb-over",
-                "Stile",
-                0);
-
-        assertEquals("An adjacent same-plane agility shortcut must yield both tiles for suppression",
-                new HashSet<>(Arrays.asList(
-                        new WorldPoint(3151, 3363, 0),
-                        new WorldPoint(3150, 3363, 0))),
-                Rs2Walker.adjacentSamePlaneTransportSuppressionPoints(shortcut, null));
-    }
-
-    @Test
-    public void adjacentTransportSuppression_ignoresNonAdjacentTransports() {
-        Transport ladder = new Transport(
-                new WorldPoint(3092, 3361, 0),
-                new WorldPoint(3117, 9753, 0),
-                "Ladder",
-                TransportType.TRANSPORT,
-                false,
-                "Climb-down",
-                "Ladder",
-                133);
-
-        assertTrue(Rs2Walker.adjacentSamePlaneTransportSuppressionPoints(ladder, null).isEmpty());
-    }
-
-    @Test
-    public void shouldRecalculatePathAfterTransport_includesOriginlessTeleport() {
-        Transport varrockTeleport = new Transport(
-                new WorldPoint(3213, 3424, 0),
-                "Varrock Teleport",
-                TransportType.TELEPORTATION_SPELL,
-                false,
-                20,
-                Collections.emptyMap());
-
-        assertTrue(Rs2Walker.shouldRecalculatePathAfterTransport(varrockTeleport));
-    }
-
-    @Test
-    public void rawTransportDispatch_allowsImmediateOriginlessTeleportEdge() {
-        List<WorldPoint> rawPath = Arrays.asList(
-                new WorldPoint(2610, 3100, 0),
-                new WorldPoint(3213, 3424, 0),
-                new WorldPoint(3214, 3424, 0));
-
-        assertTrue(Rs2Walker.isRawTransportOriginNearPlayer(
-                rawPath, 0, new WorldPoint(2610, 3100, 0), 2));
-    }
-
-    @Test
-    public void rawTransportDispatch_defersFutureTransportUntilApproach() {
-        List<WorldPoint> rawPath = Arrays.asList(
-                new WorldPoint(2610, 3100, 0),
-                new WorldPoint(2611, 3100, 0),
-                new WorldPoint(2623, 3093, 0),
-                new WorldPoint(3303, 3333, 0));
-
-        assertFalse("A future edge inside the broad handler window must not start a long run",
-                Rs2Walker.isRawTransportOriginNearPlayer(
-                        rawPath, 2, new WorldPoint(2610, 3100, 0), 2));
-        assertTrue("The same edge becomes dispatchable once the route has approached it",
-                Rs2Walker.isRawTransportOriginNearPlayer(
-                        rawPath, 2, new WorldPoint(2622, 3093, 0), 2));
-    }
-
-    @Test
-    public void rawTransportDispatch_rejectsOtherPlane() {
-        List<WorldPoint> rawPath = Arrays.asList(
-                new WorldPoint(2775, 3234, 1),
-                new WorldPoint(2772, 3234, 0));
-
-        assertFalse(Rs2Walker.isRawTransportOriginNearPlayer(
-                rawPath, 0, new WorldPoint(2775, 3234, 0), 2));
-    }
-
-    @Test
     public void plannedTransportApproach_clicksUntilDispatchRange() {
         WorldPoint player = new WorldPoint(2760, 3229, 0);
         WorldPoint charterOrigin = new WorldPoint(2760, 3238, 0);
@@ -209,21 +99,6 @@ public class Rs2WalkerUnitTest {
                 false, new WorldPoint(2760, 3238, 0), player, 2));
         assertFalse(Rs2Walker.shouldApproachPlannedTransportOrigin(
                 true, new WorldPoint(2760, 3238, 1), player, 2));
-    }
-
-    @Test
-    public void shouldRecalculatePathAfterTransport_skipsAdjacentSamePlaneTransport() {
-        Transport door = new Transport(
-                new WorldPoint(3123, 3360, 0),
-                new WorldPoint(3123, 3361, 0),
-                "Door",
-                TransportType.TRANSPORT,
-                false,
-                "Open",
-                "Door",
-                136);
-
-        assertFalse(Rs2Walker.shouldRecalculatePathAfterTransport(door));
     }
 
     @Test
@@ -329,36 +204,6 @@ public class Rs2WalkerUnitTest {
                 new WorldPoint(3149, 3365, 0),
                 steppingStone.getDestination(),
                 0));
-    }
-
-    @Test
-    public void shouldRecalculatePathAfterTransport_includesLongDistanceTransport() {
-        Transport ship = new Transport(
-                new WorldPoint(3054, 3245, 0),
-                new WorldPoint(2956, 3146, 0),
-                "Port Sarim to Karamja",
-                TransportType.SHIP,
-                false,
-                "Cross",
-                "Gangplank",
-                2082);
-
-        assertTrue(Rs2Walker.shouldRecalculatePathAfterTransport(ship));
-    }
-
-    @Test
-    public void shouldRecalculatePathAfterTransport_includesSamePlaneCoordinateBandTransport() {
-        Transport varrockSewerLadder = new Transport(
-                new WorldPoint(3237, 9858, 0),
-                new WorldPoint(3236, 3458, 0),
-                "Varrock Sewers ladder",
-                TransportType.TRANSPORT,
-                false,
-                "Climb-up",
-                "Ladder",
-                11806);
-
-        assertTrue(Rs2Walker.shouldRecalculatePathAfterTransport(varrockSewerLadder));
     }
 
     @Test
@@ -1103,56 +948,6 @@ public class Rs2WalkerUnitTest {
      * BOUNDED, or a plain walk with no dialogue logic behind it would stall forever on any stray
      * conversation.
      */
-    /**
-     * Ranged obstacle dispatch: click the stairs/door from where we stand and let the SERVER walk us,
-     * instead of walking to an approach tile we guessed at. The guess is what failed at the Black
-     * Knights' ladder, the Falador staircase and the guarded door — never the interaction.
-     * <p>
-     * The contract that must not slip is ROUTE ORDER: a further obstacle may never be actioned before
-     * the one in front of the player.
-     */
-    @Test
-    public void shouldDispatchTransportAtRange_decisionTable() {
-        int near = 2;
-        int far = 13;
-
-        // Legacy band is untouched — always dispatchable, whatever else is true.
-        assertTrue("standing on the origin still dispatches",
-                Rs2Walker.shouldDispatchTransportAtRange(0, near, far,
-                        false, false, true, true, true, false));
-        assertTrue(Rs2Walker.shouldDispatchTransportAtRange(2, near, far,
-                false, false, true, true, true, false));
-
-        // The new band.
-        assertTrue("first obstacle, object transport, in range — click it from here",
-                Rs2Walker.shouldDispatchTransportAtRange(7, near, far,
-                        true, true, false, false, false, true));
-        assertFalse("route order: something unresolved is closer",
-                Rs2Walker.shouldDispatchTransportAtRange(7, near, far,
-                        false, true, false, false, false, true));
-        assertFalse("dialogue/widget transports gain nothing and must not fire early",
-                Rs2Walker.shouldDispatchTransportAtRange(7, near, far,
-                        true, false, false, false, false, true));
-        assertFalse("beyond the scan's reach",
-                Rs2Walker.shouldDispatchTransportAtRange(14, near, far,
-                        true, true, false, false, false, true));
-        assertFalse("instances keep the legacy band — raw coords make 'on route' unreliable",
-                Rs2Walker.shouldDispatchTransportAtRange(7, near, far,
-                        true, true, true, false, false, true));
-        assertFalse("never interrupt a settle window",
-                Rs2Walker.shouldDispatchTransportAtRange(7, near, far,
-                        true, true, false, true, false, true));
-        assertFalse("the server declined this edge before — walk onto the origin instead",
-                Rs2Walker.shouldDispatchTransportAtRange(7, near, far,
-                        true, true, false, false, true, true));
-        assertFalse("kill switch off restores the old behaviour exactly",
-                Rs2Walker.shouldDispatchTransportAtRange(7, near, far,
-                        true, true, false, false, false, false));
-        assertFalse("a negative distance (different plane) never dispatches",
-                Rs2Walker.shouldDispatchTransportAtRange(-1, near, far,
-                        true, true, false, false, false, true));
-    }
-
     @Test
     public void doorDialogueDeferActive_holdsOffButAlwaysReleases() {
         long max = 5_000L;

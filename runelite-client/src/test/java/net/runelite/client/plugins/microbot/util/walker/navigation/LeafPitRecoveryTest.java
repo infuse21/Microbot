@@ -144,7 +144,7 @@ public class LeafPitRecoveryTest
 		private NavigationDecision observe(long time, WorldPoint player, RouteInteraction interaction)
 		{
 			return engine.observe(NavigationObservation.route(time, player, plan, false, false,
-				false, false, false, false, null, "leaf-pit-test").withRouteInteraction(interaction));
+				false, false, false, false, "leaf-pit-test").withRouteInteraction(interaction));
 		}
 
 		private void issue(long time, WorldPoint player, RouteInteraction interaction)

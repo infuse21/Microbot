@@ -71,8 +71,11 @@ public final class PathfinderRouteCalculation implements RoutePlanner.Calculatio
 		Set<WorldPoint> targets = pathfinder.getTargets();
 		boolean complete = reachesTarget(rawPath, targets);
 		List<RouteEdge> edges = routeEdges(pathfinder, rawPath);
+		Pathfinder.PathfinderStats stats = pathfinder.getStats();
+		RoutePlan.Diagnostics diagnostics = stats == null ? null : new RoutePlan.Diagnostics(
+			stats.getNodesChecked(), stats.getTransportsChecked(), stats.getElapsedTimeNanos());
 		return new RoutePlan(requestId, generation, pathfinder.getStart(), targets,
-			rawPath, smoothedPath, complete, edges);
+			rawPath, smoothedPath, complete, edges, diagnostics);
 	}
 
 	private static List<RouteEdge> routeEdges(Pathfinder pathfinder, List<WorldPoint> rawPath)

@@ -81,7 +81,7 @@ public class NavigationEngineExecutionTest
 			NavigationExecutionResult duplicate = NavigationEngineRuntime.execute(dispatchInput,
 				target -> { throw new AssertionError("Concurrent command dispatched"); });
 			assertFalse(duplicate.isCommandIssued());
-			executor.submit(() -> NavigationEngineRuntime.finishFromLegacy("hotkey:ctrl+x"))
+			executor.submit(() -> NavigationEngineRuntime.finish("hotkey:ctrl+x"))
 				.get(1, java.util.concurrent.TimeUnit.SECONDS);
 			assertTrue(NavigationEngineRuntime.getSnapshot().isTerminal());
 			release.countDown();
@@ -156,7 +156,7 @@ public class NavigationEngineExecutionTest
 	@Test
 	public void reachedDistanceCannotCompleteBeforePendingDoorEdgeIsCrossed()
 	{
-		NavigationRouteOptions options = new NavigationRouteOptions(true, true, false, true);
+		NavigationRouteOptions options = new NavigationRouteOptions(true, true, false);
 		NavigationEngineRuntime.ensureRequest(new NavigationRequest(21,
 			Collections.singleton(C), 2, options, "door-arrival-test"));
 		RouteInteraction availableDoor = new RouteInteraction(1, 0, A, B, B,
@@ -352,7 +352,7 @@ public class NavigationEngineExecutionTest
 		{
 			raw.add(new WorldPoint(3200 + i, 3200, 0));
 		}
-		NavigationRouteOptions options = new NavigationRouteOptions(true, true, false, true);
+		NavigationRouteOptions options = new NavigationRouteOptions(true, true, false);
 		NavigationEngineRuntime.ensureRequest(new NavigationRequest(21,
 			Collections.singleton(raw.get(25)), 0, options, "handoff-test"));
 		RoutePlan plan = new RoutePlan(21, 1, raw.get(0), Collections.singleton(raw.get(25)),
@@ -387,7 +387,7 @@ public class NavigationEngineExecutionTest
 		{
 			raw.add(new WorldPoint(3200 + i, 3200, 0));
 		}
-		NavigationRouteOptions options = new NavigationRouteOptions(true, true, false, true);
+		NavigationRouteOptions options = new NavigationRouteOptions(true, true, false);
 		NavigationEngineRuntime.ensureRequest(new NavigationRequest(21,
 			Collections.singleton(raw.get(30)), 0, options, "handoff-forward-test"));
 		RoutePlan plan = new RoutePlan(21, 1, raw.get(0), Collections.singleton(raw.get(30)),
@@ -446,8 +446,7 @@ public class NavigationEngineExecutionTest
 
 		assertTrue(result.isEngineOwned());
 		assertEquals(NavigationDecision.Type.FAIL, result.getDecision().getType());
-		assertEquals(NavigationExecutionMode.ENGINE_SUPPORTED,
-			NavigationEngineRuntime.getSnapshot().getExecutionMode());
+		assertFalse(NavigationEngineRuntime.isExecutionActive());
 		assertEquals(0, commands.get());
 	}
 
@@ -495,8 +494,7 @@ public class NavigationEngineExecutionTest
 				.withRouteInteraction(transport), actions);
 
 		assertTrue(result.isEngineOwned());
-		assertEquals(NavigationExecutionMode.ENGINE_SUPPORTED,
-			NavigationEngineRuntime.getSnapshot().getExecutionMode());
+		assertTrue(NavigationEngineRuntime.isExecutionActive());
 		assertEquals(NavigationDecision.Type.INTERACT, result.getDecision().getType());
 		assertEquals(1, interactions.get());
 	}
@@ -504,7 +502,7 @@ public class NavigationEngineExecutionTest
 	@Test
 	public void reachedDistanceCannotCompleteBeforePublishedAdjacentTransportIsCrossed()
 	{
-		NavigationRouteOptions options = new NavigationRouteOptions(true, true, false, true);
+		NavigationRouteOptions options = new NavigationRouteOptions(true, true, false);
 		NavigationEngineRuntime.ensureRequest(new NavigationRequest(21,
 			Collections.singleton(C), 2, options, "adjacent-transport-arrival-test"));
 		AtomicInteger commands = new AtomicInteger();
@@ -530,7 +528,7 @@ public class NavigationEngineExecutionTest
 	@Test
 	public void catalogTransitionIsEngineOwnedAndCompletesOnlyAfterLanding()
 	{
-		NavigationRouteOptions options = new NavigationRouteOptions(true, true, false, true);
+		NavigationRouteOptions options = new NavigationRouteOptions(true, true, false);
 		NavigationEngineRuntime.ensureRequest(new NavigationRequest(21,
 			Collections.singleton(UP_TARGET), 0, options, "catalog-transition-test"));
 		AtomicInteger interactions = new AtomicInteger();
@@ -597,7 +595,7 @@ public class NavigationEngineExecutionTest
 		WorldPoint origin = new WorldPoint(2522, 3600, 0);
 		WorldPoint destination = new WorldPoint(2522, 3602, 0);
 		WorldPoint washedBack = new WorldPoint(2522, 3595, 0);
-		NavigationRouteOptions options = new NavigationRouteOptions(true, true, false, true);
+		NavigationRouteOptions options = new NavigationRouteOptions(true, true, false);
 		NavigationEngineRuntime.ensureRequest(new NavigationRequest(21,
 			Collections.singleton(destination), 0, options, "failed-short-transition-test"));
 		RoutePlan plan = new RoutePlan(21, 1, origin, Collections.singleton(destination),
@@ -643,7 +641,7 @@ public class NavigationEngineExecutionTest
 	@Test
 	public void simpleTeleportIsEngineOwnedAndAcknowledgedAtLanding()
 	{
-		NavigationRouteOptions options = new NavigationRouteOptions(true, true, false, true);
+		NavigationRouteOptions options = new NavigationRouteOptions(true, true, false);
 		NavigationEngineRuntime.ensureRequest(new NavigationRequest(21,
 			Collections.singleton(C), 0, options, "simple-teleport-test"));
 		AtomicInteger interactions = new AtomicInteger();
@@ -684,7 +682,7 @@ public class NavigationEngineExecutionTest
 	@Test
 	public void longHomeTeleportRetainsItsCommandThroughTheCastWindow()
 	{
-		NavigationRouteOptions options = new NavigationRouteOptions(true, true, false, true);
+		NavigationRouteOptions options = new NavigationRouteOptions(true, true, false);
 		NavigationEngineRuntime.ensureRequest(new NavigationRequest(21,
 			Collections.singleton(C), 0, options, "home-teleport-timeout-test"));
 		AtomicInteger interactions = new AtomicInteger();
@@ -725,7 +723,7 @@ public class NavigationEngineExecutionTest
 	@Test
 	public void simpleTeleportDoesNotRetireBeforeItsDirectedLanding()
 	{
-		NavigationRouteOptions options = new NavigationRouteOptions(true, true, false, true);
+		NavigationRouteOptions options = new NavigationRouteOptions(true, true, false);
 		NavigationEngineRuntime.ensureRequest(new NavigationRequest(21,
 			Collections.singleton(C), 0, options, "simple-teleport-retention-test"));
 		WorldPoint directedLanding = new WorldPoint(3300, 3300, 0);
@@ -763,7 +761,7 @@ public class NavigationEngineExecutionTest
 	@Test
 	public void npcTransportIsEngineOwnedAndAcknowledgedAtLanding()
 	{
-		NavigationRouteOptions options = new NavigationRouteOptions(true, true, false, true);
+		NavigationRouteOptions options = new NavigationRouteOptions(true, true, false);
 		NavigationEngineRuntime.ensureRequest(new NavigationRequest(21,
 			Collections.singleton(C), 0, options, "npc-transport-test"));
 		AtomicInteger interactions = new AtomicInteger();
@@ -804,7 +802,7 @@ public class NavigationEngineExecutionTest
 	@Test
 	public void charterShipAdvancesThroughUiStagesAndWaitsForLanding()
 	{
-		NavigationRouteOptions options = new NavigationRouteOptions(true, true, false, true);
+		NavigationRouteOptions options = new NavigationRouteOptions(true, true, false);
 		NavigationEngineRuntime.ensureRequest(new NavigationRequest(21,
 			Collections.singleton(C), 0, options, "charter-ship-test"));
 		java.util.List<String> actionsIssued = new java.util.ArrayList<>();
@@ -856,7 +854,7 @@ public class NavigationEngineExecutionTest
 	@Test
 	public void fairyRingAdvancesThroughStagesAndWaitsForExactLanding()
 	{
-		NavigationRouteOptions options = new NavigationRouteOptions(true, true, false, true);
+		NavigationRouteOptions options = new NavigationRouteOptions(true, true, false);
 		NavigationEngineRuntime.ensureRequest(new NavigationRequest(21,
 			Collections.singleton(C), 0, options, "fairy-ring-test"));
 		java.util.List<String> actionsIssued = new java.util.ArrayList<>();
@@ -925,7 +923,7 @@ public class NavigationEngineExecutionTest
 	@Test
 	public void spiritTreeAdvancesThroughDestinationAndWaitsForLanding()
 	{
-		NavigationRouteOptions options = new NavigationRouteOptions(true, true, false, true);
+		NavigationRouteOptions options = new NavigationRouteOptions(true, true, false);
 		NavigationEngineRuntime.ensureRequest(new NavigationRequest(22,
 			Collections.singleton(C), 0, options, "spirit-tree-test"));
 		List<String> actionsIssued = new ArrayList<>();
@@ -980,7 +978,7 @@ public class NavigationEngineExecutionTest
 	@Test
 	public void lockedSpiritTreeDestinationReplansImmediatelyAfterTravel()
 	{
-		NavigationRouteOptions options = new NavigationRouteOptions(true, true, false, true);
+		NavigationRouteOptions options = new NavigationRouteOptions(true, true, false);
 		NavigationEngineRuntime.ensureRequest(new NavigationRequest(23,
 			Collections.singleton(C), 0, options, "locked-spirit-tree-test"));
 		List<String> actionsIssued = new ArrayList<>();
@@ -1026,7 +1024,7 @@ public class NavigationEngineExecutionTest
 	@Test
 	public void gnomeGliderAdvancesThroughDestinationAndWaitsForLanding()
 	{
-		NavigationRouteOptions options = new NavigationRouteOptions(true, true, false, true);
+		NavigationRouteOptions options = new NavigationRouteOptions(true, true, false);
 		NavigationEngineRuntime.ensureRequest(new NavigationRequest(24,
 			Collections.singleton(C), 0, options, "gnome-glider-test"));
 		List<String> actionsIssued = new ArrayList<>();
@@ -1080,7 +1078,7 @@ public class NavigationEngineExecutionTest
 	@Test
 	public void quetzalAdvancesThroughDestinationAndWaitsForLanding()
 	{
-		NavigationRouteOptions options = new NavigationRouteOptions(true, true, false, true);
+		NavigationRouteOptions options = new NavigationRouteOptions(true, true, false);
 		NavigationEngineRuntime.ensureRequest(new NavigationRequest(25,
 			Collections.singleton(C), 0, options, "quetzal-test"));
 		List<String> actionsIssued = new ArrayList<>();
@@ -1141,7 +1139,7 @@ public class NavigationEngineExecutionTest
 		RoutePlan voyagePlan = new RoutePlan(21, 1, A,
 			Collections.singleton(afterLanding), Arrays.asList(A, landing, afterLanding),
 			Arrays.asList(A, landing, afterLanding), true, Arrays.asList(voyage, onward));
-		NavigationRouteOptions options = new NavigationRouteOptions(true, true, false, true);
+		NavigationRouteOptions options = new NavigationRouteOptions(true, true, false);
 		NavigationEngineRuntime.ensureRequest(new NavigationRequest(21,
 			Collections.singleton(afterLanding), 0, options, "npc-intermediate-scene-test"));
 		RouteInteraction transport = new RouteInteraction(1, 0, A, landing, A,
@@ -1582,8 +1580,7 @@ public class NavigationEngineExecutionTest
 
 		assertTrue(result.isEngineOwned());
 		assertEquals(NavigationDecision.Type.NO_ACTION, result.getDecision().getType());
-		assertEquals(NavigationExecutionMode.ENGINE_SUPPORTED,
-			NavigationEngineRuntime.getSnapshot().getExecutionMode());
+		assertFalse(NavigationEngineRuntime.isExecutionActive());
 	}
 
 	@Test
@@ -1707,7 +1704,7 @@ public class NavigationEngineExecutionTest
 	{
 		WorldPoint d = new WorldPoint(3201, 3201, 0);
 		WorldPoint e = new WorldPoint(3200, 3201, 0);
-		NavigationRouteOptions options = new NavigationRouteOptions(true, true, false, true);
+		NavigationRouteOptions options = new NavigationRouteOptions(true, true, false);
 		NavigationEngineRuntime.ensureRequest(new NavigationRequest(21,
 			Collections.singleton(B), 0, options, "folded-route-test"));
 		RoutePlan folded = new RoutePlan(21, 1, A, Collections.singleton(B),
@@ -1729,7 +1726,7 @@ public class NavigationEngineExecutionTest
 		startEngineRequest();
 		WorldPoint displaced = new WorldPoint(3300, 3300, 0);
 		NavigationObservation inCombat = NavigationObservation.route(1, displaced, ordinaryPlan(1),
-			false, true, true, false, false, false, null, "combat-displacement");
+			false, true, true, false, false, false, "combat-displacement");
 
 		NavigationExecutionResult result = NavigationEngineRuntime.execute(inCombat, target -> true);
 
@@ -1767,7 +1764,7 @@ public class NavigationEngineExecutionTest
 			WorldPoint from = origins[i];
 			WorldPoint to = destinations[i];
 			NavigationEngineRuntime.ensureRequest(new NavigationRequest(21, Collections.singleton(to), 0,
-				new NavigationRouteOptions(true, true, false, true), "weiss-failure-test"));
+				new NavigationRouteOptions(true, true, false), "weiss-failure-test"));
 			RoutePlan plan = new RoutePlan(21, 1, from, Collections.singleton(to),
 				Arrays.asList(from, to), Arrays.asList(from, to), true,
 				Collections.singletonList(new RouteEdge(0, from, to, RouteEdge.Kind.CATALOG_TRANSITION)));
@@ -1793,7 +1790,7 @@ public class NavigationEngineExecutionTest
 
 	private static void startEngineRequest()
 	{
-		NavigationRouteOptions options = new NavigationRouteOptions(true, true, false, true);
+		NavigationRouteOptions options = new NavigationRouteOptions(true, true, false);
 		NavigationEngineRuntime.ensureRequest(new NavigationRequest(21,
 			Collections.singleton(C), 0, options, "phase-3-test"));
 	}
@@ -1802,7 +1799,7 @@ public class NavigationEngineExecutionTest
 		boolean moving, boolean replan)
 	{
 		return NavigationObservation.route(time, player, plan, moving, false, false,
-			false, false, replan, null, "phase-3-test");
+			false, false, replan, "phase-3-test");
 	}
 
 	private static RoutePlan ordinaryPlan(long generation)

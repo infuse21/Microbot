@@ -10,10 +10,17 @@
 >   deliberately so the reverted idea is not reintroduced from an older note. Where an entry cites a
 >   measured log line, that measurement is the evidence; where it does not, treat it as a hypothesis
 >   that happened to hold at the time of writing.
+> - **Phase 8 ownership:** references to `processWalk`, shadow execution, or a legacy fallback describe
+>   the historical failure that produced the rule. The production executor is now
+>   `NavigationEngine`; blocking plugin APIs enter it through `NavigationWalkCoordinator`, and an
+>   unsupported route fails instead of transferring ownership to another walker loop.
 
 ## 1. Do not recurse on failed minimap clicks without changing the click target
 
-`Rs2Walker.processWalk` holds the walker lock while processing a path. If a minimap click is rejected because the calculated point is outside the minimap clip, immediately recursing with the same target can spin forever while still holding the lock. Shrink the click target toward the player or otherwise change the condition before retrying.
+The blocking `Rs2Walker` facade serializes a compatibility walk while NavigationEngine owns its
+session. If a minimap click is rejected because the calculated point is outside the minimap clip,
+immediately retrying with the same target can spin without progress and starve replacement requests.
+Shrink the click target toward the player or otherwise change the condition before retrying.
 
 **Why this matters:** Quest steps that walk to a nearby object can repeatedly calculate a valid path but never move, starving other walk requests because the walker lock is never released.
 

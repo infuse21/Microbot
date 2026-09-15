@@ -7,6 +7,8 @@ import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.widgets.ComponentID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.CollisionMap;
+import net.runelite.client.plugins.microbot.util.walker.Rs2PathApi;
+import net.runelite.client.plugins.microbot.util.walker.navigation.RoutePlan;
 import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayPosition;
@@ -63,15 +65,15 @@ public class PathMapOverlay extends Overlay {
 
         if (plugin.drawTransports) {
             graphics.setColor(Color.WHITE);
-            if (ShortestPathPlugin.getTransports() == null) return null;
-            if (ShortestPathPlugin.getPathfinder() == null || !ShortestPathPlugin.getPathfinder().isDone()) return null;
-            for (WorldPoint a : ShortestPathPlugin.getTransports().keySet()) {
+            if (Rs2PathApi.getTransports() == null) return null;
+            if (plugin.getRoutePlan() == null) return null;
+            for (WorldPoint a : Rs2PathApi.getTransports().keySet()) {
                 Point mapA = worldMapOverlay.mapWorldPointToGraphicsPoint(a);
                 if (mapA == null || !worldMapClipArea.contains(mapA.getX(), mapA.getY())) {
                     continue;
                 }
 
-                for (Transport b : ShortestPathPlugin.getTransports().getOrDefault(a, new HashSet<>())) {
+                for (Transport b : Rs2PathApi.getTransports().getOrDefault(a, new HashSet<>())) {
                     Point mapB = worldMapOverlay.mapWorldPointToGraphicsPoint(b.getDestination());
                     if (mapB == null || !worldMapClipArea.contains(mapB.getX(), mapB.getY())) {
                         continue;
@@ -82,9 +84,10 @@ public class PathMapOverlay extends Overlay {
             }
         }
 
-        if (ShortestPathPlugin.getPathfinder() != null) {
-            Color colour = ShortestPathPlugin.getPathfinder().isDone() ? plugin.colourPath : plugin.colourPathCalculating;
-            List<WorldPoint> path = ShortestPathPlugin.getPathfinder().getPath();
+        RoutePlan routePlan = plugin.getRoutePlan();
+        if (routePlan != null) {
+            Color colour = routePlan.isComplete() ? plugin.colourPath : plugin.colourPathCalculating;
+            List<WorldPoint> path = routePlan.getRawPath();
             for (int i = 0; i < path.size(); i++) {
                 graphics.setColor(colour);
                 WorldPoint point = path.get(i);

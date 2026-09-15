@@ -120,7 +120,6 @@ public final class Rs2WalkerLifecycleRuntime {
             NavigationRouteOptions routeOptions = new NavigationRouteOptions(!Rs2Walker.disableTeleports,
                     Rs2Walker.config == null || Rs2Walker.config.useAgilityShortcuts(),
                     Rs2Walker.config != null && Rs2Walker.config.walkWithBankedTransports(),
-                    true,
                     Rs2Walker.config == null ? 10 : Rs2Walker.config.recalculateDistance());
             NavigationEngineRuntime.ensureRequest(new NavigationRequest(preparation.getRequestId(), ends,
                     Math.max(0, reachedDistance), routeOptions, "rs2walker"));

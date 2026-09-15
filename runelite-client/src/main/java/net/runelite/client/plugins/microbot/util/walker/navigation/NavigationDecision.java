@@ -4,7 +4,7 @@ import net.runelite.api.coords.WorldPoint;
 
 import java.util.Objects;
 
-/** One shadow-engine outcome. A pass can contain at most one input-capable decision. */
+/** One NavigationEngine outcome. A pass can contain at most one input-capable decision. */
 public final class NavigationDecision
 {
 	public enum Type

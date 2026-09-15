@@ -28,8 +28,6 @@ final class WalkSession
 	final Set<Integer> blockedEdgesReplanned = new HashSet<>();
 	String terminalReason = "";
 	String transitionReason = "session-created";
-	NavigationComparison comparison = NavigationComparison.NOT_OBSERVED;
-	final NavigationExecutionMode executionMode;
 	boolean commandPending;
 	boolean commandRejected;
 	boolean rejectedMovement;
@@ -66,8 +64,6 @@ final class WalkSession
 	WalkSession(NavigationRequest request)
 	{
 		this.request = request;
-		executionMode = request.getRouteOptions().isOrdinaryEngineEnabled()
-			? NavigationExecutionMode.ENGINE_SUPPORTED : NavigationExecutionMode.SHADOW;
 	}
 
 	void transitionTo(NavigationPhase next, String reason)

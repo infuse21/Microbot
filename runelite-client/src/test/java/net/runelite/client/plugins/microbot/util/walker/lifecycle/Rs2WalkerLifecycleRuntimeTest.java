@@ -55,7 +55,7 @@ public class Rs2WalkerLifecycleRuntimeTest
                     Arrays.asList(START, new WorldPoint(3314, 3233, 0), new WorldPoint(3315, 3233, 0),
                             new WorldPoint(3316, 3233, 0), TARGET), Arrays.asList(START, TARGET), true);
             NavigationDecision decision = NavigationEngineRuntime.observe(NavigationObservation.route(
-                    1, START, plan, false, false, false, false, false, false, null, "radius-test"));
+                    1, START, plan, false, false, false, false, false, false, "radius-test"));
             assertEquals(radius >= 4 ? NavigationDecision.Type.COMPLETE : NavigationDecision.Type.CLICK_TILE,
                     decision.getType());
         }

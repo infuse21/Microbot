@@ -144,7 +144,7 @@ public class ClueCompassOwnershipTest
 	{
 		NavigationEngine engine = new NavigationEngine();
 		engine.start(new NavigationRequest(1, Set.of(TO), 0,
-			new NavigationRouteOptions(true, true, false, true), "compass-test"));
+			new NavigationRouteOptions(true, true, false), "compass-test"));
 		return engine;
 	}
 
@@ -184,7 +184,7 @@ public class ClueCompassOwnershipTest
 	private static NavigationObservation observation(long time, RouteInteraction interaction, WorldPoint player)
 	{
 		return NavigationObservation.route(time, player, plan(), false, false, false, false,
-			false, false, null, "compass-test").withRouteInteraction(interaction);
+			false, false, "compass-test").withRouteInteraction(interaction);
 	}
 
 	private static final class Fixture implements AutoCloseable

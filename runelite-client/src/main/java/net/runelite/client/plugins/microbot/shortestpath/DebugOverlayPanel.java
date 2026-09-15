@@ -2,7 +2,7 @@ package net.runelite.client.plugins.microbot.shortestpath;
 
 import lombok.Getter;
 import lombok.Setter;
-import net.runelite.client.plugins.microbot.shortestpath.pathfinder.Pathfinder;
+import net.runelite.client.plugins.microbot.util.walker.navigation.RoutePlan;
 import net.runelite.client.ui.overlay.OverlayPanel;
 import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.ui.overlay.components.ComponentConstants;
@@ -38,9 +38,9 @@ public class DebugOverlayPanel extends OverlayPanel {
 
     @Override
     public Dimension render(Graphics2D graphics) {
-        Pathfinder pathfinder = ShortestPathPlugin.getPathfinder();
-        Pathfinder.PathfinderStats stats;
-        if (pathfinder == null || !pathfinder.isDone() || (stats = pathfinder.getStats()) == null) {
+        RoutePlan routePlan = plugin.getRoutePlan();
+        RoutePlan.Diagnostics stats;
+        if (routePlan == null || (stats = routePlan.getDiagnostics()) == null) {
             return null;
         }
 
@@ -55,7 +55,7 @@ public class DebugOverlayPanel extends OverlayPanel {
 
         components.add(separator);
 
-        String pathLength = Integer.toString(pathfinder.getPath().size());
+        String pathLength = Integer.toString(routePlan.getRawPath().size());
         components.add(makeLine("Path Length:", pathLength));
 
         components.add(separator);

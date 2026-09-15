@@ -3,11 +3,9 @@ package net.runelite.client.plugins.microbot.util.walker.state;
 import net.runelite.api.coords.WorldPoint;
 
 /**
- * Consolidated mutable route state for the walker, extracted from {@code Rs2Walker}'s scattered static
- * fields. This is the enabling step for P1 of the walker audit: once the state the {@code processWalk}
- * loop, recovery, and transport handling all share lives in one place, those pieces can be lifted into
- * their own classes ({@code WalkExecutor} / {@code RouteRecovery} / {@code TransportService}) without
- * threading a dozen parameters through every call.
+ * Consolidated mutable state used by the live-scene adapter around the NavigationEngine-owned route
+ * session. The coordinator owns request/replan/terminal flow; this container holds only observations
+ * shared by scene interaction, route progress, and diagnostics.
  * <p>
  * Fields are migrated in cohesive clusters, one increment at a time, each verified by compilation (which
  * catches any missed reference) and the walker test suite. Access stays {@code volatile} to preserve the
@@ -17,8 +15,8 @@ import net.runelite.api.coords.WorldPoint;
  */
 public final class WalkerRouteState {
 
-    // ---- transport handoff: set when a transport (stairs, ladder, shortcut, teleport) is taken, read by
-    // the post-transport settling/window logic in processWalk. ----
+    // ---- transport handoff: set when a transport (stairs, ladder, shortcut, teleport) is taken and read
+    // by the post-transport settling/window logic. ----
 
     /** Wall-clock ms when the last transport was handled; 0 when none this session. */
     public volatile long lastTransportHandledAtMs = 0L;
@@ -72,8 +70,7 @@ public final class WalkerRouteState {
     /** Wall-clock ms of the last active-route idle nudge. */
     public volatile long lastActiveRouteIdleNudgeAtMs = 0L;
 
-    // ---- stuck detection / movement tracking: the processWalk loop's evidence that the player is
-    // actually moving, plus the cooldowns recovery uses when it is not. ----
+    // ---- stuck detection / movement tracking shared with NavigationEngine observations. ----
 
     /** Consecutive stuck-check hits without movement; reset on any walker-issued click. */
     public volatile int stuckCount = 0;
@@ -81,10 +78,6 @@ public final class WalkerRouteState {
     public volatile WorldPoint lastPosition = null;
     /** Wall-clock ms the player last changed tiles (or a click granted grace). */
     public volatile long lastMovedTimeMs = 0L;
-    /** Rising-edge detection for animation progress without tile delta in the stuck check. */
-    public volatile boolean prevAnimatingForStuckCheck = false;
-    /** Wall-clock ms of the last walled-recovery replan (cooldown selects replan vs wait). */
-    public volatile long lastWalledRecoveryReplanAtMs = 0L;
     /** Cooldown so partial-segment in-transit path recalculation does not spam. */
     public volatile long lastPartialTransRecalcMs = 0L;
 
@@ -104,8 +97,6 @@ public final class WalkerRouteState {
     public volatile WorldPoint doorSettleFarSideWp = null;
     /** Wall-clock ms a door-edge pass was last skipped (per-edge cooldown diagnostics). */
     public volatile long lastDoorEdgePassSkipAtMs = 0L;
-    /** Cooldown for the expensive path-adjacent door scan on unreachable tiles. */
-    public volatile long lastDoorPathAdjAttemptAtMs = 0L;
     /** Origin/destination/time of the last door interaction attempt (wrong-traversal detection reads these). */
     public volatile WorldPoint lastDoorAttemptFrom = null;
     public volatile WorldPoint lastDoorAttemptTo = null;
@@ -129,15 +120,6 @@ public final class WalkerRouteState {
      */
     public volatile long lastBankBootstrapMissAtMs = 0L;
 
-    /**
-     * Last time the recovery block hit the door-recovery-suppressed branch (an unresolved door sits on the
-     * blocked route edge but every door handler declined due to settling/cooldowns). While this is recent,
-     * the idle nudge must NOT fire: its forward click is not door-aware, so it can select a statically
-     * walkable tile on the far side of the closed door — the server then paths the player AROUND the
-     * building, pulling the walk off the route (seen at Clock Tower: nudge past the door, then recovery
-     * clicked the unreachable end tile).
-     */
-    public volatile long doorRecoverySuppressedAtMs = 0L;
     /** Wall-clock ms the current walk session started. */
     public volatile long walkSessionStartedAtMs = 0L;
     /** Whether the first movement click of this walk session has been marked. */

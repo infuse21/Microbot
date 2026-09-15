@@ -157,7 +157,7 @@ public class SpellTeleportOwnershipTest
 	{
 		NavigationEngine engine = new NavigationEngine();
 		engine.start(new NavigationRequest(1, Set.of(TO), 0,
-			new NavigationRouteOptions(true, true, false, true), "spell-test"));
+			new NavigationRouteOptions(true, true, false), "spell-test"));
 		return engine;
 	}
 
@@ -170,7 +170,7 @@ public class SpellTeleportOwnershipTest
 	private static NavigationObservation observation(long time, RouteInteraction interaction, WorldPoint player)
 	{
 		return NavigationObservation.route(time, player, plan(), false, false, false, false,
-			false, false, null, "spell-test").withRouteInteraction(interaction);
+			false, false, "spell-test").withRouteInteraction(interaction);
 	}
 
 	private static final class Fixture implements AutoCloseable

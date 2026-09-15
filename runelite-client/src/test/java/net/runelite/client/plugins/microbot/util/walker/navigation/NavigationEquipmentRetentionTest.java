@@ -45,7 +45,7 @@ public class NavigationEquipmentRetentionTest
 		assertSame(transaction, engine.cancel("test-stop").getEquipmentTransaction());
 		assertFalse(engine.observe(observation(1, 1, START)).issuesInput());
 		assertFalse(engine.retainEquipmentTransaction(1, 1, transaction));
-		engine.start(request(2, true));
+		engine.start(request(2));
 		assertEquals(NavigationDecision.Type.WAIT, engine.observe(observation(2, 1, START)).getType());
 		assertSame(transaction, engine.snapshot().getEquipmentTransaction());
 		assertFalse(engine.acknowledgeEquipmentRestored(1, 1, transaction, 4151, -1));
@@ -83,15 +83,6 @@ public class NavigationEquipmentRetentionTest
 		assertFalse(engine.acknowledgeEquipmentRestored(1, 1, transaction, Rs2Staff.STAFF_OF_AIR.getItemID(), -1));
 		assertFalse(engine.acknowledgeEquipmentRestored(1, 1, transaction, 4151, 1540));
 		assertSame(transaction, engine.snapshot().getEquipmentTransaction());
-	}
-
-	@Test
-	public void shadowSessionCannotAcquireAnEquipmentObligation()
-	{
-		NavigationEngine engine = new NavigationEngine();
-		engine.start(request(1, false));
-		engine.observe(observation(1, 1, START));
-		assertFalse(engine.retainEquipmentTransaction(1, 1, transaction()));
 	}
 
 	@Test
@@ -163,11 +154,11 @@ public class NavigationEquipmentRetentionTest
 			1, 2, transaction, null, observation(1, 2, START)).getType());
 		NavigationObservation later = NavigationObservation.route(5001, START,
 			observation(1, 2, START).getRoutePlan(), false, false, false,
-			false, false, false, null, "equipment-timeout");
+			false, false, false, "equipment-timeout");
 		assertEquals(NavigationDecision.Type.FAIL, engine.observeEquipmentRestoration(
 			1, 2, transaction, null, later).getType());
 		assertSame(transaction, engine.snapshot().getEquipmentTransaction());
-		engine.start(request(2, true));
+		engine.start(request(2));
 		assertEquals(NavigationDecision.Type.WAIT, engine.observe(observation(2, 1, START)).getType());
 		assertEquals(NavigationDecision.Type.INTERACT, engine.observeEquipmentRestoration(
 			2, 1, transaction, new SpellEquipmentObservation(Rs2Staff.STAFF_OF_AIR.getItemID(),
@@ -226,7 +217,7 @@ public class NavigationEquipmentRetentionTest
 		java.util.concurrent.ExecutorService executor = java.util.concurrent.Executors.newSingleThreadExecutor();
 		try
 		{
-			NavigationEngineRuntime.ensureRequest(request(1, true));
+			NavigationEngineRuntime.ensureRequest(request(1));
 			NavigationEngineRuntime.observe(observation(1, 1, START));
 			SpellEquipmentTransaction transaction = transaction();
 			assertTrue(NavigationEngineRuntime.retainEquipmentTransaction(1, 1, transaction));
@@ -261,7 +252,7 @@ public class NavigationEquipmentRetentionTest
 			};
 			assertFalse(NavigationEngineRuntime.execute(observation(1, 2, START), actions).isCommandIssued());
 			assertSame(transaction, NavigationEngineRuntime.getSnapshot().getEquipmentTransaction());
-			NavigationEngineRuntime.ensureRequest(request(2, true));
+			NavigationEngineRuntime.ensureRequest(request(2));
 			assertEquals(NavigationDecision.Type.WAIT, NavigationEngineRuntime.execute(
 				observation(2, 1, START), actions).getDecision().getType());
 		}
@@ -276,14 +267,14 @@ public class NavigationEquipmentRetentionTest
 	public void spellPreparationOwnsEquipCastAndRestorationThroughLanding()
 	{
 		NavigationEngine engine = new NavigationEngine();
-		engine.start(request(1, true));
+		engine.start(request(1));
 		RoutePlan plan = new RoutePlan(1, 1, START, Set.of(TARGET), List.of(START, TARGET),
 			List.of(START, TARGET), true, List.of(new RouteEdge(0, START, TARGET, RouteEdge.Kind.SIMPLE_TELEPORT)));
 		RouteInteraction spell = new RouteInteraction(1, 0, START, TARGET, START,
 			RouteInteraction.Kind.SIMPLE_TELEPORT, RouteInteraction.Status.AVAILABLE, "Varrock Teleport", true,
 			net.runelite.client.plugins.microbot.shortestpath.TransportType.TELEPORTATION_SPELL.ordinal());
 		NavigationObservation before = NavigationObservation.route(1, START, plan, false, false,
-			false, false, false, false, null, "spell-staging").withRouteInteraction(spell);
+			false, false, false, false, "spell-staging").withRouteInteraction(spell);
 		SpellEquipmentTransaction transaction = transaction();
 		SpellEquipmentObservation inventoryClosed = new SpellEquipmentObservation(4151, -1,
 			Set.of(Rs2Staff.STAFF_OF_AIR.getItemID()), 0, false, false);
@@ -304,7 +295,7 @@ public class NavigationEquipmentRetentionTest
 		assertEquals(RouteInteraction.Kind.SIMPLE_TELEPORT, cast.getInteraction().getKind());
 		engine.recordCommandResult(cast, true, 1);
 		NavigationObservation landed = NavigationObservation.route(2, TARGET, plan, false, false,
-			false, false, false, false, null, "spell-landing")
+			false, false, false, false, "spell-landing")
 			.withRouteInteraction(spell.withStatus(RouteInteraction.Status.CLEARED, false));
 		assertEquals(NavigationDecision.Type.WAIT, engine.observe(landed).getType());
 		assertTrue(engine.snapshot().isEquipmentRestorationRequired());
@@ -323,14 +314,14 @@ public class NavigationEquipmentRetentionTest
 		NavigationEngineRuntime.resetForTesting();
 		try
 		{
-			NavigationEngineRuntime.ensureRequest(request(1, true));
+			NavigationEngineRuntime.ensureRequest(request(1));
 			RoutePlan plan = new RoutePlan(1, 1, START, Set.of(TARGET), List.of(START, TARGET),
 				List.of(START, TARGET), true, List.of(new RouteEdge(0, START, TARGET, RouteEdge.Kind.SIMPLE_TELEPORT)));
 			RouteInteraction spell = new RouteInteraction(1, 0, START, TARGET, START,
 				RouteInteraction.Kind.SIMPLE_TELEPORT, RouteInteraction.Status.AVAILABLE, "Varrock Teleport", true,
 				net.runelite.client.plugins.microbot.shortestpath.TransportType.TELEPORTATION_SPELL.ordinal());
 			NavigationObservation before = NavigationObservation.route(1, START, plan, false, false,
-				false, false, false, false, null, "spell-runtime").withRouteInteraction(spell);
+				false, false, false, false, "spell-runtime").withRouteInteraction(spell);
 			SpellEquipmentTransaction transaction = transaction();
 			java.util.concurrent.atomic.AtomicInteger equips = new java.util.concurrent.atomic.AtomicInteger();
 			java.util.concurrent.atomic.AtomicInteger casts = new java.util.concurrent.atomic.AtomicInteger();
@@ -393,15 +384,15 @@ public class NavigationEquipmentRetentionTest
 	private static NavigationEngine engine()
 	{
 		NavigationEngine engine = new NavigationEngine();
-		engine.start(request(1, true));
+		engine.start(request(1));
 		engine.observe(observation(1, 1, START));
 		return engine;
 	}
 
-	private static NavigationRequest request(long requestId, boolean enabled)
+	private static NavigationRequest request(long requestId)
 	{
 		return new NavigationRequest(requestId, Set.of(TARGET), 0,
-			new NavigationRouteOptions(true, true, true, enabled), "equipment-test");
+			new NavigationRouteOptions(true, true, true), "equipment-test");
 	}
 
 	private static NavigationObservation observation(long requestId, long generation, WorldPoint player)
@@ -410,6 +401,6 @@ public class NavigationEquipmentRetentionTest
 			new WorldPoint(3202, 3200, 0), TARGET);
 		RoutePlan plan = new RoutePlan(requestId, generation, START, Set.of(TARGET), path, path, true);
 		return NavigationObservation.route(1, player, plan, false, false, false,
-			false, false, false, null, "equipment-test");
+			false, false, false, "equipment-test");
 	}
 }

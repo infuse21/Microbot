@@ -5,11 +5,10 @@ import net.runelite.api.coords.WorldPoint;
 import java.util.Set;
 
 /**
- * Ownership boundary between ordinary engine doors and specialised interaction handlers.
+ * Region policy for Stronghold doors that can open a question dialogue.
  *
- * <p>Stronghold of Security doors may present a question dialogue after an otherwise ordinary
- * door action. Until dialogue progression is represented as non-blocking navigation state, those
- * regions must remain legacy-owned.</p>
+ * <p>NavigationEngine remains the route owner; the region check selects the specialised
+ * dialogue-aware door interaction.</p>
  */
 public final class DoorInteractionOwnership
 {
@@ -23,14 +22,5 @@ public final class DoorInteractionOwnership
 	public static boolean isStrongholdSecurityRegion(WorldPoint point)
 	{
 		return point != null && STRONGHOLD_OF_SECURITY_REGIONS.contains(point.getRegionID());
-	}
-
-	public static boolean ordinaryEngineAllowed(WorldPoint start, Set<WorldPoint> targets)
-	{
-		if (isStrongholdSecurityRegion(start))
-		{
-			return false;
-		}
-		return targets == null || targets.stream().noneMatch(DoorInteractionOwnership::isStrongholdSecurityRegion);
 	}
 }
