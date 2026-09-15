@@ -7,6 +7,220 @@ tracks implementation batches. Later dated evidence supersedes earlier audit cou
 
 ## How to interpret this ledger
 
+2026-09-15 Phase 6 is implementation/headless complete under the user's 2026-09-09 acceptance
+amendment. The final repeat full suite passed 2,278 tests with zero failures/errors and four
+skips, plus both Checkstyles. NavigationEngine is the sole production executor and unsupported
+routes fail without legacy handoff. Entries below remain deferred physical acceptance—not
+live-passed claims—and do not reopen Phase 6 solely because this account lacks their items,
+levels, unlocks, endgame POH facilities or League-world interfaces. Phase 7 has not started.
+
+2026-09-15 direct-item callback cutover requires rebuilt-client acceptance. All 74 direct
+item rows now use staged inventory/equipment opening, exact activation, optional Wilderness
+confirmation and landing. Test ordinary tablets and scrolls, explicit Varrock/Watchtower
+destinations with the opposite saved default, all worn-item slots (head/neck/weapon/boots),
+Ectophial refill/landing, Royal/Grand seed pod, Skull sceptre, Hallowed shard and charged
+Cowbell amulet. Test Wilderness tablets/scrolls/sword with warnings both enabled and disabled;
+record actual confirmation wording and verify a consumed final item does not lose pending
+ownership. Missing actions, open unrelated dialogue, stale slots/tabs, excessive departure
+Wilderness level and cancellation must issue no stale item command. Existing live traces
+predate this adapter and do not establish its acceptance. Runtime action checks are exact;
+the headless fixtures are not captured item definitions for every ID.
+
+2026-09-15 Clue Compass is staged and headless-tested, not live-accepted. All 47 rows now
+use ITEM_TELEPORT with separate inventory opening and exact destination input, followed by
+engine-owned landing observation. On a League world, test a direct action and a submenu
+destination with inventory initially closed; cancel during preparation; change tabs after
+the input; and verify no repeated teleport while waiting for landing. Also verify missing
+or different menu entries issue no destination input. Tests use synthetic menu shapes,
+not a captured live League interface; actual labels/parent indices still need acceptance.
+This supersedes older simple-handler ownership claims for Compass below.
+
+2026-09-15 user-approved sole-executor cutover needs rebuilt-client acceptance. The developer
+engine toggle is retired; ordinary transport settings and banked-transport settings remain.
+Test ordinary walking, banked route setup, a Stronghold-region request, startup while a
+route is pending, cancellation and an unsupported route. Expected: NavigationEngine owns
+the request throughout, and unsupported routes stop without any legacy movement. Focused
+navigation/lifecycle/banking/config/guardrail tests and Checkstyle pass; no live restart
+or acceptance is claimed. The pre-cutover full spell tree passed 2,257 tests, four skips.
+
+2026-09-15 staged spell dispatch is implemented and headless-validated: magic-tab opening,
+filter-button enablement, teleport-filter selection, filter/submenu closing and casting
+are separate engine commands, followed by retained landing observation. Compile, 393
+focused tests and Checkstyle pass, including six new spell-ownership regressions.
+Physical acceptance still needs a rebuilt client: test a normal teleport, an alternate
+destination, Lumbridge Home Teleport, house inside/outside, hidden teleport filters,
+an open enchantment submenu, cancellation during preparation and the optional retained
+staff-equipment path. Verify one input per observed stage, no duplicate cast after tab
+or catalog changes, normal landing and no new client-thread timeout. Existing house and
+spell traces do not count as acceptance of this new adapter. No live script was disturbed.
+
+2026-09-15 Map of Alacrity staged ownership is now headless-complete, superseding the
+gap below: all 122 rows use engine-owned inventory opening, Read, region, destination
+and landing stages. Eight ownership regressions cover loading/ambiguity, locks, visible
+versus offscreen input, exact Read metadata, cancellation and bounded failure. Compile
+and Checkstyle pass. Full suite: 2,250 tests, one Agent Server Unix-socket timeout,
+four skips; the six-test socket class passed in isolation. Physical acceptance remains
+deferred because the item and interface require League worlds. No running script was
+disturbed; spell preparation and legacy transport-loop retirement are not closed by this.
+
+2026-09-15 generated house-spell landing regression is headless-complete: matching template
+coordinates alone no longer clear entry without the house-scene predicate. Compilation,
+759 focused transport/navigation/guardrail tests and Checkstyle pass; physical casting is
+still deferred. The seasonal Map of Alacrity implementation is not yet staged ownership:
+its current helper performs both menu selections and waits inside one engine command.
+This supersedes any implication below that row classification alone closed its Phase 6
+ownership gate. League-only physical acceptance remains independently deferred.
+
+2026-09-15 user scope decision: Boat/Last Boat and remaining dynamic Respawn support
+are new features, not Phase 6 migration gates. Track them in
+[walker-future-transport-features.md](walker-future-transport-features.md). Earlier blocker
+labels below are superseded, but their research and unverified status remain valid.
+Deferred physical acceptance stays in this ledger; transport dispatch-loop retirement
+is still an implementation gate in the migration plan, not a deferred live test.
+
+2026-09-15 Boat selector source audit (RuneLite cs2-scripts revision
+`c5de38b0013a8521c4dce343ee6538fcccb23a60`): procedure 8997
+(`sailing_boat_selection_available`) rejects port sentinels 255 (bottled), 254 (capsized)
+and 253 (lost) for the teleport-to-boat selection mode; greater-focus mode rejects focus
+values below 2. Procedure 9081 reads the five named per-boat teleport-focus varbits directly,
+so this resolves the previously unknown focus encoding. Procedure 9013 reads owned flags,
+and 9011 treats exactly 1 as owned. Procedure 9016 reads the five port varbits; 9094 joins
+the port ID to SailingDock table 194, not to a coordinate. Do not copy its Port Sarim fallback
+for unknown dock IDs into routing. Selector row callback 8632 carries the boat slot (1-5)
+and ends through 8638/`cc_resume_pausebutton`; this is not a chat-dialogue option.
+The live account returned 0 for all five ownership/port/focus sets in this check; no gameplay
+input or script pause was performed. Verified player landing coordinates remain unresolved.
+Source: https://github.com/runelite/cs2-scripts/tree/c5de38b0013a8521c4dce343ee6538fcccb23a60/scripts.
+
+2026-09-15 follow-up to the generated-entry audit: Construction cape now has two directed,
+preference-gated edges, and the generated house spell uses the same contract. House Options was
+checked live with the user's script temporarily paused: `Teleport Inside` On (370:8) sets
+`POH_TELE_TOGGLE` 4744 to 0; Off (370:9) sets it to 1. The original value 0 was restored and the
+pause probe was undeployed, restoring scriptsPaused=false. Interior edges require 0; exterior
+edges require 1 and lead to the configured physical portal, whose existing entry edge remains
+NavigationEngine-owned. Both also carry the house-location requirement, participate in normal
+varbit-verdict refresh invalidation, and recheck preference before item/spell dispatch. This
+supersedes the cape implementation gap below; physical cape/spell teleport acceptance is still
+deferred, not claimed by the UI-setting probe.
+
+2026-09-15 generated POH entry audit: the real generator exposed two legacy classifications
+missed by the TSV-only inventory: Construction cape `Tele to POH` and house tablet `Inside`.
+The tablet now uses the exact `Inside` item action, requires the configured house destination,
+and is generated as consumable so repeated edges request one tablet per use. Landing additionally
+requires a house scene; matching template coordinates alone are insufficient. Rebuilt-client
+tablet acceptance remains pending. Construction cape is still an implementation gap: its direct
+action obeys the player's inside/outside preference, so it cannot safely promise an interior
+landing unconditionally. Resolve that preference and its exterior-to-portal leg before closing
+the generated-graph audit; do not weaken the failing audit to hide this row.
+Sources: https://oldschool.runescape.wiki/w/Construct._cape and
+https://oldschool.runescape.wiki/w/Teleport_to_house_(tablet).
+
+2026-09-15 Respawn nexus partial implementation: installed value 40 can now publish
+the six destinations with named selection flags (Edgeville, Falador, Camelot, Civitas,
+Ferox and Kourend). Exactly one flag must equal 1; zero, conflicting and unknown state
+publishes no Respawn edge. Lumbridge/Prifddinas remain unresolved, not defaulted. The
+existing nexus menu lifecycle owns the selected landing and rejects a changed destination
+before dispatch; POH transport verification now watches all six flags even when no Respawn
+edge existed in the previous graph. Null destinations are omitted during POH generation.
+Headless fixtures cover all six selections, absent installation, conflicts, stale menu
+selection and cache-verdict changes. Physical nexus Respawn checks remain deferred.
+Landing reference: https://github.com/Skretzo/shortest-path/blob/master/src/main/resources/transports/teleportation_portals_poh.tsv.
+
+2026-09-15 Boat selection requirements verified from live DB row 7316 (table 149):
+selection type 8, title `Teleport to Boat`, action `Teleport To`; bottled, capsized and
+lost boats are prohibited (columns 9-11 = 1), greater focus is required (14 = 1), and
+neither current-port-only nor empty-cargo restrictions apply (12/15 = 0). Normal and
+greater focus rows 8521/8522 share facility type/subtype 0/9, so those columns do not
+distinguish installed focus quality. Its per-boat varbit encoding still needs evidence.
+Boat selection uses interface 934, including normal/recent containers 19/21 and button 8.
+The Wiki mooring table supplies map markers (Port Sarim 3051,3195; Pandemonium 3070,2989),
+but these are not yet verified player teleport endpoints. Do not use boat-navigation
+coordinates or map pins as proof of arrival. Physical box/boat casting remains untested.
+Source: https://oldschool.runescape.wiki/w/Mooring_point; live metadata 15:59 BST.
+
+2026-09-15 Boat contract clarification: Teleport to Boat lands at a mooring point, not
+the moving boat's world projection. The Wiki requires a greater teleport focus, exposes
+a boat-selection menu and documents last-mooring behaviour when cast aboard. The local
+`Rs2BoatCache` resolves loaded world entities only, so it cannot supply remote ownership
+or a saved mooring destination. Candidate per-boat fields are owned/type/port/focus
+(boat 1: 19258/19259/19260/19270, with corresponding explicit fields for boats 2-5).
+Selection varps 5005/5006 and last-selection 5571 must not be mistaken for coordinates.
+A bounded read-only live enum scan (0..11999, 2026-09-15 15:52 BST) found the general
+place-name enum 2096 but no verified mooring-to-landing map. Need that mapping and focus
+value semantics before implementing Boat/Last Boat; these remain implementation gaps.
+Source: https://oldschool.runescape.wiki/w/Teleport_to_Boat.
+
+Follow-up live DB probe (15:55 BST): `DBTableID.SailingDock` table 194 supplies names and
+dock IDs. Row 8587 is Port Sarim with dock ID **0**; row 8588 is The Pandemonium with ID 1.
+Zero therefore cannot universally mean no dock. Columns 3 and 6-12 were unavailable for
+both rows; no landing coordinates were exposed through these fields. The existing
+`PortLocation` integer is a Sailing level, not this dock ID. Do not join on that integer
+or use its boat-navigation point as a verified teleport landing. Probe was read-only;
+the remaining requirement is a verified dock-ID-to-player-landing mapping and boat gate.
+
+2026-09-15 Farming Guild box landing: the generated destination now snapshots current
+Farming level: below 45 -> (1248,3719,0), 45+ -> (1248,3725,0), matching the existing
+skills-necklace resource rows. The scene rejects a stale planned landing before menu or
+direct-object dispatch when the threshold changes. Headless fixtures cover the threshold,
+immutable planned endpoint and stale menu rejection. Physical fancy/ornate box checks on
+both sides of 45, including boosted-level behaviour, remain deferred, not live-passed.
+Sources: https://oldschool.runescape.wiki/w/Skills_necklace and
+https://oldschool.runescape.wiki/w/Farming_Guild.
+
+2026-09-15 jewellery requirement audit: generated Dondakan box routes now carry
+`BETWEEN_A_ROCK = FINISHED`, matching the ring-of-wealth resource requirement and
+https://oldschool.runescape.wiki/w/Ring_of_wealth. The constructor regression reproduced
+the missing requirement before the patch. Physical jewellery-box rejection/acceptance
+remains deferred; Farming Guild level-dependent landing still requires verification.
+
+2026-09-15 dynamic nexus investigation: Respawn value 40 cannot safely be published with
+a single constant landing. The Wiki specifies eight destinations and excludes the defence
+cape's Ardougne effect. Named client varbits exist for Edgeville 621, Falador 668, Camelot
+3910, Civitas 9805, Ferox 10528 and Kourend 12310; unlock flags are separate (for example
+Edgeville 623). No authoritative Lumbridge-versus-Prifddinas selection discriminator has
+yet been verified. Upstream's static POH resource publishes both Lumbridge and Prifddinas
+without distinguishing state, which is insufficient for automatic movement ownership.
+Boat/Last Boat additionally require the selected owned boat and its current world/landing
+mapping; the upstream Boat portal resource is commented out, not an implementation to copy.
+Next evidence needed: active respawn state (including Prifddinas), boat selector/location
+contract, and scoped destination revalidation before dispatch. These remain implementation gaps.
+Sources: https://oldschool.runescape.wiki/w/Respawn_Teleport and
+https://github.com/Skretzo/shortest-path/blob/master/src/main/resources/transports/teleportation_portals_poh.tsv.
+
+2026-09-15 nexus alternatives: Seers' Village and Yanille are now separate engine-owned
+menu destinations alongside Camelot and Watchtower. Availability requires the installed base
+teleport and hard Kandarin/Ardougne diary respectively; the existing Grand Exchange alternative
+retains its medium Varrock diary gate. Menu names follow live struct parameter 660, coordinates
+reuse TeleportLocationData, and alternatives do not mutate spellbook/default teleport toggles.
+The scene fixture now covers 76 combined menu routes. Physical alternate-menu and landing
+checks remain deferred. Source: https://oldschool.runescape.wiki/w/Portal_nexus.
+
+2026-09-15 nexus fixed destinations: values 32-39 are now implemented through the staged
+portal menu protocol, using the existing chamber landing coordinates. The independent mapping
+fixture now covers 39 base values; the menu scene fixture expands to 74 combined routes.
+Deferred physical checks include these eight additions, especially Dareeyak/Ice Plateau warning
+confirmation and selected landing. Respawn/Boat and alternate landing selection remain
+implementation work, not live-only deferrals.
+
+2026-09-15 nexus metadata: read-only live probe resolved enum 1377 -> struct -> string
+parameter 660. Existing saved values are not Java ordinals: 7 Senntisten, 8 Marim,
+10 Lunar Isle, 13 Fishing Guild, 14 Annakarl, 15 Troll Stronghold, 17 Ghorrock,
+18 Carrallanger. The decoder now uses corrected saved values; all 31 existing base values
+are pinned independently by destination name in NexusPortalMappingTest.
+New base values verified live: 32 Trollheim, 33 Paddewwa, 34 Lassar, 35 Dareeyak,
+36 Ourania, 37 Barbarian Outpost, 38 Port Khazard, 39 Ice Plateau, 40 Respawn, 41 Boat.
+Alternative enum keys: 151 Grand Exchange, 154 Seers' Village, 156 Yanille, 191 Last Boat.
+These newer/alternative keys are metadata evidence, not implemented destination contracts.
+Probe source: temporary `microbot-debug-probes/nexus-map-20260915/NexusMapProbePlugin.java`;
+log marker `[NexusMapProbe]`, 15:17:04 BST. Probe undeployed after capture, no gameplay input.
+Discovery reference: https://gist.github.com/Infinitay/b661ad3428bf8bee13bcfb795d881730.
+
+2026-09-15 POH ring follow-up: inbound DIQ has an engine-owned house-scene landing resolver.
+Deferred live checks: external ring -> DIQ -> actual house ring, original weapon restoration,
+standalone and combined ring/tree objects, unavailable house ring and loading/cancellation.
+Headless scene checks reject the exit anchor alone, distant/wrong-plane landings, a foreign
+world view, and a non-house scene. No physical house-ring journey is claimed.
+
 - **Headless:** policy, resource, banking, scanner or engine tests passed; no physical crossing proved.
 - **Runtime metadata:** a running client verified definitions, classification or availability only.
   This is not a successful journey, even if an older note calls it rebuilt-client acceptance.
@@ -680,9 +894,10 @@ gameplay, production-server change or commit was made during this checkpoint.
   `(3065,3260,0)`, but its two-tile object search could not see the large object anchored three tiles
   away. The new five-tile allowance applies only to agility transitions and retains exact catalog
   identity checks.
-- **Not complete:** the active classification boundary is not Phase 6 closure. Disabled equipment,
+- **Historical checkpoint — not complete at that time:** the active classification boundary alone was not Phase 6 closure. Disabled equipment,
   safety, quest-state, payment, stochastic and staged interactions remain implementation work, and
-  all previously listed representative live gates remain deferred unless explicitly accepted.
+  all previously listed representative live gates remain deferred unless explicitly accepted. The
+  later 2026-09-15 closure entry at the top supersedes the implementation-status portion of this note.
 
 - **New equipment batch:** four Smoke Dungeon well approaches, two Troll Stronghold uphill rocks
   and four Trollweiss sled slopes are headless-complete with exact quest/skill/equipment contracts,

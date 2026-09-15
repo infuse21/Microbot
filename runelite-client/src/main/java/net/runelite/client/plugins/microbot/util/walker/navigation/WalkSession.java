@@ -29,10 +29,14 @@ final class WalkSession
 	String terminalReason = "";
 	String transitionReason = "session-created";
 	NavigationComparison comparison = NavigationComparison.NOT_OBSERVED;
-	NavigationExecutionMode executionMode = NavigationExecutionMode.SHADOW;
-	boolean executionModeSelected;
+	final NavigationExecutionMode executionMode;
 	boolean commandPending;
 	boolean commandRejected;
+	boolean rejectedMovement;
+	int localMovementRetries;
+	WorldPoint recoveryProgressOrigin;
+	int recoveryProgressIndex = -1;
+	long recoveryProgressAtMs;
 	WorldPoint commandOrigin;
 	WorldPoint lastObservedDestination;
 	WorldPoint commandDestinationAtIssue;
@@ -62,6 +66,8 @@ final class WalkSession
 	WalkSession(NavigationRequest request)
 	{
 		this.request = request;
+		executionMode = request.getRouteOptions().isOrdinaryEngineEnabled()
+			? NavigationExecutionMode.ENGINE_SUPPORTED : NavigationExecutionMode.SHADOW;
 	}
 
 	void transitionTo(NavigationPhase next, String reason)
@@ -96,6 +102,8 @@ final class WalkSession
 		commandOriginRawIndex = -1;
 		lastProgressAtMs = 0L;
 		lastProgressRawIndex = -1;
+		recoveryProgressOrigin = null;
+		recoveryProgressIndex = -1;
 		blockedEdgesReplanned.clear();
 		pendingInteraction = null;
 		clearedInteractionsAwaitingCrossing.clear();
@@ -105,15 +113,6 @@ final class WalkSession
 		interactionClearedObserved = false;
 		stochasticTransitionAttempts = 0;
 		routeDistance = Integer.MAX_VALUE;
-		if (!executionModeSelected)
-		{
-			executionMode = request.getRouteOptions().isOrdinaryEngineEnabled()
-				? (plan.isEngineSupported()
-					? NavigationExecutionMode.ENGINE_SUPPORTED
-					: NavigationExecutionMode.LEGACY_LOCKED)
-				: NavigationExecutionMode.SHADOW;
-			executionModeSelected = true;
-		}
 	}
 
 	int incrementRecovery(RecoveryCause cause)

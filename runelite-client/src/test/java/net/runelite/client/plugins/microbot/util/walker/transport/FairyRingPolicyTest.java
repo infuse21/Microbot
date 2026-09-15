@@ -37,6 +37,10 @@ public class FairyRingPolicyTest
 		assertFalse(FairyRingPolicy.isEligible(new Transport(origin, destination,
 			"DIQ", TransportType.FAIRY_RING, true, 5), null));
 		assertTrue(FairyRingPolicy.isEligible(new Transport(origin, destination,
+			"DIQ", TransportType.FAIRY_RING, true, 5), destination));
+		assertFalse(FairyRingPolicy.isEligible(new Transport(origin, destination,
+			"DIQ", TransportType.FAIRY_RING, true, 5), origin));
+		assertTrue(FairyRingPolicy.isEligible(new Transport(origin, destination,
 			"AKR", TransportType.FAIRY_RING, true, 5), origin));
 		assertFalse(FairyRingPolicy.isEligible(new Transport(origin, destination,
 			"AKR", TransportType.FAIRY_RING, true, 5), destination));

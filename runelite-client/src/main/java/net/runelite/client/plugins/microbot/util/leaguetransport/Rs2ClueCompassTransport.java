@@ -7,6 +7,7 @@ import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
 
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 /** Executes League Clue compass rows exposed as inventory actions or submenu actions. */
 public final class Rs2ClueCompassTransport
@@ -51,6 +52,12 @@ public final class Rs2ClueCompassTransport
 			Rs2LeaguesTransport.recordTransportAttempt(transport);
 		}
 		return issued;
+	}
+
+	public static boolean isStagedRoute(Transport transport)
+	{
+		return matches(transport) && !transport.isConsumable() && transport.getCurrencyAmount() == 0
+			&& Set.of(Set.of(ITEM_ID)).equals(transport.getItemIdRequirements());
 	}
 
 	static String destination(String displayInfo)

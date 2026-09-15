@@ -215,6 +215,12 @@ public class Transport {
         this.itemIdRequirements = itemIdRequirements != null ? new HashSet<>(itemIdRequirements) : new HashSet<>();
     }
 
+    public Transport(WorldPoint destination, String displayInfo, TransportType transportType, boolean isMember,
+                     int maxWildernessLevel, Set<Set<Integer>> itemIdRequirements, boolean consumable) {
+        this(destination, displayInfo, transportType, isMember, maxWildernessLevel, itemIdRequirements);
+        this.isConsumable = consumable;
+    }
+
     /**
      * Transport constructor with skill requirements
      */

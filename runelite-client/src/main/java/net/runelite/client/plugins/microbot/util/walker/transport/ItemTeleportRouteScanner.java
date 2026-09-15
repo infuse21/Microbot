@@ -39,8 +39,7 @@ public final class ItemTeleportRouteScanner
 		{
 			return null;
 		}
-		if (player != null && player.getPlane() == pending.getCrossingTo().getPlane()
-			&& player.distanceTo2D(pending.getCrossingTo()) <= 3)
+		if (scene.hasLanded(new PlannedEdge(pending.getFrom(), pending.getCrossingTo()), player))
 		{
 			if (requiresRestoration(pending.getAction()))
 			{
@@ -77,6 +76,9 @@ public final class ItemTeleportRouteScanner
 	private static boolean isTerminalAction(String action)
 	{
 		return action.startsWith("item-use:") || action.startsWith("book-select:")
+			|| Rs2DirectItemTeleportScene.isTerminal(action)
+			|| action.startsWith("compass-use:")
+			|| action.startsWith("alacrity-destination:")
 			|| action.startsWith("book-confirm:") || action.startsWith("wilderness-confirm:")
 			|| requiresRestoration(action);
 	}
@@ -90,7 +92,8 @@ public final class ItemTeleportRouteScanner
 	private static RouteInteraction interaction(long generation, RouteEdge edge, ItemTeleport item)
 	{
 		return new RouteInteraction(generation, edge.getRawIndex(), edge.getFrom(), edge.getTo(),
-			edge.getFrom(), RouteInteraction.Kind.ITEM_TELEPORT, RouteInteraction.Status.AVAILABLE,
-			item.command(), true, item.getItemId(), edge.getFrom(), edge.getTo());
+			edge.getFrom(), RouteInteraction.Kind.ITEM_TELEPORT,
+			item.isAvailable() ? RouteInteraction.Status.AVAILABLE : RouteInteraction.Status.UNAVAILABLE,
+			item.command(), item.isAvailable(), item.getItemId(), edge.getFrom(), edge.getTo());
 	}
 }

@@ -16,6 +16,210 @@ both systems permanently active are not completion.
 
 ## Live acceptance ledger
 
+2026-09-15 Phase 6 closure: the implementation and headless gates are complete under the
+2026-09-09 acceptance amendment. NavigationEngine is the sole production executor for walker
+requests; unsupported initial or replacement routes fail without gameplay input or legacy
+handoff. The developer executor toggle, `LEGACY_LOCKED` mode/logging, outer
+`handleTransports` control loop, and its legacy-only transport bookkeeping are removed.
+All 6,151 transports loaded from packaged resources classify to an engine-owned interaction
+family, and the generated POH graph independently covers every configured facility plus inbound
+house edges. Direct spells, all 74 direct-item rows, all 47 Clue Compass rows and all 122 Map of
+Alacrity rows use staged engine commands rather than blocking legacy callbacks. Scene-adapter
+search found no sleep/wait calls in the active `*Scene` command boundaries. The final repeat full
+suite passes **2,278 tests, zero failures/errors and four skips**, with both Checkstyle tasks
+(`BUILD SUCCESSFUL`, 1m 12s); the client-thread guardrail remains 900 known findings with no
+regressions. The preceding full run had one known intermittent Agent Server UDS socket timeout;
+all six UDS tests passed immediately in isolation before the clean repeat. Physical tests that
+need unavailable items, levels, unlocks, endgame POH facilities or League worlds remain deferred
+in `walker-live-testing-backlog.md` and are not claimed live-passed. Boat/Last Boat and unresolved
+dynamic Respawn behavior remain in the separate future-feature backlog by user decision. This
+closes Phase 6 only: Phase 7 has not started, and the unreachable compatibility body beneath the
+engine return in `processWalk` remains for the explicitly separate Phase 8 facade collapse.
+
+2026-09-15 direct-item staged cutover: all 74 non-colon item rows (45 tablets, 18 scrolls,
+11 other rows) now classify as ITEM_TELEPORT through `DirectItemTeleportPolicy` and
+`Rs2DirectItemTeleportScene`. The engine's call to `handleTeleportItem` is removed;
+SimpleTeleportPolicy no longer admits item rows. The adapter separates tab preparation,
+exact inventory/equipment input, optional Wilderness confirmation and retained landing.
+It dispatches copied menu identity/bounds without inventory/equipment helpers that switch
+tabs or wait. Worn Teleport/Invoke/Ring actions are validated independently, and unsupported
+worn actions are not guessed or replaced by an implicit unequip. Existing transport
+requirements and Wilderness departure limits remain in force; no banking behavior is added.
+Varrock/Watchtower tablets use their explicit destinations, and Grand seed pod uses Squash.
+An existing dialogue prevents activation; accepted uses retain confirmation/landing context
+after consumption, catalog disappearance or tab changes. Acknowledgement expiry replans
+instead of repeating activation. First compilation, focused ownership/classification tests,
+client-thread guardrails and both Checkstyle tasks pass. The final full suite passes 2,278
+tests with no failures and four skips, plus both Checkstyle tasks (1m 44s). No new guardrail
+exemptions were added. The old private item/spell dispatch helpers were subsequently deleted and
+their absence is pinned by `TransportLoopRetirementTest`.
+Action reference checks used the wiki through MCP, including Varrock/Watchtower tablets,
+Revenant cave scroll, diary equipment, Royal/Grand seed pods, Ectophial, Skull sceptre,
+Hallowed crystal shard and Cowbell amulet. Protocol tests use synthetic interfaces and do
+not claim physical acceptance of every item, equipment slot or confirmation wording.
+
+2026-09-15 Clue Compass staged cutover: all 47 packaged compass routes now classify as
+ITEM_TELEPORT and dispatch through `Rs2ClueCompassScene`, not the blocking seasonal
+callback. Inventory opening is one command; a fresh client-thread snapshot resolves one
+exact direct/submenu action and copies slot, menu identifier and bounds for a single input.
+The adapter does not call `Rs2Inventory.interact` (which may switch tabs and wait).
+Missing/ambiguous actions, changed items, changed tabs, unpublished routes and interrupted
+dispatches cannot issue the stale command. An accepted use retains voyage ownership across
+tab/catalog changes until same-plane landing; missing preparation/landing acknowledgements
+replan without repeating the input. The existing legacy/public helper remains for callers
+outside the engine. Seven protocol regressions and a 47-row classification audit cover the
+cutover; compilation, focused tests and guardrails pass. The broader transport, navigation,
+banking, seasonal and pathfinder-benchmark run passes 893 tests with no failures/skips,
+plus both Checkstyle tasks (41s). Its initial run caught a test fixture setting membership
+instead of consumability; the corrected fixture passes without a runtime change.
+Physical League-world acceptance remains explicitly deferred.
+
+2026-09-15 historical remaining simple-item callback audit (superseded by the direct-item staged
+cutover and Phase 6 closure above): the packaged item file contains 74
+non-colon destination rows (45 tablets, 18 scrolls, 11 other rows). The classifier checks
+SimpleTeleportPolicy before ItemTeleportPolicy, and these rows reach `handleTeleportItem`.
+The 11 other rows are Fremennik sea boots (two rows), Kandarin headgear, Wilderness sword,
+Western banner, Ectophial, Royal seed pod, Grand seed pod, Skull sceptre, Hallowed crystal
+shard and Cowbell amulet. This is not a new-feature backlog: these are already eligible.
+`handleWearableTeleports` returns false for all non-colon display names, so worn items in
+this group are not covered by that callback. Inventory dispatch can additionally own
+wilderness confirmation and animation waits. The 47 Clue Compass rows call the shared
+inventory helper, which itself switches tabs and waits; a direct submenu label is not
+proof of single-input ownership. Required cutover: separate tab preparation, exact
+inventory/equipment action, any required confirmation, and retained landing observation.
+Revalidate state at dispatch and preserve configuration, charge and requirement gates.
+
+The audit found a concrete requirement defect: Ectophial listed both full `4251` and empty
+`4252`. The [wiki full/empty definitions](https://oldschool.runescape.wiki/w/Ectophial)
+show that the empty variant has no teleport action. The resource now requires only the
+full vial; a parsed-resource regression preserves reusable semantics and excludes the
+empty alternative. SimpleTeleportPolicyTest, BankedTransportItemPlanningTest and
+CheckstyleTest pass (`BUILD SUCCESSFUL`, 44s); no live acceptance is claimed.
+This correction did not by itself close the callback migration; the later staged adapter does.
+
+2026-09-15 user-approved sole-executor cutover: the user explicitly authorized retiring
+the developer engine toggle and failing unsupported routes instead of falling back to
+legacy. Both live request entry points now select NavigationEngine, including requests
+previously excluded by the blanket Stronghold-region override. Ownership is fixed at
+request construction, so waiting for the first route remains engine-owned. An unsupported
+initial or replacement route fails as `unsupported-route` without gameplay input or
+legacy dispatch; a later generation cannot revive a failed request. The removed config
+annotation retires the UI/persisted toggle; its deprecated accessor returns true only for
+source compatibility and has no production callers. Normal transport settings, banked
+withdrawal enablement and the separate optional banked-staff setting remain enforced.
+Compilation, navigation/lifecycle/banking/config/guardrail regressions and Checkstyle pass.
+Before this cutover, the full staged-spell tree passed 2,257 tests with no failures and
+four skips. The latest cutover has focused validation, not a new full-suite/live claim.
+The subsequent deletion removes `handleTransports`, its current-tile/raw-segment dispatch
+wrappers and call sites, post-handler landing waits, and obsolete transport attempt/landing
+bookkeeping (about 1,000 lines). `TransportLoopRetirementTest` guards against restoration
+of the loop, its queues or the developer UI toggle. The first full run completed 2,260
+tests with one guardrail failure and four skips: deletion renumbered an unchanged existing
+lambda exemption. Its identity was updated and three deleted-loop exemptions removed;
+no new exempted call was introduced. The repeat full suite and both Checkstyle tasks pass
+(`BUILD SUCCESSFUL`, 1m 16s).
+This historical checkpoint is superseded by the direct-item staged cutover and Phase 6 closure
+above: SIMPLE_TELEPORT no longer admits item rows, and the old item/spell/seasonal callback
+executors have been deleted. Physical acceptance remains deferred in the live ledger.
+
+2026-09-15 spell preparation cutover checkpoint: engine-owned SIMPLE_TELEPORT spell
+commands now dispatch through `Rs2SpellTeleportScene`, not `handleTeleportSpell` /
+`Rs2Magic.cast` / `quickCast`. The existing public helpers remain unchanged for legacy
+callers. The new scene observes tab opening, hidden filter-button enablement, teleport
+filter selection, filter-page closing, enchantment-submenu closing and the cast as separate
+inputs. It uses a bounded client-thread widget snapshot with copied identity/bounds and
+the audited spellbook/sprite identity, not `MagicAction.getWidgetId()` outside that boundary.
+It preserves alternate option/identifier selection, house landing evidence, wilderness
+eligibility and retained staff-preparation identity. After the cast, tab/catalog changes
+cannot reopen preparation before landing; preparation has an engine-owned four-second
+acknowledgement deadline. Six new ownership tests cover tab/cast separation, retained
+landing, timeout, interrupted/stale dispatch, hidden filters and changed spellbook.
+Compilation, 393 focused navigation/banking/transport/guardrail tests and both Checkstyle
+tasks pass; no guardrail exemptions were added. Physical acceptance is still deferred:
+the running client was not restarted or disturbed. This supersedes the unimplemented
+spell-adapter status below, not the remaining legacy transport-loop deletion gate.
+
+2026-09-15 spell preparation audit: the remaining call chain is broader than a fixed
+sleep. `handleTeleportSpell` calls `Rs2Magic.cast`, whose `canCast(MagicAction)` may
+configure seven spell filters, switch tabs, close an enchantment submenu and click
+Continue. The home-spell `quickCast` alternative calls `quickCanCast`, which also
+switches tabs and waits. Neither is a single-input engine adapter. `MagicAction.getWidgetId`
+and `getActions` are live widget searches, not immutable metadata accessors, so they
+must not escape a client-thread snapshot or be treated as fixed widget constants.
+The new `SimpleTeleportPolicyTest` audit checks every eligible packaged spell resolves
+exactly one MagicAction name and a unique sprite within its spellbook; this test passes.
+The implementation must retain alternate destination option/identifier contracts,
+observe tab/filter/submenu preparation separately, copy the selected widget identity
+and bounds in one client-thread callback, dispatch one input, and retain casting/landing
+ownership through scene changes. This is evidence for the pending migration, not a
+declaration that spell preparation is now migrated; no runtime spell code changed here.
+
+2026-09-15 Map of Alacrity ownership follow-up: all 122 packaged rows now use the
+existing ITEM_TELEPORT engine lifecycle. Inventory opening, Read, region selection,
+destination selection and landing are separately observed commands; the engine owns
+stage deadlines and cancellation. Empty/ambiguous menus cannot authorize guessed input,
+displayed hotkeys support offscreen entries, and observed locks invalidate availability.
+The blocking public helper remains only for legacy callers, not the engine dispatch path.
+Eight ownership regressions pass, including loading, lock, timeout, cancellation, landing
+and exact-action rejection. The metadata audit now covers 339 item-policy rows, including
+the 122 Map rows. Item 33233's Read action and non-equipable status were checked against
+https://oldschool.runescape.wiki/w/Map_of_alacrity_(item); its fixture records option labels,
+not fabricated cache indices. Compilation and both Checkstyle tasks pass. The full suite
+ran 2,250 tests with one failure and four skips: UdsHttpServerTest.unknownPathReturns404
+timed out reading its socket after 15 seconds; all six tests in that class passed on an
+isolated rerun. Do not describe this full-suite checkpoint as wholly green. No client
+restart or physical League acceptance was performed. This supersedes the Map ownership
+gap below; spell preparation and legacy transport-loop retirement remain closure work.
+
+2026-09-15 ownership audit follow-up: a failing headless regression proved the generated
+house spell acknowledged matching template coordinates without confirming the house scene.
+`SimpleTeleportRouteScanner` now delegates landing observation to its scene boundary;
+`Rs2SimpleTeleportScene` requires the existing house-instance/exit-portal evidence for the
+configured interior anchor, matching the item-teleport contract. Ordinary destinations retain
+their three-tile, same-plane tolerance. The regression now passes, including absent house
+scene, wrong plane, source position and successful house entry observations. Compilation,
+759 transport/navigation/guardrail tests and both Checkstyle tasks pass; guardrails remain
+903 known client-thread findings and zero queryable findings, with no regressions. Physical
+house-spell acceptance remains deferred; the running client was not restarted or disturbed.
+
+The call-chain audit also found an active Phase 6 ownership gap, not merely dead legacy code:
+`NAVIGATION_WALKER_ACTIONS.interact` -> `handleSeasonalTransport` ->
+`Rs2MapOfAlacrityTransport.tryUse` opens the map, waits, selects a region, waits again and
+selects the destination inside one engine command. All 122 rows classifying as supported
+does not prove those stages are engine-owned. Replace this with retained, nonblocking
+open/region/destination/landing observations and add stage, loading, lock, timeout and
+cancellation regressions before retiring the transport loop. Also audit the remaining
+simple-teleport helper calls: `Rs2Magic.cast` currently opens the magic tab and sleeps before
+casting. Preserve public legacy helpers until their callers are deliberately cut over;
+do not move the same blocking orchestration into a renamed adapter.
+
+2026-09-15 scope decision and closure audit: the user explicitly moved Boat/Last Boat
+and remaining dynamic Respawn support to the separate
+[future transport feature backlog](walker-future-transport-features.md). They were not
+legacy-supported features; their earlier Phase 6 blocker labels are superseded.
+Packaged transport classification and generated POH entry coverage pass, with the latest
+full suite at 2,240 tests, zero failures/errors and four skips. This is not yet a Phase 6
+completion declaration: its explicit deletion gate still fails. `Rs2Walker.handleTransports`
+retains nested dispatch, approach clicks and waits, and `tryProcessNavigationEngine` can
+still return to legacy execution when disabled or not engine-owned. The remaining closure
+work is to retire that transport control loop and its legacy-only bookkeeping, preserving
+family interactions and testing unsupported-route and disabled-engine behavior explicitly.
+Do not equate complete row classification with removal of duplicate orchestration.
+Phase 7 UI adaptation and Phase 8 `processWalk` removal remain separate work.
+
+2026-09-15 generated POH entry closure: the generator-level audit now includes every configured
+facility plus world-to-house routes, not just packaged TSV rows. It exposed and now covers
+Construction cape `Tele to POH` and house tablet `Inside`. Cape/default house-spell destinations
+are mutually exclusive varbit-gated interior/exterior edges; the outside leg chains to the
+existing engine-owned physical portal. All nine configured house locations, both preference
+values, unknown preference exclusion, changed-setting rejection and tablet consumption are
+covered headlessly. Compilation, focused tests, guardrails and checkstyle pass. The inside/outside
+flag mapping was verified live with the user's permission; the original preference and running
+script state were restored. Physical cape/spell/tablet acceptance remains in the backlog, not
+claimed by this metadata check. This does not close unresolved dynamic Boat/Respawn coverage.
+Full unit-suite checkpoint after this batch: 2,240 tests, zero failures/errors, four skips;
+completed in 2m13s. Thread-safety guardrail remains 903 known findings with no regressions.
+
 [walker-live-testing-backlog.md](walker-live-testing-backlog.md) consolidates earlier and current
 headless batches, outstanding branches of representative live passes, and contracts still needing
 implementation. As of 2026-09-06 the user requests headless-first progress; deferred physical tests
@@ -28,6 +232,61 @@ phase. This supersedes earlier physical-gate closure wording. Remaining implemen
 ownership gaps and unsupported-route decisions still require resolution before Phase 7.
 
 ## Active-graph classification closure and resolver hardening - 2026-09-09
+
+Respawn nexus partial cutover (2026-09-15): six explicit named respawn flags now select
+their own destinations through the engine-owned nexus lifecycle. Ambiguous Lumbridge/Prifddinas
+state remains unavailable pending reliable detection or an explicit configuration decision.
+Pre-dispatch landing revalidation and flag-based transport-cache invalidation are included;
+unknown/null destinations are not published. Boat and ambiguous Respawn remain open work.
+
+Combined checkpoint after jewellery fixes (2026-09-15): full unit suite and both
+Checkstyles passed in 2m13s: **2,232 tests, zero failures/errors, four skips**.
+This includes Dondakan quest filtering and Farming Guild landing/revalidation. It does
+not close the dynamic Respawn/Boat implementation gaps. Read-only Boat research now
+identifies SailingDock table 194 (Port Sarim ID 0, Pandemonium ID 1), but its exposed
+fields do not establish player teleport landing coordinates; details are in the ledger.
+
+Farming Guild box follow-up (2026-09-15): level-dependent inside/outside landing now uses
+the existing skills-necklace endpoints instead of the shared equipment enum's approximate
+outside tile. Published transport endpoints remain snapshots; a changed threshold marks the
+pending interaction unavailable before dispatch. Physical level/boost checks remain deferred.
+Dynamic nexus Respawn and Boat contracts are still implementation gaps.
+
+Jewellery requirement audit (2026-09-15): Dondakan's generated POH route now requires
+Between a Rock completion, matching the existing item transport. A constructor regression
+first reproduced the absent gate. This closes that requirement omission, not the remaining
+Farming Guild landing or dynamic nexus contracts; physical box verification remains deferred.
+
+Combined checkpoint (2026-09-15): full `:client:runUnitTests` plus both Checkstyles passed
+in 2m52s, **2,231 tests, zero failures/errors, four skips**. This includes the bank object
+null-location fix, progress-based recovery budgets, inbound DIQ and the expanded nexus
+mapping/alternatives. Client-thread guardrail remains 903 with no new regressions.
+Dynamic Respawn and Boat/Last Boat contracts remain unresolved implementation work;
+green full-suite results do not close those gaps or Phase 6.
+
+Nexus alternatives (2026-09-15): Seers' Village and Yanille now have explicit menu/landing
+contracts gated by the installed base destination and corresponding hard diary. Original
+Camelot/Watchtower routes remain available. Respawn and Boat/Last Boat still need dynamic
+landing contracts; advanced-facility physical checks remain deferred, not passed.
+
+Nexus fixed-destination expansion (2026-09-15): saved values 32-39 now publish Trollheim,
+Paddewwa, Lassar, Dareeyak, Ourania, Barbarian Outpost, Port Khazard and Ice Plateau.
+Coordinates reuse the corresponding chamber destination contracts. Dareeyak and Ice Plateau
+join the destination-scoped Wilderness confirmation stage. Respawn (40), Boat (41),
+alternative destinations and the wider menu/landing audit remain open; they are not waived.
+
+Nexus saved-value correction (2026-09-15): live cache enum 1377/struct parameter 660
+proved several existing Java enum ordinals selected the wrong destinations. Corrected
+saved-slot decoding and added an independent 31-value name fixture. The same read-only
+capture established the missing 32-41 mappings and alternative 151/154/156/191 keys;
+their landing/menu contracts remain implementation work, recorded in the live backlog.
+
+POH fairy-ring follow-up (2026-09-15): inbound DIQ now uses the fairy-ring engine protocol
+only for the configured house destination, complementing outbound house-ring ownership.
+Landing is resolved beside the actual usable ring in the player's house world view, not beside
+the synthetic exit anchor. Pending landing/restoration does not require the transport to remain
+in the equipment-filtered graph. Physical DIQ acceptance remains deferred; this does not close
+the remaining nexus destination/menu audit or Phase 6.
 
 Nexus initial-cutover checkpoint (2026-09-12): the current tree passes **2,223 unit tests,
 zero failures/errors, four skips**, and both Checkstyles in 2m50s. The 32 existing nexus
@@ -1549,9 +1808,10 @@ also notes that leaving/re-entering resets levers; future physical acceptance mu
 locked states, door opening/crossing in both directions and no inverse bounce. These gates are in the
 live ledger and are not satisfied by the headless truth table.
 
-The classifier changes from **1,463 to 1,445** legacy rows and **987 to 969** ordinary TRANSPORT
-rows. Full puzzle ownership and Phase 6 closure remain open. No client restart or gameplay input
-was performed.
+At this historical checkpoint, the classifier changed from **1,463 to 1,445** legacy rows and
+**987 to 969** ordinary TRANSPORT rows, while full puzzle ownership and Phase 6 closure remained
+open. The 2026-09-15 closure entry at the top supersedes that implementation status; no client
+restart or gameplay input was performed for this earlier slice.
 
 Validation passed: compilation, **459** focused transport/banking/navigation/core tests including
 the pathfinder benchmark, main/test Checkstyle and `git diff --check`. The initial fail-first
@@ -4052,10 +4312,17 @@ Deletion gate: remove migrated door/rockfall scans and their attempt/cooldown fi
 
 ### Phase 6 - Migrate transports by family
 
-Status: in progress. The adjacent same-plane slice has completed its headless and live acceptance
+Status: complete on implementation and headless verification (2026-09-15). NavigationEngine is the sole live executor;
+unsupported routes fail without legacy fallback. The outer `handleTransports` loop is deleted.
+All packaged direct-item rows and both seasonal item families now have staged adapters; the
+final repeat full suite passes 2,278 tests with zero failures/errors and four skips, and both
+Checkstyle tasks pass. Rebuilt-client acceptance of the latest
+adapters is recorded separately as deferred, not inferred from older live traces. The current
+dated ledger above supersedes the following historical rollout descriptions, including their
+old `LEGACY_LOCKED` and simple-item classification statements.
+
+Historical rollout: the adjacent same-plane slice completed its headless and live acceptance
 gates.
-The immutable route snapshot classifies only conservatively eligible catalog edges into migrated
-route kinds; a route containing any other transport remains `LEGACY_LOCKED` before input.
 The live adapter resolves the exact enabled directed row and its object id near the catalog origin,
 then dispatches through `RouteInteraction.Kind.ADJACENT_TRANSPORT`. Persistent shortcut objects are
 verified against the catalog row's directed destination boundary rather than only raw-edge progress;
@@ -4184,7 +4451,9 @@ Required transport invariants:
 - recalculate from the actual landing location when required;
 - never let a transport handler issue a normal route click as an undocumented fallback.
 
-Deletion gate: `handleTransports` no longer owns a control loop; only family handlers remain.
+Deletion gate: satisfied. `handleTransports` and its legacy-only bookkeeping are deleted; active
+transport execution is owned by the engine family adapters. Broader unreachable facade/process
+logic remains explicitly scoped to Phase 8.
 
 ### Phase 7 - Make ShortestPathPlugin an adapter
 

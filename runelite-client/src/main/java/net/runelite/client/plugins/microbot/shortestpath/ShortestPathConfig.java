@@ -906,16 +906,11 @@ public interface ShortestPathConfig extends Config {
         return true;
     }
 
-	@ConfigItem(
-		keyName = "navigationEngineOrdinaryWalking",
-		name = "Unified navigation engine",
-		description = "Use the new executor for walking and transport/obstacle families already migrated to it.",
-		position = 2,
-		section = sectionDeveloper
-	)
+	/** Compatibility accessor; navigation ownership is no longer configurable. */
+	@Deprecated
 	default boolean navigationEngineOrdinaryWalking()
 	{
-		return false;
+		return true;
 	}
 
     @ConfigItem(

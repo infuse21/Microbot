@@ -112,6 +112,12 @@ public final class Rs2TeleportationPortalScene implements TeleportationPortalSce
 		{
 			PohPortal chamber = TeleportationPortalPolicy.chamberPortal(transport);
 			boolean directPoh = TeleportationPortalPolicy.isDirectPoh(transport);
+			boolean changedLanding = TeleportationPortalPolicy.pohTeleport(transport)
+				== net.runelite.client.plugins.microbot.util.poh.data.JewelleryBox.FARMING_GUILD
+				&& !transport.getDestination().equals(
+					net.runelite.client.plugins.microbot.util.poh.data.JewelleryBox.FARMING_GUILD.getDestination());
+			changedLanding |= TeleportationPortalPolicy.pohTeleport(transport) == NexusPortal.RESPAWN
+				&& !transport.getDestination().equals(NexusPortal.RESPAWN.getDestination());
 			if (directPoh && !PohTeleports.isInHouse())
 			{
 				return null;
@@ -185,6 +191,10 @@ public final class Rs2TeleportationPortalScene implements TeleportationPortalSce
 				{
 					continue;
 				}
+				if (changedLanding)
+				{
+					action = TeleportationPortalPolicy.POH_DESTINATION_UNAVAILABLE;
+				}
 				int distance = tile.distanceTo2D(transport.getOrigin());
 				if (distance < bestDistance)
 				{
@@ -208,7 +218,9 @@ public final class Rs2TeleportationPortalScene implements TeleportationPortalSce
 			boolean nexus = TeleportationPortalPolicy.pohTeleport(transport) instanceof NexusPortal;
 			if (nexus && (TeleportationPortalPolicy.pohTeleport(transport) == NexusPortal.ANNAKARL
 				|| TeleportationPortalPolicy.pohTeleport(transport) == NexusPortal.GHORROCK
-				|| TeleportationPortalPolicy.pohTeleport(transport) == NexusPortal.CARRALLANGER))
+				|| TeleportationPortalPolicy.pohTeleport(transport) == NexusPortal.CARRALLANGER
+				|| TeleportationPortalPolicy.pohTeleport(transport) == NexusPortal.DAREEYAK
+				|| TeleportationPortalPolicy.pohTeleport(transport) == NexusPortal.ICE_PLATEAU))
 			{
 				Widget warning = Microbot.getClient().getWidget(475, 11);
 				if (warning != null && !warning.isHidden())

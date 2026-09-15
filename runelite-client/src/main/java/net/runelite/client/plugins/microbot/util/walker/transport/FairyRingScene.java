@@ -7,6 +7,12 @@ import net.runelite.client.plugins.microbot.util.walker.transport.model.FairyRin
 /** Live resolver boundary for fairy-ring equipment, object, dial, and landing stages. */
 public interface FairyRingScene
 {
+	default boolean hasLanded(PlannedEdge edge, WorldPoint player)
+	{
+		return player != null && player.getPlane() == edge.to().getPlane()
+			&& player.distanceTo2D(edge.to()) <= 3;
+	}
+
 	FairyRing find(PlannedEdge edge);
 
 	FairyRing observe(PlannedEdge edge, String pendingAction, int originalWeaponId);

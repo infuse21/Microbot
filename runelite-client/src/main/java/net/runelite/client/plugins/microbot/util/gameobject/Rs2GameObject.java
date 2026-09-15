@@ -1573,14 +1573,24 @@ public class Rs2GameObject {
     }
 
     private static <T extends TileObject> List<T> getSceneObjects(Function<Tile, Collection<? extends T>> extractor, Predicate<T> predicate, LocalPoint anchorLocal, int distance) {
+        if (anchorLocal == null) {
+            return Collections.emptyList();
+        }
         if (distance > Rs2LocalPoint.worldToLocalDistance(Constants.SCENE_SIZE)) {
             distance = Rs2LocalPoint.worldToLocalDistance(Constants.SCENE_SIZE);
         }
 
-        return getSceneObjects(extractor)
-                .filter(withinTilesPredicate(distance, anchorLocal))
-                .filter(predicate)
-                .sorted(Comparator.comparingInt(o -> objectLocalLocation(o).distanceTo(anchorLocal)))
+        List<Map.Entry<T, Integer>> candidates = new ArrayList<>();
+        final int radius = distance;
+        getSceneObjects(extractor).forEach(object -> {
+            LocalPoint location = objectLocalLocation(object);
+            if (isWithinTiles(anchorLocal, location, radius) && predicate.test(object)) {
+                candidates.add(new AbstractMap.SimpleImmutableEntry<>(object, location.distanceTo(anchorLocal)));
+            }
+        });
+        return candidates.stream()
+                .sorted(Map.Entry.comparingByValue())
+                .map(Map.Entry::getKey)
                 .collect(Collectors.toList());
     }
 
@@ -1592,6 +1602,9 @@ public class Rs2GameObject {
     }
 
     private static boolean isWithinTiles(LocalPoint anchor, LocalPoint objLoc, int distance) {
+        if (anchor == null || objLoc == null) {
+            return false;
+        }
         int dx = Math.abs(anchor.getX() - objLoc.getX());
         int dy = Math.abs(anchor.getY() - objLoc.getY());
 

@@ -42,6 +42,21 @@ public final class Rs2FairyRingScene implements FairyRingScene
 	}
 
 	@Override
+	public boolean hasLanded(PlannedEdge edge, WorldPoint player)
+	{
+		if (!edge.to().equals(net.runelite.client.plugins.microbot.shortestpath.PohPanel.getExitPortalTile()))
+		{
+			return FairyRingScene.super.hasLanded(edge, player);
+		}
+		// The pending edge survives transport filtering during the equipment swap.
+		Transport houseRing = new Transport(edge.to(), edge.to(), "DIQ",
+			net.runelite.client.plugins.microbot.shortestpath.TransportType.FAIRY_RING, true, 5);
+		RingObject ring = findRingObject(houseRing);
+		return ring != null && player != null && player.getPlane() == ring.tile.getPlane()
+			&& player.distanceTo2D(ring.tile) <= 3;
+	}
+
+	@Override
 	public FairyRing observe(PlannedEdge edge, String pendingAction, int originalWeaponId)
 	{
 		Transport transport = findTransport(edge);

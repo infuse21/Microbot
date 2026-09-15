@@ -108,12 +108,6 @@ public final class WebWalkLog {
 				rawIndex, distance, reach, selection, stage, actionType, issued, reason);
 	}
 
-	/** Once per request: which published route edges forced the legacy executor. */
-	public static void navigationMode(long requestId, long generation, String unsupportedEdges) {
-		LOG.info("[WebWalk] nav_mode | req={} gen={} mode=LEGACY_LOCKED unsupported={}",
-				requestId, generation, unsupportedEdges);
-	}
-
 	/** One line for each input, replan, or failure produced by Phase 4 recovery. */
 	public static void navigationRecovery(long requestId, long generation, String decision,
 			String cause, int attempt, int budget, long ageMs, int blockedEdgeIndex,

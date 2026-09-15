@@ -1,5 +1,7 @@
 package net.runelite.client.plugins.microbot.util.walker.transport;
 
+import net.runelite.client.plugins.microbot.util.leaguetransport.Rs2MapOfAlacrityTransport;
+
 import net.runelite.api.Quest;
 import net.runelite.api.QuestState;
 import net.runelite.api.coords.WorldPoint;
@@ -145,6 +147,7 @@ public final class ItemTeleportPolicy
 		Map.entry("Rada's blessing: Mount Karuulm", "Mount Karuulm"),
 		Map.entry("Stony basalt: Troll Stronghold", "Troll Stronghold"),
 		Map.entry("Teleport to House tablet: Outside", "Outside"),
+		Map.entry("Teleport to House tablet: Inside", "Inside"),
 		Map.entry("Teleport crystal: Lletya", "Lletya"),
 		Map.entry("Teleport crystal: Prifddinas", "Prifddinas"),
 		Map.entry("Varrock tablet: Grand exchange", "Grand Exchange"),
@@ -172,6 +175,7 @@ public final class ItemTeleportPolicy
 		Map.entry("Combat bracelet: Ranging Guild", "Ranging Guild"),
 		Map.entry("Combat bracelet: Warriors' Guild", "Warriors' Guild"),
 		Map.entry("Construction cape: Aldarin", "Aldarin"),
+		Map.entry("Construction cape: Tele to POH", "Tele to POH"),
 		Map.entry("Construction cape: Brimhaven", "Brimhaven"),
 		Map.entry("Construction cape: Hosidius", "Hosidius"),
 		Map.entry("Construction cape: Pollnivneach", "Pollnivneach"),
@@ -324,6 +328,10 @@ public final class ItemTeleportPolicy
 
 	public static boolean isEligible(Transport transport)
 	{
+		if (net.runelite.client.plugins.microbot.util.leaguetransport.Rs2MapOfAlacrityTransport.isStagedRoute(transport))
+		{
+			return true;
+		}
 		if (transport == null || transport.getType() != TransportType.TELEPORTATION_ITEM
 			|| transport.getOrigin() != null || transport.getDestination() == null
 			|| transport.getCurrencyAmount() != 0 || transport.getItemIdRequirements().isEmpty()
@@ -333,6 +341,17 @@ public final class ItemTeleportPolicy
 			return false;
 		}
 		Set<Integer> ids = ITEMS.get(transport.getDisplayInfo().split(":", 2)[0]);
+		if ("Construction cape: Tele to POH".equals(transport.getDisplayInfo())
+			&& (transport.isConsumable() || !hasDirectedHousePreference(transport)))
+		{
+			return false;
+		}
+		if ("Teleport to House tablet: Inside".equals(transport.getDisplayInfo())
+			&& (!transport.isConsumable() || !transport.getDestination().equals(
+				net.runelite.client.plugins.microbot.shortestpath.PohPanel.getExitPortalTile())))
+		{
+			return false;
+		}
 		if ("Teleport to House tablet: Outside".equals(transport.getDisplayInfo())
 			&& !isPohOutsideTablet(transport))
 		{
@@ -411,6 +430,31 @@ public final class ItemTeleportPolicy
 	{
 		return transport != null && transport.getDisplayInfo() != null
 			&& transport.getDisplayInfo().startsWith("Quetzal whistle:");
+	}
+
+	static boolean hasDirectedHousePreference(Transport transport)
+	{
+		if (transport.getVarbits().size() != 2) return false;
+		Integer outside = null;
+		Integer location = null;
+		for (TransportVarbit gate : transport.getVarbits())
+		{
+			if (gate.getOperator() != TransportVarbit.Operator.EQUAL) return false;
+			if (gate.getVarbitId() == net.runelite.api.gameval.VarbitID.POH_TELE_TOGGLE) outside = gate.getValue();
+			if (gate.getVarbitId() == net.runelite.api.gameval.VarbitID.POH_HOUSE_LOCATION) location = gate.getValue();
+		}
+		if (outside == null || location == null) return false;
+		for (net.runelite.client.plugins.microbot.util.poh.data.HouseLocation house
+			: net.runelite.client.plugins.microbot.util.poh.data.HouseLocation.values())
+		{
+			if (house.getVarbitValue() == location)
+			{
+				return outside == 0 ? transport.getDestination().equals(
+					net.runelite.client.plugins.microbot.shortestpath.PohPanel.getExitPortalTile())
+					: outside == 1 && transport.getDestination().equals(house.getPortalLocation());
+			}
+		}
+		return false;
 	}
 
 	public static String quetzalWhistleDestination(Transport transport)
@@ -599,7 +643,8 @@ public final class ItemTeleportPolicy
 	public static boolean requiresInventorySurface(Transport transport)
 	{
 		return transport != null && transport.getDisplayInfo() != null
-			&& (transport.getDisplayInfo().startsWith("Camulet:")
+			&& (Rs2MapOfAlacrityTransport.isStagedRoute(transport)
+			|| transport.getDisplayInfo().startsWith("Camulet:")
 			|| "Max cape: Feldip Hills".equals(transport.getDisplayInfo())
 			|| "Max cape: Black chinchompa".equals(transport.getDisplayInfo()));
 	}
@@ -712,6 +757,10 @@ public final class ItemTeleportPolicy
 
 	public static String inventoryAction(Transport transport)
 	{
+		if (Rs2MapOfAlacrityTransport.isStagedRoute(transport))
+		{
+			return "Read";
+		}
 		if (!isEligible(transport))
 		{
 			return null;

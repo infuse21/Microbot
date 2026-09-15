@@ -3,6 +3,8 @@ package net.runelite.client.plugins.microbot.util.leaguetransport;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.shortestpath.Transport;
 import net.runelite.client.plugins.microbot.shortestpath.TransportType;
+import net.runelite.client.plugins.microbot.util.walker.transport.ItemTeleportPolicy;
+import net.runelite.client.plugins.microbot.util.walker.transport.SimpleTeleportPolicy;
 import org.junit.Test;
 
 import java.util.Collections;
@@ -48,6 +50,33 @@ public class SeasonalTransportHandlersTest
 
 		assertEquals(169, seasonal.size());
 		assertTrue(seasonal.stream().allMatch(SeasonalTransportHandlers::canHandle));
+	}
+
+	@Test
+	public void mapMenusUseStagedItemOwnershipRatherThanTheBlockingSimpleHandler()
+	{
+		int maps = 0;
+		int compasses = 0;
+		for (Set<Transport> group : Transport.loadAllFromResources().values())
+		{
+			for (Transport row : group)
+			{
+				if (Rs2MapOfAlacrityTransport.matches(row))
+				{
+					maps++;
+					assertTrue(ItemTeleportPolicy.isEligible(row));
+					assertFalse(SimpleTeleportPolicy.isEligible(row));
+				}
+				else if (Rs2ClueCompassTransport.matches(row))
+				{
+					compasses++;
+					assertTrue(Rs2ClueCompassTransport.isStagedRoute(row));
+					assertFalse(SimpleTeleportPolicy.isEligible(row));
+				}
+			}
+		}
+		assertEquals(122, maps);
+		assertEquals(47, compasses);
 	}
 
 	private static Transport seasonal(String display)

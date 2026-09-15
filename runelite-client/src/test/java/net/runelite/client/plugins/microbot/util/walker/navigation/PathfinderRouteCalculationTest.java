@@ -27,6 +27,24 @@ import static org.junit.Assert.fail;
 public class PathfinderRouteCalculationTest
 {
 	@Test
+	public void allDirectItemRowsUseStagedOwnership()
+	{
+		int count = 0;
+		for (Set<Transport> group : Transport.loadAllFromResources().values())
+		{
+			for (Transport row : group)
+			{
+				if (row.getType() != TransportType.TELEPORTATION_ITEM || row.getDisplayInfo().contains(":")) continue;
+				assertEquals(row.getDisplayInfo(), RouteEdge.Kind.ITEM_TELEPORT,
+					PathfinderRouteCalculation.classifyTransportEdge(Set.of(row)));
+				assertTrue(net.runelite.client.plugins.microbot.util.walker.transport.DirectItemTeleportPolicy.action(row) != null);
+				count++;
+			}
+		}
+		assertEquals(74, count);
+	}
+
+	@Test
 	public void resourceAreaPaidAndFreeVariantsPublishCatalogOwnership()
 	{
 		int count = 0;
@@ -253,8 +271,24 @@ public class PathfinderRouteCalculationTest
 			TransportType.SEASONAL_TRANSPORT, false, 20,
 			Set.of(Collections.singleton(30363)));
 
-		assertEquals(RouteEdge.Kind.SIMPLE_TELEPORT,
+		assertEquals(RouteEdge.Kind.ITEM_TELEPORT,
 			PathfinderRouteCalculation.classifyTransportEdge(Collections.singleton(seasonal)));
+	}
+
+	@Test
+	public void allPackagedCompassRoutesUseStagedItemOwnership()
+	{
+		int count = 0;
+		for (Set<Transport> group : Transport.loadAllFromResources().values())
+		{
+			for (Transport row : group)
+			{
+				if (!net.runelite.client.plugins.microbot.util.leaguetransport.Rs2ClueCompassTransport.matches(row)) continue;
+				assertEquals(RouteEdge.Kind.ITEM_TELEPORT, PathfinderRouteCalculation.classifyTransportEdge(Set.of(row)));
+				count++;
+			}
+		}
+		assertEquals(47, count);
 	}
 
 	@Test

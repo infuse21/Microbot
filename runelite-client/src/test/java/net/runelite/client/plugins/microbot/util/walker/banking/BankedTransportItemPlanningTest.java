@@ -319,6 +319,17 @@ public class BankedTransportItemPlanningTest {
 	}
 
 	@Test
+	public void repeatedPohInsideEdgesWithdrawOneTabletPerUse()
+	{
+		Transport tablet = new Transport(new WorldPoint(1859, 7051, 0),
+			"Teleport to House tablet: Inside", TransportType.TELEPORTATION_ITEM,
+			true, 19, Set.of(Set.of(8013)), true);
+		Map<Integer, Integer> requirements =
+			Rs2WalkerBankingPlanner.getMissingTransportItemIdsWithQuantities(List.of(tablet, tablet));
+		assertEquals(2, requirements.getOrDefault(8013, 0).intValue());
+	}
+
+	@Test
 	public void repeatedMasterScrollBookEdgesWithdrawOneReusableBook()
 	{
 		Transport book = teleport("Master Scroll Book: Nardah");
@@ -557,7 +568,7 @@ public class BankedTransportItemPlanningTest {
     }
 
     @Test
-    public void bankedStaffSelectionFeedsCollectorAndHonorsTheEngineToggle() {
+    public void bankedStaffSelectionHonorsBankingSettingsButIgnoresRetiredEngineToggle() {
         net.runelite.client.plugins.microbot.shortestpath.ShortestPathConfig previous =
                 net.runelite.client.plugins.microbot.util.walker.Rs2Walker.config;
         net.runelite.client.plugins.microbot.shortestpath.ShortestPathConfig config =
@@ -583,8 +594,9 @@ public class BankedTransportItemPlanningTest {
                     List.of(teleport("Varrock Teleport"))));
             org.mockito.Mockito.when(config.navigationEngineOrdinaryWalking()).thenReturn(false);
             scene.clearInvocations();
-            Rs2WalkerBankingPlanner.getMissingTransportItemIdsWithQuantities(List.of(teleport("Varrock Teleport")));
-            scene.verifyNoInteractions();
+            assertEquals(Map.of(ItemID.LAWRUNE, 1), Rs2WalkerBankingPlanner.getMissingTransportItemIdsWithQuantities(
+                    List.of(teleport("Varrock Teleport"))));
+            scene.clearInvocations();
             org.mockito.Mockito.when(config.navigationEngineOrdinaryWalking()).thenReturn(true);
             org.mockito.Mockito.when(config.useBankedElementalStaffs()).thenReturn(false);
             Map<Integer, Integer> runeOnly = Rs2WalkerBankingPlanner.getMissingTransportItemIdsWithQuantities(

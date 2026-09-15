@@ -572,6 +572,12 @@ public class PathfinderConfig {
         List<int[]> varbitConditions = new ArrayList<>();
         Set<Integer> varplayerIds = new HashSet<>();
         List<int[]> varplayerConditions = new ArrayList<>();
+        if (usePoh) {
+            for (int id : net.runelite.client.plugins.microbot.util.poh.data.NexusPortal.respawnSelectionVarbits()) {
+                varbitIds.add(id);
+                varbitConditions.add(new int[]{id, TransportVarbit.Operator.EQUAL.ordinal(), 1});
+            }
+        }
         // Skills that some transport actually gates on (see hasRequiredLevels: a level > 0 is a
         // requirement). Only these may participate in the verification hash — otherwise hitpoints
         // regenerating invalidates the whole transport cache.
@@ -1846,8 +1852,7 @@ public class PathfinderConfig {
         Rs2Spells rs2Spell = Rs2Magic.getRs2Spell(displayInfo);
         if (rs2Spell == null) return false;
         if (Rs2Magic.hasRequiredRunes(rs2Spell, RuneFilter.builder().includeBank(useBankItems).build())) return true;
-        return config.navigationEngineOrdinaryWalking()
-                && (!useBankItems || config.walkWithBankedTransports() && config.useBankedElementalStaffs())
+        return (!useBankItems || config.walkWithBankedTransports() && config.useBankedElementalStaffs())
                 && net.runelite.client.plugins.microbot.util.walker.transport.SimpleTeleportPolicy.isEligible(transport)
                 && net.runelite.client.plugins.microbot.util.walker.banking.Rs2SpellEquipmentScene.plan(
                         List.of(Rs2Magic.getRequiredRunes(rs2Spell, 1)), useBankItems) != null;

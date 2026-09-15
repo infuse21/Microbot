@@ -37,6 +37,8 @@ public class PohTransport extends Transport {
             getQuests().put(net.runelite.api.Quest.TEARS_OF_GUTHIX, net.runelite.api.QuestState.FINISHED);
         } else if (teleport == net.runelite.client.plugins.microbot.util.poh.data.JewelleryBox.MISCELLANIA) {
             getQuests().put(net.runelite.api.Quest.THRONE_OF_MISCELLANIA, net.runelite.api.QuestState.FINISHED);
+        } else if (teleport == net.runelite.client.plugins.microbot.util.poh.data.JewelleryBox.DONDAKAN) {
+            getQuests().put(net.runelite.api.Quest.BETWEEN_A_ROCK, net.runelite.api.QuestState.FINISHED);
         }
     }
 

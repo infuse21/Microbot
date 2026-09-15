@@ -12,6 +12,10 @@ import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.dialogues.Rs2Dialogue;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2ItemModel;
+import net.runelite.client.plugins.microbot.util.leaguetransport.Rs2MapOfAlacrityScene;
+import net.runelite.client.plugins.microbot.util.leaguetransport.Rs2ClueCompassScene;
+import net.runelite.client.plugins.microbot.util.leaguetransport.Rs2ClueCompassTransport;
+import net.runelite.client.plugins.microbot.util.leaguetransport.Rs2MapOfAlacrityTransport;
 import net.runelite.client.plugins.microbot.util.tabs.Rs2Tab;
 import net.runelite.client.plugins.microbot.util.widget.Rs2Widget;
 import net.runelite.client.plugins.microbot.util.walker.Rs2PathApi;
@@ -48,6 +52,14 @@ public final class Rs2ItemTeleportScene implements ItemTeleportScene
 	}
 
 	@Override
+	public boolean hasLanded(PlannedEdge edge, net.runelite.api.coords.WorldPoint player)
+	{
+		return ItemTeleportScene.super.hasLanded(edge, player)
+			&& (!edge.to().equals(net.runelite.client.plugins.microbot.shortestpath.PohPanel.getExitPortalTile())
+				|| net.runelite.client.plugins.microbot.util.poh.PohTeleports.isInHouse());
+	}
+
+	@Override
 	public ItemTeleport observe(PlannedEdge edge, String pendingAction)
 	{
 		if (edge == null || edge.from() == null || edge.to() == null)
@@ -67,6 +79,21 @@ public final class Rs2ItemTeleportScene implements ItemTeleportScene
 			return null;
 		}
 		Set<Transport> transports = TransportEdgeMatcher.find(Rs2PathApi.getTransports(), edge.from(), edge.to());
+		if (Rs2DirectItemTeleportScene.owns(pendingAction)
+			|| pendingAction == null && transports.stream().anyMatch(DirectItemTeleportPolicy::isEligible))
+		{
+			return Rs2DirectItemTeleportScene.observe(transports, pendingAction, edge.to());
+		}
+		if (Rs2ClueCompassScene.owns(pendingAction)
+			|| transports.stream().anyMatch(Rs2ClueCompassTransport::isStagedRoute))
+		{
+			return Rs2ClueCompassScene.observe(transports, pendingAction);
+		}
+		if (Rs2MapOfAlacrityScene.owns(pendingAction)
+			|| transports.stream().anyMatch(Rs2MapOfAlacrityTransport::isStagedRoute))
+		{
+			return Rs2MapOfAlacrityScene.observe(transports, pendingAction);
+		}
 		Transport whistle = transports.stream().filter(ItemTeleportPolicy::isEligible)
 			.filter(ItemTeleportPolicy::isQuetzalWhistle).findFirst().orElse(null);
 		if (whistle != null && quetzalWhistleMapVisible())
@@ -111,6 +138,10 @@ public final class Rs2ItemTeleportScene implements ItemTeleportScene
 			for (Transport transport : transports)
 			{
 				if (!ItemTeleportPolicy.isEligible(transport))
+				{
+					continue;
+				}
+				if (!Rs2SimpleTeleportScene.matchesHousePreference(transport))
 				{
 					continue;
 				}
@@ -257,6 +288,19 @@ public final class Rs2ItemTeleportScene implements ItemTeleportScene
 
 	public boolean dispatch(RouteInteraction interaction)
 	{
+		if (interaction == null || Thread.currentThread().isInterrupted()) return false;
+		if (Rs2DirectItemTeleportScene.owns(interaction.getAction()))
+		{
+			return Rs2DirectItemTeleportScene.dispatch(interaction);
+		}
+		if (Rs2ClueCompassScene.owns(interaction.getAction()))
+		{
+			return Rs2ClueCompassScene.dispatch(interaction);
+		}
+		if (Rs2MapOfAlacrityScene.owns(interaction.getAction()))
+		{
+			return Rs2MapOfAlacrityScene.dispatch(interaction);
+		}
 		if (interaction.getAction().startsWith(ITEM_OPEN_RESTORE_PREFIX)
 			|| interaction.getAction().startsWith(RESTORE_OPEN_PREFIX))
 		{

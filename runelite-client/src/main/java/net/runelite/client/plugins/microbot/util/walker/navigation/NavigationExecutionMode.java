@@ -4,6 +4,5 @@ package net.runelite.client.plugins.microbot.util.walker.navigation;
 public enum NavigationExecutionMode
 {
 	SHADOW,
-	ENGINE_SUPPORTED,
-	LEGACY_LOCKED
+	ENGINE_SUPPORTED
 }

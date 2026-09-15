@@ -132,6 +132,16 @@ public class PohSpiritTreeSceneTest
 			house.when(PohTeleports::isInHouse).thenReturn(false);
 			assertNull(new Rs2FairyRingScene().find(edge));
 			assertNull(new Rs2SpiritTreeScene().find(edge));
+			Rs2FairyRingScene ringResolver = new Rs2FairyRingScene();
+			assertFalse(ringResolver.hasLanded(incoming, room));
+			house.when(PohTeleports::isInHouse).thenReturn(true);
+			path.when(Rs2PathApi::getTransports).thenReturn(Map.of());
+			assertFalse(ringResolver.hasLanded(incoming, anchor));
+			assertFalse(ringResolver.hasLanded(incoming, room.dx(4)));
+			assertFalse(ringResolver.hasLanded(incoming, new WorldPoint(room.getX(), room.getY(), 1)));
+			assertTrue(ringResolver.hasLanded(incoming, room));
+			when(object.getWorldView()).thenReturn(foreign);
+			assertFalse(ringResolver.hasLanded(incoming, room));
 		}
 	}
 }

@@ -150,7 +150,6 @@ public final class Rs2WalkerBankingPlanner {
                 Rs2Spells rs2Spell = Rs2Magic.getRs2Spell(displayInfo);
                 return Rs2Magic.hasRequiredRunes(rs2Spell)
                         || rs2Spell != null && Rs2Walker.config != null
-                        && Rs2Walker.config.navigationEngineOrdinaryWalking()
                         && net.runelite.client.plugins.microbot.util.walker.transport.SimpleTeleportPolicy.isEligible(transport)
                         && Rs2SpellEquipmentScene.plan(List.of(getSpellRequirements(transport)), false) != null;
             }
@@ -355,8 +354,7 @@ public final class Rs2WalkerBankingPlanner {
             return;
         }
         if (staffExecutionSupported && Rs2Walker.config != null
-                && Rs2Walker.config.walkWithBankedTransports() && Rs2Walker.config.useBankedElementalStaffs()
-                && Rs2Walker.config.navigationEngineOrdinaryWalking()) {
+                && Rs2Walker.config.walkWithBankedTransports() && Rs2Walker.config.useBankedElementalStaffs()) {
             BankedSpellEquipmentPlanner.Plan selected = Rs2SpellEquipmentScene.plan(required, true);
             if (selected != null) {
                 selected.getRuneWithdrawals().forEach((itemId, amount) ->

@@ -187,11 +187,25 @@ public class PohPanel extends PluginPanel {
         }
         WorldPoint outsidePoint = location.getPortalLocation();
 
-        transportMap.put(null, Set.of(
-                new Transport(exitPortal, "Construction cape: Tele to POH", TransportType.TELEPORTATION_ITEM, true, 19, Set.of(Set.of(9789), Set.of(9790))),
-                new Transport(exitPortal, "Teleport to House", TransportType.TELEPORTATION_SPELL, true, 19, Map.of(Skill.MAGIC, 40)),
-                new Transport(exitPortal, "Teleport to House tablet: Inside", TransportType.TELEPORTATION_ITEM, true, 19, Set.of(Set.of(8013)))
-        ));
+        Set<Transport> teleports = new HashSet<>();
+        teleports.add(new Transport(exitPortal, "Teleport to House tablet: Inside",
+                TransportType.TELEPORTATION_ITEM, true, 19, Set.of(Set.of(8013)), true));
+        for (int outside = 0; outside <= 1; outside++) {
+            WorldPoint landing = outside == 0 ? exitPortal : outsidePoint;
+            Transport cape = new Transport(landing, "Construction cape: Tele to POH",
+                    TransportType.TELEPORTATION_ITEM, true, 19, Set.of(Set.of(9789), Set.of(9790)));
+            Transport spell = new Transport(landing, "Teleport to House",
+                    TransportType.TELEPORTATION_SPELL, true, 19, Map.of(Skill.MAGIC, 40));
+            for (Transport teleport : Set.of(cape, spell)) {
+                teleport.getVarbits().add(new TransportVarbit(
+                        net.runelite.api.gameval.VarbitID.POH_TELE_TOGGLE, outside, TransportVarbit.Operator.EQUAL));
+                teleport.getVarbits().add(new TransportVarbit(
+                        net.runelite.api.gameval.VarbitID.POH_HOUSE_LOCATION,
+                        location.getVarbitValue(), TransportVarbit.Operator.EQUAL));
+                teleports.add(teleport);
+            }
+        }
+        transportMap.put(null, teleports);
         mergeTransports(transportMap, createHouseEntryPortalTransport(exitPortal, location));
         return transportMap;
     }
@@ -275,7 +289,7 @@ public class PohPanel extends PluginPanel {
         }
         pohTransports.computeIfAbsent(exitPortal, p -> new HashSet<>()).addAll(pohTeleports.stream().map(
                 t -> new PohTransport(exitPortal, t)
-        ).collect(Collectors.toList()));
+        ).filter(t -> t.getDestination() != null).collect(Collectors.toList()));
 
         return pohTransports;
     }

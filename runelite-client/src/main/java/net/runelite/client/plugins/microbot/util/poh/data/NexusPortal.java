@@ -54,7 +54,18 @@ public enum NexusPortal implements PohTeleport {
     CEMETERY(TeleportType.ARCEUUS_MAGIC, "Cemetery", TeleportLocationData.CEMETERY.getLocation()),
     BARROWS(TeleportType.ARCEUUS_MAGIC, "Barrows", TeleportLocationData.BARROWS.getLocation()),
     APE_ATOLL_DUNGEON(TeleportType.ARCEUUS_MAGIC, "Ape Atoll Dungeon", TeleportLocationData.APE_ATOLL_ARCEUUS.getLocation()),
-    CIVITAS_ILLA_FORTIS(TeleportType.NORMAL_MAGIC, "Civitas illa Fortis", TeleportLocationData.CIVITAS_ILLA_FORTIS.getLocation());
+    CIVITAS_ILLA_FORTIS(TeleportType.NORMAL_MAGIC, "Civitas illa Fortis", TeleportLocationData.CIVITAS_ILLA_FORTIS.getLocation()),
+    TROLLHEIM(TeleportType.NORMAL_MAGIC, "Trollheim", PohPortal.TROLLHEIM.getDestination()),
+    PADDEWWA(TeleportType.ANCIENT_MAGICKS, "Paddewwa", PohPortal.PADDEWWA.getDestination()),
+    LASSAR(TeleportType.ANCIENT_MAGICKS, "Lassar", PohPortal.LASSAR.getDestination()),
+    DAREEYAK(TeleportType.ANCIENT_MAGICKS, "Dareeyak", PohPortal.DAREEYAK.getDestination()),
+    OURANIA(TeleportType.LUNAR_MAGIC, "Ourania", PohPortal.OURANIA.getDestination()),
+    BARBARIAN_OUTPOST(TeleportType.LUNAR_MAGIC, "Barbarian Outpost", PohPortal.BARBARIAN_OUTPOST.getDestination()),
+    PORT_KHAZARD(TeleportType.LUNAR_MAGIC, "Port Khazard", PohPortal.PORT_KHAZARD.getDestination()),
+    ICE_PLATEAU(TeleportType.LUNAR_MAGIC, "Ice Plateau", PohPortal.ICE_PLATEAU.getDestination()),
+    SEERS_VILLAGE(TeleportType.NORMAL_MAGIC, "Seers' Village", TeleportLocationData.CAMELOT_BANK.getLocation()),
+    YANILLE(TeleportType.NORMAL_MAGIC, "Yanille", TeleportLocationData.WATCHTOWER_YANILLE.getLocation()),
+    RESPAWN(TeleportType.ARCEUUS_MAGIC, "Respawn", null);
 
     private final TeleportType type;
     private final String text;
@@ -69,13 +80,52 @@ public enum NexusPortal implements PohTeleport {
 
     @Override
     public WorldPoint getDestination() {
-        return location;
+        return this == RESPAWN ? respawnDestination() : location;
+    }
+
+    public WorldPoint getLocation() {
+        return getDestination();
+    }
+
+    private static WorldPoint respawnDestination() {
+        int[] flags = respawnSelectionVarbits();
+        WorldPoint[] landings = {new WorldPoint(3095, 3469, 0), new WorldPoint(2964, 3378, 0),
+                new WorldPoint(2757, 3479, 0), new WorldPoint(1682, 3135, 0),
+                new WorldPoint(3151, 3636, 0), new WorldPoint(1630, 3674, 0)};
+        WorldPoint selected = null;
+        for (int i = 0; i < flags.length; i++) {
+            int value = Microbot.getVarbitValue(flags[i]);
+            if (value == 0) continue;
+            if (value != 1 || selected != null) return null;
+            selected = landings[i];
+        }
+        // No flag is ambiguous between Lumbridge and Prifddinas, not a default landing.
+        return selected;
+    }
+
+    public static int[] respawnSelectionVarbits() {
+        return new int[]{VarbitID.EDGEVILLE_SPAWN, VarbitID.FALADOR_SPAWN, VarbitID.CAMELOT_SPAWN,
+                VarbitID.CIVITAS_SPAWN, VarbitID.WILDERNESS_SPAWN, VarbitID.KOUREND_SPAWN};
     }
 
     public int varbitValue() {
-        int ordinal = ordinal();
-        //Since you get Varrock GE for free with Varrock, there's no varbit value for it
-        return ordinal;
+        // Saved-slot values are cache enum 1377 keys, not Java enum ordinals.
+        switch (this) {
+            case VARROCK: return 1;
+            case VARROCK_GE: return 1;
+            case SENNTISTEN: return 7;
+            case MARIM: return 8;
+            case LUNAR_ISLE: return 10;
+            case FISHING_GUILD: return 13;
+            case ANNAKARL: return 14;
+            case TROLL_STRONGHOLD: return 15;
+            case GHORROCK: return 17;
+            case CARRALLANGER: return 18;
+            case SEERS_VILLAGE: return 154;
+            case YANILLE: return 156;
+            case RESPAWN: return 40;
+            default: return ordinal();
+        }
     }
 
 
@@ -107,7 +157,8 @@ public enum NexusPortal implements PohTeleport {
         NexusPortal[] destinations = values();
         for (int varbit : VARBITS) {
             int value = Microbot.getVarbitValue(varbit);
-            if (value <= 0 || value >= destinations.length) continue;
+            if (value <= 0) continue;
+            if (value == 151 || value == 154 || value == 156) value -= 150;
 
             if (value == 1) {
                 teleports.add(NexusPortal.VARROCK);
@@ -116,8 +167,20 @@ public enum NexusPortal implements PohTeleport {
                 }
                 continue;
             }
-            NexusPortal tp = destinations[value];
-            teleports.add(tp);
+            if (value == 4 && Microbot.getVarbitValue(VarbitID.KANDARIN_DIARY_HARD_COMPLETE) == 1) {
+                teleports.add(SEERS_VILLAGE);
+            }
+            if (value == 6 && Microbot.getVarbitValue(VarbitID.ARDOUGNE_DIARY_HARD_COMPLETE) == 1) {
+                teleports.add(YANILLE);
+            }
+            // Unrecognised alternative keys must not alias an unrelated base spell.
+            if (value >= 150) continue;
+            for (NexusPortal destination : destinations) {
+                if (destination.varbitValue() == value) {
+                    if (destination.getDestination() != null) teleports.add(destination);
+                    break;
+                }
+            }
         }
         return teleports;
     }

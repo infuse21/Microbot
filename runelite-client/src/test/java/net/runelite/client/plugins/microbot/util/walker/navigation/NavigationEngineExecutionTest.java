@@ -247,7 +247,7 @@ public class NavigationEngineExecutionTest
 	}
 
 	@Test
-	public void rejectedClickRequestsReplanWithoutSecondInput()
+	public void rejectedClickRetriesLocallyOnceBeforeReplanning()
 	{
 		startEngineRequest();
 		AtomicInteger commands = new AtomicInteger();
@@ -260,9 +260,14 @@ public class NavigationEngineExecutionTest
 		NavigationExecutionResult next = NavigationEngineRuntime.execute(
 			observation(2, A, ordinaryPlan(1), false, false), rejecting);
 
-		assertEquals(NavigationDecision.Type.REQUEST_REPLAN, next.getDecision().getType());
+		assertEquals(NavigationDecision.Type.WAIT, next.getDecision().getType());
 		assertFalse(next.isCommandIssued());
 		assertEquals(1, commands.get());
+		NavigationEngineRuntime.execute(observation(602, A, ordinaryPlan(1), false, false), rejecting);
+		assertEquals(2, commands.get());
+		next = NavigationEngineRuntime.execute(observation(603, A, ordinaryPlan(1), false, false), rejecting);
+		assertEquals(NavigationDecision.Type.REQUEST_REPLAN, next.getDecision().getType());
+		assertEquals(2, commands.get());
 	}
 
 	@Test
@@ -428,7 +433,7 @@ public class NavigationEngineExecutionTest
 	}
 
 	@Test
-	public void transportRouteLocksRequestToLegacyWithoutInput()
+	public void unsupportedTransportRouteFailsWithoutLegacyOrInput()
 	{
 		startEngineRequest();
 		AtomicInteger commands = new AtomicInteger();
@@ -439,9 +444,25 @@ public class NavigationEngineExecutionTest
 				return true;
 			});
 
-		assertFalse(result.isEngineOwned());
-		assertEquals(NavigationExecutionMode.LEGACY_LOCKED,
+		assertTrue(result.isEngineOwned());
+		assertEquals(NavigationDecision.Type.FAIL, result.getDecision().getType());
+		assertEquals(NavigationExecutionMode.ENGINE_SUPPORTED,
 			NavigationEngineRuntime.getSnapshot().getExecutionMode());
+		assertEquals(0, commands.get());
+	}
+
+	@Test
+	public void waitingForFirstPlanAlreadyHasEngineOwnership()
+	{
+		startEngineRequest();
+		AtomicInteger commands = new AtomicInteger();
+		NavigationExecutionResult result = NavigationEngineRuntime.execute(
+			observation(1, A, null, false, false), target -> {
+				commands.incrementAndGet();
+				return true;
+			});
+		assertTrue(result.isEngineOwned());
+		assertEquals(NavigationDecision.Type.WAIT, result.getDecision().getType());
 		assertEquals(0, commands.get());
 	}
 
@@ -1550,7 +1571,7 @@ public class NavigationEngineExecutionTest
 	}
 
 	@Test
-	public void executorChoiceCannotSwitchFromLegacyOnLaterGeneration()
+	public void failedUnsupportedRequestCannotResumeOnLaterGeneration()
 	{
 		startEngineRequest();
 		NavigationEngineRuntime.execute(observation(1, A, transportPlan(1), false, false),
@@ -1559,8 +1580,9 @@ public class NavigationEngineExecutionTest
 		NavigationExecutionResult result = NavigationEngineRuntime.execute(
 			observation(2, A, ordinaryPlan(2), false, false), target -> true);
 
-		assertFalse(result.isEngineOwned());
-		assertEquals(NavigationExecutionMode.LEGACY_LOCKED,
+		assertTrue(result.isEngineOwned());
+		assertEquals(NavigationDecision.Type.NO_ACTION, result.getDecision().getType());
+		assertEquals(NavigationExecutionMode.ENGINE_SUPPORTED,
 			NavigationEngineRuntime.getSnapshot().getExecutionMode());
 	}
 

@@ -43,7 +43,9 @@ public final class SimpleTeleportPolicy
 		String display = normalize(transport.getDisplayInfo());
 		if (transport.getType() == TransportType.SEASONAL_TRANSPORT)
 		{
-			return SeasonalTransportHandlers.isAvailable(transport);
+			return !net.runelite.client.plugins.microbot.util.leaguetransport.Rs2MapOfAlacrityTransport.matches(transport)
+				&& !net.runelite.client.plugins.microbot.util.leaguetransport.Rs2ClueCompassTransport.matches(transport)
+				&& SeasonalTransportHandlers.isAvailable(transport);
 		}
 		if (display.contains("master scroll book"))
 		{
@@ -51,6 +53,10 @@ public final class SimpleTeleportPolicy
 		}
 		if (transport.getType() == TransportType.TELEPORTATION_SPELL)
 		{
+			if ("teleport to house".equals(display))
+			{
+				return ItemTeleportPolicy.hasDirectedHousePreference(transport);
+			}
 			if (display.contains(":"))
 			{
 				return isAlternateDestinationSpell(transport);
@@ -62,9 +68,7 @@ public final class SimpleTeleportPolicy
 		{
 			return false;
 		}
-		return transport.getType() == TransportType.TELEPORTATION_ITEM
-			&& transport.getItemIdRequirements() != null
-			&& !transport.getItemIdRequirements().isEmpty();
+		return false;
 	}
 
 	public static boolean isLumbridgeHomeTeleport(Transport transport)

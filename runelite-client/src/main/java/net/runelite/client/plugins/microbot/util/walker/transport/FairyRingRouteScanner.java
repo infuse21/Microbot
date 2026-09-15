@@ -12,8 +12,6 @@ import java.util.List;
 /** Route-order scanner and staged landing observer for fairy-ring travel. */
 public final class FairyRingRouteScanner
 {
-	private static final int LANDING_TOLERANCE = 3;
-
 	public RouteInteraction scan(RoutePlan plan, int startRawIndex, int maxEdges,
 		WorldPoint player, FairyRingScene scene, int interactionDistance)
 	{
@@ -49,7 +47,7 @@ public final class FairyRingRouteScanner
 			return null;
 		}
 		PlannedEdge planned = new PlannedEdge(pending.getFrom(), pending.getTo());
-		if (hasLanded(pending, player))
+		if (scene.hasLanded(planned, player))
 		{
 			FairyRing restore = scene.restore(planned, pending.getAction(),
 				pending.getObjectId(), player);
@@ -96,10 +94,4 @@ public final class FairyRingRouteScanner
 			RouteEdge.Kind.FAIRY_RING);
 	}
 
-	private static boolean hasLanded(RouteInteraction pending, WorldPoint player)
-	{
-		WorldPoint destination = pending.getCrossingTo();
-		return player != null && player.getPlane() == destination.getPlane()
-			&& player.distanceTo2D(destination) <= LANDING_TOLERANCE;
-	}
 }

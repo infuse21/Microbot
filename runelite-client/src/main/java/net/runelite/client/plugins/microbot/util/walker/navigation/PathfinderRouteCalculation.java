@@ -108,7 +108,9 @@ public final class PathfinderRouteCalculation implements RoutePlanner.Calculatio
 		{
 			return RouteEdge.Kind.SIMPLE_TELEPORT;
 		}
-		if (transports.stream().anyMatch(ItemTeleportPolicy::isEligible))
+		if (transports.stream().anyMatch(ItemTeleportPolicy::isEligible)
+			|| transports.stream().anyMatch(net.runelite.client.plugins.microbot.util.walker.transport.DirectItemTeleportPolicy::isEligible)
+			|| transports.stream().anyMatch(net.runelite.client.plugins.microbot.util.leaguetransport.Rs2ClueCompassTransport::isStagedRoute))
 		{
 			return RouteEdge.Kind.ITEM_TELEPORT;
 		}

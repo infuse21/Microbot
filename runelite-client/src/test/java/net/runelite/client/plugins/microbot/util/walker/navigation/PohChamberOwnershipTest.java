@@ -20,6 +20,29 @@ import static org.mockito.Mockito.*;
 public class PohChamberOwnershipTest
 {
 	@Test
+	public void generatedHouseFairyRingsAreOwnedInBothDirections()
+	{
+		WorldPoint house = new WorldPoint(1859, 7051, 0);
+		var graph = net.runelite.client.plugins.microbot.shortestpath.PohPanel.createFairyRingMap(
+			house, Transport.loadAllFromResources());
+		try (org.mockito.MockedStatic<net.runelite.client.plugins.microbot.shortestpath.PohPanel> panel =
+			mockStatic(net.runelite.client.plugins.microbot.shortestpath.PohPanel.class))
+		{
+			panel.when(net.runelite.client.plugins.microbot.shortestpath.PohPanel::getExitPortalTile).thenReturn(house);
+			assertFalse(graph.get(house).isEmpty());
+			assertTrue(graph.size() > 1);
+			for (Set<Transport> rows : graph.values())
+			{
+				for (Transport row : rows)
+				{
+					assertEquals(row.getDisplayInfo(), RouteEdge.Kind.FAIRY_RING,
+						PathfinderRouteCalculation.classifyTransportEdge(Set.of(row)));
+				}
+			}
+		}
+	}
+
+	@Test
 	public void generatedHouseTreeEdgesAreEngineOwnedInBothDirections()
 	{
 		WorldPoint house = new WorldPoint(1859, 7051, 0);
@@ -66,6 +89,10 @@ public class PohChamberOwnershipTest
 			miscellania.getQuests().get(net.runelite.api.Quest.THRONE_OF_MISCELLANIA));
 		PohTransport ordinary = new PohTransport(house,
 			net.runelite.client.plugins.microbot.util.poh.data.JewelleryBox.CASTLE_WARS);
+		PohTransport dondakan = new PohTransport(house,
+			net.runelite.client.plugins.microbot.util.poh.data.JewelleryBox.DONDAKAN);
+		assertEquals(net.runelite.api.QuestState.FINISHED,
+			dondakan.getQuests().get(net.runelite.api.Quest.BETWEEN_A_ROCK));
 		assertTrue(ordinary.getQuests().isEmpty());
 		assertTrue(ordinary.getVarplayers().isEmpty());
 	}
@@ -100,18 +127,28 @@ public class PohChamberOwnershipTest
 		for (net.runelite.client.plugins.microbot.util.poh.data.NexusPortal nexus
 			: net.runelite.client.plugins.microbot.util.poh.data.NexusPortal.values())
 		{
-			PohTransport row = new PohTransport(house, nexus);
-			assertEquals("Teleport menu", row.getAction());
-			assertEquals(RouteEdge.Kind.TELEPORTATION_PORTAL,
-				PathfinderRouteCalculation.classifyTransportEdge(Set.of(row)));
+			try (org.mockito.MockedStatic<net.runelite.client.plugins.microbot.Microbot> microbot =
+				mockStatic(net.runelite.client.plugins.microbot.Microbot.class))
+			{
+				microbot.when(() -> net.runelite.client.plugins.microbot.Microbot.getVarbitValue(
+					net.runelite.api.gameval.VarbitID.FALADOR_SPAWN)).thenReturn(1);
+				PohTransport row = new PohTransport(house, nexus);
+				assertEquals("Teleport menu", row.getAction());
+				assertEquals(RouteEdge.Kind.TELEPORTATION_PORTAL,
+					PathfinderRouteCalculation.classifyTransportEdge(Set.of(row)));
+			}
 		}
 		for (net.runelite.client.plugins.microbot.util.poh.data.JewelleryBox box
 			: net.runelite.client.plugins.microbot.util.poh.data.JewelleryBox.values())
 		{
-			PohTransport row = new PohTransport(house, box);
-			assertEquals("Teleport menu", row.getAction());
-			assertEquals(RouteEdge.Kind.TELEPORTATION_PORTAL,
-				PathfinderRouteCalculation.classifyTransportEdge(Set.of(row)));
+			try (org.mockito.MockedStatic<net.runelite.client.plugins.microbot.util.player.Rs2Player> player =
+				mockStatic(net.runelite.client.plugins.microbot.util.player.Rs2Player.class))
+			{
+				PohTransport row = new PohTransport(house, box);
+				assertEquals("Teleport menu", row.getAction());
+				assertEquals(RouteEdge.Kind.TELEPORTATION_PORTAL,
+					PathfinderRouteCalculation.classifyTransportEdge(Set.of(row)));
+			}
 		}
 		for (MountedGlory glory : MountedGlory.values())
 		{

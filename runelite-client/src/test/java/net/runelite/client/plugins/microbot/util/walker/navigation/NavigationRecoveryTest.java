@@ -30,8 +30,8 @@ public class NavigationRecoveryTest
 		NavigationDecision offRoute = engine.observe(observation(1, OFF_ROUTE, plan(1), false));
 
 		NavigationDecision click = engine.observe(observation(2, START, plan(2), false));
-		engine.recordCommandResult(click, false, 2);
-		NavigationDecision rejected = engine.observe(observation(3, START, plan(2), false));
+		engine.recordCommandResult(click, true, 2);
+		NavigationDecision rejected = engine.observe(observation(1400, START, plan(2), false));
 
 		assertEquals(NavigationDecision.Type.REQUEST_REPLAN, offRoute.getType());
 		assertEquals(RecoveryCause.OFF_ROUTE, offRoute.getRecoveryCause());
@@ -73,8 +73,8 @@ public class NavigationRecoveryTest
 		{
 			NavigationDecision click = engine.observe(observation(generation * 10L,
 				START, plan(generation), false));
-			engine.recordCommandResult(click, false, generation * 10L);
-			decision = engine.observe(observation(generation * 10L + 1,
+			engine.recordCommandResult(click, true, generation * 10L);
+			decision = engine.observe(observation(generation * 10L + 1400,
 				START, plan(generation), false));
 		}
 
@@ -84,6 +84,22 @@ public class NavigationRecoveryTest
 		assertEquals(3, engine.snapshot().getRecoveryAttempts(
 			RecoveryCause.NO_ACKNOWLEDGEMENT));
 		assertEquals(0, engine.snapshot().getRecoveryAttempts(RecoveryCause.OFF_ROUTE));
+	}
+
+	@Test
+	public void sustainedForwardProgressResetsAcknowledgementFailures()
+	{
+		NavigationEngine engine = engine();
+		NavigationDecision click = engine.observe(observation(1, START, plan(1), false));
+		engine.recordCommandResult(click, true, 1);
+		engine.observe(observation(1400, START, plan(1), false));
+		assertEquals(1, engine.snapshot().getRecoveryAttempts(RecoveryCause.NO_ACKNOWLEDGEMENT));
+		engine.observe(observation(1500, START, plan(2), false));
+		assertEquals(1, engine.snapshot().getRecoveryAttempts(RecoveryCause.NO_ACKNOWLEDGEMENT));
+		engine.observe(observation(2500, new WorldPoint(3202, 3200, 0), plan(2), true));
+		assertEquals(1, engine.snapshot().getRecoveryAttempts(RecoveryCause.NO_ACKNOWLEDGEMENT));
+		engine.observe(observation(4000, new WorldPoint(3205, 3200, 0), plan(2), true));
+		assertEquals(0, engine.snapshot().getRecoveryAttempts(RecoveryCause.NO_ACKNOWLEDGEMENT));
 	}
 
 	@Test

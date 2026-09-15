@@ -21,10 +21,51 @@ public class SimpleTeleportPolicyTest
 	private static final WorldPoint DESTINATION = new WorldPoint(3213, 3424, 0);
 
 	@Test
-	public void acceptsDirectSpellAndSingleActionItem()
+	public void ectophialRequiresTheFullVialRatherThanItsUnusableEmptyVariant()
+	{
+		List<Transport> rows = Transport.loadAllFromResources().values().stream()
+			.flatMap(Set::stream).filter(row -> "Ectophial".equals(row.getDisplayInfo()))
+			.collect(Collectors.toList());
+		assertEquals(1, rows.size());
+		Transport row = rows.get(0);
+		assertEquals(Set.of(Set.of(4251)), row.getItemIdRequirements());
+		assertFalse(row.isConsumable());
+		assertTrue(DirectItemTeleportPolicy.isEligible(row));
+		assertFalse(SimpleTeleportPolicy.isEligible(row));
+	}
+
+	@Test
+	public void everyEligiblePackagedSpellHasAnUnambiguousSpellbookAndSpriteIdentity()
+	{
+		int audited = 0;
+		for (Set<Transport> rows : Transport.loadAllFromResources().values())
+		{
+			for (Transport row : rows)
+			{
+				if (row.getType() != TransportType.TELEPORTATION_SPELL
+					|| !SimpleTeleportPolicy.isEligible(row)) continue;
+				List<net.runelite.client.plugins.skillcalculator.skills.MagicAction> matches =
+					java.util.Arrays.stream(net.runelite.client.plugins.skillcalculator.skills.MagicAction.values())
+						.filter(spell -> spell.getName().equalsIgnoreCase(SimpleTeleportPolicy.spellName(row)))
+						.collect(Collectors.toList());
+				assertEquals(row.getDisplayInfo(), 1, matches.size());
+				net.runelite.client.plugins.skillcalculator.skills.MagicAction spell = matches.get(0);
+				assertTrue(row.getDisplayInfo(), spell.getSpellbook() != null && spell.getSprite() > 0);
+				assertEquals(row.getDisplayInfo(), 1L,
+					java.util.Arrays.stream(net.runelite.client.plugins.skillcalculator.skills.MagicAction.values())
+						.filter(candidate -> candidate.getSpellbook() == spell.getSpellbook()
+							&& candidate.getSprite() == spell.getSprite()).count());
+				audited++;
+			}
+		}
+		assertTrue("Packaged spell catalog must not be empty", audited > 0);
+	}
+
+	@Test
+	public void acceptsDirectSpellButItemsRequireStagedOwnership()
 	{
 		assertTrue(SimpleTeleportPolicy.isEligible(spell("Varrock Teleport")));
-		assertTrue(SimpleTeleportPolicy.isEligible(item("Varrock tablet")));
+		assertFalse(SimpleTeleportPolicy.isEligible(item("Varrock tablet")));
 	}
 
 	@Test
@@ -83,9 +124,9 @@ public class SimpleTeleportPolicyTest
 	@Test
 	public void acceptsOnlyExecutableSeasonalRows()
 	{
-		assertTrue(SimpleTeleportPolicy.isEligible(seasonal(
+		assertFalse(SimpleTeleportPolicy.isEligible(seasonal(
 			"Map of Alacrity: Asgarnia - Falador wall")));
-		assertTrue(SimpleTeleportPolicy.isEligible(seasonal(
+		assertFalse(SimpleTeleportPolicy.isEligible(seasonal(
 			"Clue compass: B. Barbarian Village")));
 		assertFalse(SimpleTeleportPolicy.isEligible(seasonal("Unknown relic: Somewhere")));
 	}

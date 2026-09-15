@@ -2327,3 +2327,29 @@ catalogue objects represented by several approach rows.
 
 **Defensive check:** exercise every directed approach against one multi-tile cache object; each must
 issue the exact action, while non-matching IDs remain subject to the normal anchor-radius lookup.
+
+## 130. Reset transient movement failures only after demonstrated forward progress
+
+Isolated movement acknowledgement failures must not accumulate indefinitely across a successful
+long walk. NavigationEngine resets that budget only after four forward route tiles, four tiles
+of displacement and a 2.4-second observation window. A new route generation alone does not
+reset it. A rejected ordinary movement receives one local retry after a 600ms nonblocking
+backoff; rejected interactions and route-rejoin recovery clicks retain their existing recovery
+path. Keep tests for exhaustion without progress as well as recovery after genuine progress.
+
+## 131. Generate both preference-gated destinations for default house teleports
+
+Construction cape `Tele to POH` and the house spell's default cast follow the player's house
+teleport preference. Varbit 4744 (`POH_TELE_TOGGLE`) is 0 for Teleport Inside On and 1 for Off,
+verified through House Options 370:8/370:9. Generate mutually exclusive interior/exterior edges
+with both preference and house-location requirements, retain the physical portal entry edge,
+and recheck the preference before dispatch. Do not change the user's setting to force a route.
+The tablet's explicit `Inside` action is independent of this preference and is consumable.
+
+Matching a house template coordinate is not sufficient landing evidence. Both the default
+house spell and inside item teleports must also observe the house instance/exit portal through
+the scene boundary before clearing their pending interaction. Ordinary exterior teleports retain
+their normal same-plane landing tolerance.
+
+**Defensive check:** generate inbound routes for every house location with preference 0, 1 and
+an unknown value; require the correct destination or no enabled default-teleport edge, respectively.

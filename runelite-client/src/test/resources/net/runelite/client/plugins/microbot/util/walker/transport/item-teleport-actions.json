@@ -1,4 +1,5 @@
 [
+	{"id":33233,"actions":["Read","Last-destination","Destroy"],"equipment":[],"source":"https://oldschool.runescape.wiki/w/Map_of_alacrity_(item) (2026-09-15): option labels only, not cache action indices"},
 	{"id":1706,"actions":[null,"Wear",null,"Rub","Drop"],"subops":[null,null,null,["Edgeville","Karamja","Draynor Village","Al Kharid",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],null],"equipment":["Edgeville","Karamja","Draynor Village","Al Kharid","","","",""]},
 	{"id":1708,"actions":[null,"Wear",null,"Rub","Drop"],"subops":[null,null,null,["Edgeville","Karamja","Draynor Village","Al Kharid",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],null],"equipment":["Edgeville","Karamja","Draynor Village","Al Kharid","","","",""]},
 	{"id":1710,"actions":[null,"Wear",null,"Rub","Drop"],"subops":[null,null,null,["Edgeville","Karamja","Draynor Village","Al Kharid",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],null],"equipment":["Edgeville","Karamja","Draynor Village","Al Kharid","","","",""]},

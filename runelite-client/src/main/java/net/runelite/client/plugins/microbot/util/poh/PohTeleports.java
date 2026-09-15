@@ -156,6 +156,7 @@ public class PohTeleports {
      * @return
      */
     public static boolean usePortalNexus(NexusPortal nexusPortal) {
+        if (nexusPortal == null || nexusPortal.getDestination() == null) return false;
         //TODO: Add config here to inform the user if the teleport is a wilderness teleport
         GameObject portal = findPohObjectAnywhere(NexusPortal.PORTAL_IDS);
         if (getPortalNexusInterface() == null) {
@@ -182,6 +183,8 @@ public class PohTeleports {
      * @return
      */
     public static boolean interactWithPortalNexusWidget(NexusPortal nexusPortal) {
+        WorldPoint destination = nexusPortal == null ? null : nexusPortal.getDestination();
+        if (destination == null) return false;
         Widget portalNexusWidget = getPortalNexusInterface();
         if (portalNexusWidget == null) return false;
 
@@ -211,7 +214,7 @@ public class PohTeleports {
             Rs2Widget.enterWilderness();
         }
 
-        sleepUntil(() -> Rs2Player.getWorldLocation().distanceTo(nexusPortal.getLocation()) < 10);
+        sleepUntil(() -> Rs2Player.getWorldLocation().distanceTo(destination) < 10);
 
         return true;
     }

@@ -115,7 +115,8 @@ public final class Rs2SpellEquipmentScene
 			SpellEquipmentTransaction transaction = retained;
 			if (transaction == null)
 			{
-				Rs2Spells magic = Rs2Magic.getRs2Spell(spell.getAction().split(":")[0].trim());
+				Rs2Spells magic = Rs2Magic.getRs2Spell(net.runelite.client.plugins.microbot.util.walker.transport
+					.Rs2SpellTeleportScene.display(spell.getAction()).split(":")[0].trim());
 				if (magic == null) return null;
 				BankedSpellEquipmentPlanner.Plan selected = plan(List.of(Rs2Magic.getRequiredRunes(magic, 1)), false);
 				if (selected == null || selected.getStaff() == Rs2Staff.NONE

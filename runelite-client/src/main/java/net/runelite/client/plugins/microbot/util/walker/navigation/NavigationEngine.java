@@ -19,6 +19,9 @@ import java.util.List;
 public final class NavigationEngine
 {
 	private static final long COMMAND_ACK_TIMEOUT_MS = 1_200L;
+	private static final long MOVEMENT_RETRY_BACKOFF_MS = 600L;
+	private static final long RECOVERY_PROGRESS_WINDOW_MS = 2_400L;
+	private static final int RECOVERY_PROGRESS_TILES = 4;
 	private static final long NO_TILE_PROGRESS_TIMEOUT_MS = 2_400L;
 	private static final int MAX_NO_ACKNOWLEDGEMENT_ATTEMPTS = 2;
 	private static final int MAX_COMMAND_DESTINATION_MISMATCH_ATTEMPTS = 2;
@@ -110,9 +113,9 @@ public final class NavigationEngine
 				&& !observedPlan.isEngineSupported())
 			{
 				session.transitionTo(NavigationPhase.FAILED,
-					"engine-route-became-non-ordinary");
+					"unsupported-route");
 				return publish(NavigationDecision.of(NavigationDecision.Type.FAIL,
-					"engine-route-became-non-ordinary"), observation);
+					"unsupported-route"), observation);
 			}
 			session.transitionTo(NavigationPhase.FOLLOWING_ROUTE, "route-generation-installed");
 		}
@@ -137,6 +140,12 @@ public final class NavigationEngine
 		}
 		if (session.commandRejected)
 		{
+			if (session.rejectedMovement && session.localMovementRetries == 0
+				&& observation.getObservedAtMs() - session.lastCommandAtMs < MOVEMENT_RETRY_BACKOFF_MS)
+			{
+				return publish(NavigationDecision.of(NavigationDecision.Type.WAIT,
+					"movement-retry-backoff"), observation);
+			}
 			session.commandRejected = false;
 			if (LeafPitPolicy.owns(session.pendingInteraction)
 				&& LeafPitPolicy.inPit(observation.getPlayerLocation()))
@@ -144,8 +153,11 @@ public final class NavigationEngine
 				return failLeafRecovery("leaf-pit-recovery-rejected", observation);
 			}
 			clearCommandTarget();
-			return requestReplan(RecoveryCause.NO_ACKNOWLEDGEMENT,
-				"movement-command-rejected", observation);
+			if (!session.rejectedMovement || session.localMovementRetries++ > 0)
+			{
+				return requestReplan(RecoveryCause.NO_ACKNOWLEDGEMENT,
+					"movement-command-rejected", observation);
+			}
 		}
 		if (session.commandPending)
 		{
@@ -317,6 +329,7 @@ public final class NavigationEngine
 		session.lastCommandAtMs = commandAtMs;
 		if (decision.getType() == NavigationDecision.Type.INTERACT)
 		{
+			session.rejectedMovement = false;
 			if (decision.getInteraction() != null
 				&& decision.getInteraction().getKind() == RouteInteraction.Kind.SPELL_EQUIPMENT)
 			{
@@ -326,7 +339,16 @@ public final class NavigationEngine
 			session.interactionCommandPending = issued;
 			session.interactionCommandOrigin = issued ? session.lastObservedPlayer : null;
 			int distance = interactionCommandDistance(decision.getInteraction());
-			long timeout = isLongHomeTeleport(decision.getInteraction())
+			long timeout = decision.getInteraction() != null
+				&& decision.getInteraction().getKind() == RouteInteraction.Kind.SIMPLE_TELEPORT
+				&& net.runelite.client.plugins.microbot.util.walker.transport.Rs2SpellTeleportScene.isPreparation(decision.getInteraction().getAction())
+				? 4_000L : decision.getInteraction() != null
+				&& decision.getInteraction().getKind() == RouteInteraction.Kind.ITEM_TELEPORT
+				&& (decision.getInteraction().getAction().startsWith("compass-open:")
+					|| decision.getInteraction().getAction().startsWith("direct-item-open:")
+					|| decision.getInteraction().getAction().startsWith("alacrity-")
+					&& !decision.getInteraction().getAction().startsWith("alacrity-destination:"))
+				? 4_000L : isLongHomeTeleport(decision.getInteraction())
 				? HOME_TELEPORT_COMMAND_TIMEOUT_MS
 				: decision.getInteraction() != null
 				&& decision.getInteraction().getKind()
@@ -371,6 +393,7 @@ public final class NavigationEngine
 			return;
 		}
 		session.commandOrigin = session.lastObservedPlayer;
+		session.rejectedMovement = !issued && !"route-rejoin".equals(decision.getTargetSelection());
 		session.commandDestinationAtIssue = issued ? session.lastObservedDestination : null;
 		session.commandPending = issued;
 		session.commandRejected = !issued;
@@ -754,6 +777,23 @@ public final class NavigationEngine
 		// An actor interaction may be combat, not a command issued by this walker.
 		if (session.interactionCommandPending)
 		{
+			if (pending.getKind() == RouteInteraction.Kind.SIMPLE_TELEPORT
+				&& net.runelite.client.plugins.microbot.util.walker.transport.Rs2SpellTeleportScene.isPreparation(pending.getAction())
+				&& observation.getObservedAtMs() >= session.interactionCommandDeadlineMs)
+			{
+				return requestReplan(RecoveryCause.NO_ACKNOWLEDGEMENT,
+					"spell-preparation-not-acknowledged", observation);
+			}
+			if (pending.getKind() == RouteInteraction.Kind.ITEM_TELEPORT
+				&& (pending.getAction().startsWith("alacrity-") || pending.getAction().startsWith("compass-")
+					|| pending.getAction().startsWith("direct-item-"))
+				&& observation.getObservedAtMs() >= session.interactionCommandDeadlineMs)
+			{
+				return requestReplan(RecoveryCause.NO_ACKNOWLEDGEMENT,
+					pending.getAction().startsWith("direct-item-") ? "direct-item-stage-not-acknowledged"
+						: pending.getAction().startsWith("compass-") ? "compass-stage-not-acknowledged"
+						: "alacrity-stage-not-acknowledged", observation);
+			}
 			if (LeafPitPolicy.owns(pending) && LeafPitPolicy.RECOVER.equals(pending.getAction())
 				&& observation.getObservedAtMs() >= session.interactionCommandDeadlineMs)
 			{
@@ -1221,6 +1261,25 @@ public final class NavigationEngine
 		{
 			session.lastProgressAtMs = observedAtMs;
 			session.lastProgressRawIndex = session.rawProgressIndex;
+		}
+		if (session.recoveryProgressOrigin == null)
+		{
+			session.recoveryProgressOrigin = player;
+			session.recoveryProgressIndex = session.rawProgressIndex;
+			session.recoveryProgressAtMs = observedAtMs;
+		}
+		else if (session.routeDistance <= 1 && session.pendingInteraction == null
+			&& !session.interactionCommandPending
+			&& player.getPlane() == session.recoveryProgressOrigin.getPlane()
+			&& player.distanceTo2D(session.recoveryProgressOrigin) >= RECOVERY_PROGRESS_TILES
+			&& session.rawProgressIndex >= session.recoveryProgressIndex + RECOVERY_PROGRESS_TILES
+			&& observedAtMs - session.recoveryProgressAtMs >= RECOVERY_PROGRESS_WINDOW_MS)
+		{
+			session.recoveryAttempts.remove(RecoveryCause.NO_ACKNOWLEDGEMENT);
+			session.localMovementRetries = 0;
+			session.recoveryProgressOrigin = player;
+			session.recoveryProgressIndex = session.rawProgressIndex;
+			session.recoveryProgressAtMs = observedAtMs;
 		}
 	}
 

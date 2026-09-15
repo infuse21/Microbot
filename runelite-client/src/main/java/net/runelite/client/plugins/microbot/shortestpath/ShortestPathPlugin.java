@@ -337,7 +337,7 @@ public class ShortestPathPlugin extends Plugin implements KeyListener {
         if (ends != null && !ends.isEmpty()) {
             NavigationRouteOptions routeOptions = new NavigationRouteOptions(true,
                     config.useAgilityShortcuts(), config.walkWithBankedTransports(),
-                    config.navigationEngineOrdinaryWalking(), config.recalculateDistance());
+                    true, config.recalculateDistance());
             NavigationEngineRuntime.ensureRequest(new NavigationRequest(preparation.getRequestId(), ends,
                     Math.max(0, reachedDistance), routeOptions, "shortest-path-ui"));
         }

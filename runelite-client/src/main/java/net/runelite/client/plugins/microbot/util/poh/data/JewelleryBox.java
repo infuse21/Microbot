@@ -60,6 +60,11 @@ public enum JewelleryBox implements PohTeleport {
 
     @Override
     public WorldPoint getDestination() {
+        if (this == FARMING_GUILD) {
+            return net.runelite.client.plugins.microbot.util.player.Rs2Player.getBoostedSkillLevel(
+                    net.runelite.api.Skill.FARMING) >= 45
+                    ? new WorldPoint(1248, 3725, 0) : new WorldPoint(1248, 3719, 0);
+        }
         return location.getLocation();
     }
 

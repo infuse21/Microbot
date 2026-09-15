@@ -194,6 +194,27 @@ public class PathfinderConfigTransportRefreshHashTest {
                 PathfinderConfig.hashVarbitConditionVerdicts(conditions, id -> 3));
     }
 
+    @Test
+    public void respawnSelectionChangesInvalidateEvenWhenNoRouteWasPreviouslyAvailable() {
+        int[] flags = net.runelite.client.plugins.microbot.util.poh.data.NexusPortal.respawnSelectionVarbits();
+        java.util.List<int[]> triples = new java.util.ArrayList<>();
+        for (int flag : flags) {
+            triples.add(new int[]{flag, TransportVarbit.Operator.EQUAL.ordinal(), 1});
+        }
+        int[] conditions = PathfinderConfig.encodeSortedConditionTriples(triples);
+        int unavailable = PathfinderConfig.hashVarbitConditionVerdicts(conditions, id -> 0);
+        for (int flag : flags) {
+            int selected = PathfinderConfig.hashVarbitConditionVerdicts(conditions, id -> id == flag ? 1 : 0);
+            assertNotEquals(unavailable, selected);
+            for (int other : flags) {
+                if (other != flag) {
+                    assertNotEquals(selected,
+                            PathfinderConfig.hashVarbitConditionVerdicts(conditions, id -> id == other ? 1 : 0));
+                }
+            }
+        }
+    }
+
     /** Ordinals outside the supplied levels array must be ignored rather than throwing. */
     @Test
     public void outOfRangeSkillOrdinalsAreIgnored() {

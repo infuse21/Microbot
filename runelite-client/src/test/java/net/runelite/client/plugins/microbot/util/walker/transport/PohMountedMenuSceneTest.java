@@ -98,6 +98,7 @@ public class PohMountedMenuSceneTest
 			microbot.when(Microbot::getClient).thenReturn(client);
 			microbot.when(Microbot::getRs2TileObjectCache).thenReturn(cache);
 			microbot.when(Microbot::getMouse).thenReturn(mouse);
+			microbot.when(() -> Microbot.getVarbitValue(net.runelite.api.gameval.VarbitID.FALADOR_SPAWN)).thenReturn(1);
 			house.when(PohTeleports::isInHouse).thenReturn(true);
 			locations.when(() -> Rs2SceneLocation.templateLocation(object)).thenReturn(room);
 			List<PohTeleport> routes = new java.util.ArrayList<>(
@@ -105,7 +106,7 @@ public class PohMountedMenuSceneTest
 			routes.addAll(java.util.Arrays.asList(MountedXerics.values()));
 			routes.addAll(java.util.Arrays.asList(JewelleryBox.values()));
 			routes.addAll(java.util.Arrays.asList(net.runelite.client.plugins.microbot.util.poh.data.NexusPortal.values()));
-			assertEquals(66, routes.size());
+			assertEquals(77, routes.size());
 			for (PohTeleport teleport : routes)
 			{
 				PohTransport row = new PohTransport(anchor, teleport);
@@ -139,6 +140,25 @@ public class PohMountedMenuSceneTest
 				assertNotNull(select);
 				assertEquals(TeleportationPortalPolicy.destinationAction(destination),
 					select.getAction());
+				if (teleport == JewelleryBox.FARMING_GUILD)
+				{
+					when(client.getBoostedSkillLevel(net.runelite.api.Skill.FARMING)).thenReturn(45);
+					assertEquals(TeleportationPortalPolicy.POH_DESTINATION_UNAVAILABLE,
+						new Rs2TeleportationPortalScene().find(edge).getAction());
+					assertFalse(Rs2TeleportationPortalScene.interactObject(edge,
+						select.getAction(), row.getObjectId()));
+					org.mockito.Mockito.verifyNoInteractions(mouse);
+					when(client.getBoostedSkillLevel(net.runelite.api.Skill.FARMING)).thenReturn(0);
+				}
+				if (teleport == net.runelite.client.plugins.microbot.util.poh.data.NexusPortal.RESPAWN)
+				{
+					microbot.when(() -> Microbot.getVarbitValue(net.runelite.api.gameval.VarbitID.FALADOR_SPAWN)).thenReturn(0);
+					assertEquals(TeleportationPortalPolicy.POH_DESTINATION_UNAVAILABLE,
+						new Rs2TeleportationPortalScene().find(edge).getAction());
+					assertFalse(Rs2TeleportationPortalScene.interactObject(edge, select.getAction(), row.getObjectId()));
+					keyboard.verifyNoInteractions();
+					microbot.when(() -> Microbot.getVarbitValue(net.runelite.api.gameval.VarbitID.FALADOR_SPAWN)).thenReturn(1);
+				}
 				assertTrue(Rs2TeleportationPortalScene.interactObject(edge,
 					select.getAction(), row.getObjectId()));
 				if (nexus)
@@ -181,7 +201,8 @@ public class PohMountedMenuSceneTest
 					when(warning.getBounds()).thenReturn(new Rectangle(10, 10, 20, 20));
 					when(client.getWidget(475, 11)).thenReturn(warning);
 					TeleportationPortal confirmation = new Rs2TeleportationPortalScene().find(edge);
-					boolean wilderness = Set.of("ANNAKARL", "GHORROCK", "CARRALLANGER").contains(teleport.name());
+					boolean wilderness = Set.of("ANNAKARL", "GHORROCK", "CARRALLANGER",
+						"DAREEYAK", "ICE_PLATEAU").contains(teleport.name());
 					assertEquals(wilderness, confirmation.getAction().startsWith(TeleportationPortalPolicy.POH_CONFIRM_NEXUS_PREFIX));
 					if (wilderness)
 					{

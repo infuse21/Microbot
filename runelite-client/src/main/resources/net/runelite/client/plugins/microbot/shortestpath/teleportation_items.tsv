@@ -278,8 +278,8 @@
 3096 3227 0		13069;19476				Y	F	19	4	Achievement diary cape: Twiggy O'Korn
 										
 # Quest Items										
-# Ectophial - includes the empty version										
-3659 3523 0		4251;4252				Y	F	19	4	Ectophial
+# Ectophial - only the full vial can teleport; the empty vial must be refilled first.
+3659 3523 0		4251				Y	F	19	4	Ectophial
 2330 3171 0		6099;6100;6101;6102;13102				Y	T	19	4	Teleport crystal: Lletya
 3264 6066 0		6099;6100;6101;6102;13102	Song of the Elves			Y	T	19	4	Teleport crystal: Prifddinas
 2330 3171 0		23946				Y	F	19	4	Eternal teleport crystal: Lletya

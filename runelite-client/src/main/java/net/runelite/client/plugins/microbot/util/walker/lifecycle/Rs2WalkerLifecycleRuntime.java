@@ -10,7 +10,6 @@ import net.runelite.client.plugins.microbot.shortestpath.pathfinder.Pathfinder;
 import net.runelite.client.plugins.microbot.util.walker.Rs2PathApi;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
-import net.runelite.client.plugins.microbot.util.walker.door.DoorInteractionOwnership;
 import net.runelite.client.plugins.microbot.util.walker.navigation.NavigationEngineRuntime;
 import net.runelite.client.plugins.microbot.util.walker.navigation.NavigationRequest;
 import net.runelite.client.plugins.microbot.util.walker.navigation.NavigationRouteOptions;
@@ -118,13 +117,10 @@ public final class Rs2WalkerLifecycleRuntime {
                 ? RoutePlannerRuntime.beginNewRequest()
                 : RoutePlannerRuntime.beginReplan();
         if (ends != null && !ends.isEmpty()) {
-            boolean ordinaryEngineAllowed = Rs2Walker.config != null
-                    && Rs2Walker.config.navigationEngineOrdinaryWalking()
-                    && DoorInteractionOwnership.ordinaryEngineAllowed(start, ends);
             NavigationRouteOptions routeOptions = new NavigationRouteOptions(!Rs2Walker.disableTeleports,
                     Rs2Walker.config == null || Rs2Walker.config.useAgilityShortcuts(),
                     Rs2Walker.config != null && Rs2Walker.config.walkWithBankedTransports(),
-                    ordinaryEngineAllowed,
+                    true,
                     Rs2Walker.config == null ? 10 : Rs2Walker.config.recalculateDistance());
             NavigationEngineRuntime.ensureRequest(new NavigationRequest(preparation.getRequestId(), ends,
                     Math.max(0, reachedDistance), routeOptions, "rs2walker"));

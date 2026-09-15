@@ -223,3 +223,13 @@ Both items are consumed once per teleport. The transport parser recognizes `T` o
 only one moth. Use `T` and test the parsed resource through the shared quantity collector.
 
 **Where this applies:** `teleportation_items.tsv`, `Transport`, `Rs2WalkerBankingPlanner`.
+
+## 13. Empty teleport containers are not usable requirement alternatives
+
+Ectophial `4251` is full and exposes a teleport action; empty `4252` does not.
+Do not list both IDs as alternatives in a route requirement: bank planning can otherwise
+select the empty container as if it were ready to teleport. Refilling is a separate
+operation, not an implicit capability of the empty item.
+
+**Defensive check:** Assert the parsed Ectophial row requires only `4251` and remains reusable.
+Source: [Ectophial, full/empty variants](https://oldschool.runescape.wiki/w/Ectophial).
