@@ -53,6 +53,10 @@ public class Rs2TileObjectModel implements TileObject, IEntity {
     private final TileObject tileObject;
     private String[] actions;
 
+    public TileObject getRawTileObject() {
+        return tileObject;
+    }
+
 
     @Override
     public long getHash() {

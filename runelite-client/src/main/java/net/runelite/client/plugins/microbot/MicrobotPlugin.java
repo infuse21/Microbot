@@ -223,6 +223,8 @@ public class MicrobotPlugin extends Plugin
 	@Subscribe
 	public void onRuneScapeProfileChanged(RuneScapeProfileChanged event)
 	{
+		Rs2Bank.invalidateBankMirrorCache(null);
+		Rs2Bank.restoreBankMirrorCache();
 		String newProfile = event.getNewProfile();
 		String oldProfile = event.getPreviousProfile();
 		if ((newProfile != null && !newProfile.isEmpty()) &&
@@ -529,6 +531,10 @@ public class MicrobotPlugin extends Plugin
 	public void onWidgetLoaded(WidgetLoaded event)
 	{
 		Rs2RunePouch.onWidgetLoaded(event);
+		if (event.getGroupId() == 12)
+		{
+			Rs2Bank.onBankWidgetLoaded();
+		}
 		
 		// Mark that widget layout has changed for cache invalidation
 		widgetLayoutChanged = true;
