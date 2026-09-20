@@ -101,6 +101,7 @@ public class BrimhavenBackdoorSceneTest
 		ObjectComposition composition = mock(ObjectComposition.class);
 		when(object.getId()).thenReturn(id);
 		when(object.getWorldLocation()).thenReturn(point);
+		when(object.getSceneWorldLocation()).thenReturn(point);
 		when(object.getObjectComposition()).thenReturn(composition);
 		when(composition.getName()).thenReturn(name);
 		when(composition.getActions()).thenReturn(new String[]{action});

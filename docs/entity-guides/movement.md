@@ -2360,3 +2360,9 @@ their normal same-plane landing tolerance.
 
 **Defensive check:** generate inbound routes for every house location with preference 0, 1 and
 an unknown value; require the correct destination or no enabled default-teleport edge, respectively.
+
+## 132. Seed reachability from the player and preserve view identity
+
+A target is always in its own flood region, so flooding from the target cannot prove player reachability. Cache explicit-origin floods separately by origin and scene context. Compare native tile coordinates in the same world view; local-coordinate units are not tiles.
+
+**Pattern to follow:** Use `entity.isReachable()` and player-relative query terminals. For an explicit native-coordinate anchor, constrain the world view first. **Defensive check:** disconnected regions queried in both orders must return the same answers, including after an explicit-origin lookup.

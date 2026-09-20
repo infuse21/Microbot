@@ -72,9 +72,14 @@ public abstract class Script extends Global implements IScript {
     /**
      * Default pre-loop guard invoked by script schedulers.
      * Returns {@code false} to pause a loop when a blocking event is executing, scripts are paused,
-     * tutorial island is incomplete, or the current thread is interrupted.
+     * or the current thread is interrupted. Tutorial scripts may run while unpaused.
      */
     public boolean run() {
+        if (Microbot.pauseAllScripts.get())
+            return false;
+        if (Thread.currentThread().isInterrupted())
+            return false;
+
         ScriptHeartbeatRegistry.recordHeartbeat(this.getClass().getName());
 
         if (Microbot.isLoggedIn() && !SessionFatigue.isActive()) {
@@ -88,10 +93,6 @@ public abstract class Script extends Global implements IScript {
             // A blocking event was found & is executing
             return false;
         }
-        if (Microbot.pauseAllScripts.get())
-            return false;
-        if (Thread.currentThread().isInterrupted())
-            return false;
 
         if (Microbot.isLoggedIn()) {
             boolean hasRunEnergy = Microbot.getClientThread().runOnClientThreadOptional(() -> Microbot.getClient().getEnergy()).orElse(0) > Microbot.runEnergyThreshold;

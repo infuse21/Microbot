@@ -10,7 +10,6 @@ import java.util.function.BooleanSupplier;
 
 public class Global {
     static ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(10);
-    static ScheduledFuture<?> scheduledFuture;
 
     private static final int POLL_MIN_MS = 40;
     private static final int POLL_MAX_MS = 320;
@@ -25,15 +24,57 @@ public class Global {
         return (int) sample;
     }
 
+    /** Each request owns its cancellation and completes after its callback returns. */
     public static ScheduledFuture<?> awaitExecutionUntil(Runnable callback, BooleanSupplier awaitedCondition, int time) {
-        scheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
-            if (awaitedCondition.getAsBoolean()) {
-                scheduledFuture.cancel(true);
-                scheduledFuture = null;
-                callback.run();
+        if (time <= 0) throw new IllegalArgumentException("Polling interval must be positive");
+        AwaitTask task = new AwaitTask(callback, java.util.Objects.requireNonNull(awaitedCondition));
+        task.attach(scheduledExecutorService.scheduleWithFixedDelay(task, 0, time, TimeUnit.MILLISECONDS));
+        return task;
+    }
+
+    private static final class AwaitTask extends FutureTask<Void> implements ScheduledFuture<Void> {
+        private final BooleanSupplier condition;
+        private volatile ScheduledFuture<?> polling;
+        private volatile boolean interruptPolling;
+
+        private AwaitTask(Runnable callback, BooleanSupplier condition) {
+            super(java.util.Objects.requireNonNull(callback), null);
+            this.condition = condition;
+        }
+
+        private void attach(ScheduledFuture<?> future) {
+            polling = future;
+            // The scheduler may have completed the request before returning its handle.
+            if (isDone()) future.cancel(interruptPolling);
+        }
+
+        @Override public void run() {
+            if (isDone()) return;
+            try {
+                if (condition.getAsBoolean()) super.run();
+            } catch (Throwable failure) {
+                setException(failure);
             }
-        }, 0, time, TimeUnit.MILLISECONDS);
-        return scheduledFuture;
+        }
+
+        @Override protected void done() {
+            ScheduledFuture<?> future = polling;
+            if (future != null) future.cancel(interruptPolling);
+        }
+
+        @Override public boolean cancel(boolean mayInterruptIfRunning) {
+            interruptPolling = mayInterruptIfRunning;
+            return super.cancel(mayInterruptIfRunning);
+        }
+
+        @Override public long getDelay(TimeUnit unit) {
+            ScheduledFuture<?> future = polling;
+            return future == null ? 0 : future.getDelay(unit);
+        }
+
+        @Override public int compareTo(Delayed other) {
+            return Long.compare(getDelay(TimeUnit.NANOSECONDS), other.getDelay(TimeUnit.NANOSECONDS));
+        }
     }
 
     public static void sleep(int start) {
@@ -222,19 +263,32 @@ public class Global {
     }
 
     public static void sleepUntilOnClientThread(BooleanSupplier awaitedCondition, int time) {
-        if (Microbot.getClient().isClientThread()) return;
-        boolean done;
-        long startTime = System.currentTimeMillis();
-        try {
-            do {
-                if (Thread.currentThread().isInterrupted()) {
-                    return;
-                }
-                done = Microbot.getClientThread().runOnClientThreadOptional(awaitedCondition::getAsBoolean).orElse(false);
-            } while (!done && !Thread.currentThread().isInterrupted() && System.currentTimeMillis() - startTime < time);
-        } catch (Exception e) {
-            Microbot.logStackTrace("Global Sleep: ", e);
+        awaitOnClientThread(awaitedCondition, time);
+    }
+
+    /**
+     * True only if observed before timeout. False on interruption or client-thread misuse.
+     * The condition must be short and nonblocking; the caller polls off-thread at most every 40ms.
+     */
+    public static boolean awaitOnClientThread(BooleanSupplier awaitedCondition, int timeoutMillis) {
+        if (Microbot.getClient().isClientThread() || timeoutMillis <= 0) return false;
+        long start = System.nanoTime();
+        long duration = TimeUnit.MILLISECONDS.toNanos(timeoutMillis);
+        while (!Thread.currentThread().isInterrupted() && System.nanoTime() - start < duration) {
+            boolean done = Microbot.getClientThread()
+                    .runOnClientThreadOptional(awaitedCondition::getAsBoolean).orElse(false);
+            if (Thread.currentThread().isInterrupted()) return false;
+            if (done) return System.nanoTime() - start < duration;
+            long remaining = duration - (System.nanoTime() - start);
+            if (remaining <= 0) return false;
+            try {
+                TimeUnit.NANOSECONDS.sleep(Math.min(remaining, TimeUnit.MILLISECONDS.toNanos(POLL_MIN_MS)));
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+                return false;
+            }
         }
+        return false;
     }
 
     @Deprecated
