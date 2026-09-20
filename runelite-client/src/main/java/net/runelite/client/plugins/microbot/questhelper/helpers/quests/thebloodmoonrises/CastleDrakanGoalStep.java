@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024, LlemonDuck <napkinorton@gmail.com>
+ * Copyright (c) 2026, Zoinkwiz <https://github.com/Zoinkwiz>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -22,32 +22,27 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package net.runelite.gradle.component;
+package net.runelite.client.plugins.microbot.questhelper.helpers.quests.thebloodmoonrises;
 
-import org.gradle.api.Plugin;
-import org.gradle.api.Project;
-import org.gradle.api.tasks.SourceSet;
-import org.gradle.api.tasks.SourceSetContainer;
-import org.gradle.api.tasks.TaskProvider;
+import net.runelite.client.plugins.microbot.questhelper.questhelpers.QuestHelper;
+import net.runelite.client.plugins.microbot.questhelper.requirements.Requirement;
+import net.runelite.client.plugins.microbot.questhelper.steps.ConditionalStep;
+import net.runelite.client.plugins.microbot.questhelper.steps.QuestStep;
+import java.util.List;
+import lombok.Getter;
 
-public class ComponentPlugin implements Plugin<Project>
+class CastleDrakanGoalStep extends ConditionalStep
 {
+	@Getter
+	private List<QuestStep> displaySteps = List.of();
 
-	@Override
-	public void apply(Project project)
+	CastleDrakanGoalStep(QuestHelper questHelper, QuestStep step, String text, Requirement... requirements)
 	{
-		TaskProvider<ComponentTask> packComponents = project.getTasks()
-			.register("packComponents", ComponentTask.class, (task) -> task.setGroup("build"));
-
-		project.getTasks()
-			.getByName("compileJava")
-			.dependsOn(packComponents);
-
-		project.getExtensions()
-			.getByType(SourceSetContainer.class)
-			.getByName(SourceSet.MAIN_SOURCE_SET_NAME)
-			.getJava()
-			.srcDir(packComponents.map(ComponentTask::getOutputDirectory));
+		super(questHelper, step, text, requirements);
 	}
 
+	void orderSidebar(QuestStep... rows)
+	{
+		displaySteps = List.of(rows);
+	}
 }
