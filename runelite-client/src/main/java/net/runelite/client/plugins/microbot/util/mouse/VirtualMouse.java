@@ -22,6 +22,7 @@ import static net.runelite.client.plugins.microbot.util.Global.sleep;
 public class VirtualMouse extends Mouse {
 
     private final ScheduledExecutorService scheduledExecutorService;
+    private static final java.util.concurrent.locks.ReentrantLock CLICK_LOCK = new java.util.concurrent.locks.ReentrantLock();
 
     @Inject
     public VirtualMouse() {
@@ -129,12 +130,12 @@ public class VirtualMouse extends Mouse {
     public Mouse click(Point point, boolean rightClick) {
         if (point == null) return this;
 
-        Runnable clickAction = () -> {
+        Runnable clickAction = () -> runClick(() -> {
             if (shouldMoveNaturally(point)) {
                 Microbot.naturalMouse.moveTo(point.getX(), point.getY());
             }
             handleClick(point, rightClick);
-        };
+        });
 
         if (Microbot.getClient().isClientThread()) {
             scheduledExecutorService.schedule(clickAction, 0, TimeUnit.MILLISECONDS);
@@ -149,7 +150,7 @@ public class VirtualMouse extends Mouse {
     public Mouse click(Point point, boolean rightClick, NewMenuEntry entry) {
         if (point == null) return this;
 
-        Runnable clickAction = () -> {
+        Runnable clickAction = () -> runClick(() -> {
             Point newPoint = point;
             if (Thread.currentThread().isInterrupted()) return;
             if (shouldMoveNaturally(point)) {
@@ -176,7 +177,7 @@ public class VirtualMouse extends Mouse {
             if (Thread.currentThread().isInterrupted()) return;
             Microbot.targetMenu = entry;
             handleClick(newPoint, rightClick);
-        };
+        });
 
         if (Microbot.getClient().isClientThread()) {
             scheduledExecutorService.schedule(clickAction, 0, TimeUnit.MILLISECONDS);
@@ -213,6 +214,37 @@ public class VirtualMouse extends Mouse {
     @Override
     public Mouse click(Point point, NewMenuEntry entry) {
         return click(point, false, entry);
+    }
+
+    private static void runClick(Runnable action) {
+        boolean locked = false;
+        try {
+            locked = CLICK_LOCK.tryLock(5, TimeUnit.SECONDS);
+            if (locked && !Thread.currentThread().isInterrupted()) action.run();
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+        } finally {
+            if (locked) CLICK_LOCK.unlock();
+        }
+    }
+
+    @Override
+    public boolean tryClick(Point point, NewMenuEntry entry, java.util.function.BooleanSupplier valid) {
+        if (point == null || Microbot.getClient().isClientThread() || Thread.currentThread().isInterrupted()) return false;
+        final boolean[] acknowledged = {false};
+        runClick(() -> {
+            if (shouldMoveNaturally(point)) Microbot.naturalMouse.moveTo(point.getX(), point.getY());
+            if (Thread.currentThread().isInterrupted() || !valid.getAsBoolean()) return;
+            try (net.runelite.client.plugins.microbot.util.menu.PendingMenuAction pending =
+                         new net.runelite.client.plugins.microbot.util.menu.PendingMenuAction(entry)) {
+                moved(point);
+                if (!net.runelite.client.plugins.microbot.util.Global.sleepUntil(pending::isPrepared, 1200)) return;
+                if (Thread.currentThread().isInterrupted() || !valid.getAsBoolean()) return;
+                handleClick(point, false);
+                acknowledged[0] = net.runelite.client.plugins.microbot.util.Global.sleepUntil(pending::isAcknowledged, 1200);
+            }
+        });
+        return acknowledged[0];
     }
 
     @Override

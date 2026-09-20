@@ -239,3 +239,9 @@ Source: [Ectophial, full/empty variants](https://oldschool.runescape.wiki/w/Ecto
 A cached item does not prove that its slot still contains that item, or that the current inventory widget is the one previously inspected. Capture identity, actions and bounds together on the client thread, then perform mouse work outside it. Missing slots and unresolved actions must return false; never fall back to an unrelated slot.
 
 **Pattern to follow:** Check `Rs2Inventory.interact`'s result, then separately wait for the expected game-state change. **Defensive check:** replaced containers, missing children, changed item IDs and unknown actions must submit no interaction. Ground-item wrappers must retain their originating view and reject detached scene tiles.
+
+## 15. Separate pickup submission, ground changes and collection
+
+A ground pile can decrease in place without its wrapper changing identity. Another player can remove it, and a bag can receive it without an inventory change. Use the detailed pickup result instead of treating disappearance as proof of collection. Revalidate the originating view and exact item after mouse movement, and never turn Take into a selected-item/spell action.
+
+Looting must own a scoped script-loop gate rather than restoring a shared user pause flag. See [looting contracts](../api/looting-repairs.md) for selection, free-slot reserves and result semantics. Regression checks must cover exceptions, user pauses, partial stacks, stale targets and cancelled input.

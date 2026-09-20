@@ -231,7 +231,7 @@ public class Rs2TileItemModel implements TileItem, IEntity {
     }
 
     public boolean click() {
-        return click("");
+        return click("Take");
     }
 
     /**
@@ -244,72 +244,6 @@ public class Rs2TileItemModel implements TileItem, IEntity {
     }
 
     public boolean click(String action) {
-        if (action == null || Microbot.getClient().isClientThread() || Thread.currentThread().isInterrupted()) return false;
-        try {
-            LocalPoint local = Microbot.getClientThread().runOnClientThreadOptional(() ->
-                    isCurrent() ? tile.getLocalLocation() : null).orElse(null);
-            if (local == null) return false;
-            if (!Microbot.getClientThread().runOnClientThreadOptional(() -> Rs2Camera.isTileOnScreen(local)).orElse(false)) Rs2Camera.turnTo(local);
-            java.util.Map.Entry<NewMenuEntry, Rectangle> dispatch = Microbot.getClientThread()
-                    .runOnClientThreadOptional(() -> prepareDispatch(action)).orElse(null);
-            if (dispatch == null || Thread.currentThread().isInterrupted()) return false;
-            return Microbot.tryDoInvoke(dispatch.getKey(), dispatch.getValue());
-        } catch (Exception ex) {
-            if (Thread.currentThread().isInterrupted()) return false;
-            Microbot.logStackTrace("Rs2TileItemModel", ex);
-            return false;
-        }
-    }
-
-    private boolean isCurrent() {
-        assert Microbot.getClient().isClientThread() : "Client-thread-only helper";
-        if (worldView == null || Microbot.getClient().getGameState() != GameState.LOGGED_IN
-                || Microbot.getClient().getWorldView(worldView.getId()) != worldView) return false;
-        LocalPoint local = tile.getLocalLocation();
-        if (local == null || worldView.getScene() == null) return false;
-        Tile[][][] tiles = worldView.getScene().getTiles();
-        int plane = tile.getPlane(), x = local.getSceneX(), y = local.getSceneY();
-        if (plane < 0 || plane >= tiles.length || x < 0 || x >= tiles[plane].length
-                || y < 0 || y >= tiles[plane][x].length || tiles[plane][x][y] != tile) return false;
-        java.util.List<TileItem> items = tile.getGroundItems();
-        return items != null && items.stream().anyMatch(item -> item == tileItem);
-    }
-
-    private java.util.Map.Entry<NewMenuEntry, Rectangle> prepareDispatch(String requestedAction) {
-        assert Microbot.getClient().isClientThread() : "Client-thread-only helper";
-        if (!isCurrent()) return null;
-        ItemComposition definition = Microbot.getClient().getItemDefinition(tileItem.getId());
-        if (definition == null) return null;
-        String[] actions = Rs2Reflection.getGroundItemActions(definition);
-        int index = -1;
-        for (int i = 0; i < actions.length; i++) {
-            if (actions[i] != null && (requestedAction.isEmpty() || actions[i].equalsIgnoreCase(requestedAction))) {
-                index = i;
-                break;
-            }
-        }
-        MenuAction menuAction = Microbot.getClient().isWidgetSelected()
-                ? MenuAction.WIDGET_TARGET_ON_GROUND_ITEM : groundItemMenuAction(index);
-        if (menuAction == null) return null;
-        LocalPoint local = tile.getLocalLocation();
-        Polygon canvas = Perspective.getCanvasTilePoly(Microbot.getClient(), local);
-        Rectangle bounds = canvas == null ? new Rectangle(1, 1,
-                Microbot.getClient().getCanvasWidth(), Microbot.getClient().getCanvasHeight()) : canvas.getBounds();
-        String action = index < 0 ? requestedAction : actions[index];
-        return new java.util.AbstractMap.SimpleImmutableEntry<>(new NewMenuEntry()
-                .option(action).target("<col=ff9040>" + definition.getName()).identifier(tileItem.getId())
-                .opcode(menuAction.getId()).param0(local.getSceneX()).param1(local.getSceneY())
-                .itemId(-1).worldViewId(worldView.getId()), bounds);
-    }
-
-    private static MenuAction groundItemMenuAction(int index) {
-        switch (index) {
-            case 0: return MenuAction.GROUND_ITEM_FIRST_OPTION;
-            case 1: return MenuAction.GROUND_ITEM_SECOND_OPTION;
-            case 2: return MenuAction.GROUND_ITEM_THIRD_OPTION;
-            case 3: return MenuAction.GROUND_ITEM_FOURTH_OPTION;
-            case 4: return MenuAction.GROUND_ITEM_FIFTH_OPTION;
-            default: return null;
-        }
+        return net.runelite.client.plugins.microbot.util.grounditem.GroundItemPickup.click(this, action);
     }
 }

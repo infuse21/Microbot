@@ -47,3 +47,5 @@ Append a new numbered entry. Do **not** delete or rewrite existing entries unles
 ## Spatial identity gotcha
 
 A location alone does not identify a world view. Preserve the originating view on entity wrappers and use native coordinates from the same view for distance/reachability. Never seed player reachability from the target. See [movement.md](movement.md) and [items.md](items.md).
+
+Looting must distinguish ground changes from confirmed collection and preserve user pause ownership. See [items.md](items.md) and [looting contracts](../api/looting-repairs.md).

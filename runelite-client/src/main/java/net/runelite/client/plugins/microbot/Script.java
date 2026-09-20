@@ -75,10 +75,8 @@ public abstract class Script extends Global implements IScript {
      * or the current thread is interrupted. Tutorial scripts may run while unpaused.
      */
     public boolean run() {
-        if (Microbot.pauseAllScripts.get())
-            return false;
-        if (Thread.currentThread().isInterrupted())
-            return false;
+        if (Microbot.pauseAllScripts.get() || Thread.currentThread().isInterrupted()
+                || net.runelite.client.plugins.microbot.util.grounditem.Rs2GroundItem.isLooting()) return false;
 
         ScriptHeartbeatRegistry.recordHeartbeat(this.getClass().getName());
 
