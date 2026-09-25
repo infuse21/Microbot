@@ -22,7 +22,6 @@ import net.runelite.client.plugins.microbot.util.walker.Rs2PathApi;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.Pathfinder;
 import net.runelite.client.plugins.microbot.util.antiban.Rs2AntibanSettings;
 import net.runelite.client.plugins.microbot.util.bank.enums.BankLocation;
-import net.runelite.client.plugins.microbot.util.coords.Rs2WorldPoint;
 import net.runelite.client.plugins.microbot.util.equipment.Rs2Equipment;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2GameObject;
 import net.runelite.client.plugins.microbot.util.gameobject.Rs2BankID;
@@ -2392,35 +2391,6 @@ public class Rs2Bank {
 
         Set<BankLocation> allBanks = Arrays.stream(BankLocation.values())
                 .collect(Collectors.toSet());
-        if (Objects.equals(Rs2Player.getWorldLocation(), worldPoint)) {
-            List<TileObject> bankObjs = Stream.concat(
-                            Stream.of(Rs2GameObject.findBank(maxObjectSearchRadius)),
-                            Stream.of(Rs2GameObject.findGrandExchangeBooth(maxObjectSearchRadius))
-                    )
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toList());
-
-            Optional<BankLocation> byObject = bankObjs.stream()
-                    .map(obj -> {
-                        BankLocation closestBank = allBanks.stream()
-                                .min(Comparator.comparingInt(b -> Rs2WorldPoint.quickDistance(obj.getWorldLocation(), b.getWorldPoint())))
-                                .orElse(null);
-
-                        assert closestBank != null;
-                        int dist = obj.getWorldLocation().distanceTo(closestBank.getWorldPoint());
-
-                        return new AbstractMap.SimpleEntry<>(closestBank, dist);
-                    })
-                    .filter(e -> e.getKey() != null && e.getValue() <= maxObjectSearchRadius)
-                    .min(Comparator.comparingInt(Map.Entry::getValue))
-                    .map(Map.Entry::getKey);
-            if (byObject.isPresent() && byObject.get().hasRequirements()) {
-                Microbot.log("Found nearest bank (object): " + byObject.get());
-                BankLocation returnBankLocation = byObject.get();
-                List<WorldPoint> path = new ArrayList<>(Collections.singletonList(byObject.get().getWorldPoint()));
-                return new AbstractMap.SimpleEntry<>(path, returnBankLocation);
-            }
-        }
 
         // Measure accessible banks filtering performance, now down to 0.4ms to 1ms, proper usage of the cache in hasRequirements
         long accessibleBanksStart = System.nanoTime();
