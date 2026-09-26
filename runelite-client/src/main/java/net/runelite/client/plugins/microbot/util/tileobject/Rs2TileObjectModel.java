@@ -55,22 +55,22 @@ public class Rs2TileObjectModel implements TileObject {
 
     @Override
     public long getHash() {
-        return tileObject.getHash();
+        return Microbot.getClientThread().invoke(tileObject::getHash);
     }
 
     @Override
     public int getX() {
-        return tileObject.getX();
+        return Microbot.getClientThread().invoke(tileObject::getX);
     }
 
     @Override
     public int getY() {
-        return tileObject.getY();
+        return Microbot.getClientThread().invoke(tileObject::getY);
     }
 
     @Override
     public int getZ() {
-        return tileObject.getZ();
+        return Microbot.getClientThread().invoke(tileObject::getZ);
     }
 
     @Override
@@ -112,27 +112,30 @@ public class Rs2TileObjectModel implements TileObject {
 
     @Override
     public @Nullable Point getCanvasLocation() {
-        return tileObject.getCanvasLocation();
+        return Microbot.getClientThread().invoke(
+                (java.util.function.Supplier<Point>) tileObject::getCanvasLocation);
     }
 
     @Override
     public @Nullable Point getCanvasLocation(int zOffset) {
-        return tileObject.getCanvasLocation();
+        return Microbot.getClientThread().invoke(
+                (java.util.function.Supplier<Point>) tileObject::getCanvasLocation);
     }
 
     @Override
     public @Nullable Polygon getCanvasTilePoly() {
-        return tileObject.getCanvasTilePoly();
+        return Microbot.getClientThread().invoke(tileObject::getCanvasTilePoly);
     }
 
     @Override
     public @Nullable Point getCanvasTextLocation(Graphics2D graphics, String text, int zOffset) {
-        return tileObject.getCanvasTextLocation(graphics, text, zOffset);
+        return Microbot.getClientThread().invoke(
+                () -> tileObject.getCanvasTextLocation(graphics, text, zOffset));
     }
 
     @Override
     public @Nullable Point getMinimapLocation() {
-        return tileObject.getMinimapLocation();
+        return Microbot.getClientThread().invoke(tileObject::getMinimapLocation);
     }
 
     @Override
@@ -142,12 +145,13 @@ public class Rs2TileObjectModel implements TileObject {
 
     @Override
     public @Nullable String getOpOverride(int index) {
-        return tileObject.getOpOverride(index);
+        return Microbot.getClientThread().invoke(() -> tileObject.getOpOverride(index));
     }
 
     @Override
     public boolean isOpShown(int index) {
-        return tileObject.isOpShown(index);
+        return Microbot.getClientThread().invoke(
+                (java.util.function.Supplier<Boolean>) () -> tileObject.isOpShown(index));
     }
 
     public ObjectComposition getObjectComposition() {

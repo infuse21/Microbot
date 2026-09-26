@@ -38,13 +38,6 @@ net.runelite.client.plugins.microbot.api.playerstate.Rs2PlayerStateCache#onVarbi
 net.runelite.client.plugins.microbot.api.playerstate.Rs2PlayerStateCache#updateQuest(VarbitChanged): void  ->  net.runelite.api.events.VarbitChanged#getVarbitId(): int
 net.runelite.client.plugins.microbot.api.playerstate.Rs2PlayerStateCache#updateQuest(VarbitChanged): void  ->  net.runelite.api.events.VarbitChanged#getVarpId(): int
 net.runelite.client.plugins.microbot.api.playerstate.Rs2PlayerStateCache$LocalPlayerSnapshot#<init>(int, int, Player, WorldPoint, WorldView): void  ->  net.runelite.api.WorldView#getScene(): Scene
-net.runelite.client.plugins.microbot.api.tileobject.models.Rs2TileObjectModel#click(String): boolean  ->  net.runelite.api.Client#isWidgetSelected(): boolean
-net.runelite.client.plugins.microbot.api.tileobject.models.Rs2TileObjectModel#click(String): boolean  ->  net.runelite.api.GameObject#sizeX(): int
-net.runelite.client.plugins.microbot.api.tileobject.models.Rs2TileObjectModel#click(String): boolean  ->  net.runelite.api.GameObject#sizeY(): int
-net.runelite.client.plugins.microbot.api.tileobject.models.Rs2TileObjectModel#click(String): boolean  ->  net.runelite.api.ObjectComposition#getName(): String
-net.runelite.client.plugins.microbot.api.tileobject.models.Rs2TileObjectModel#click(String): boolean  ->  net.runelite.api.WorldView#getId(): int
-net.runelite.client.plugins.microbot.api.tileobject.models.Rs2TileObjectModel#getClickbox(): Shape  ->  net.runelite.api.TileObject#getClickbox(): Shape
-net.runelite.client.plugins.microbot.api.tileobject.models.Rs2TileObjectModel#getId(): int  ->  net.runelite.api.TileObject#getId(): int
 net.runelite.client.plugins.microbot.api.tileobject.models.Rs2TileObjectModel#isReachable(): boolean  ->  net.runelite.api.WorldView#getId(): int
 net.runelite.client.plugins.microbot.util.Rs2InventorySetup#computeSetupRetainItemIds(): Set  ->  net.runelite.api.ItemComposition#getLinkedNoteId(): int
 net.runelite.client.plugins.microbot.util.Rs2InventorySetup#firstNonEmptyCompositionName(ItemComposition): String  ->  net.runelite.api.ItemComposition#getMembersName(): String
@@ -74,13 +67,10 @@ net.runelite.client.plugins.microbot.util.bank.Rs2Bank#isLockedSlot(int): boolea
 net.runelite.client.plugins.microbot.util.bank.Rs2Bank#isLockedSlot(int): boolean  ->  net.runelite.api.widgets.Widget#getChildren(): Widget[]
 net.runelite.client.plugins.microbot.util.bank.Rs2Bank#isWidgetLocked(Widget): boolean  ->  net.runelite.api.widgets.Widget#getActions(): String[]
 net.runelite.client.plugins.microbot.util.bank.Rs2Bank#itemBounds(Rs2ItemModel): Rectangle  ->  net.runelite.api.widgets.Widget#getBounds(): Rectangle
-net.runelite.client.plugins.microbot.util.bank.Rs2Bank#lambda$depositLootingBag$59(): boolean  ->  net.runelite.api.widgets.Widget#getChildren(): Widget[]
 net.runelite.client.plugins.microbot.util.bank.Rs2Bank#lambda$findNearbyBankObject$33(TileObject): boolean  ->  net.runelite.api.TileObject#getId(): int
 net.runelite.client.plugins.microbot.util.bank.Rs2Bank#lambda$findNearbyBankObject$33(TileObject): boolean  ->  net.runelite.api.TileObject#getWorldLocation(): WorldPoint
 net.runelite.client.plugins.microbot.util.bank.Rs2Bank#lambda$findNearbyBankObject$34(WorldPoint, TileObject): boolean  ->  net.runelite.api.TileObject#getWorldLocation(): WorldPoint
 net.runelite.client.plugins.microbot.util.bank.Rs2Bank#lambda$findNearbyBankObject$35(WorldPoint, TileObject): int  ->  net.runelite.api.TileObject#getWorldLocation(): WorldPoint
-net.runelite.client.plugins.microbot.util.bank.Rs2Bank#lambda$getPathAndBankToNearestBank$44(TileObject, BankLocation): int  ->  net.runelite.api.TileObject#getWorldLocation(): WorldPoint
-net.runelite.client.plugins.microbot.util.bank.Rs2Bank#lambda$getPathAndBankToNearestBank$45(Set, TileObject): AbstractMap$SimpleEntry  ->  net.runelite.api.TileObject#getWorldLocation(): WorldPoint
 net.runelite.client.plugins.microbot.util.bank.Rs2Bank#lambda$handleAmount$17(): boolean  ->  net.runelite.api.widgets.Widget#getText(): String
 net.runelite.client.plugins.microbot.util.bank.Rs2Bank#lambda$openBank$31(WorldPoint, TileObject): Integer  ->  net.runelite.api.TileObject#getWorldLocation(): WorldPoint
 net.runelite.client.plugins.microbot.util.bank.Rs2Bank#openBank(): boolean  ->  net.runelite.api.Client#isWidgetSelected(): boolean

@@ -2907,7 +2907,12 @@ public class Rs2Bank {
             sleepUntil(()-> Rs2Widget.getWidget(983046) != null, Rs2Random.between(2000,5000));
             if(Rs2Widget.getWidget(983046) != null){
                 if(Rs2Widget.clickWidget(983046)){
-                    sleepUntil(()-> Rs2Widget.getWidget(15,11).getChildren()[0] == null, Rs2Random.between(500,1000));
+                    sleepUntil(() -> Microbot.getClientThread().invoke(
+                            (java.util.function.Supplier<Boolean>) () -> {
+                        Widget widget = Rs2Widget.getWidget(15, 11);
+                        Widget[] children = widget == null ? null : widget.getChildren();
+                        return children == null || children.length == 0 || children[0] == null;
+                    }), Rs2Random.between(500,1000));
                     if(Rs2Widget.clickWidget(983048)){ // close the bag
                         return true;
                     }

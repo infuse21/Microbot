@@ -230,7 +230,7 @@ public class Rs2TileObjectModel implements TileObject, IEntity {
             String name = getName();
             if (name == null) return false;
             if (name.toLowerCase(Locale.ROOT).contains("train cart")) {
-                if (Microbot.getClient().isClientThread()) return false;
+                if (Microbot.getClientThread().isClientThread()) return false;
                 Rs2Equipment.unEquip(EquipmentInventorySlot.WEAPON);
                 Rs2Equipment.unEquip(EquipmentInventorySlot.SHIELD);
                 if (!sleepUntil(() -> Rs2Equipment.get(EquipmentInventorySlot.WEAPON) == null
@@ -240,12 +240,116 @@ public class Rs2TileObjectModel implements TileObject, IEntity {
             LocalPoint location = getLocalLocation();
             if (location == null) return false;
             if (!Rs2Camera.isTileOnScreen(location)) {
-                if (Microbot.getClient().isClientThread()) return false;
+                if (Microbot.getClientThread().isClientThread()) return false;
                 Rs2Camera.turnTo(tileObject);
             }
 
             Map.Entry<NewMenuEntry, Rectangle> dispatch = Microbot.getClientThread()
-                    .runOnClientThreadOptional(() -> resolveClick(requestedAction)).orElse(null);
+                    .runOnClientThreadOptional(() -> {
+                        Client client = Microbot.getClient();
+                        WorldView view = tileObject.getWorldView();
+                        if (client.getGameState() != GameState.LOGGED_IN || view == null
+                                || client.getWorldView(view.getId()) != view) return null;
+
+                        Scene scene = view.getScene();
+                        if (scene == null) return null;
+                        Point point;
+                        if (tileObject instanceof GameObject) {
+                            point = ((GameObject) tileObject).getSceneMinLocation();
+                        } else {
+                            LocalPoint local = tileObject.getLocalLocation();
+                            point = local == null ? null : new Point(local.getSceneX(), local.getSceneY());
+                        }
+                        if (point == null) return null;
+
+                        Tile[][][] tiles = scene.getTiles();
+                        int plane = view.getPlane();
+                        int x = point.getX();
+                        int y = point.getY();
+                        if (tiles == null || plane < 0 || plane >= tiles.length || tiles[plane] == null
+                                || x < 0 || x >= tiles[plane].length || tiles[plane][x] == null
+                                || y < 0 || y >= tiles[plane][x].length) return null;
+                        Tile tile = tiles[plane][x][y];
+                        if (tile == null) return null;
+
+                        boolean current;
+                        if (tileObject instanceof GameObject) {
+                            current = false;
+                            GameObject[] objects = tile.getGameObjects();
+                            if (objects != null) {
+                                for (GameObject object : objects) {
+                                    if (object == tileObject) {
+                                        current = true;
+                                        break;
+                                    }
+                                }
+                            }
+                        } else if (tileObject instanceof GroundObject) {
+                            current = tile.getGroundObject() == tileObject;
+                        } else if (tileObject instanceof WallObject) {
+                            current = tile.getWallObject() == tileObject;
+                        } else if (tileObject instanceof DecorativeObject) {
+                            current = tile.getDecorativeObject() == tileObject;
+                        } else {
+                            current = true;
+                        }
+                        if (!current) return null;
+
+                        ObjectComposition composition = client.getObjectDefinition(tileObject.getId());
+                        if (composition == null) return null;
+                        if (composition.getImpostorIds() != null) composition = composition.getImpostor();
+                        if (composition == null) return null;
+
+                        boolean widgetSelected = client.isWidgetSelected();
+                        String[] actions = composition.getActions();
+                        int index = 0;
+                        if (!widgetSelected && !requestedAction.isBlank()) {
+                            index = -1;
+                            if (actions != null) {
+                                for (int i = 0; i < actions.length; i++) {
+                                    if (actions[i] != null
+                                            && requestedAction.equalsIgnoreCase(Rs2UiHelper.stripColTags(actions[i]))) {
+                                        index = i;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (index < 0) return null;
+                        }
+                        if (index > 4) return null;
+
+                        MenuAction menuAction;
+                        if (widgetSelected) {
+                            menuAction = MenuAction.WIDGET_TARGET_ON_GAME_OBJECT;
+                        } else {
+                            switch (index) {
+                                case 0: menuAction = MenuAction.GAME_OBJECT_FIRST_OPTION; break;
+                                case 1: menuAction = MenuAction.GAME_OBJECT_SECOND_OPTION; break;
+                                case 2: menuAction = MenuAction.GAME_OBJECT_THIRD_OPTION; break;
+                                case 3: menuAction = MenuAction.GAME_OBJECT_FOURTH_OPTION; break;
+                                case 4: menuAction = MenuAction.GAME_OBJECT_FIFTH_OPTION; break;
+                                default: return null;
+                            }
+                        }
+
+                        LocalPoint local = tileObject.getLocalLocation();
+                        if (local == null) return null;
+                        int param0 = local.getSceneX();
+                        int param1 = local.getSceneY();
+                        if (tileObject instanceof GameObject) {
+                            GameObject gameObject = (GameObject) tileObject;
+                            if (gameObject.sizeX() > 1) param0 -= gameObject.sizeX() / 2;
+                            if (gameObject.sizeY() > 1) param1 -= gameObject.sizeY() / 2;
+                        }
+
+                        NewMenuEntry entry = new NewMenuEntry()
+                                .param0(param0).param1(param1).opcode(menuAction.getId())
+                                .identifier(tileObject.getId()).itemId(-1).option(requestedAction)
+                                .target(composition.getName()).setWorldViewId(view.getId())
+                                .gameObject(tileObject);
+                        return new AbstractMap.SimpleImmutableEntry<>(entry,
+                                Rs2UiHelper.getObjectClickbox(tileObject));
+                    }).orElse(null);
             if (dispatch == null || Thread.currentThread().isInterrupted()) return false;
             Microbot.status = requestedAction + " " + name;
             return Microbot.tryDoInvoke(dispatch.getKey(), dispatch.getValue());
@@ -253,104 +357,6 @@ public class Rs2TileObjectModel implements TileObject, IEntity {
             log.error("Failed to interact with object: ", ex);
             return false;
         }
-    }
-
-    private Map.Entry<NewMenuEntry, Rectangle> resolveClick(String action) {
-        Client client = Microbot.getClient();
-        WorldView view = tileObject.getWorldView();
-        if (client.getGameState() != GameState.LOGGED_IN || view == null
-                || client.getWorldView(view.getId()) != view || !isCurrentInScene(view)) return null;
-
-        ObjectComposition composition = client.getObjectDefinition(tileObject.getId());
-        if (composition == null) return null;
-        if (composition.getImpostorIds() != null) composition = composition.getImpostor();
-        if (composition == null) return null;
-
-        boolean widgetSelected = client.isWidgetSelected();
-        String[] actions = composition.getActions();
-        int index = 0;
-        if (!widgetSelected && !action.isBlank()) {
-            index = -1;
-            if (actions != null) {
-                for (int i = 0; i < actions.length; i++) {
-                    if (actions[i] != null && action.equalsIgnoreCase(Rs2UiHelper.stripColTags(actions[i]))) {
-                        index = i;
-                        break;
-                    }
-                }
-            }
-            if (index < 0) return null;
-        }
-        if (index > 4) return null;
-
-        MenuAction menuAction;
-        if (widgetSelected) {
-            menuAction = MenuAction.WIDGET_TARGET_ON_GAME_OBJECT;
-        } else {
-            switch (index) {
-                case 0: menuAction = MenuAction.GAME_OBJECT_FIRST_OPTION; break;
-                case 1: menuAction = MenuAction.GAME_OBJECT_SECOND_OPTION; break;
-                case 2: menuAction = MenuAction.GAME_OBJECT_THIRD_OPTION; break;
-                case 3: menuAction = MenuAction.GAME_OBJECT_FOURTH_OPTION; break;
-                case 4: menuAction = MenuAction.GAME_OBJECT_FIFTH_OPTION; break;
-                default: return null;
-            }
-        }
-
-        LocalPoint location = tileObject.getLocalLocation();
-        if (location == null) return null;
-        int param0 = location.getSceneX();
-        int param1 = location.getSceneY();
-        if (tileObject instanceof GameObject) {
-            GameObject gameObject = (GameObject) tileObject;
-            if (gameObject.sizeX() > 1) param0 -= gameObject.sizeX() / 2;
-            if (gameObject.sizeY() > 1) param1 -= gameObject.sizeY() / 2;
-        }
-
-        NewMenuEntry entry = new NewMenuEntry()
-                .param0(param0).param1(param1).opcode(menuAction.getId())
-                .identifier(tileObject.getId()).itemId(-1).option(action)
-                .target(composition.getName()).setWorldViewId(view.getId())
-                .gameObject(tileObject);
-        return new AbstractMap.SimpleImmutableEntry<>(entry, Rs2UiHelper.getObjectClickbox(tileObject));
-    }
-
-    private boolean isCurrentInScene(WorldView view) {
-        Scene scene = view.getScene();
-        if (scene == null) return false;
-
-        Point point;
-        if (tileObject instanceof GameObject) {
-            point = ((GameObject) tileObject).getSceneMinLocation();
-        } else {
-            LocalPoint location = tileObject.getLocalLocation();
-            point = location == null ? null : new Point(location.getSceneX(), location.getSceneY());
-        }
-        if (point == null) return false;
-
-        Tile[][][] tiles = scene.getTiles();
-        int plane = view.getPlane();
-        int x = point.getX();
-        int y = point.getY();
-        if (tiles == null || plane < 0 || plane >= tiles.length || tiles[plane] == null
-                || x < 0 || x >= tiles[plane].length || tiles[plane][x] == null
-                || y < 0 || y >= tiles[plane][x].length) return false;
-        Tile tile = tiles[plane][x][y];
-        if (tile == null) return false;
-
-        if (tileObject instanceof GameObject) {
-            GameObject[] objects = tile.getGameObjects();
-            if (objects != null) {
-                for (GameObject object : objects) {
-                    if (object == tileObject) return true;
-                }
-            }
-            return false;
-        }
-        if (tileObject instanceof GroundObject) return tile.getGroundObject() == tileObject;
-        if (tileObject instanceof WallObject) return tile.getWallObject() == tileObject;
-        if (tileObject instanceof DecorativeObject) return tile.getDecorativeObject() == tileObject;
-        return true;
     }
 
 }
