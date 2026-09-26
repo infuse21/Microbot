@@ -502,6 +502,7 @@ public final class Rs2WalkerBankingPlanner {
             BankLocation nearestBank = null;
             List<WorldPoint> pathToBank = new ArrayList<>();
             List<WorldPoint> pathFromBankToTarget = new ArrayList<>();
+            List<Transport> bankRouteTransports = new ArrayList<>();
             int bankingRouteDistance = -1;
 
             try {
@@ -532,12 +533,12 @@ public final class Rs2WalkerBankingPlanner {
                         pathFromBankToTarget = Rs2Walker.getWalkPath(bankLocation, target);
                         long pathFromBankEndTime = System.nanoTime();
                         double pathFromBankTimeMs = (pathFromBankEndTime - pathFromBankStartTime) / 1_000_000.0;
-                        List<Transport> bankLegTransports = Rs2Walker.getTransportsForPath(
+                        bankRouteTransports = Rs2Walker.getTransportsForPath(
                                 pathFromBankToTarget, 0, TransportType.TELEPORTATION_SPELL, true);
-                        long spellCount = bankLegTransports.stream()
+                        long spellCount = bankRouteTransports.stream()
                                 .filter(t -> t.getType() == TransportType.TELEPORTATION_SPELL)
                                 .count();
-                        long itemCount = bankLegTransports.stream()
+                        long itemCount = bankRouteTransports.stream()
                                 .filter(t -> t.getType() == TransportType.TELEPORTATION_ITEM)
                                 .count();
                         int distanceFromBank = Rs2Walker.getTotalTravelTicksFromPath(
@@ -547,11 +548,11 @@ public final class Rs2WalkerBankingPlanner {
                                 .append(" (").append(pathToBank.size()).append(" waypoints, ").append(distanceToBank).append(" ticks)\n");
                         performanceLog.append("\t-Path from bank to target with banked items: ").append(String.format("%.2f ms", pathFromBankTimeMs))
                                 .append(" (").append(pathFromBankToTarget.size()).append(" waypoints, ").append(distanceFromBank).append(" ticks)\n");
-                        performanceLog.append("\t-Bank leg transports: total=").append(bankLegTransports.size())
+                        performanceLog.append("\t-Bank leg transports: total=").append(bankRouteTransports.size())
                                 .append(" spells=").append(spellCount)
                                 .append(" items=").append(itemCount)
                                 .append("\n");
-                        Transport firstSpellTransport = bankLegTransports.stream()
+                        Transport firstSpellTransport = bankRouteTransports.stream()
                                 .filter(t -> t.getType() == TransportType.TELEPORTATION_SPELL)
                                 .findFirst()
                                 .orElse(null);
@@ -563,7 +564,7 @@ public final class Rs2WalkerBankingPlanner {
                                     .append("\n");
                         }
                         WebWalkLog.spInfo("compare_bank_leg | total={} spells={} items={} firstSpell={}",
-                                bankLegTransports.size(),
+                                bankRouteTransports.size(),
                                 spellCount,
                                 itemCount,
                                 firstSpellTransport == null
@@ -628,7 +629,7 @@ public final class Rs2WalkerBankingPlanner {
 
             return new TransportRouteAnalysis(directPath,
                     nearestBank, nearestBank != null ? nearestBank.getWorldPoint() : null, pathToBank, pathFromBankToTarget, recommendation,
-                    directDistance, bankingRouteDistance);
+                    directDistance, bankingRouteDistance, bankRouteTransports);
         } catch (Exception e) {
             long totalEndTime = System.nanoTime();
             double totalTimeMs = (totalEndTime - totalStartTime) / 1_000_000.0;

@@ -245,3 +245,21 @@ A cached item does not prove that its slot still contains that item, or that the
 A ground pile can decrease in place without its wrapper changing identity. Another player can remove it, and a bag can receive it without an inventory change. Use the detailed pickup result instead of treating disappearance as proof of collection. Revalidate the originating view and exact item after mouse movement, and never turn Take into a selected-item/spell action.
 
 Looting must own a scoped script-loop gate rather than restoring a shared user pause flag. See [looting contracts](../api/looting-repairs.md) for selection, free-slot reserves and result semantics. Regression checks must cover exceptions, user pauses, partial stacks, stale targets and cancelled input.
+
+## 16. Prefer item IDs when scanning a restored bank mirror
+
+Items restored from the profile bank snapshot intentionally have no `ItemComposition` until a
+composition-dependent accessor such as `getName()` is used. A name-based scan over that mirror can
+therefore issue one client-thread lookup per bank row; use a known item ID for hot-path eligibility
+and quantity checks, with name matching only as a fallback when no stable ID is available.
+
+**Why this matters:** Banked transport filtering counted the first coin fare with
+`Rs2Bank.count("Coins")`. On a 618-row restored bank mirror, that cold name scan took 37 seconds and
+the entire delay was attributed to the minecart batch that happened to encounter the fare first;
+`Rs2Bank.count(ItemID.COINS)` returned the same quantity immediately.
+
+**Where this applies:** `PathfinderConfig` transport currency checks and any route-planning or setup
+code that scans `Rs2Bank.getAll()` before the bank has been opened in the current client session.
+
+**Defensive check:** Reproduce after a fresh client start with a restored bank snapshot and compare
+the cold ID-based lookup against the equivalent name lookup; route-planning code must use the ID path.

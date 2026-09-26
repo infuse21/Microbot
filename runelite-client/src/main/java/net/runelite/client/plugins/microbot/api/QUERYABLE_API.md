@@ -4,9 +4,9 @@ This is the long-form guide for the Microbot entity cache/query layer. Use singl
 
 ## Ownership, threading, coordinates and results
 
-Queries are mutable, single-use Java Stream pipelines. Keep each query on one caller thread, consume it once, and create a new query for each poll or branch. Membership lists contain **live wrappers**, not immutable entity snapshots. Re-query after despawn, logout, hop or scene replacement. Returned raw actors, widgets, compositions and collections still require client-thread access.
+Queries are mutable, single-use Java Stream pipelines. Keep each query on one caller thread, consume it once, and create a new query for each poll or branch. `query()` eagerly captures a membership snapshot, while filters run at the terminal operation. The snapshot contains **live wrappers**, not immutable entity state. Re-query after despawn, logout, hop or scene replacement. Returned raw actors, widgets, compositions and collections still require client-thread access.
 
-NPC, player and ground-item query construction collects membership and refresh metadata on the client thread. Prefer `firstOnClientThread`, `nearestOnClientThread`, `nearestReachableOnClientThread`, `countOnClientThread` and `toListOnClientThread` to evaluate short live-property predicates together. These predicates must not sleep, walk, move the mouse or wait. Perform interactions after the terminal returns, on the script thread. Several independent getter calls are not one atomic observation.
+Query construction collects membership and refresh metadata on the client thread. Prefer `firstOnClientThread`, `firstReachableOnClientThread`, `nearestOnClientThread`, `nearestReachableOnClientThread`, `countOnClientThread` and `toListOnClientThread` to evaluate short live-property predicates together. These predicates must not sleep, walk, move the mouse or wait. Perform interactions after the terminal returns, on the script thread. Several independent getter calls are not one atomic observation.
 
 Caches intentionally collect all known world views. `fromWorldView()` compares the player's view by identity. Player-relative `within`, `nearest` and reachability exclude other views; distances are Chebyshev tiles, including diagonals. `getSceneWorldLocation()` supplies native coordinates in the originating view. Existing actor `getWorldLocation()` retains its main-world projection behavior; ground items retain native tile coordinates. Do not mix projected actor positions with native ground-item positions. Explicit `WorldPoint` anchors carry no view identity: anchor overloads compare native coordinates and retain all-view scope, so constrain the view explicitly when coordinates could overlap. Missing locations, other planes, negative bounds and invalid distance sentinels never qualify.
 
@@ -139,19 +139,24 @@ var tileObjectCache = Microbot.getRs2TileObjectCache();
 All queryables implement `IEntityQueryable<Q, E>`:
 
 ```java
-public interface IEntityQueryable<Q, E> {
+public interface IEntityQueryable<Q extends IEntityQueryable<Q, E>, E extends IEntity> {
     Q where(Predicate<E> predicate);     // Custom filter
     Q within(int distance);               // Distance from player
     Q within(WorldPoint anchor, int distance); // Distance from point
     E first();                            // First match
+    E firstOnClientThread();              // Evaluate first match on client thread
+    E firstReachableOnClientThread();     // First reachable match on client thread
     E nearest();                          // Nearest to player
+    E nearestOnClientThread();            // Evaluate nearest match on client thread
     E nearest(int maxDistance);           // Nearest within range
     E nearest(WorldPoint anchor, int maxDistance); // Nearest to point
-    E withName(String name);             // Find by name
-    E withNames(String... names);        // Find by multiple names
-    E withId(int id);                    // Find by ID
-    E withIds(int... ids);               // Find by multiple IDs
+    Q withName(String name);             // Filter by name
+    Q withNameContains(String substring); // Filter by partial name
+    Q withNames(String... names);        // Filter by multiple names
+    Q withId(int id);                    // Filter by ID
+    Q withIds(int... ids);               // Filter by multiple IDs
     List<E> toList();                    // Get all matches
+    List<E> toListOnClientThread();      // Evaluate all matches on client thread
 }
 ```
 
@@ -167,17 +172,17 @@ npcCache.query()
     .nearestOnClientThread();                  // Get nearest match
 ```
 
-### 4. Lazy Evaluation
+### 4. Query Evaluation
 
-Queries are not executed until a terminal operation is called:
+`query()` captures cache membership immediately. Filters evaluate when a terminal operation is called:
 
 ```java
-// No execution yet - just building the query
+// Membership captured now; filters are deferred
 Rs2NpcQueryable query = Microbot.getRs2NpcCache().query()
         .withName("Guard")
         .within(10);
 
-// NOW it executes
+// Filters evaluate now
 Rs2NpcModel guard = query.nearestOnClientThread();  // Terminal operation
 ```
 
@@ -318,7 +323,7 @@ item.isNoted()             // Is noted?
 item.isTradeable()         // Is tradeable?
 item.isMembers()           // Members item?
 item.isDespawned()         // Has despawned?
-item.willDespawnWithin(seconds) // Will despawn soon?
+item.willDespawnWithin(ticks) // Will despawn within this many game ticks?
 item.pickup()              // Pick up item
 ```
 
@@ -441,39 +446,7 @@ Returns the first matching entity (not necessarily nearest).
 ```java
 Rs2NpcModel npc = npcCache.query()
     .withName("Guard")
-    .first();
-```
-
-#### `withName(String name)`
-Finds nearest entity with exact name (case-insensitive).
-
-```java
-Rs2NpcModel banker = npcCache.query()
-    .withName("Banker");  // Terminal operation
-```
-
-#### `withNames(String... names)`
-Finds nearest entity matching any of the names.
-
-```java
-Rs2NpcModel npc = npcCache.query()
-    .withNames("Banker", "Bank clerk", "Bank assistant");
-```
-
-#### `withId(int id)`
-Finds nearest entity with specific ID.
-
-```java
-Rs2NpcModel npc = npcCache.query()
-    .withId(1234);
-```
-
-#### `withIds(int... ids)`
-Finds nearest entity matching any of the IDs.
-
-```java
-Rs2NpcModel npc = npcCache.query()
-    .withIds(1234, 5678, 9012);
+    .firstOnClientThread();
 ```
 
 #### `toList()`
@@ -492,12 +465,48 @@ Returns the number of matching entities.
 int guardCount = npcCache.query()
     .withName("Guard")
     .within(10)
-    .count();
+    .countOnClientThread();
 ```
 
 ### Filter Operations
 
 These filter entities and return the queryable for chaining:
+
+#### `withName(String name)`
+Filters entities by exact name (case-insensitive).
+
+```java
+Rs2NpcModel banker = npcCache.query()
+    .withName("Banker")
+    .nearestOnClientThread();
+```
+
+#### `withNames(String... names)`
+Filters entities matching any of the names.
+
+```java
+Rs2NpcModel npc = npcCache.query()
+    .withNames("Banker", "Bank clerk", "Bank assistant")
+    .nearestOnClientThread();
+```
+
+#### `withId(int id)`
+Filters entities by ID.
+
+```java
+Rs2NpcModel npc = npcCache.query()
+    .withId(1234)
+    .nearestOnClientThread();
+```
+
+#### `withIds(int... ids)`
+Filters entities matching any of the IDs.
+
+```java
+Rs2NpcModel npc = npcCache.query()
+    .withIds(1234, 5678, 9012)
+    .nearestOnClientThread();
+```
 
 #### `where(Predicate<E> predicate)`
 Adds a custom filter using a lambda expression.
@@ -578,7 +587,8 @@ for (Rs2NpcModel guard : guards) {
 
 ```java
 Rs2NpcModel banker = npcCache.query()
-    .withNames("Banker", "Bank clerk", "Bank assistant");
+    .withNames("Banker", "Bank clerk", "Bank assistant")
+    .nearestOnClientThread();
 
 if (banker != null) {
     banker.click("Bank");
@@ -610,7 +620,7 @@ Rs2TileObjectModel tree = tileObjectCache.query()
 
 ```java
 List<Rs2TileItemModel> despawning = tileItemCache.query()
-    .where(item -> item.willDespawnWithin(30))  // 30 seconds
+    .where(item -> item.willDespawnWithin(30))  // 30 game ticks
     .where(item -> item.getTotalValue() > 1000)
     .toListOnClientThread();
 ```
@@ -702,14 +712,15 @@ Rs2NpcModel nearbyEnemy = npcCache.query()
 
 ```java
 // Get 5 nearest guards
-List<Rs2NpcModel> guards = npcCache.query()
-    .withName("Guard")
-    .toListOnClientThread()
-    .stream()
-    .sorted(Comparator.comparingInt(npc -> 
-        npc.getWorldLocation().distanceTo(Rs2Player.getWorldLocation())))
-    .limit(5)
-    .collect(Collectors.toList());
+List<Rs2NpcModel> guards = Microbot.getClientThread().invoke(() ->
+    npcCache.query()
+        .withName("Guard")
+        .toList()
+        .stream()
+        .sorted(Comparator.comparingInt(npc ->
+            npc.getWorldLocation().distanceTo(Rs2Player.getWorldLocation())))
+        .limit(5)
+        .collect(Collectors.toList()));
 ```
 
 ### Null Safety
@@ -836,7 +847,7 @@ Rs2NpcModel npc = npcCache.query()
 // Good - gets first directly
 Rs2NpcModel npc = npcCache.query()
     .withName("Guard")
-    .first();
+    .firstOnClientThread();
 ```
 
 ---
@@ -859,7 +870,8 @@ List<NPC> npcs = Rs2Npc.getNpcs(NpcID.GUARD);
 ```java
 // New way
 Rs2NpcModel npc = npcCache.query()
-    .withName("Banker");
+    .withName("Banker")
+    .firstOnClientThread();
 
 Rs2NpcModel nearest = npcCache.query()
     .withName("Guard")
@@ -884,7 +896,7 @@ TileItem nearest = Rs2GroundItem.getNearestItem("Dragon bones");
 // New way
 Rs2TileItemModel item = tileItemCache.query()
     .withName("Coins")
-    .first();
+    .firstOnClientThread();
 
 Rs2TileItemModel nearest = tileItemCache.query()
     .withName("Dragon bones")
@@ -920,7 +932,7 @@ Rs2TileObjectModel nearest = tileObjectCache.query()
 NPC banker = Rs2Npc.getNpc("Banker");
 
 // After
-Rs2NpcModel banker = npcCache.query().withName("Banker");
+Rs2NpcModel banker = npcCache.query().withName("Banker").firstOnClientThread();
 ```
 
 **Step 2:** Add filters if needed:
@@ -1036,15 +1048,15 @@ if (bank != null && !Rs2Bank.isOpen()) {
 
 2. **Verify name:**
 ```java
-// Names are case-insensitive but must be exact
-.withName("Banker")  // Not "banker" or "Bank"
+// Names are case-insensitive but must be otherwise exact
+.withName("Banker")  // Matches "banker", but not "Bank"
 ```
 
 3. **Check filters:**
 ```java
 // Simplify query to find the issue
-Rs2NpcModel test1 = npcCache.query().withName("Banker");
-Rs2NpcModel test2 = npcCache.query().withName("Banker").where(filter);
+Rs2NpcModel test1 = npcCache.query().withName("Banker").firstOnClientThread();
+Rs2NpcModel test2 = npcCache.query().withName("Banker").where(filter).firstOnClientThread();
 // If test1 works but test2 doesn't, your filter is too restrictive
 ```
 
@@ -1091,7 +1103,7 @@ List<Rs2NpcModel> npcs = npcCache.query()
 
 1. **Check null:**
 ```java
-Rs2NpcModel npc = npcCache.query().withName("Banker");
+Rs2NpcModel npc = npcCache.query().withName("Banker").firstOnClientThread();
 if (npc != null) {  // Always check
     npc.click("Bank");
 }
@@ -1118,8 +1130,8 @@ if (npc != null && npc.getWorldLocation() != null) {
 - Use queryable API for new code
 - Chain filters for readability
 - Check for null results
-- Use `nearest()` for single entities
-- Use `toList()` for multiple entities
+- Use `nearestOnClientThread()` for single entities
+- Use `toListOnClientThread()` for multiple entities
 - Cache query results when appropriate
 - Use method references when possible
 - Add distance limits to queries

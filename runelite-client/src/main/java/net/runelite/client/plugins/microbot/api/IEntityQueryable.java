@@ -44,6 +44,10 @@ public interface IEntityQueryable<Q extends IEntityQueryable<Q, E>, E extends IE
         return net.runelite.client.plugins.microbot.Microbot.getClientThread().invoke(this::count);
     }
 
+    default E firstReachableOnClientThread() {
+        return net.runelite.client.plugins.microbot.Microbot.getClientThread().invoke(this::firstReachable);
+    }
+
     default E nearestReachableOnClientThread() {
         return net.runelite.client.plugins.microbot.Microbot.getClientThread().invoke(() -> nearestReachable());
     }

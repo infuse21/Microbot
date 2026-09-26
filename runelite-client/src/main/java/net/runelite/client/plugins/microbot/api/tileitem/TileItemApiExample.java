@@ -20,85 +20,84 @@ public class TileItemApiExample {
         Rs2TileItemCache cache = Microbot.getRs2TileItemCache();
 
         // Example 1: Get the nearest ground item
-        Rs2TileItemModel nearestItem = cache.query().nearest();
+        Rs2TileItemModel nearestItem = cache.query().nearestOnClientThread();
 
         // Example 2: Get the nearest ground item within 10 tiles
-        Rs2TileItemModel nearestItemWithinRange = cache.query().nearest(10);
+        Rs2TileItemModel nearestItemWithinRange = cache.query().nearestOnClientThread(10);
 
         // Example 3: Find a ground item by name
-        Rs2TileItemModel coins = cache.query().withName("Coins").nearest();
+        Rs2TileItemModel coins = cache.query().withName("Coins").nearestOnClientThread();
 
         // Example 4: Find a ground item by multiple names
-        Rs2TileItemModel loot = cache.query().withNames("Dragon bones", "Dragon scale", "Dragon dagger").nearest();
+        Rs2TileItemModel loot = cache.query().withNames("Dragon bones", "Dragon scale", "Dragon dagger").nearestOnClientThread();
 
         // Example 5: Find a ground item by ID
-        Rs2TileItemModel itemById = cache.query().withId(995).nearest(); // Coins
+        Rs2TileItemModel itemById = cache.query().withId(995).nearestOnClientThread(); // Coins
 
         // Example 6: Find a ground item by multiple IDs
-        Rs2TileItemModel itemByIds = cache.query().withIds(995, 526, 537).nearest(); // Coins, Bones, Dragon bones
+        Rs2TileItemModel itemByIds = cache.query().withIds(995, 526, 537).nearestOnClientThread(); // Coins, Bones, Dragon bones
 
         // Example 7: Get all ground items worth more than 1000 gp
         List<Rs2TileItemModel> valuableItems = cache.query()
                 .where(item -> item.getTotalGeValueLong() >= 1000)
-                .toList();
+                .toListOnClientThread();
 
         // Example 8: Find nearest lootable item
         Rs2TileItemModel lootableItem = cache.query()
                 .where(Rs2TileItemModel::isLootAble)
-                .nearest();
+                .nearestOnClientThread();
 
         // Example 9: Find items owned by player
         List<Rs2TileItemModel> ownedItems = cache.query()
                 .where(Rs2TileItemModel::isOwned)
-                .toList();
+                .toListOnClientThread();
 
         // Example 10: Find stackable items
         List<Rs2TileItemModel> stackableItems = cache.query()
                 .where(Rs2TileItemModel::isStackable)
-                .toList();
+                .toListOnClientThread();
 
         // Example 11: Find noted items
         List<Rs2TileItemModel> notedItems = cache.query()
                 .where(Rs2TileItemModel::isNoted)
-                .toList();
+                .toListOnClientThread();
 
         // Example 13: Find items about to despawn
         List<Rs2TileItemModel> despawningItems = cache.query()
-                .where(item -> item.willDespawnWithin(30))
-                .toList();
+                .where(item -> item.willDespawnWithin(30)) // Ticks
+                .toListOnClientThread();
 
         // Example 16: Complex query - Find nearest valuable lootable item within 15 tiles
         Rs2TileItemModel target = cache.query()
                 .where(Rs2TileItemModel::isLootAble)
                 .where(item -> item.getTotalGeValueLong() >= 5000)
                 .where(item -> !item.isDespawned())
-                .nearest(15);
+                .nearestOnClientThread(15);
 
         // Example 17: Find items by quantity
         List<Rs2TileItemModel> largeStacks = cache.query()
                 .where(item -> item.getQuantity() >= 100)
-                .toList();
+                .toListOnClientThread();
 
         // Example 18: Find tradeable items
         List<Rs2TileItemModel> tradeableItems = cache.query()
                 .where(Rs2TileItemModel::isTradeable)
-                .toList();
+                .toListOnClientThread();
 
         // Example 19: Find members items
         List<Rs2TileItemModel> membersItems = cache.query()
                 .where(Rs2TileItemModel::isMembers)
-                .toList();
+                .toListOnClientThread();
 
-        // Example 20: Direct stream access when needed
-        Rs2TileItemModel firstItem = cache.getStream()
-                .filter(item -> item.getName() != null)
-                .findFirst()
-                .orElse(null);
+        // Example 20: Find the first item with a name
+        Rs2TileItemModel firstItem = cache.query()
+                .where(item -> item.getName() != null)
+                .firstOnClientThread();
 
         // Example 21: Find items by partial name match
         List<Rs2TileItemModel> herbItems = cache.query()
                 .where(item -> item.getName() != null &&
                        item.getName().toLowerCase().contains("herb"))
-                .toList();
+                .toListOnClientThread();
     }
 }

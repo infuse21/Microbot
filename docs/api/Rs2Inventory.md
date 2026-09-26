@@ -19,17 +19,17 @@
 
 ### `items`
 - **Description**: Provides a list of all items in the inventory.
-- **Returns**: `List<Rs2Item>` - List of inventory items.
+- **Returns**: `Stream<Rs2ItemModel>` - Stream of inventory items.
 
 ### `all`
 - **Description**: Returns a list of all items in the inventory.
-- **Returns**: `List<Rs2Item>` - List of all items.
+- **Returns**: `List<Rs2ItemModel>` - List of all items.
 
 ### `all`
 - **Description**: Returns a list of all items that match a given filter.
 - **Parameters**:
-    - `filter`: `Predicate<Rs2Item>` - The filter to apply.
-- **Returns**: `List<Rs2Item>` - Filtered list of items.
+    - `filter`: `Predicate<Rs2ItemModel>` - The filter to apply.
+- **Returns**: `List<Rs2ItemModel>` - Filtered list of items.
 
 ### `capacity`
 - **Description**: Returns the total capacity of the inventory.
@@ -95,7 +95,7 @@
 - **Description**: Retrieves an item by ID.
 - **Parameters**:
     - `id`: `int` - The item's ID.
-- **Returns**: `Rs2Item` - The item, or null if not found.
+- **Returns**: `Rs2ItemModel` - The item, or null if not found.
 
 ### `getActionsForSlot`
 - **Description**: Retrieves available actions for an item in a specified slot.

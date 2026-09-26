@@ -56,7 +56,11 @@ public final class TransportRequirementPolicy {
      * closed to the toll so routing never assumes a free crossing from a stale player snapshot.
      */
     public static int currencyAmount(Transport transport) {
-        if (freeShantayEntry(transport)) return 0;
+        return currencyAmount(transport, freeShantayEntry(transport));
+    }
+
+    public static int currencyAmount(Transport transport, boolean desertPassExempt) {
+        if (freeShantayEntry(transport, desertPassExempt)) return 0;
         if (!isEctoBarrier(transport)) {
             return transport == null ? 0 : transport.getCurrencyAmount();
         }
@@ -85,7 +89,11 @@ public final class TransportRequirementPolicy {
      * shared transport object so post-quest copies of the same row remain free and itemless.
      */
     public static Set<Set<Integer>> itemIdRequirements(Transport transport) {
-        if (freeShantayEntry(transport)) return Collections.emptySet();
+        return itemIdRequirements(transport, freeShantayEntry(transport));
+    }
+
+    public static Set<Set<Integer>> itemIdRequirements(Transport transport, boolean desertPassExempt) {
+        if (freeShantayEntry(transport, desertPassExempt)) return Collections.emptySet();
         QuestState questState = Microbot.getRs2PlayerStateCache() == null
                 ? null : Rs2Player.getQuestState(Quest.GHOSTS_AHOY);
         return itemIdRequirements(transport, questState);

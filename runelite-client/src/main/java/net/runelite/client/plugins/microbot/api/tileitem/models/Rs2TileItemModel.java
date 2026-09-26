@@ -163,8 +163,10 @@ public class Rs2TileItemModel implements TileItem, IEntity {
     }
 
     public boolean willDespawnWithin(int ticks) {
-        return Microbot.getClientThread().runOnClientThreadOptional(() ->
-                tileItem.getDespawnTime() - Microbot.getClient().getTickCount() <= ticks).orElse(false);
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            int despawnTime = tileItem.getDespawnTime();
+            return despawnTime != -1 && despawnTime - Microbot.getClient().getTickCount() <= ticks;
+        }).orElse(false);
     }
 
     public boolean isLootAble() {

@@ -484,7 +484,14 @@ public class PathfinderConfig {
                 && QuestState.FINISHED.equals(Rs2Player.getQuestState(Quest.TWILIGHTS_PROMISE));
 
         final Rs2LeaguesTransport.LeaguesContext leaguesCtx = Rs2LeaguesTransport.leaguesContext();
-        final int refreshCacheKeyHash = computeTransportRefreshCacheKeyHash(target, leaguesCtx);
+        // Grapple readiness already participates in the cache key. Reuse that same snapshot while
+        // filtering the twelve grapple rows instead of paying one client-thread hop per row.
+        final boolean equippedGrappleReady = TransportRequirementPolicy.grappleEquipmentReady();
+        // Keep the cache key and every Shantay eligibility check on one client snapshot instead of
+        // re-reading the same diary varbit dozens of times during a cold transport pass.
+        final boolean desertPassExempt = TransportRequirementPolicy.desertPassExempt();
+        final int refreshCacheKeyHash = computeTransportRefreshCacheKeyHash(
+                target, leaguesCtx, equippedGrappleReady, desertPassExempt);
 
         TransportRefreshSnapshot snap = transportRefreshSnapshots.get(refreshCacheKeyHash);
         if (snap != null && client != null) {
@@ -609,14 +616,14 @@ public class PathfinderConfig {
                         }
                     }
                 }
-                if (TransportRequirementPolicy.itemIdRequirements(t) != null) {
-                    TransportRequirementPolicy.itemIdRequirements(t).stream()
-                            .filter(Objects::nonNull)
-                            .forEach(relevantItemIds::addAll);
-                }
+                Set<Set<Integer>> itemRequirements =
+                        TransportRequirementPolicy.itemIdRequirements(t, desertPassExempt);
+                itemRequirements.stream()
+                        .filter(Objects::nonNull)
+                        .forEach(relevantItemIds::addAll);
 				relevantItemIds.addAll(
 						TransportRequirementPolicy.additionalReusableItemIds(t));
-                int currencyAmount = TransportRequirementPolicy.currencyAmount(t);
+                int currencyAmount = TransportRequirementPolicy.currencyAmount(t, desertPassExempt);
                 String currencyName = TransportRequirementPolicy.currencyName(t);
                 if (currencyAmount > 0 && currencyName != null && !currencyName.isEmpty()) {
                     relevantCurrencyNames.add(currencyName);
@@ -713,7 +720,7 @@ public class PathfinderConfig {
                 totalTransports++;
 
                 long t0 = System.nanoTime();
-                boolean usable = useTransport(transport);
+                boolean usable = useTransport(transport, equippedGrappleReady, desertPassExempt);
                 long elapsed = System.nanoTime() - t0;
                 useTransportTimeNanos += elapsed;
 
@@ -1354,10 +1361,19 @@ public class PathfinderConfig {
     }
 
     private boolean useTransport(Transport transport) {
+		boolean equippedGrappleReady = !CatalogTransitionPolicy.isEquippedGrappleShortcut(transport)
+				|| TransportRequirementPolicy.grappleEquipmentReady();
+		boolean desertPassExempt = TransportRequirementPolicy.isShantayEntry(transport)
+				&& TransportRequirementPolicy.desertPassExempt();
+		return useTransport(transport, equippedGrappleReady, desertPassExempt);
+	}
+
+    private boolean useTransport(Transport transport, boolean equippedGrappleReady,
+                                 boolean desertPassExempt) {
 		if (CerberusWinchPolicy.isEligible(transport)
 				&& !cerberusWinchAccessAvailable()) return false;
 		if (CatalogTransitionPolicy.isEquippedGrappleShortcut(transport)
-				&& !TransportRequirementPolicy.grappleEquipmentReady()) return false;
+				&& !equippedGrappleReady) return false;
 		if (CatalogTransitionPolicy.isAuditedHazardTransition(transport)
 				&& transport.getObjectId() == 25274
 				&& !TransportRequirementPolicy.noFollower()) return false;
@@ -1370,7 +1386,7 @@ public class PathfinderConfig {
         }
         // Check if the feature flag is disabled
         if (!isFeatureEnabled(transport)) {
-            log.debug("Transport Type {} is disabled by feature flag", transport.getType());
+            log.trace("Transport Type {} is disabled by feature flag", transport.getType());
             return false;
         }
 		// Do not publish a seasonal edge unless the walker has an executor for that exact
@@ -1378,85 +1394,96 @@ public class PathfinderConfig {
 		// including rows that could only fail and be selected again on the next replan.
 		if (transport.getType() == TransportType.SEASONAL_TRANSPORT
 				&& !SeasonalTransportHandlers.isAvailable(transport)) {
-			log.debug("Seasonal transport ( D: {} ) has no registered executor", transport.getDestination());
+			log.trace("Seasonal transport ( D: {} ) has no registered executor", transport.getDestination());
 			return false;
 		}
         // If the transport requires you to be in a members world (used for more granular member requirements)
         if (transport.isMembers() && !client.getWorldType().contains(WorldType.MEMBERS)) {
-            log.debug("Transport ( O: {} D: {} ) requires members world", transport.getOrigin(), transport.getDestination());
+            log.trace("Transport ( O: {} D: {} ) requires members world", transport.getOrigin(), transport.getDestination());
             return false;
         }
         if (transport.getType() == TransportType.SPIRIT_TREE && !isSpiritTreeRouteEnabled(transport)) {
-            log.debug("Transport ( O: {} D: {} ) is a spirit tree route but the tree is disabled", transport.getOrigin(), transport.getDestination());
+            log.trace("Transport ( O: {} D: {} ) is a spirit tree route but the tree is disabled", transport.getOrigin(), transport.getDestination());
             return false;
         }
 		if (transport.getType() == TransportType.GNOME_GLIDER
 				&& !isGnomeGliderRouteEnabled(transport)) {
-			log.debug("Transport ( O: {} D: {} ) is a gnome glider route but the destination is unavailable",
+			log.trace("Transport ( O: {} D: {} ) is a gnome glider route but the destination is unavailable",
 				transport.getOrigin(), transport.getDestination());
 			return false;
 		}
 		if (isMagicMushtreeTransport(transport)
 				&& !isMagicMushtreeRouteEnabled(transport)) {
-			log.debug("Transport ( O: {} D: {} ) is a Magic Mushtree route but the destination is unavailable",
+			log.trace("Transport ( O: {} D: {} ) is a Magic Mushtree route but the destination is unavailable",
 				transport.getOrigin(), transport.getDestination());
 			return false;
 		}
         // If you don't meet level requirements
         if (!hasRequiredLevels(transport)) {
-            log.debug("Transport ( O: {} D: {} ) requires skill levels {}", transport.getOrigin(), transport.getDestination(), Arrays.toString(transport.getSkillLevels()));
+            log.trace("Transport ( O: {} D: {} ) requires skill levels {}", transport.getOrigin(), transport.getDestination(), Arrays.toString(transport.getSkillLevels()));
             return false;
         }
         // If the transport has quest requirements & the quest haven't been completed
         if (transport.isQuestLocked() && !completedQuests(transport)) {
-            log.debug("Transport ( O: {} D: {} ) requires quests {}", transport.getOrigin(), transport.getDestination(), transport.getQuests());
+            log.trace("Transport ( O: {} D: {} ) requires quests {}", transport.getOrigin(), transport.getDestination(), transport.getQuests());
             return false;
         }
 
         // If the transport has varbit requirements & the varbits do not match
         if (!varbitChecks(transport)) {
-            log.debug("Transport ( O: {} D: {} ) requires varbits {}", transport.getOrigin(), transport.getDestination(), transport.getVarbits());
+            log.trace("Transport ( O: {} D: {} ) requires varbits {}", transport.getOrigin(), transport.getDestination(), transport.getVarbits());
             return false;
         }
 
         // If the transport has varplayer requirements & the varplayers do not match
         if (!varplayerChecks(transport)) {
-            log.debug("Transport ( O: {} D: {} ) requires varplayers {}", transport.getOrigin(), transport.getDestination(), transport.getVarplayers());
+            log.trace("Transport ( O: {} D: {} ) requires varplayers {}", transport.getOrigin(), transport.getDestination(), transport.getVarplayers());
             return false;
         }
 
         // If you don't have the required currency & amount for transport
-        int currencyAmount = TransportRequirementPolicy.currencyAmount(transport);
+        int currencyAmount = TransportRequirementPolicy.currencyAmount(transport, desertPassExempt);
         String currencyName = TransportRequirementPolicy.currencyName(transport);
         if (currencyAmount > 0) {
+            int currencyId = currencyItemId(currencyName);
             if (refreshCurrencyCache != null) {
                 int[] cached = refreshCurrencyCache.computeIfAbsent(currencyName, name -> {
-                    int invCount = Rs2Inventory.itemQuantity(name);
-                    int bankCount = useBankItems ? Rs2Bank.count(name) : 0;
+                    int invCount = currencyId > 0
+                            ? Rs2Inventory.itemQuantity(currencyId) : Rs2Inventory.itemQuantity(name);
+                    int bankCount = useBankItems
+                            ? currencyId > 0 ? Rs2Bank.count(currencyId) : Rs2Bank.count(name)
+                            : 0;
                     return new int[]{invCount, bankCount};
                 });
                 if (cached[0] < currencyAmount && cached[1] < currencyAmount) {
-                    log.debug("Transport ( O: {} D: {} ) requires {} x {}", transport.getOrigin(), transport.getDestination(), currencyAmount, currencyName);
+                    log.trace("Transport ( O: {} D: {} ) requires {} x {}", transport.getOrigin(), transport.getDestination(), currencyAmount, currencyName);
                     return false;
                 }
-            } else if (!Rs2Inventory.hasItemAmount(currencyName, currencyAmount)
-                    && !(useBankItems && Rs2Bank.count(currencyName) >= currencyAmount)) {
-                log.debug("Transport ( O: {} D: {} ) requires {} x {}", transport.getOrigin(), transport.getDestination(), currencyAmount, currencyName);
-                return false;
+            } else {
+                boolean inventoryHasCurrency = currencyId > 0
+                        ? Rs2Inventory.hasItemAmount(currencyId, currencyAmount)
+                        : Rs2Inventory.hasItemAmount(currencyName, currencyAmount);
+                boolean bankHasCurrency = useBankItems && (currencyId > 0
+                        ? Rs2Bank.count(currencyId) >= currencyAmount
+                        : Rs2Bank.count(currencyName) >= currencyAmount);
+                if (!inventoryHasCurrency && !bankHasCurrency) {
+                    log.trace("Transport ( O: {} D: {} ) requires {} x {}", transport.getOrigin(), transport.getDestination(), currencyAmount, currencyName);
+                    return false;
+                }
             }
         }
 
         // Check if Teleports are globally disabled
         if (TransportType.isTeleport(transport.getType(), transport.getOrigin()) && Rs2Walker.disableTeleports) {
-            log.debug("Transport ( O: {} D: {} ) is a teleport but teleports are globally disabled", transport.getOrigin(), transport.getDestination());
+            log.trace("Transport ( O: {} D: {} ) is a teleport but teleports are globally disabled", transport.getOrigin(), transport.getDestination());
             return false;
         }
 
         // Check Teleport Item Settings
         if (transport.getType() == TELEPORTATION_ITEM) {
-            boolean isUsable = isTeleportationItemUsable(transport);
+            boolean isUsable = isTeleportationItemUsable(transport, desertPassExempt);
             if (!isUsable) {
-                log.debug("Transport ( O: {} D: {} ) is a teleport item but is not usable", transport.getOrigin(), transport.getDestination());
+                log.trace("Transport ( O: {} D: {} ) is a teleport item but is not usable", transport.getOrigin(), transport.getDestination());
             }
             return isUsable;
         }
@@ -1464,17 +1491,20 @@ public class PathfinderConfig {
         if (transport.getType() == TELEPORTATION_SPELL) {
             boolean isUsable = isTeleportationSpellUsable(transport);
             if (!isUsable) {
-                log.debug("Transport ( O: {} D: {} ) is a teleport spell but is not usable", transport.getOrigin(), transport.getDestination());
+                log.trace("Transport ( O: {} D: {} ) is a teleport spell but is not usable", transport.getOrigin(), transport.getDestination());
             }
             return isUsable;
         }
 
         // Used for Generic Item Requirements
-        if (!TransportRequirementPolicy.itemIdRequirements(transport).isEmpty()
-				|| !TransportRequirementPolicy.additionalReusableItemIds(transport).isEmpty()) {
-            boolean hasRequiredItems = hasRequiredItems(transport);
+        Set<Set<Integer>> itemRequirements =
+                TransportRequirementPolicy.itemIdRequirements(transport, desertPassExempt);
+        Set<Integer> additionalRequirements =
+                TransportRequirementPolicy.additionalReusableItemIds(transport);
+        if (!itemRequirements.isEmpty() || !additionalRequirements.isEmpty()) {
+            boolean hasRequiredItems = hasRequiredItems(itemRequirements, additionalRequirements);
             if (!hasRequiredItems) {
-                log.debug("Transport ( O: {} D: {} ) requires items {}", transport.getOrigin(), transport.getDestination(), TransportRequirementPolicy.itemIdRequirements(transport).stream().flatMap(Set::stream).collect(Collectors.toSet()));
+                log.trace("Transport ( O: {} D: {} ) requires items {}", transport.getOrigin(), transport.getDestination(), itemRequirements.stream().flatMap(Set::stream).collect(Collectors.toSet()));
             }
             return hasRequiredItems;
         }
@@ -1796,24 +1826,22 @@ public class PathfinderConfig {
     /**
      * Checks if a teleportation item is usable
      */
-    private boolean isTeleportationItemUsable(Transport transport) {
+    private boolean isTeleportationItemUsable(Transport transport, boolean desertPassExempt) {
         if (useTeleportationItems == TeleportationItem.NONE) return false;
         // Check consumable items configuration
         if (useTeleportationItems == TeleportationItem.INVENTORY_NON_CONSUMABLE && transport.isConsumable())
             return false;
 
-        return hasRequiredItems(transport);
+        return hasRequiredItems(
+                TransportRequirementPolicy.itemIdRequirements(transport, desertPassExempt),
+                TransportRequirementPolicy.additionalReusableItemIds(transport));
     }
 
     /**
      * Checks if the player has any of the required equipment and inventory items for the transport
      */
-    private boolean hasRequiredItems(Transport transport) {
-        if (requiresChronicle(transport)) return hasChronicleCharges();
-
-		Set<Integer> additional = TransportRequirementPolicy.additionalReusableItemIds(transport);
-		Set<Set<Integer>> primaryRequirements =
-				TransportRequirementPolicy.itemIdRequirements(transport);
+    private boolean hasRequiredItems(Set<Set<Integer>> primaryRequirements, Set<Integer> additional) {
+        if (requiresChronicle(primaryRequirements)) return hasChronicleCharges();
         if (refreshAvailableItemIds != null) {
 			boolean primary = primaryRequirements.isEmpty() || primaryRequirements
                     .stream()
@@ -1863,8 +1891,8 @@ public class PathfinderConfig {
     /**
      * Checks if the transport requires the Chronicle
      */
-    private boolean requiresChronicle(Transport transport) {
-        return TransportRequirementPolicy.itemIdRequirements(transport)
+    private boolean requiresChronicle(Set<Set<Integer>> itemRequirements) {
+        return itemRequirements
                 .stream()
                 .flatMap(Collection::stream)
                 .anyMatch(itemId -> itemId == ItemID.CHRONICLE);
@@ -2167,7 +2195,10 @@ public class PathfinderConfig {
         }
     }
 
-    private int computeTransportRefreshCacheKeyHash(WorldPoint target, Rs2LeaguesTransport.LeaguesContext leaguesCtx) {
+    private int computeTransportRefreshCacheKeyHash(WorldPoint target,
+                                                     Rs2LeaguesTransport.LeaguesContext leaguesCtx,
+                                                     boolean equippedGrappleReady,
+                                                     boolean desertPassExempt) {
         assert leaguesCtx != null;
         int invFp = fingerprintInventoryEquipmentBank();
         lastComputedInvFingerprint = invFp;
@@ -2176,8 +2207,8 @@ public class PathfinderConfig {
         int maxSimilar = config != null ? config.maxSimilarTransportDistance() : 0;
         return Objects.hash(
                 packTransportRefreshToggleBits(),
-                TransportRequirementPolicy.brokenRaftEquipmentReady(),
-                TransportRequirementPolicy.desertPassExempt(),
+                equippedGrappleReady,
+                desertPassExempt,
                 useTeleportationItems,
                 ignoreTeleportAndItems,
                 useBankItems,

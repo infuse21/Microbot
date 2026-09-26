@@ -28,7 +28,7 @@ The `Rs2Npc` class provides a comprehensive suite of methods for interacting wit
 - **Description**: Retrieves an NPC based on its unique index.
 - **Parameters**:
     - `index`: `int` - The index of the NPC.
-- **Returns**: `NPC` - The NPC corresponding to the given index or `null` if no NPC with that index exists.
+- **Returns**: `Rs2NpcModel` - The NPC corresponding to the given index or `null` if no NPC with that index exists.
 
 ### `validateInteractable`
 - **Description**: Validates if an NPC can be interacted with by ensuring it is not null, then walking to its location and turning the camera towards it.
@@ -38,17 +38,17 @@ The `Rs2Npc` class provides a comprehensive suite of methods for interacting wit
 
 ### `getNpcsForPlayer`
 - **Description**: Retrieves a list of NPCs that are currently interacting with the player.
-- **Returns**: `List<NPC>` - A list of NPCs sorted by their distance from the player.
+- **Returns**: `Stream<Rs2NpcModel>` - NPCs sorted by their distance from the player.
 
 ### `getHealth`
 - **Description**: Computes the health of an NPC based on its health ratio and scale.
 - **Parameters**:
     - `npc`: `Actor` - The NPC whose health is to be determined.
-- **Returns**: `int` - The estimated health of the NPC.
+- **Returns**: `double` - The estimated health of the NPC.
 
 ### `getNpcs`
 - **Description**: Retrieves a stream of all NPCs currently in the game environment, filtered by non-null, non-dead status, and sorted by proximity to the player.
-- **Returns**: `Stream<NPC>` - A stream of NPCs.
+- **Returns**: `Stream<Rs2NpcModel>` - A stream of NPCs.
 
 ### `interact`
 - **Description**: Performs a specified action on an NPC, such as "attack" or "talk-to".

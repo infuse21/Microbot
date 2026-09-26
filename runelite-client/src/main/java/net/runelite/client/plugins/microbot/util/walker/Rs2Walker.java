@@ -6445,18 +6445,19 @@ public class Rs2Walker {
         TransportRouteAnalysis comparison = compareRoutes(target);
         WebWalkLog.tmark("compare_done", System.currentTimeMillis() - compareStartedAt, target, pl,
                 "direct=" + comparison.getDirectDistance() + " bank=" + comparison.getBankingRouteDistance());
-        List<Transport> bankRouteTransports =
-                getTransportsForDestination(target, true, TransportType.TELEPORTATION_SPELL);
-        List<Transport> missingTransports = getMissingTransports(bankRouteTransports);
+        // compareRoutes already pathfound the bank-to-target leg with bank items enabled and
+        // extracted its ordered transports. Reuse that exact route instead of refreshing and
+        // pathfinding from the player's pre-bank position a second time.
+        List<Transport> bankRouteTransports = comparison.getBankRouteTransports();
 
         // Plan the complete route, not only edges that fail an individual one-use check. Two
         // teleports can each look usable against the same single tablet or rune stack while the
         // route as a whole still needs a bank withdrawal.
         Map<Integer, Integer> missingItemsWithQuantities =
                 getMissingTransportItemIdsWithQuantities(bankRouteTransports);
-        if (!missingTransports.isEmpty()) {
+        if (!missingItemsWithQuantities.isEmpty()) {
             WebWalkLog.bankWalkDebug("missing_items nTrans={} to={} missingKinds={}",
-                    missingTransports.size(), target, missingItemsWithQuantities.size());
+                    bankRouteTransports.size(), target, missingItemsWithQuantities.size());
         }
         // If no missing transport items, go directly
         if (missingItemsWithQuantities.isEmpty() && !forceBanking) {
@@ -6612,7 +6613,8 @@ public class Rs2Walker {
 						}
 						@Override public void prepareFinalRoute(WorldPoint target) {
 							Rs2PathApi.getPathfinderConfig().setUseBankItems(false);
-							Rs2PathApi.getPathfinderConfig().refresh(target);
+							// The immediately following NavigationEngine target leg refreshes and replans
+							// after withdrawals; doing it here as well only duplicated that work.
 						}
 					});
 			if (result.getWalkerState() == WalkerState.EXIT) {

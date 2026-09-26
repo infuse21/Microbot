@@ -4,7 +4,9 @@ import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import net.runelite.api.Client;
 import net.runelite.api.GameObject;
+import net.runelite.api.GameState;
 import net.runelite.api.Player;
+import net.runelite.api.Scene;
 import net.runelite.api.Tile;
 import net.runelite.api.WorldView;
 import net.runelite.client.callback.ClientThread;
@@ -22,8 +24,9 @@ public final class Rs2TileObjectCache {
     private final Client client;
     private final ClientThread clientThread;
 
-    private int lastUpdateObjects = 0;
-    private List<Rs2TileObjectModel> tileObjects = new ArrayList<>();
+    private int lastUpdateObjects = -1;
+    private List<Object> lastContext = Collections.emptyList();
+    private List<Rs2TileObjectModel> tileObjects = Collections.emptyList();
 
     @Inject
     public Rs2TileObjectCache(Client client, ClientThread clientThread) {
@@ -41,51 +44,73 @@ public final class Rs2TileObjectCache {
      * @return Stream of Rs2TileObjectModel
      */
     public Stream<Rs2TileObjectModel> getStream() {
-        List<Rs2TileObjectModel> snapshot = clientThread.runOnClientThreadOptional(() -> {
-            if (lastUpdateObjects >= client.getTickCount()) {
-                return new ArrayList<>(tileObjects);
-            }
+        return clientThread.runOnClientThreadOptional(this::snapshot)
+                .orElse(Collections.emptyList()).stream();
+    }
 
-            Player player = client.getLocalPlayer();
-            if (player == null) return Collections.<Rs2TileObjectModel>emptyList();
+    // Membership is copied on the client thread; the models remain live wrappers.
+    private List<Rs2TileObjectModel> snapshot() {
+        Player player = client.getLocalPlayer();
+        if (player == null || client.getGameState() != GameState.LOGGED_IN) {
+            tileObjects = Collections.emptyList();
+            lastContext = Collections.emptyList();
+            lastUpdateObjects = -1;
+            return tileObjects;
+        }
 
-            List<Rs2TileObjectModel> result = new ArrayList<>();
+        List<WorldView> views = new ArrayList<>();
+        List<Object> context = new ArrayList<>();
+        context.add(client.getWorld());
+        context.add(player);
+        for (int id : Microbot.getWorldViewIds()) {
+            WorldView view = client.getWorldView(id);
+            if (view == null) continue;
+            views.add(view);
+            context.add(view);
+            context.add(view.getScene());
+            context.add(view.getPlane());
+            context.add(view.getBaseX());
+            context.add(view.getBaseY());
+        }
+        if (lastUpdateObjects == client.getTickCount() && lastContext.equals(context)) return tileObjects;
 
-            for (var id : Microbot.getWorldViewIds()) {
-                WorldView worldView = client.getWorldView(id);
-                if (worldView == null) {
-                    continue;
-                }
-                var tileValues = client.getWorldView(worldView.getId()).getScene().getTiles()[worldView.getPlane()];
-                for (Tile[] tileValue : tileValues) {
-                    for (Tile tile : tileValue) {
-                        if (tile == null) continue;
+        List<Rs2TileObjectModel> result = new ArrayList<>();
+        for (WorldView view : views) {
+            Scene scene = view.getScene();
+            if (scene == null) continue;
+            Tile[][][] tiles = scene.getTiles();
+            int plane = view.getPlane();
+            if (tiles == null || plane < 0 || plane >= tiles.length || tiles[plane] == null) continue;
+            for (Tile[] row : tiles[plane]) {
+                if (row == null) continue;
+                for (Tile tile : row) {
+                    if (tile == null) continue;
 
-                        if (tile.getGameObjects() != null) {
-                            for (GameObject gameObject : tile.getGameObjects()) {
-                                if (gameObject == null) continue;
-                                if (gameObject.getSceneMinLocation().equals(tile.getSceneLocation())) {
-                                    result.add(new Rs2TileObjectModel(gameObject));
-                                }
+                    if (tile.getGameObjects() != null) {
+                        for (GameObject gameObject : tile.getGameObjects()) {
+                            if (gameObject == null) continue;
+                            var sceneMin = gameObject.getSceneMinLocation();
+                            if (sceneMin != null && sceneMin.equals(tile.getSceneLocation())) {
+                                result.add(new Rs2TileObjectModel(gameObject));
                             }
                         }
-                        if (tile.getGroundObject() != null) {
-                            result.add(new Rs2TileObjectModel(tile.getGroundObject()));
-                        }
-                        if (tile.getWallObject() != null) {
-                            result.add(new Rs2TileObjectModel(tile.getWallObject()));
-                        }
-                        if (tile.getDecorativeObject() != null) {
-                            result.add(new Rs2TileObjectModel(tile.getDecorativeObject()));
-                        }
+                    }
+                    if (tile.getGroundObject() != null) {
+                        result.add(new Rs2TileObjectModel(tile.getGroundObject()));
+                    }
+                    if (tile.getWallObject() != null) {
+                        result.add(new Rs2TileObjectModel(tile.getWallObject()));
+                    }
+                    if (tile.getDecorativeObject() != null) {
+                        result.add(new Rs2TileObjectModel(tile.getDecorativeObject()));
                     }
                 }
             }
-            tileObjects = result;
-            lastUpdateObjects = client.getTickCount();
-            return new ArrayList<>(result);
-        }).orElse(Collections.emptyList());
-        return snapshot.stream();
+        }
+        tileObjects = Collections.unmodifiableList(result);
+        lastContext = context;
+        lastUpdateObjects = client.getTickCount();
+        return tileObjects;
     }
 
     /**

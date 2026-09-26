@@ -17,6 +17,10 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.awt.*;
+import java.util.AbstractMap;
+import java.util.Locale;
+import java.util.Map;
+import java.util.function.Supplier;
 
 import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
 
@@ -60,22 +64,22 @@ public class Rs2TileObjectModel implements TileObject, IEntity {
 
     @Override
     public long getHash() {
-        return tileObject.getHash();
+        return Microbot.getClientThread().invoke(tileObject::getHash);
     }
 
     @Override
     public int getX() {
-        return tileObject.getX();
+        return Microbot.getClientThread().invoke(tileObject::getX);
     }
 
     @Override
     public int getY() {
-        return tileObject.getY();
+        return Microbot.getClientThread().invoke(tileObject::getY);
     }
 
     @Override
     public int getZ() {
-        return tileObject.getZ();
+        return Microbot.getClientThread().invoke(tileObject::getZ);
     }
 
     @Override
@@ -89,7 +93,7 @@ public class Rs2TileObjectModel implements TileObject, IEntity {
     }
 
     public int getId() {
-        return tileObject.getId();
+        return Microbot.getClientThread().invoke(tileObject::getId);
     }
 
     public int getSizeX() {
@@ -108,26 +112,22 @@ public class Rs2TileObjectModel implements TileObject, IEntity {
 
     @Override
     public @NotNull WorldPoint getWorldLocation() {
-        WorldPoint worldLocation = tileObject.getWorldLocation();
+        return Microbot.getClientThread().invoke(() -> {
+            WorldPoint worldLocation = tileObject.getWorldLocation();
+            if (!(tileObject instanceof GameObject)) return worldLocation;
 
-        if (!(tileObject instanceof GameObject)) {
-            return worldLocation;
-        }
-
-        GameObject go = (GameObject) tileObject;
-        WorldView wv = getWorldView();
-        Point sceneMin = go.getSceneMinLocation();
-
-        if (wv == null || sceneMin == null) {
-            return worldLocation;
-        }
-
-        return WorldPoint.fromScene(wv, sceneMin.getX(), sceneMin.getY(), wv.getPlane());
+            GameObject gameObject = (GameObject) tileObject;
+            WorldView view = tileObject.getWorldView();
+            Point sceneMin = gameObject.getSceneMinLocation();
+            if (view == null || sceneMin == null) return worldLocation;
+            return WorldPoint.fromScene(view, sceneMin.getX(), sceneMin.getY(), view.getPlane());
+        });
     }
 
     public String getName() {
         return Microbot.getClientThread().invoke(() -> {
             ObjectComposition composition = Microbot.getClient().getObjectDefinition(tileObject.getId());
+            if (composition == null) return null;
             if (composition.getImpostorIds() != null) {
                 composition = composition.getImpostor();
             }
@@ -144,47 +144,48 @@ public class Rs2TileObjectModel implements TileObject, IEntity {
 
     @Override
     public @Nullable Point getCanvasLocation() {
-        return tileObject.getCanvasLocation();
+        return Microbot.getClientThread().invoke((Supplier<Point>) tileObject::getCanvasLocation);
     }
 
     @Override
     public @Nullable Point getCanvasLocation(int zOffset) {
-        return tileObject.getCanvasLocation();
+        return Microbot.getClientThread().invoke((Supplier<Point>) tileObject::getCanvasLocation);
     }
 
     @Override
     public @Nullable Polygon getCanvasTilePoly() {
-        return tileObject.getCanvasTilePoly();
+        return Microbot.getClientThread().invoke(tileObject::getCanvasTilePoly);
     }
 
     @Override
     public @Nullable Point getCanvasTextLocation(Graphics2D graphics, String text, int zOffset) {
-        return tileObject.getCanvasTextLocation(graphics, text, zOffset);
+        return Microbot.getClientThread().invoke(() -> tileObject.getCanvasTextLocation(graphics, text, zOffset));
     }
 
     @Override
     public @Nullable Point getMinimapLocation() {
-        return tileObject.getMinimapLocation();
+        return Microbot.getClientThread().invoke(tileObject::getMinimapLocation);
     }
 
     @Override
     public @Nullable Shape getClickbox() {
-        return tileObject.getClickbox();
+        return Microbot.getClientThread().invoke(tileObject::getClickbox);
     }
 
     @Override
     public @Nullable String getOpOverride(int index) {
-        return tileObject.getOpOverride(index);
+        return Microbot.getClientThread().invoke(() -> tileObject.getOpOverride(index));
     }
 
     @Override
     public boolean isOpShown(int index) {
-        return tileObject.isOpShown(index);
+        return Microbot.getClientThread().invoke((Supplier<Boolean>) () -> tileObject.isOpShown(index));
     }
 
     public ObjectComposition getObjectComposition() {
         return Microbot.getClientThread().invoke(() -> {
             ObjectComposition composition = Microbot.getClient().getObjectDefinition(tileObject.getId());
+            if (composition == null) return null;
             if (composition.getImpostorIds() != null) {
                 composition = composition.getImpostor();
             }
@@ -220,115 +221,135 @@ public class Rs2TileObjectModel implements TileObject, IEntity {
     }
 
     /**
-     * Clicks on the specified tile object with no specific action.
-     * Delegates to Rs2GameObject.clickObject.
-     *
      * @param action the action to perform (e.g., "Open", "Climb")
-     * @return true if the interaction was successful, false otherwise
+     * @return true if the interaction was submitted, false otherwise
      */
     public boolean click(String action) {
         try {
-
-            int param0;
-            int param1;
-            MenuAction menuAction = MenuAction.WALK;
-
-
-            Microbot.status = action + " " + getName();
-
-            if (getTileObjectType() == TileObjectType.GAME) {
-                GameObject obj = (GameObject) tileObject;
-                if (obj.sizeX() > 1) {
-                    param0 = obj.getLocalLocation().getSceneX() - obj.sizeX() / 2;
-                } else {
-                    param0 = obj.getLocalLocation().getSceneX();
-                }
-
-                if (obj.sizeY() > 1) {
-                    param1 = obj.getLocalLocation().getSceneY() - obj.sizeY() / 2;
-                } else {
-                    param1 = obj.getLocalLocation().getSceneY();
-                }
-            } else {
-                // Default objects like walls, groundobjects, decorationobjects etc...
-                param0 = getLocalLocation().getSceneX();
-                param1 = getLocalLocation().getSceneY();
+            String requestedAction = action == null ? "" : action;
+            String name = getName();
+            if (name == null) return false;
+            if (name.toLowerCase(Locale.ROOT).contains("train cart")) {
+                if (Microbot.getClient().isClientThread()) return false;
+                Rs2Equipment.unEquip(EquipmentInventorySlot.WEAPON);
+                Rs2Equipment.unEquip(EquipmentInventorySlot.SHIELD);
+                if (!sleepUntil(() -> Rs2Equipment.get(EquipmentInventorySlot.WEAPON) == null
+                        && Rs2Equipment.get(EquipmentInventorySlot.SHIELD) == null, 5000)) return false;
             }
 
+            LocalPoint location = getLocalLocation();
+            if (location == null) return false;
+            if (!Rs2Camera.isTileOnScreen(location)) {
+                if (Microbot.getClient().isClientThread()) return false;
+                Rs2Camera.turnTo(tileObject);
+            }
 
-            int index = 0;
-            String objName = "";
-            if (action != null) {
-                //performance improvement to only get compoisiton if action has been specified
-                var objComp = getObjectComposition();
-                String[] actions = Microbot.getClientThread().invoke(() ->
-                    objComp.getImpostorIds() != null && objComp.getImpostor() != null
-                        ? objComp.getImpostor().getActions() : objComp.getActions());
+            Map.Entry<NewMenuEntry, Rectangle> dispatch = Microbot.getClientThread()
+                    .runOnClientThreadOptional(() -> resolveClick(requestedAction)).orElse(null);
+            if (dispatch == null || Thread.currentThread().isInterrupted()) return false;
+            Microbot.status = requestedAction + " " + name;
+            return Microbot.tryDoInvoke(dispatch.getKey(), dispatch.getValue());
+        } catch (Exception ex) {
+            log.error("Failed to interact with object: ", ex);
+            return false;
+        }
+    }
 
+    private Map.Entry<NewMenuEntry, Rectangle> resolveClick(String action) {
+        Client client = Microbot.getClient();
+        WorldView view = tileObject.getWorldView();
+        if (client.getGameState() != GameState.LOGGED_IN || view == null
+                || client.getWorldView(view.getId()) != view || !isCurrentInScene(view)) return null;
+
+        ObjectComposition composition = client.getObjectDefinition(tileObject.getId());
+        if (composition == null) return null;
+        if (composition.getImpostorIds() != null) composition = composition.getImpostor();
+        if (composition == null) return null;
+
+        boolean widgetSelected = client.isWidgetSelected();
+        String[] actions = composition.getActions();
+        int index = 0;
+        if (!widgetSelected && !action.isBlank()) {
+            index = -1;
+            if (actions != null) {
                 for (int i = 0; i < actions.length; i++) {
-                    if (actions[i] == null) continue;
-                    if (action.equalsIgnoreCase(Rs2UiHelper.stripColTags(actions[i]))) {
+                    if (actions[i] != null && action.equalsIgnoreCase(Rs2UiHelper.stripColTags(actions[i]))) {
                         index = i;
                         break;
                     }
                 }
-
-                if (index == actions.length)
-                    index = 0;
-
-                objName = objComp.getName();
-
-                // both hands must be free before using MINECART
-                if (objComp.getName().toLowerCase().contains("train cart")) {
-                    Rs2Equipment.unEquip(EquipmentInventorySlot.WEAPON);
-                    Rs2Equipment.unEquip(EquipmentInventorySlot.SHIELD);
-                    sleepUntil(() -> Rs2Equipment.get(EquipmentInventorySlot.WEAPON) == null && Rs2Equipment.get(EquipmentInventorySlot.SHIELD) == null);
-                }
             }
+            if (index < 0) return null;
+        }
+        if (index > 4) return null;
 
-            if (index == -1) {
-                log.warn("Failed to interact with object {} - action '{}' not found", getId(), action);
+        MenuAction menuAction;
+        if (widgetSelected) {
+            menuAction = MenuAction.WIDGET_TARGET_ON_GAME_OBJECT;
+        } else {
+            switch (index) {
+                case 0: menuAction = MenuAction.GAME_OBJECT_FIRST_OPTION; break;
+                case 1: menuAction = MenuAction.GAME_OBJECT_SECOND_OPTION; break;
+                case 2: menuAction = MenuAction.GAME_OBJECT_THIRD_OPTION; break;
+                case 3: menuAction = MenuAction.GAME_OBJECT_FOURTH_OPTION; break;
+                case 4: menuAction = MenuAction.GAME_OBJECT_FIFTH_OPTION; break;
+                default: return null;
             }
-
-
-            if (Microbot.getClient().isWidgetSelected()) {
-                menuAction = MenuAction.WIDGET_TARGET_ON_GAME_OBJECT;
-            } else if (index == 0) {
-                menuAction = MenuAction.GAME_OBJECT_FIRST_OPTION;
-            } else if (index == 1) {
-                menuAction = MenuAction.GAME_OBJECT_SECOND_OPTION;
-            } else if (index == 2) {
-                menuAction = MenuAction.GAME_OBJECT_THIRD_OPTION;
-            } else if (index == 3) {
-                menuAction = MenuAction.GAME_OBJECT_FOURTH_OPTION;
-            } else if (index == 4) {
-                menuAction = MenuAction.GAME_OBJECT_FIFTH_OPTION;
-            }
-
-            if (!Rs2Camera.isTileOnScreen(getLocalLocation())) {
-                Rs2Camera.turnTo(tileObject);
-            }
-
-
-            Microbot.doInvoke(new NewMenuEntry()
-                            .param0(param0)
-                            .param1(param1)
-                            .opcode(menuAction.getId())
-                            .identifier(getId())
-                            .itemId(-1)
-                            .option(action)
-                            .target(objName)
-                            .setWorldViewId(getWorldView().getId())
-                            .gameObject(tileObject)
-                    ,
-                    Rs2UiHelper.getObjectClickbox(tileObject));
-// MenuEntryImpl(getOption=Use, getTarget=Barrier, getIdentifier=43700, getType=GAME_OBJECT_THIRD_OPTION, getParam0=53, getParam1=51, getItemId=-1, isForceLeftClick=true, getWorldViewId=-1, isDeprioritized=false)
-            //Rs2Reflection.invokeMenu(param0, param1, menuAction.getId(), object.getId(),-1, "", "", -1, -1);
-
-        } catch (Exception ex) {
-            log.error("Failed to interact with object: ", ex);
         }
 
+        LocalPoint location = tileObject.getLocalLocation();
+        if (location == null) return null;
+        int param0 = location.getSceneX();
+        int param1 = location.getSceneY();
+        if (tileObject instanceof GameObject) {
+            GameObject gameObject = (GameObject) tileObject;
+            if (gameObject.sizeX() > 1) param0 -= gameObject.sizeX() / 2;
+            if (gameObject.sizeY() > 1) param1 -= gameObject.sizeY() / 2;
+        }
+
+        NewMenuEntry entry = new NewMenuEntry()
+                .param0(param0).param1(param1).opcode(menuAction.getId())
+                .identifier(tileObject.getId()).itemId(-1).option(action)
+                .target(composition.getName()).setWorldViewId(view.getId())
+                .gameObject(tileObject);
+        return new AbstractMap.SimpleImmutableEntry<>(entry, Rs2UiHelper.getObjectClickbox(tileObject));
+    }
+
+    private boolean isCurrentInScene(WorldView view) {
+        Scene scene = view.getScene();
+        if (scene == null) return false;
+
+        Point point;
+        if (tileObject instanceof GameObject) {
+            point = ((GameObject) tileObject).getSceneMinLocation();
+        } else {
+            LocalPoint location = tileObject.getLocalLocation();
+            point = location == null ? null : new Point(location.getSceneX(), location.getSceneY());
+        }
+        if (point == null) return false;
+
+        Tile[][][] tiles = scene.getTiles();
+        int plane = view.getPlane();
+        int x = point.getX();
+        int y = point.getY();
+        if (tiles == null || plane < 0 || plane >= tiles.length || tiles[plane] == null
+                || x < 0 || x >= tiles[plane].length || tiles[plane][x] == null
+                || y < 0 || y >= tiles[plane][x].length) return false;
+        Tile tile = tiles[plane][x][y];
+        if (tile == null) return false;
+
+        if (tileObject instanceof GameObject) {
+            GameObject[] objects = tile.getGameObjects();
+            if (objects != null) {
+                for (GameObject object : objects) {
+                    if (object == tileObject) return true;
+                }
+            }
+            return false;
+        }
+        if (tileObject instanceof GroundObject) return tile.getGroundObject() == tileObject;
+        if (tileObject instanceof WallObject) return tile.getWallObject() == tileObject;
+        if (tileObject instanceof DecorativeObject) return tile.getDecorativeObject() == tileObject;
         return true;
     }
 

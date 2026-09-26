@@ -57,6 +57,14 @@ public class TransportRequirementPolicyTest {
             boolean entry = !row.getItemIdRequirements().isEmpty() || row.getCurrencyAmount() > 0;
             assertEquals(entry, TransportRequirementPolicy.freeShantayEntry(row, true));
             assertFalse(TransportRequirementPolicy.freeShantayEntry(row, false));
+            assertEquals(entry ? 0 : row.getCurrencyAmount(),
+                    TransportRequirementPolicy.currencyAmount(row, true));
+            assertEquals(row.getCurrencyAmount(),
+                    TransportRequirementPolicy.currencyAmount(row, false));
+            assertEquals(entry ? Set.of() : row.getItemIdRequirements(),
+                    TransportRequirementPolicy.itemIdRequirements(row, true));
+            assertEquals(row.getItemIdRequirements(),
+                    TransportRequirementPolicy.itemIdRequirements(row, false));
             if (!row.getItemIdRequirements().isEmpty()) assertTrue(row.isConsumable());
         }
     }

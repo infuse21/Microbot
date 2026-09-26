@@ -33,6 +33,9 @@ public class TransportRouteAnalysis {
     /** Path of WorldPoints from bank to destination, accounting for items available in bank */
     private final List<WorldPoint> pathFromBank;
 
+    /** Ordered transports selected for the bank-to-destination path, including repeated uses. */
+    private final List<Transport> bankRouteTransports;
+
     /** Explicit direct distance captured at analysis time (tiles), or -1 if unavailable */
     private final int directDistance;
 
@@ -57,18 +60,29 @@ public class TransportRouteAnalysis {
                                 List<WorldPoint> pathFromBank,String analysis) {
         this(directPath, nearestBank, bankLocation, pathToBank, pathFromBank, analysis,
                 deriveRouteDistance(directPath),
-                deriveBankingRouteDistance(pathToBank, pathFromBank));
+                deriveBankingRouteDistance(pathToBank, pathFromBank), List.of());
     }
 
     public TransportRouteAnalysis(List<WorldPoint> directPath,
                                 BankLocation nearestBank, WorldPoint bankLocation, List<WorldPoint> pathToBank,
                                 List<WorldPoint> pathFromBank, String analysis,
                                 int directDistance, int bankingRouteDistance) {
+        this(directPath, nearestBank, bankLocation, pathToBank, pathFromBank, analysis,
+                directDistance, bankingRouteDistance, List.of());
+    }
+
+    public TransportRouteAnalysis(List<WorldPoint> directPath,
+                                BankLocation nearestBank, WorldPoint bankLocation, List<WorldPoint> pathToBank,
+                                List<WorldPoint> pathFromBank, String analysis,
+                                int directDistance, int bankingRouteDistance,
+                                List<Transport> bankRouteTransports) {
         this.directPath = directPath;
         this.nearestBank = nearestBank;
         this.bankLocation = bankLocation;
         this.pathToBank = pathToBank;
         this.pathFromBank = pathFromBank;
+        this.bankRouteTransports = bankRouteTransports == null
+                ? List.of() : List.copyOf(bankRouteTransports);
         this.analysis = analysis;
         this.directDistance = directDistance;
         this.bankingRouteDistance = bankingRouteDistance;

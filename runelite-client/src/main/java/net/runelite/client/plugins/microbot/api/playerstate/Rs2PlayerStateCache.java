@@ -23,6 +23,7 @@ import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 
 import java.util.Arrays;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Caches player state data such as quest states, varbits, and varps.
@@ -42,6 +43,7 @@ public final class Rs2PlayerStateCache {
 	private final ConcurrentHashMap<Integer, QuestState> quests = new ConcurrentHashMap<>();
 	private final ConcurrentHashMap<Integer, Integer> varbits = new ConcurrentHashMap<>();
 	private final ConcurrentHashMap<Integer, Integer> varps = new ConcurrentHashMap<>();
+	private final AtomicLong questPopulationGeneration = new AtomicLong();
 
     private volatile LocalPlayerSnapshot localPlayerSnapshot;
 
@@ -76,9 +78,10 @@ public final class Rs2PlayerStateCache {
 
 	@Subscribe
 	private void onGameStateChanged(GameStateChanged e) {
+        long generation = questPopulationGeneration.incrementAndGet();
         if (e.getGameState() != GameState.LOGGED_IN) localPlayerSnapshot = null;
 		if (e.getGameState() == GameState.LOGGED_IN) {
-			populateQuests();
+			populateQuests(generation);
 		}
 		if (e.getGameState() == GameState.LOGIN_SCREEN) {
 			questsPopulated = false;
@@ -97,15 +100,13 @@ public final class Rs2PlayerStateCache {
 
 	@Subscribe
 	public void onVarbitChanged(VarbitChanged event) {
-		if (questsPopulated) {
-			updateQuest(event);
-		}
-		// Only cache while LOGGED_IN. onGameStateChanged clears both maps on HOPPING /
-		// CONNECTION_LOST because the server re-sends only non-zero varps afterwards, but an event
-		// arriving after that clear and before the next LOGGED_IN would repopulate the very value the
-		// clear existed to discard. Gating the writes closes that window instead of racing it.
+		// Ignore events between the hop/logout clear and the next login so they cannot
+		// restore stale quest, varbit, or varp state.
 		if (client == null || client.getGameState() != GameState.LOGGED_IN) {
 			return;
+		}
+		if (questsPopulated) {
+			updateQuest(event);
 		}
 		if (event.getVarbitId() != -1) {
 			varbits.put(event.getVarbitId(), event.getValue());
@@ -125,7 +126,7 @@ public final class Rs2PlayerStateCache {
 	 * is the one this VarbitChanged refers to.
 	 * <p>
 	 * Matching only varbits left every VARPLAYER-tracked quest frozen at whatever
-	 * {@link #populateQuests()} saw at login. Completing one mid-session never updated the cache, and
+	 * {@link #populateQuests(long)} saw at login. Completing one mid-session never updated the cache, and
 	 * {@code TransportRequirementPolicy.completedQuests} fails closed on a stale or null state, so
 	 * quest-gated transports stayed invisible until relog — the White Wolf Mountain tunnel unlocked by
 	 * Fishing Contest (a varplayer quest) being the case that surfaced it. VarbitChanged carries both
@@ -162,9 +163,12 @@ public final class Rs2PlayerStateCache {
 	/**
 	 * Populate the quests map with the current quest states.
 	 */
-	private void populateQuests() {
+	private void populateQuests(long generation) {
 		clientThread.invokeLater(() ->
 		{
+			if (questPopulationGeneration.get() != generation || client.getGameState() != GameState.LOGGED_IN) {
+				return;
+			}
 			for (Quest quest : Quest.values()) {
 				QuestState questState = quest.getState(client);
 				quests.put(quest.getId(), questState);

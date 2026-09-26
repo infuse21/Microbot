@@ -4,14 +4,19 @@ import java.util.Optional;
 import java.util.concurrent.Callable;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
+import net.runelite.api.Quest;
+import net.runelite.api.QuestState;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.VarbitChanged;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.eventbus.EventBus;
+import net.runelite.client.plugins.microbot.questhelper.questinfo.QuestHelperQuest;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -25,6 +30,7 @@ public class Rs2PlayerStateCacheTest
 	private static final int VARBIT_ID = 200;
 
 	private Client client;
+	private ClientThread clientThread;
 	private EventBus eventBus;
 	private Rs2PlayerStateCache cache;
 
@@ -32,7 +38,7 @@ public class Rs2PlayerStateCacheTest
 	public void setUp()
 	{
 		client = mock(Client.class);
-		ClientThread clientThread = mock(ClientThread.class);
+		clientThread = mock(ClientThread.class);
 		eventBus = new EventBus();
 
 		// Run client-thread work inline so cache reads behave synchronously in tests
@@ -198,5 +204,57 @@ public class Rs2PlayerStateCacheTest
 		when(client.getVarbitValue(VARBIT_ID)).thenReturn(0);
 
 		assertEquals(0, cache.getVarbitValue(VARBIT_ID));
+	}
+
+	@Test
+	public void queuedQuestPopulationDoesNotRestoreQuestsAfterLogout()
+	{
+		when(client.getIntStack()).thenReturn(new int[]{1});
+		setGameState(GameState.LOGGED_IN);
+		ArgumentCaptor<Runnable> callback = ArgumentCaptor.forClass(Runnable.class);
+		verify(clientThread).invokeLater(callback.capture());
+
+		setGameState(GameState.LOGIN_SCREEN);
+		callback.getValue().run();
+
+		assertFalse(cache.questsPopulated);
+		assertTrue(cache.getQuests().isEmpty());
+	}
+
+	@Test
+	public void olderQuestPopulationDoesNotReplaceNewerLogin()
+	{
+		when(client.getIntStack()).thenReturn(new int[]{1});
+		setGameState(GameState.LOGGED_IN);
+		setGameState(GameState.LOGGED_IN);
+		ArgumentCaptor<Runnable> callbacks = ArgumentCaptor.forClass(Runnable.class);
+		verify(clientThread, times(2)).invokeLater(callbacks.capture());
+
+		callbacks.getAllValues().get(0).run();
+		assertFalse(cache.questsPopulated);
+		assertTrue(cache.getQuests().isEmpty());
+
+		callbacks.getAllValues().get(1).run();
+		assertTrue(cache.questsPopulated);
+		assertEquals(QuestState.NOT_STARTED, cache.getQuestState(Quest.COOKS_ASSISTANT));
+	}
+
+	@Test
+	public void questChangesAreIgnoredDuringHoppingAndAppliedAfterLogin()
+	{
+		when(client.getIntStack()).thenReturn(new int[]{1});
+		cache.questsPopulated = true;
+		VarbitChanged event = new VarbitChanged();
+		event.setVarbitId(QuestHelperQuest.BELOW_ICE_MOUNTAIN.getVarbit().getId());
+		event.setVarpId(-1);
+		event.setValue(1);
+
+		setGameState(GameState.HOPPING);
+		cache.onVarbitChanged(event);
+		assertNull(cache.getQuestState(Quest.BELOW_ICE_MOUNTAIN));
+
+		setGameState(GameState.LOGGED_IN);
+		cache.onVarbitChanged(event);
+		assertEquals(QuestState.NOT_STARTED, cache.getQuestState(Quest.BELOW_ICE_MOUNTAIN));
 	}
 }
