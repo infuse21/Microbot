@@ -42,7 +42,7 @@ public final class BankedSpellEquipmentPlanner
 	{
 		Map<Runes, Integer> supply = new EnumMap<>(Runes.class);
 		supply.putAll(availableWithoutWeapon);
-		if (!staff.isMembersOnly() || membersWorld)
+		if (staff.isInfiniteSupply() && (!staff.isMembersOnly() || membersWorld))
 		{
 			staff.getRunes().forEach(rune -> supply.put(rune, Integer.MAX_VALUE));
 		}

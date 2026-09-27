@@ -35,6 +35,18 @@ public class Rs2StaffRequirementsTest
 				magic = 0;
 				members = false;
 			}
+			else if (staff == Rs2Staff.BRYOPHYTAS_STAFF)
+			{
+				attack = 30;
+				magic = 30;
+				members = false;
+			}
+			else if (staff == Rs2Staff.SHADOWFLAME_QUADRANT)
+			{
+				attack = 0;
+				magic = 0;
+				members = true;
+			}
 			else if (staff == Rs2Staff.TWINFLAME_STAFF)
 			{
 				twinflame++;

@@ -190,6 +190,18 @@ public class Rs2Magic {
 		return quickCast(spell.getMagicAction());
 	}
 
+    /** Click the exact displayed spell name; callers remain responsible for spell requirements. */
+    public static boolean quickCast(String spellName) {
+        if (spellName == null || spellName.trim().isEmpty()
+                || Microbot.getClient() == null || Microbot.getClient().isClientThread()) return false;
+        Microbot.status = "Casting " + spellName;
+        if (Rs2Tab.getCurrentTab() != InterfaceTab.MAGIC) {
+            Rs2Tab.switchToMagicTab();
+            if (!sleepUntil(() -> Rs2Tab.getCurrentTab() == InterfaceTab.MAGIC)) return false;
+        }
+        return Rs2Widget.clickWidget(spellName, Optional.of(218), 3, true);
+    }
+
     public static boolean quickCast(MagicAction magicSpell) {
         Microbot.status = "Casting " + magicSpell.getName();
 
@@ -454,8 +466,11 @@ public class Rs2Magic {
         final Rs2ItemModel equippedWeapon = Rs2Equipment.get(EquipmentInventorySlot.WEAPON);
         if (equippedWeapon != null) {
             Rs2Staff equippedStaff = getRs2Staff(equippedWeapon.getId());
-            if (equippedStaff != Rs2Staff.NONE) {
+            if (equippedStaff.isInfiniteSupply()) {
                 equippedStaff.getRunes().forEach(rune -> runes.put(rune, Integer.MAX_VALUE));
+            } else if (equippedStaff == Rs2Staff.BRYOPHYTAS_STAFF) {
+                // The charged item proves at least one stored rune, not unlimited charges.
+                runes.merge(Runes.NATURE, 1, Rs2Magic::limitSum);
             }
         }
 
@@ -497,7 +512,7 @@ public class Rs2Magic {
      * @param runeFilter which Inventories to search for rune
      * @return A {@link Map} where the key is {@link ItemID} of the rune,
      * and the value is an {@code Integer} representing the quantity of that rune available
-     * or {@code Integer.MAX_VALUE} if the rune is provided by equipment.
+     * or {@code Integer.MAX_VALUE} if equipment provides an unlimited supply of the rune.
      */
     public static Map<Runes, Integer> getRunes(RuneFilter runeFilter) {
         final Map<Runes, Integer> availableRunes = runeFilter.isIncludeRunePouch() && Rs2Inventory.hasRunePouch() ?
@@ -516,7 +531,7 @@ public class Rs2Magic {
      *
      * @return A {@link Map} where the key is {@link ItemID} of the rune,
      * and the value is an {@code Integer} representing the quantity of that rune available
-     * or {@code Integer.MAX_VALUE} if the rune is provided by equipment.
+     * or {@code Integer.MAX_VALUE} if equipment provides an unlimited supply of the rune.
      */
     public static Map<Runes, Integer> getRunes() {
         return getRunes(DEFAULT_RUNE_FILTER);

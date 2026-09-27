@@ -6,8 +6,10 @@ import net.runelite.api.gameval.ItemID;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -40,13 +42,21 @@ public enum Rs2Staff {
     MYSTIC_MUD_STAFF(ItemID.MYSTIC_MUD_STAFF, List.of(Runes.WATER, Runes.EARTH), 40, 40, true),
     MYSTIC_SMOKE_STAFF(ItemID.MYSTIC_SMOKE_BATTLESTAFF, List.of(Runes.AIR, Runes.FIRE), 40, 40, true),
     MYSTIC_STEAM_STAFF(ItemID.MYSTIC_STEAM_BATTLESTAFF, List.of(Runes.WATER, Runes.FIRE), 40, 40, true),
-    TWINFLAME_STAFF(ItemID.TWINFLAME_STAFF, List.of(Runes.FIRE, Runes.WATER), 0, 60, true);
+    TWINFLAME_STAFF(ItemID.TWINFLAME_STAFF, List.of(Runes.FIRE, Runes.WATER), 0, 60, true),
+    BRYOPHYTAS_STAFF(ItemID.NATURE_STAFF_CHARGED, List.of(Runes.NATURE), 30, 30, false),
+    SHADOWFLAME_QUADRANT(ItemID.SHADOWFLAME_QUADRANT,
+            List.of(Runes.AIR, Runes.WATER, Runes.EARTH, Runes.FIRE), 0, 0, true);
 
     private final int itemID;
     private final List<Runes> runes;
     private final int requiredAttackLevel;
     private final int requiredMagicLevel;
     private final boolean membersOnly;
+
+    /** Charged Bryophyta's staff supplies stored runes rather than an unlimited source. */
+    public boolean isInfiniteSupply() {
+        return this != NONE && this != BRYOPHYTAS_STAFF;
+    }
 
     public boolean canEquip(int realAttackLevel, int realMagicLevel, boolean membersWorld) {
         return this != NONE && (!membersOnly || membersWorld)
@@ -62,6 +72,14 @@ public enum Rs2Staff {
         if (runes.contains(rune)) return true;
         Runes[] baseRunes = rune.getBaseRunes();
         return baseRunes.length > 0 && runes.containsAll(Arrays.asList(baseRunes));
+    }
+
+    public static Set<Integer> itemIdsProviding(Runes rune) {
+        LinkedHashSet<Integer> itemIds = Arrays.stream(values())
+                .filter(item -> item != NONE && item.provides(rune))
+                .map(Rs2Staff::getItemID)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        return Collections.unmodifiableSet(itemIds);
     }
 
     public static Rs2Staff byItemId(int itemID) {

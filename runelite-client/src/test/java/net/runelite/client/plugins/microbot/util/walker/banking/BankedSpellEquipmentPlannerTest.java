@@ -18,7 +18,7 @@ public class BankedSpellEquipmentPlannerTest
 	{
 		for (Rs2Staff staff : Rs2Staff.values())
 		{
-			if (staff == Rs2Staff.NONE) continue;
+			if (!staff.isInfiniteSupply()) continue;
 			Map<Runes, Integer> cast = staff.getRunes().stream()
 				.collect(Collectors.toMap(rune -> rune, rune -> 3));
 			BankedSpellEquipmentPlanner.Plan plan = BankedSpellEquipmentPlanner.choose(
@@ -30,6 +30,16 @@ public class BankedSpellEquipmentPlannerTest
 			assertNull(BankedSpellEquipmentPlanner.choose(List.of(cast), Map.of(), Map.of(),
 				Set.of(), Rs2Staff.NONE, 99, 99, true));
 		}
+	}
+
+	@Test
+	public void chargedStaffCannotPromiseUnlimitedBankedRunes()
+	{
+		assertNull(BankedSpellEquipmentPlanner.choose(List.of(Map.of(Runes.NATURE, 2)),
+			Map.of(), Map.of(), Set.of(Rs2Staff.BRYOPHYTAS_STAFF.getItemID()), Rs2Staff.NONE,
+			99, 99, true));
+		assertNull(BankedSpellEquipmentPlanner.choose(List.of(Map.of(Runes.NATURE, 2)),
+			Map.of(), Map.of(), Set.of(), Rs2Staff.BRYOPHYTAS_STAFF, 99, 99, true));
 	}
 
 	@Test

@@ -5,6 +5,7 @@ import net.runelite.client.plugins.microbot.shortestpath.ShortestPathConfig;
 import net.runelite.client.plugins.microbot.shortestpath.ShortestPathPlugin;
 import net.runelite.client.plugins.microbot.shortestpath.TeleportationItem;
 import net.runelite.client.plugins.microbot.shortestpath.Transport;
+import net.runelite.client.plugins.microbot.shortestpath.WorldPointUtil;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.Pathfinder;
 import net.runelite.client.plugins.microbot.shortestpath.pathfinder.PathfinderConfig;
 import net.runelite.client.plugins.microbot.util.walker.navigation.RoutePlannerRuntime;
@@ -162,6 +163,51 @@ public final class Rs2PathApi
 	// ------------------------------------------------------------------
 	// Transport data
 	// ------------------------------------------------------------------
+
+	/** Whether runtime recovery policy avoids this dangerous-NPC adjacency tile. */
+	public static boolean shouldAvoidDangerousTile(WorldPoint tile)
+	{
+		PathfinderConfig config = pathfinderConfig;
+		return config != null && tile != null && config.isAvoidDangerousNpcs()
+			&& config.isDangerousAdjacentTile(WorldPointUtil.packWorldPoint(tile));
+	}
+
+	/** Whether the currently refreshed planning policy permits spirit-tree travel. */
+	public static boolean isSpiritTreeTravelEnabled()
+	{
+		PathfinderConfig config = pathfinderConfig;
+		return config != null && config.isUseSpiritTrees();
+	}
+
+	public static boolean isInWilderness(WorldPoint point)
+	{
+		return point != null && PathfinderConfig.isInWilderness(point);
+	}
+
+	/** Static catalog presence, independent of the active route and eligibility filtering. */
+	public static boolean hasCatalogTransportOrigin(WorldPoint origin)
+	{
+		PathfinderConfig config = pathfinderConfig;
+		if (config == null || origin == null)
+		{
+			return false;
+		}
+		Set<Transport> transports = config.getAllTransports().get(origin);
+		return transports != null && !transports.isEmpty();
+	}
+
+	/** Whether the static catalog contains the exact directed origin-to-destination edge. */
+	public static boolean hasCatalogTransportEdge(WorldPoint origin, WorldPoint destination)
+	{
+		PathfinderConfig config = pathfinderConfig;
+		if (config == null || origin == null || destination == null)
+		{
+			return false;
+		}
+		Set<Transport> transports = config.getAllTransports().get(origin);
+		return transports != null && transports.stream()
+			.anyMatch(transport -> transport != null && destination.equals(transport.getDestination()));
+	}
 
 	/** @return the transport graph keyed by origin tile. */
 	public static Map<WorldPoint, Set<Transport>> getTransports()
