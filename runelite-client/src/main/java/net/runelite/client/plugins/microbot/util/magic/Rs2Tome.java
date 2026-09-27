@@ -27,6 +27,13 @@ public enum Rs2Tome {
             .filter(t -> t != NONE)
             .collect(Collectors.toMap(Rs2Tome::getItemID, Function.identity()));
 
+    public boolean provides(Runes rune) {
+        if (rune == null) return false;
+        if (runes.contains(rune)) return true;
+        Runes[] baseRunes = rune.getBaseRunes();
+        return baseRunes.length > 0 && runes.containsAll(Arrays.asList(baseRunes));
+    }
+
     public static Rs2Tome byItemId(int itemID) {
         return BY_ITEM_ID.getOrDefault(itemID, NONE);
     }
