@@ -452,12 +452,14 @@ net.runelite.client.plugins.microbot.util.magic.Rs2Magic#canCast(MagicAction): b
 net.runelite.client.plugins.microbot.util.magic.Rs2Magic#cast(MagicAction, String, int): boolean  ->  net.runelite.api.widgets.Widget#getBounds(): Rectangle
 net.runelite.client.plugins.microbot.util.magic.Rs2Magic#castOn(MagicAction, Actor): boolean  ->  net.runelite.api.Actor#getLocalLocation(): LocalPoint
 net.runelite.client.plugins.microbot.util.magic.Rs2Magic#lambda$canCast$1(MagicAction, Widget): boolean  ->  net.runelite.api.widgets.Widget#getSpriteId(): int
-net.runelite.client.plugins.microbot.util.magic.Rs2Magic#lambda$castOn$4(): boolean  ->  net.runelite.api.Client#isWidgetSelected(): boolean
-net.runelite.client.plugins.microbot.util.magic.Rs2Magic#lambda$npcContact$14(Rectangle, String): boolean  ->  net.runelite.api.widgets.Widget#getBounds(): Rectangle
-net.runelite.client.plugins.microbot.util.magic.Rs2Magic#lambda$npcContact$15(Rectangle, Rectangle, Widget): void  ->  net.runelite.api.widgets.Widget#getBounds(): Rectangle
+net.runelite.client.plugins.microbot.util.magic.Rs2Magic#lambda$castOn$5(): boolean  ->  net.runelite.api.Client#isWidgetSelected(): boolean
+net.runelite.client.plugins.microbot.util.magic.Rs2Magic#lambda$npcContact$15(Rectangle, String): boolean  ->  net.runelite.api.widgets.Widget#getBounds(): Rectangle
+net.runelite.client.plugins.microbot.util.magic.Rs2Magic#lambda$npcContact$16(Rectangle, Rectangle, Widget): void  ->  net.runelite.api.widgets.Widget#getBounds(): Rectangle
 net.runelite.client.plugins.microbot.util.magic.Rs2Magic#npcContact(String): boolean  ->  net.runelite.api.widgets.Widget#getBounds(): Rectangle
 net.runelite.client.plugins.microbot.util.magic.Rs2Magic#quickCanCast(MagicAction): boolean  ->  net.runelite.api.widgets.Widget#getSpriteId(): int
 net.runelite.client.plugins.microbot.util.magic.Rs2Magic#quickCast(MagicAction): boolean  ->  net.runelite.api.widgets.Widget#getBounds(): Rectangle
+# Thread-identity check rejects client-thread callers before quickCast can wait; no game-state read.
+net.runelite.client.plugins.microbot.util.magic.Rs2Magic#quickCast(String): boolean  ->  net.runelite.api.Client#isClientThread(): boolean
 net.runelite.client.plugins.microbot.util.magic.Rs2Magic#setup(): boolean  ->  net.runelite.api.widgets.Widget#getActions(): String[]
 net.runelite.client.plugins.microbot.util.magic.Rs2Magic#superHeat(Rs2ItemModel, int, int): void  ->  net.runelite.api.widgets.Widget#getBounds(): Rectangle
 net.runelite.client.plugins.microbot.util.magic.Rs2Magic#superHeat(Rs2ItemModel, int, int): void  ->  net.runelite.api.widgets.Widget#getSpriteId(): int
