@@ -2366,3 +2366,13 @@ an unknown value; require the correct destination or no enabled default-teleport
 A target is always in its own flood region, so flooding from the target cannot prove player reachability. Cache explicit-origin floods separately by origin and scene context. Compare native tile coordinates in the same world view; local-coordinate units are not tiles.
 
 **Pattern to follow:** Use `entity.isReachable()` and player-relative query terminals. For an explicit native-coordinate anchor, constrain the world view first. **Defensive check:** disconnected regions queried in both orders must return the same answers, including after an explicit-origin lookup.
+
+## 133. Preserve the configured finish distance for banked UI walks
+
+Right-click target walking and hotkey walking enter through `NavigationWalkRuntime`.
+Choosing banked transports must not replace the user's finish distance with a fixed radius:
+the former hardcoded 10 allowed arrival several tiles short even with Finish distance set to 1.
+Read the configured radius for the banked target leg, just as the ordinary walk does.
+
+**Defensive check:** exercise the production UI delegate with banked transport enabled and
+finish distances 0, 1 and 5; verify each exact distance reaches the banking coordinator.

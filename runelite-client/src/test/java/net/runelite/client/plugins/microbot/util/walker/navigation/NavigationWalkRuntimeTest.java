@@ -1,9 +1,12 @@
 package net.runelite.client.plugins.microbot.util.walker.navigation;
 
 import net.runelite.api.coords.WorldPoint;
+import net.runelite.client.plugins.microbot.shortestpath.ShortestPathConfig;
+import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.walker.WalkerState;
 import org.junit.After;
 import org.junit.Test;
+import org.mockito.MockedStatic;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -16,6 +19,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
 
 public class NavigationWalkRuntimeTest
 {
@@ -26,6 +32,42 @@ public class NavigationWalkRuntimeTest
 	public void resetRuntime()
 	{
 		NavigationWalkRuntime.resetForTesting();
+	}
+
+	@Test
+	public void bankedUiWalkHonorsConfiguredFinishDistance()
+	{
+		ShortestPathConfig previous = Rs2Walker.config;
+		ShortestPathConfig config = mock(ShortestPathConfig.class);
+		try (MockedStatic<Rs2Walker> walker = mockStatic(Rs2Walker.class))
+		{
+			Rs2Walker.config = config;
+			for (int distance : new int[]{0, 1, 5})
+			{
+				when(config.reachedDistance()).thenReturn(distance);
+				walker.when(() -> Rs2Walker.walkWithBankedTransportsAndState(FIRST, distance, false))
+					.thenReturn(WalkerState.ARRIVED);
+				assertEquals(WalkerState.ARRIVED, NavigationWalkRuntime.walk(FIRST, true));
+				walker.verify(() -> Rs2Walker.walkWithBankedTransportsAndState(FIRST, distance, false));
+			}
+			walker.verifyNoMoreInteractions();
+		}
+		finally
+		{
+			Rs2Walker.config = previous;
+		}
+	}
+
+	@Test
+	public void nonBankedUiWalkKeepsDefaultDistanceDelegation()
+	{
+		try (MockedStatic<Rs2Walker> walker = mockStatic(Rs2Walker.class))
+		{
+			walker.when(() -> Rs2Walker.walkWithState(FIRST)).thenReturn(WalkerState.MOVING);
+			assertEquals(WalkerState.MOVING, NavigationWalkRuntime.walk(FIRST, false));
+			walker.verify(() -> Rs2Walker.walkWithState(FIRST));
+			walker.verifyNoMoreInteractions();
+		}
 	}
 
 	@Test
