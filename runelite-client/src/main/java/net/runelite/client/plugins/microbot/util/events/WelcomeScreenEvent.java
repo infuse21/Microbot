@@ -23,8 +23,11 @@ public class WelcomeScreenEvent implements BlockingEvent {
 
     @Override
     public boolean execute() {
+        if (Microbot.getClientThread().isClientThread() || Thread.currentThread().isInterrupted()) {
+            return false;
+        }
         // Widget mutations must run on the client thread; this event executes on Microbot-BlockingEvent.
-        Boolean clickedPlay = Microbot.getClientThread().invoke((Supplier<Boolean>) () -> {
+        Widget readyPlayWidget = Microbot.getClientThread().invoke((Supplier<Widget>) () -> {
             Client client = Microbot.getClient();
             Widget updateBottomRibbon = client.getWidget(InterfaceID.WelcomeScreen.URL);
             if (updateBottomRibbon != null) {
@@ -49,18 +52,18 @@ public class WelcomeScreenEvent implements BlockingEvent {
             boolean wasUpdateRibbonHandled = updateBottomRibbon == null || updateBottomRibbon.getOnOpListener() == null;
 
             if (playWidget != null && isPlayWidgetVisible && wasUpdateRibbonHandled && wasNewsBannerHandled) {
-                log.info("WelcomeScreenEvent execute: Clicking play button.");
-                Rs2Widget.clickWidget(playWidget);
-                return true;
+                return playWidget;
             }
             log.info("WelcomeScreenEvent execute: required UI not ready (playWidgetNull={} playWidgetVisible={} bannerHandled={} ribbonHandled={})",
                     playWidget == null, isPlayWidgetVisible, wasNewsBannerHandled, wasUpdateRibbonHandled);
-            return false;
+            return null;
         });
 
-        if (Boolean.TRUE.equals(clickedPlay)) {
-            sleepUntil(() -> !validate());
+        // The helper revalidates the widget on the client thread, then submits mouse input here.
+        if (readyPlayWidget == null || !Rs2Widget.clickWidget(readyPlayWidget)) {
+            return false;
         }
+        sleepUntil(() -> !validate());
 
         return !validate();
     }
