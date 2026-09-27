@@ -1,12 +1,20 @@
 package net.runelite.client.plugins.microbot.util.magic;
 
 import org.junit.Test;
+
+import java.lang.reflect.Modifier;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class Rs2StaffRequirementsTest
 {
+	@Test
+	public void byItemIdIsPublicPluginApi() throws NoSuchMethodException
+	{
+		assertTrue(Modifier.isPublic(Rs2Staff.class.getDeclaredMethod("byItemId", int.class).getModifiers()));
+	}
+
 	@Test
 	public void everySupportedStaffHasAnExplicitEquipBoundary()
 	{

@@ -57,7 +57,7 @@ public enum Rs2Staff {
             .filter(s -> s != NONE)
             .collect(Collectors.toMap(Rs2Staff::getItemID, Function.identity()));
 
-    static Rs2Staff byItemId(int itemID) {
+    public static Rs2Staff byItemId(int itemID) {
         return BY_ITEM_ID.getOrDefault(itemID, NONE);
     }
 }

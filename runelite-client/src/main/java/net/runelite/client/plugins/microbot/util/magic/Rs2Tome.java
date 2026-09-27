@@ -27,7 +27,7 @@ public enum Rs2Tome {
             .filter(t -> t != NONE)
             .collect(Collectors.toMap(Rs2Tome::getItemID, Function.identity()));
 
-    static Rs2Tome byItemId(int itemID) {
+    public static Rs2Tome byItemId(int itemID) {
         return BY_ITEM_ID.getOrDefault(itemID, NONE);
     }
 }
