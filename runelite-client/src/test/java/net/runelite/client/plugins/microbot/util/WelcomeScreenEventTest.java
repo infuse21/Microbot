@@ -51,8 +51,34 @@ public class WelcomeScreenEventTest
         {
             microbot.when(Microbot::getClient).thenReturn(client);
             microbot.when(Microbot::getClientThread).thenReturn(bridge);
+            widgets.when(() -> Rs2Widget.isWidgetVisible(InterfaceID.WelcomeScreen.PLAY)).thenReturn(true);
             assertFalse(new WelcomeScreenEvent().execute());
-            widgets.verifyNoInteractions();
+            widgets.verify(() -> Rs2Widget.isWidgetVisible(InterfaceID.WelcomeScreen.PLAY));
+            widgets.verifyNoMoreInteractions();
+            global.verifyNoInteractions();
+        }
+    }
+
+    @Test
+    public void dismissedWelcomeScreenCompletesWithoutClickOrWait()
+    {
+        ClientThread bridge = mock(ClientThread.class);
+        Client client = mock(Client.class);
+        Widget play = mock(Widget.class);
+        when(client.getWidget(InterfaceID.WelcomeScreen.PLAY)).thenReturn(play);
+        when(play.isHidden()).thenReturn(true);
+        when(bridge.invoke(any(Supplier.class))).thenAnswer(invocation ->
+            ((Supplier<?>) invocation.getArgument(0)).get());
+        try (MockedStatic<Microbot> microbot = mockStatic(Microbot.class);
+             MockedStatic<Rs2Widget> widgets = mockStatic(Rs2Widget.class);
+             MockedStatic<Global> global = mockStatic(Global.class))
+        {
+            microbot.when(Microbot::getClient).thenReturn(client);
+            microbot.when(Microbot::getClientThread).thenReturn(bridge);
+            widgets.when(() -> Rs2Widget.isWidgetVisible(InterfaceID.WelcomeScreen.PLAY)).thenReturn(false);
+            assertTrue(new WelcomeScreenEvent().execute());
+            widgets.verify(() -> Rs2Widget.isWidgetVisible(InterfaceID.WelcomeScreen.PLAY));
+            widgets.verifyNoMoreInteractions();
             global.verifyNoInteractions();
         }
     }

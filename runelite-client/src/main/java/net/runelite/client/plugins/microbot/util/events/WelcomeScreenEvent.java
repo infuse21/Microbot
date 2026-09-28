@@ -1,6 +1,5 @@
 package net.runelite.client.plugins.microbot.util.events;
 
-import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.Widget;
@@ -13,7 +12,6 @@ import java.util.function.Supplier;
 
 import static net.runelite.client.plugins.microbot.util.Global.sleepUntil;
 
-@Slf4j
 public class WelcomeScreenEvent implements BlockingEvent {
     
     @Override
@@ -33,17 +31,11 @@ public class WelcomeScreenEvent implements BlockingEvent {
             if (updateBottomRibbon != null) {
                 updateBottomRibbon.setOnClickListener((Object[]) null);
                 updateBottomRibbon.setOnOpListener((Object[]) null);
-                log.info("WelcomeScreenEvent execute: Cleared update ribbon listener to avoid accidental page opening.");
-            } else {
-                log.info("WelcomeScreenEvent execute: Update ribbon widget is null");
             }
 
             Widget newsBanner = client.getWidget(InterfaceID.WelcomeScreen.BANNER);
             if (newsBanner != null) {
                 newsBanner.setHidden(true);
-                log.info("WelcomeScreenEvent execute: Cleared banner to avoid accidental page openings.");
-            } else {
-                log.info("WelcomeScreenEvent execute: Banner widget is null");
             }
 
             Widget playWidget = client.getWidget(InterfaceID.WelcomeScreen.PLAY);
@@ -54,13 +46,15 @@ public class WelcomeScreenEvent implements BlockingEvent {
             if (playWidget != null && isPlayWidgetVisible && wasUpdateRibbonHandled && wasNewsBannerHandled) {
                 return playWidget;
             }
-            log.info("WelcomeScreenEvent execute: required UI not ready (playWidgetNull={} playWidgetVisible={} bannerHandled={} ribbonHandled={})",
-                    playWidget == null, isPlayWidgetVisible, wasNewsBannerHandled, wasUpdateRibbonHandled);
             return null;
         });
 
         // The helper revalidates the widget on the client thread, then submits mouse input here.
-        if (readyPlayWidget == null || !Rs2Widget.clickWidget(readyPlayWidget)) {
+        if (readyPlayWidget == null) {
+            // A queued event can outlive the welcome screen; do not keep re-queuing it.
+            return !validate();
+        }
+        if (!Rs2Widget.clickWidget(readyPlayWidget)) {
             return false;
         }
         sleepUntil(() -> !validate());
