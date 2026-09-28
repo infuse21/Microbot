@@ -22,6 +22,7 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.times;
 
 public class NavigationWalkRuntimeTest
 {
@@ -42,6 +43,8 @@ public class NavigationWalkRuntimeTest
 		try (MockedStatic<Rs2Walker> walker = mockStatic(Rs2Walker.class))
 		{
 			Rs2Walker.config = config;
+			walker.when(() -> Rs2Walker.walkWithBankedTransportsAndState(FIRST, false))
+				.thenCallRealMethod();
 			for (int distance : new int[]{0, 1, 5})
 			{
 				when(config.reachedDistance()).thenReturn(distance);
@@ -50,6 +53,7 @@ public class NavigationWalkRuntimeTest
 				assertEquals(WalkerState.ARRIVED, NavigationWalkRuntime.walk(FIRST, true));
 				walker.verify(() -> Rs2Walker.walkWithBankedTransportsAndState(FIRST, distance, false));
 			}
+			walker.verify(() -> Rs2Walker.walkWithBankedTransportsAndState(FIRST, false), times(3));
 			walker.verifyNoMoreInteractions();
 		}
 		finally

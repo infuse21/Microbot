@@ -3,7 +3,6 @@ package net.runelite.client.plugins.microbot.util.walker.navigation;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.coords.WorldPoint;
-import net.runelite.client.plugins.microbot.shortestpath.ShortestPathConfig;
 import net.runelite.client.plugins.microbot.util.walker.Rs2Walker;
 import net.runelite.client.plugins.microbot.util.walker.WalkerState;
 
@@ -143,9 +142,7 @@ public final class NavigationWalkRuntime
 	{
 		if (withBankedTransports)
 		{
-			ShortestPathConfig config = Rs2Walker.config;
-			int finishDistance = config != null ? config.reachedDistance() : 10;
-			return Rs2Walker.walkWithBankedTransportsAndState(destination, finishDistance, false);
+			return Rs2Walker.walkWithBankedTransportsAndState(destination, false);
 		}
 		return Rs2Walker.walkWithState(destination);
 	}

@@ -170,6 +170,11 @@ public final class Rs2NpcDialogueTransportScene implements NpcDialogueTransportS
 				return i;
 			}
 		}
+		// Diving consent must never fall back to a different warning/remember-choice option.
+		if (needle.equals("yes, dive anyway."))
+		{
+			return -1;
+		}
 		int containing = -1;
 		for (int i = 0; i < options.size(); i++)
 		{

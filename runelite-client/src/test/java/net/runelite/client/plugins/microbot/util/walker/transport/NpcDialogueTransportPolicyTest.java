@@ -214,7 +214,8 @@ public class NpcDialogueTransportPolicyTest
 			for (Transport row : group)
 			{
 				if (row.getType() != TransportType.BOAT
-					|| !Set.of(30914, 30915, 30919).contains(row.getObjectId())) continue;
+					|| !Set.of(30914, 30915, 30919).contains(row.getObjectId())
+					|| !"Travel".equals(row.getAction())) continue;
 				String destination = NpcDialogueTransportPolicy.destinationOption(row);
 				assertTrue(Set.of("North", "Sea", "Camp").contains(destination));
 				assertEquals(-1, Rs2NpcDialogueTransportScene.matchOptionIndex(List.of(
@@ -228,6 +229,49 @@ public class NpcDialogueTransportPolicyTest
 			}
 		}
 		assertEquals(6, checked);
+	}
+
+	@Test
+	public void fossilDiveAndReturnHaveSeparateEngineOwnersAndVerifiedLandings()
+	{
+		WorldPoint surface = new WorldPoint(3763, 3899, 0);
+		WorldPoint underwater = new WorldPoint(3732, 10281, 1);
+		Transport dive = realRow(TransportType.BOAT, surface, "Yes, dive anyway.");
+		assertNotNull(dive);
+		assertEquals(underwater, dive.getDestination());
+		assertEquals(30919, dive.getObjectId());
+		assertEquals("Dive", dive.getAction());
+		assertTrue(dive.getItemIdRequirements().isEmpty());
+		assertTrue(NpcDialogueTransportPolicy.isEligible(dive));
+		assertFalse(NpcTransportPolicy.isEligible(dive));
+		assertEquals("Yes, dive anyway.", NpcDialogueTransportPolicy.destinationOption(dive));
+		assertTrue(NpcDialogueTransportPolicy.isLiveObjectMatch(dive, 30919, "Rowboat",
+			new String[]{"Travel", "Dive"}, new WorldPoint(3761, 3898, 0)));
+
+		Transport climb = Transport.loadAllFromResources().values().stream().flatMap(Set::stream)
+			.filter(row -> row.getObjectId() == 30948).findFirst().orElseThrow(AssertionError::new);
+		assertEquals(underwater, climb.getOrigin());
+		assertEquals(new WorldPoint(3764, 3899, 0), climb.getDestination());
+		assertEquals("Climb", climb.getAction());
+		assertTrue(NpcTransportPolicy.isEligible(climb));
+		assertFalse(NpcDialogueTransportPolicy.isEligible(climb));
+		assertTrue(NpcTransportPolicy.isLiveObjectMatch(climb, 30948, "Anchor rope",
+			new String[]{"Climb"}, new WorldPoint(3731, 10282, 1)));
+	}
+
+	@Test
+	public void diveWarningAcceptsOnlyOneTimeConsentAndNeverHandsFullOrRememberChoice()
+	{
+		String consent = "Yes, dive anyway.";
+		assertEquals(0, Rs2NpcDialogueTransportScene.matchOptionIndex(List.of(consent,
+			"Yes, dive anyway, and don't ask this again.", "No, don't dive."), consent));
+		assertEquals(-1, Rs2NpcDialogueTransportScene.matchOptionIndex(List.of(
+			"Yes, dive anyway, and don't ask this again.", "No, don't dive."), consent));
+		assertEquals(-1, Rs2NpcDialogueTransportScene.matchOptionIndex(List.of(
+			"Dive and walk on the seabed (deep water will mean death).",
+			"I'll empty my hands so I can swim."), consent));
+		assertEquals(-1, Rs2NpcDialogueTransportScene.matchOptionIndex(List.of(
+			"Remember: Yes, dive anyway."), consent));
 	}
 
 	@Test

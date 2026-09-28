@@ -2376,3 +2376,18 @@ Read the configured radius for the banked target leg, just as the ordinary walk 
 
 **Defensive check:** exercise the production UI delegate with banked transport enabled and
 finish distances 0, 1 and 5; verify each exact distance reaches the banking coordinator.
+
+## 134. Distinguish Fossil Island surface rowing from the underwater dive
+
+The sea-island rowboat 30919 has a direct `Dive` action as well as its surface `Travel`
+menu. Publish the underwater leg separately: (3763,3899,0) to (3732,10281,1).
+Anchor rope 30948 at (3731,10282,1) returns via `Climb` to (3764,3899,0).
+Rebuilt-walker acceptance passed on 2026-09-28: Dive, Continue and exact one-time consent
+reached the underwater landing at 01:15:48 BST; the return Climb reached the surface at
+01:16:03 BST. Both legs logged `navigation-engine:arrived` with finish distance zero.
+
+Diving gear is optional for entry. The dialogue handler may select only the exact
+one-time `Yes, dive anyway.` option, never the remember-choice variant or the
+hands-full warning's dangerous seabed option. Equipment preparation remains with
+the caller; do not silently remove a weapon or shield. Both rows use the boat
+transport configuration and retain NavigationEngine ownership through landing.

@@ -6353,6 +6353,11 @@ public class Rs2Walker {
         return state == WalkerState.ARRIVED;
 
     }
+
+    /** Uses the configured finish distance while retaining the full walking result. */
+    public static WalkerState walkWithBankedTransportsAndState(WorldPoint target, boolean forceBanking) {
+        return walkWithBankedTransportsAndState(target, reachedDistanceOrDefault(), forceBanking);
+    }
     /**
      * Analyzes whether to go directly or via bank first for transport items. NavigationEngine owns
      * every selected walking leg.
