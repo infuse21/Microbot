@@ -229,6 +229,21 @@ public class VirtualMouse extends Mouse {
     }
 
     @Override
+    public boolean tryClick(Point point, java.util.function.BooleanSupplier valid) {
+        if (point == null || valid == null || Microbot.getClient().isClientThread()
+                || Thread.currentThread().isInterrupted()) return false;
+        final boolean[] dispatched = {false};
+        runClick(() -> {
+            if (!valid.getAsBoolean()) return;
+            if (shouldMoveNaturally(point)) Microbot.naturalMouse.moveTo(point.getX(), point.getY());
+            if (Thread.currentThread().isInterrupted() || !valid.getAsBoolean()) return;
+            handleClick(point, false);
+            dispatched[0] = true;
+        });
+        return dispatched[0];
+    }
+
+    @Override
     public boolean tryClick(Point point, NewMenuEntry entry, java.util.function.BooleanSupplier valid) {
         if (point == null || Microbot.getClient().isClientThread() || Thread.currentThread().isInterrupted()) return false;
         final boolean[] acknowledged = {false};

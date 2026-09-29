@@ -1608,13 +1608,14 @@ public class Rs2Walker {
     }
 
     public static boolean walkMiniMap(WorldPoint worldPoint, double zoomDistance) {
-        if (Microbot.getClient().getMinimapZoom() != zoomDistance)
-            Microbot.getClient().setMinimapZoom(zoomDistance);
-
-        Point point = Rs2MiniMap.worldToMinimap(worldPoint);
-
+        Point point = Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            if (Microbot.getClient().getMinimapZoom() != zoomDistance)
+                Microbot.getClient().setMinimapZoom(zoomDistance);
+            Point projected = Rs2MiniMap.worldToMinimap(worldPoint);
+            return projected != null && (disableWalkerUpdate || Rs2MiniMap.isPointInsideMinimap(projected))
+                ? projected : null;
+        }).orElse(null);
         if (point == null) return false;
-        if (!disableWalkerUpdate && !Rs2MiniMap.isPointInsideMinimap(point)) return false;
 
         Microbot.getMouse().click(point);
         return true;
@@ -1629,11 +1630,13 @@ public class Rs2Walker {
         if (worldPoint == null) {
             return false;
         }
-        if (Microbot.getClient().getMinimapZoom() != zoomDistance) {
-            Microbot.getClient().setMinimapZoom(zoomDistance);
-        }
-        Point point = Rs2MiniMap.worldToMinimap(worldPoint);
-        return point != null && (disableWalkerUpdate || Rs2MiniMap.isPointInsideMinimap(point));
+        return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+            if (Microbot.getClient().getMinimapZoom() != zoomDistance) {
+                Microbot.getClient().setMinimapZoom(zoomDistance);
+            }
+            Point point = Rs2MiniMap.worldToMinimap(worldPoint);
+            return point != null && (disableWalkerUpdate || Rs2MiniMap.isPointInsideMinimap(point));
+        }).orElse(false);
     }
 
     private static WorldPoint clickMiniMapOrFallback(List<WorldPoint> rawPath,
@@ -4829,7 +4832,7 @@ public class Rs2Walker {
 
         @Override
         public boolean clickTile(WorldPoint target) {
-            if (walkMiniMap(target)) {
+            if (clickNavigationMinimap(target)) {
                 lastActionType = "minimap-route-tile";
                 return true;
             }
@@ -4852,7 +4855,7 @@ public class Rs2Walker {
 					lastActionType = "canvas-" + selection;
 					return true;
 				}
-				if (walkMiniMap(target)) {
+				if (clickNavigationMinimap(target)) {
 					lastActionType = "minimap-" + selection;
 					return true;
 				}
@@ -4860,6 +4863,13 @@ public class Rs2Walker {
 				return false;
 			}
 			return clickTile(target);
+		}
+
+		private boolean clickNavigationMinimap(WorldPoint target) {
+			Point point = Rs2MiniMap.getNavigationTargetPoint(target);
+			if (point == null) return false;
+			return Microbot.getMouse().tryClick(point,
+				() -> point.equals(Rs2MiniMap.getNavigationTargetPoint(target)));
 		}
 
 		@Override
@@ -5267,13 +5277,15 @@ public class Rs2Walker {
         long now = System.currentTimeMillis();
         WorldPoint player = Rs2Player.getWorldLocation();
         RoutePlan plan = RoutePlannerRuntime.getPublishedPlan();
-		InteractionObservations interactions = observeRouteInteractions(plan, player);
+		int clickReach = Rs2MiniMap.getNavigationClickReach();
+		InteractionObservations interactions = observeRouteInteractions(plan, player, clickReach);
 		NavigationObservation observation = NavigationObservation.route(now,
                 player, plan,
                 Rs2Player.isMoving(), Rs2Player.isAnimating(), Rs2Player.isInteracting(),
                 false, false, false, reason)
 				.withMovementDestination(currentMovementDestination())
-				.withRouteInteractions(interactions.current, interactions.next);
+				.withRouteInteractions(interactions.current, interactions.next)
+				.withRouteClickReach(clickReach);
         NavigationExecutionResult result = NavigationEngineRuntime.execute(observation,
                 NAVIGATION_WALKER_ACTIONS);
         NavigationDecision decision = result.getDecision();
@@ -5324,14 +5336,14 @@ public class Rs2Walker {
         return result;
     }
 
-	private static InteractionObservations observeRouteInteractions(RoutePlan plan, WorldPoint player) {
+	private static InteractionObservations observeRouteInteractions(RoutePlan plan, WorldPoint player, int clickReach) {
 		if (plan == null || player == null || plan.getRawPath().size() < 2) {
 			return InteractionObservations.NONE;
 		}
 		NavigationSnapshot snapshot = NavigationEngineRuntime.getSnapshot();
 		RouteInteraction pending = snapshot == null ? null : snapshot.getPendingInteraction();
 		Rs2LiveScene mineableScene = new Rs2LiveScene(player, null);
-		Rs2DoorScene doorScene = new Rs2DoorScene(player, INTERACTION_CHAIN_RANGE);
+		Rs2DoorScene doorScene = new Rs2DoorScene(player, Math.max(INTERACTION_CHAIN_RANGE, clickReach + 3));
 		Rs2AdjacentTransportScene transportScene = new Rs2AdjacentTransportScene();
 		Rs2CatalogTransitionScene transitionScene = new Rs2CatalogTransitionScene();
 		Rs2SimpleTeleportScene teleportScene = new Rs2SimpleTeleportScene();
@@ -5437,7 +5449,7 @@ public class Rs2Walker {
 						minecartScene,
 						teleportationPortalScene, minigameTeleportScene,
 						magicMushtreeScene, hotAirBalloonScene,
-						INTERACTION_CHAIN_RANGE, coinsHeld)
+						INTERACTION_CHAIN_RANGE, coinsHeld, Math.max(INTERACTION_CHAIN_RANGE, clickReach + 3))
 					: null;
 			return new InteractionObservations(current, next);
 		}
@@ -5453,7 +5465,7 @@ public class Rs2Walker {
 			wildernessDitchScene, jungleObstacleScene,
 			canoeScene, minecartScene, teleportationPortalScene,
 			minigameTeleportScene, magicMushtreeScene, hotAirBalloonScene,
-			HANDLER_RANGE, coinsHeld), null);
+			HANDLER_RANGE, coinsHeld, Math.max(HANDLER_RANGE, clickReach + 3)), null);
 	}
 
 	private static RouteInteraction scanForwardRouteInteraction(RoutePlan plan, WorldPoint player,
@@ -5476,10 +5488,10 @@ public class Rs2Walker {
 		Rs2MinigameTeleportScene minigameTeleportScene,
 		Rs2MagicMushtreeScene magicMushtreeScene,
 		Rs2HotAirBalloonScene hotAirBalloonScene,
-		int interactionRange, long coinsHeld) {
+		int interactionRange, long coinsHeld, int scanRange) {
 		List<WorldPoint> rawPath = plan.getRawPath();
 		start = Math.max(0, start);
-		int end = Math.min(rawPath.size() - 1, start + interactionRange);
+		int end = Math.min(rawPath.size() - 1, start + scanRange);
 		RouteInteraction mineable = null;
 		boolean inInstance = Rs2LiveScene.isInInstance();
 		if (inInstance || player.getRegionID() == net.runelite.client.plugins.microbot.util.walker.obstacle.Rs2ObstacleHandler.MOTHERLODE_MINE_REGION) {

@@ -2391,3 +2391,16 @@ one-time `Yes, dive anyway.` option, never the remember-choice variant or the
 hands-full warning's dangerous seabed option. Equipment preparation remains with
 the caller; do not silently remove a weapon or shield. Both rows use the boat
 transport configuration and retain NavigationEngine ownership through landing.
+
+## 135. Resample minimap zoom and revalidate projected walking clicks
+
+NavigationEngine samples zoom, minimap bounds and loaded-scene margins each pass.
+Normal zoom keeps the 7–10 tile click range; zoomed-out clicks are bounded to 40
+tiles and their current projection must still fit the minimap immediately before
+dispatch, after mouse movement. A changed projection cancels the stale click.
+Never change the user's zoom as part of ordinary navigation.
+
+Extend interaction discovery to at least click reach plus three edges, but keep
+the existing interaction-ready distance. Ground-click selection stops at known
+non-walking edges even when their handler cannot resolve yet; clearing one edge
+must not allow a click past the next interaction.

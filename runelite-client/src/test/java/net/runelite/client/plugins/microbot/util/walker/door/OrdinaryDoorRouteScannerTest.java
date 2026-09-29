@@ -22,6 +22,17 @@ import static org.mockito.Mockito.mock;
 public class OrdinaryDoorRouteScannerTest
 {
 	@Test
+	public void zoomedOutScanFindsDistantDoorWithoutIncreasingInteractionDistance()
+	{
+		java.util.List<WorldPoint> path = new java.util.ArrayList<>();
+		for (int i = 0; i <= 40; i++) path.add(new WorldPoint(3200 + i, 3200, 0));
+		DoorScene scene = edge -> edge.from().equals(path.get(30)) ? door(path.get(30)) : null;
+		RouteInteraction interaction = scanner.scan(1, path, 0, 40, path.get(0), scene, 13);
+		assertEquals(30, interaction.getRawEdgeIndex());
+		org.junit.Assert.assertFalse(interaction.isReady());
+	}
+
+	@Test
 	public void catalogTransportEdgeCannotBeClaimedAsOrdinaryDoor()
 	{
 		RouteEdge transportEdge = new RouteEdge(0, A, B, RouteEdge.Kind.ADJACENT_TRANSPORT);

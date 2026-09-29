@@ -11,6 +11,19 @@ import static org.junit.Assert.assertTrue;
 public class Rs2MiniMapTest
 {
 	@Test
+	public void zoomAwareReachPreservesNormalRangeAndBoundsZoomedOutClicks()
+	{
+		Rectangle bounds = new Rectangle(100, 200, 150, 150);
+		org.junit.Assert.assertEquals(10, Rs2MiniMap.navigationClickReach(bounds, 4, 52, 52));
+		org.junit.Assert.assertEquals(20, Rs2MiniMap.navigationClickReach(bounds, 2, 52, 52));
+		org.junit.Assert.assertEquals(40, Rs2MiniMap.navigationClickReach(bounds, 1, 52, 52));
+		org.junit.Assert.assertEquals(40, Rs2MiniMap.navigationClickReach(bounds, 0.1, 52, 52));
+		org.junit.Assert.assertEquals(8, Rs2MiniMap.navigationClickReach(bounds, 1, 10, 52));
+		org.junit.Assert.assertEquals(5, Rs2MiniMap.navigationClickReach(new Rectangle(20, 20), 1, 52, 52));
+		org.junit.Assert.assertEquals(10, Rs2MiniMap.navigationClickReach(bounds, Double.NaN, 52, 52));
+	}
+
+	@Test
 	public void conservativeClipUsesOnlyTheSuppliedBoundsSnapshot()
 	{
 		Rectangle bounds = new Rectangle(100, 200, 150, 150);

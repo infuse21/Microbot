@@ -17,6 +17,37 @@ import java.awt.*;
 import java.awt.geom.Ellipse2D;
 
 public class Rs2MiniMap {
+	public static Point getNavigationTargetPoint(WorldPoint target) {
+		return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+			Point point = worldToMinimap(target);
+			return point != null && isPointInsideMinimap(point) ? point : null;
+		}).orElse(null);
+	}
+
+	public static int getNavigationClickReach() {
+		return Microbot.getClientThread().runOnClientThreadOptional(() -> {
+			Widget widget = getMinimapDrawWidget();
+			var player = Microbot.getClient().getLocalPlayer();
+			if (widget == null || widget.isHidden() || player == null) return 10;
+			LocalPoint local = player.getLocalLocation();
+			if (local == null) return 10;
+			return navigationClickReach(widget.getBounds(), Microbot.getClient().getMinimapZoom(),
+				local.getSceneX(), local.getSceneY());
+		}).orElse(10);
+	}
+
+	static int navigationClickReach(Rectangle bounds, double pixelsPerTile, int sceneX, int sceneY) {
+		if (bounds == null || bounds.isEmpty() || !Double.isFinite(pixelsPerTile)
+			|| pixelsPerTile <= 0 || sceneX < 0 || sceneY < 0
+			|| sceneX >= net.runelite.api.Constants.SCENE_SIZE || sceneY >= net.runelite.api.Constants.SCENE_SIZE) return 10;
+		int sceneMargin = Math.min(Math.min(sceneX, sceneY),
+			Math.min(net.runelite.api.Constants.SCENE_SIZE - 1 - sceneX,
+				net.runelite.api.Constants.SCENE_SIZE - 1 - sceneY)) - 2;
+		int minimapMargin = (int) ((Math.min(bounds.width, bounds.height) * 0.47 - 4) / pixelsPerTile);
+		int zoomReach = (int) Math.min(40, 40 / pixelsPerTile);
+		return Math.max(1, Math.min(zoomReach, Math.min(sceneMargin, minimapMargin)));
+	}
+
 	private static final class MinimapSnapshot
 	{
 		private final Rectangle bounds;

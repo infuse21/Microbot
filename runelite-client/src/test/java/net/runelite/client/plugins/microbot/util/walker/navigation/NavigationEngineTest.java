@@ -13,6 +13,24 @@ import static org.junit.Assert.assertTrue;
 
 public class NavigationEngineTest
 {
+	@Test
+	public void zoomedOutObservationSelectsLongerClicksAndRetainsItsReachWhenCopied()
+	{
+		java.util.List<WorldPoint> raw = new java.util.ArrayList<>();
+		for (int i = 0; i <= 50; i++) raw.add(new WorldPoint(3200 + i, 3200, 0));
+		RoutePlan route = new RoutePlan(1, 1, raw.get(0), Collections.singleton(raw.get(50)), raw, raw, true);
+		NavigationEngine engine = new NavigationEngine();
+		engine.start(new NavigationRequest(1, Collections.singleton(raw.get(50)), 0,
+			NavigationRouteOptions.defaults(), "zoom-test"));
+		NavigationObservation observation = NavigationObservation.route(1, raw.get(0), route,
+			false, false, false, false, false, false, "zoom-test").withRouteClickReach(40)
+			.withMovementDestination(null).withRouteInteractions(null, null).withRecovery(RecoveryCause.NONE, -1);
+		assertEquals(40, observation.getRouteClickReach());
+		NavigationDecision click = engine.observe(observation);
+		assertEquals(NavigationDecision.Type.CLICK_TILE, click.getType());
+		assertTrue(click.getTargetRawIndex() >= 28 && click.getTargetRawIndex() <= 40);
+	}
+
 	private static final WorldPoint START = new WorldPoint(3200, 3200, 0);
 	private static final WorldPoint MID = new WorldPoint(3201, 3200, 0);
 	private static final WorldPoint LATE = new WorldPoint(3202, 3200, 0);

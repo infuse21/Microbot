@@ -514,12 +514,12 @@ public class NavigationEngineExecutionTest
 			});
 
 		assertTrue(beforeEdge.isEngineOwned());
-		assertEquals(NavigationDecision.Type.CLICK_TILE, beforeEdge.getDecision().getType());
-		assertEquals(1, commands.get());
+		assertEquals(NavigationDecision.Type.REQUEST_REPLAN, beforeEdge.getDecision().getType());
+		assertEquals(0, commands.get());
 		assertFalse(NavigationEngineRuntime.getSnapshot().getPhase().isTerminal());
 
 		NavigationExecutionResult afterEdge = NavigationEngineRuntime.execute(
-			observation(2, B, adjacentTransportPlan(1), false, false)
+			observation(2, B, adjacentTransportPlan(2), false, false)
 				.withMovementDestination(C), target -> true);
 
 		assertEquals(NavigationDecision.Type.COMPLETE, afterEdge.getDecision().getType());

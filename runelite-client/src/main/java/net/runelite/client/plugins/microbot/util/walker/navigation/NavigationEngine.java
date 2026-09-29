@@ -290,12 +290,13 @@ public final class NavigationEngine
 			return requestReplan(RecoveryCause.ROUTE_EXHAUSTED,
 				"route-end-before-arrival", observation);
 		}
-		int reach = routeClickReach();
+		int maximumReach = observation.getRouteClickReach();
+		int reach = routeClickReach(maximumReach);
 		int selectionAnchor = proximityHandoff
 			? Math.max(session.rawProgressIndex, session.commandRawIndex)
 			: session.rawProgressIndex;
-		RouteClickSelection selection = RouteClickSelector.select(session.routePlan,
-			observation.getPlayerLocation(), selectionAnchor, reach, MAX_ROUTE_CLICK_REACH);
+		RouteClickSelection selection = RouteClickSelector.selectWalking(session.routePlan,
+			observation.getPlayerLocation(), selectionAnchor, reach, maximumReach);
 		if (selection == null)
 		{
 			if (proximityHandoff)
@@ -750,8 +751,8 @@ public final class NavigationEngine
 					"crossing-cleared-interaction-edge"), observation);
 			}
 			RouteClickSelection crossing = next == null
-				? RouteClickSelector.select(session.routePlan, observation.getPlayerLocation(),
-					pending.getRawEdgeIndex(), routeClickReach(), MAX_ROUTE_CLICK_REACH)
+				? RouteClickSelector.selectWalking(session.routePlan, observation.getPlayerLocation(),
+					pending.getRawEdgeIndex() + 1, routeClickReach(), MAX_ROUTE_CLICK_REACH)
 				: null;
 			if (crossing == null)
 			{
@@ -1378,10 +1379,16 @@ public final class NavigationEngine
 
 	private int routeClickReach()
 	{
-		int span = MAX_ROUTE_CLICK_REACH - MIN_ROUTE_CLICK_REACH + 1;
+		return routeClickReach(MAX_ROUTE_CLICK_REACH);
+	}
+
+	private int routeClickReach(int maximumReach)
+	{
+		int minimumReach = Math.max(1, maximumReach * MIN_ROUTE_CLICK_REACH / MAX_ROUTE_CLICK_REACH);
+		int span = maximumReach - minimumReach + 1;
 		long seed = session.request.getRequestId() * 31L + session.generation * 17L
 			+ Math.max(0, session.rawProgressIndex) * 13L;
-		return MIN_ROUTE_CLICK_REACH + Math.floorMod((int) (seed ^ (seed >>> 32)), span);
+		return minimumReach + Math.floorMod((int) (seed ^ (seed >>> 32)), span);
 	}
 
 	private int routeHandoffDistance(int targetRawIndex)

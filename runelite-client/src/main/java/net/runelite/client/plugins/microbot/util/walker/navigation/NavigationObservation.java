@@ -30,6 +30,7 @@ public final class NavigationObservation
 	private final WorldPoint movementDestination;
 	private final RouteInteraction routeInteraction;
 	private final RouteInteraction nextRouteInteraction;
+	private final int routeClickReach;
 
 	public NavigationObservation(long observedAtMs, WorldPoint playerLocation, RoutePlan routePlan,
 		boolean moving, boolean animating, boolean interacting, boolean interactionFrontier,
@@ -38,7 +39,7 @@ public final class NavigationObservation
 	{
 		this(observedAtMs, playerLocation, routePlan, moving, animating, interacting,
 			interactionFrontier, interactionCommandInFlight, replanRequested, terminalSignal,
-			reason, RecoveryCause.NONE, -1, null, null, null);
+			reason, RecoveryCause.NONE, -1, null, null, null, 10);
 	}
 
 	private NavigationObservation(long observedAtMs, WorldPoint playerLocation, RoutePlan routePlan,
@@ -46,7 +47,7 @@ public final class NavigationObservation
 		boolean interactionCommandInFlight, boolean replanRequested, TerminalSignal terminalSignal,
 		String reason, RecoveryCause recoveryCause, int blockedEdgeIndex,
 		WorldPoint movementDestination, RouteInteraction routeInteraction,
-		RouteInteraction nextRouteInteraction)
+		RouteInteraction nextRouteInteraction, int routeClickReach)
 	{
 		this.observedAtMs = observedAtMs;
 		this.playerLocation = playerLocation;
@@ -64,6 +65,7 @@ public final class NavigationObservation
 		this.movementDestination = movementDestination;
 		this.routeInteraction = routeInteraction;
 		this.nextRouteInteraction = nextRouteInteraction;
+		this.routeClickReach = Math.max(1, Math.min(40, routeClickReach));
 	}
 
 	public static NavigationObservation route(long observedAtMs, WorldPoint playerLocation,
@@ -87,7 +89,7 @@ public final class NavigationObservation
 		return new NavigationObservation(observedAtMs, playerLocation, routePlan, moving, animating,
 			interacting, interactionFrontier, interactionCommandInFlight, replanRequested,
 			terminalSignal, reason, cause, edgeIndex, movementDestination, routeInteraction,
-			nextRouteInteraction);
+			nextRouteInteraction, routeClickReach);
 	}
 
 	public NavigationObservation withMovementDestination(WorldPoint destination)
@@ -95,7 +97,7 @@ public final class NavigationObservation
 		return new NavigationObservation(observedAtMs, playerLocation, routePlan, moving, animating,
 			interacting, interactionFrontier, interactionCommandInFlight, replanRequested,
 			terminalSignal, reason, recoveryCause, blockedEdgeIndex, destination, routeInteraction,
-			nextRouteInteraction);
+			nextRouteInteraction, routeClickReach);
 	}
 
 	public NavigationObservation withRouteInteraction(RouteInteraction interaction)
@@ -109,7 +111,15 @@ public final class NavigationObservation
 		return new NavigationObservation(observedAtMs, playerLocation, routePlan, moving, animating,
 			interacting, interaction != null || interactionFrontier, interactionCommandInFlight,
 			replanRequested, terminalSignal, reason, recoveryCause, blockedEdgeIndex,
-			movementDestination, interaction, nextInteraction);
+			movementDestination, interaction, nextInteraction, routeClickReach);
+	}
+
+	public NavigationObservation withRouteClickReach(int reach)
+	{
+		return new NavigationObservation(observedAtMs, playerLocation, routePlan, moving, animating,
+			interacting, interactionFrontier, interactionCommandInFlight, replanRequested,
+			terminalSignal, reason, recoveryCause, blockedEdgeIndex, movementDestination,
+			routeInteraction, nextRouteInteraction, reach);
 	}
 
 	public long getObservedAtMs() { return observedAtMs; }
@@ -128,4 +138,5 @@ public final class NavigationObservation
 	public WorldPoint getMovementDestination() { return movementDestination; }
 	public RouteInteraction getRouteInteraction() { return routeInteraction; }
 	public RouteInteraction getNextRouteInteraction() { return nextRouteInteraction; }
+	public int getRouteClickReach() { return routeClickReach; }
 }

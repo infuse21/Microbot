@@ -26,8 +26,32 @@ final class RouteClickSelector
 		return selected;
 	}
 
+	static RouteClickSelection selectWalking(RoutePlan plan, WorldPoint player, int rawProgressIndex,
+		int desiredReach, int maximumReach)
+	{
+		int frontier = plan.getRawPath().size() - 1;
+		for (RouteEdge edge : plan.getRouteEdges())
+		{
+			if (edge.getRawIndex() >= rawProgressIndex && edge.getKind() != RouteEdge.Kind.WALK)
+			{
+				frontier = edge.getRawIndex();
+				break;
+			}
+		}
+		RouteClickSelection selected = selectAtReach(plan, player, rawProgressIndex, desiredReach,
+			"raw-route-lookahead", frontier);
+		return selected != null || desiredReach >= maximumReach ? selected
+			: selectAtReach(plan, player, rawProgressIndex, maximumReach, "raw-route-full-reach", frontier);
+	}
+
 	private static RouteClickSelection selectAtReach(RoutePlan plan, WorldPoint player,
 		int rawProgressIndex, int reach, String selection)
+	{
+		return selectAtReach(plan, player, rawProgressIndex, reach, selection, Integer.MAX_VALUE);
+	}
+
+	private static RouteClickSelection selectAtReach(RoutePlan plan, WorldPoint player,
+		int rawProgressIndex, int reach, String selection, int frontier)
 	{
 		if (plan == null || player == null || reach <= 0)
 		{
@@ -39,7 +63,7 @@ final class RouteClickSelector
 			return null;
 		}
 		int anchor = Math.max(0, rawProgressIndex);
-		int end = Math.min(rawPath.size() - 1, anchor + reach);
+		int end = Math.min(frontier, Math.min(rawPath.size() - 1, anchor + reach));
 		Set<WorldPoint> visited = new HashSet<>();
 		visited.add(player);
 		if (anchor < rawPath.size())

@@ -15,6 +15,25 @@ import static org.junit.Assert.assertTrue;
 public class RouteClickSelectorTest
 {
 	@Test
+	public void zoomedOutWalkingStopsBeforeEveryInteractionKindEvenWhenUnresolved()
+	{
+		List<WorldPoint> raw = straight(3200, 3200, 50);
+		for (RouteEdge.Kind kind : RouteEdge.Kind.values())
+		{
+			if (kind == RouteEdge.Kind.WALK) continue;
+			List<RouteEdge> edges = new ArrayList<>();
+			for (int i = 0; i < 50; i++)
+			{
+				edges.add(new RouteEdge(i, raw.get(i), raw.get(i + 1), i == 18 ? kind : RouteEdge.Kind.WALK));
+			}
+			RoutePlan plan = new RoutePlan(1, 1, raw.get(0), Collections.singleton(raw.get(50)),
+				raw, raw, true, edges);
+			assertEquals(kind.name(), 18, RouteClickSelector.selectWalking(plan, raw.get(0), 0, 40, 40).getRawIndex());
+			org.junit.Assert.assertNull(RouteClickSelector.selectWalking(plan, raw.get(18), 18, 40, 40));
+		}
+	}
+
+	@Test
 	public void longSmoothedSegmentSelectsBoundedRawRouteTile()
 	{
 		List<WorldPoint> raw = straight(3200, 3200, 20);
