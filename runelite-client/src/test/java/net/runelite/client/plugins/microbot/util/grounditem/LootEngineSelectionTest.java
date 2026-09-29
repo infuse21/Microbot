@@ -73,7 +73,7 @@ public class LootEngineSelectionTest {
         WorldPoint point = new WorldPoint(3200, 3200, 0);
         when(player.getWorldLocation()).thenReturn(point);
         ItemManager prices = mock(ItemManager.class);
-        when(prices.getItemPrice(100)).thenReturn(price);
+        when(prices.getItemPrice(100)).thenReturn((long) price);
         env.install("itemManager", prices);
         GroundItem item = GroundItem.builder().id(100).quantity(quantity).name(name).location(point).build();
         return env.call(() -> new GroundItemPickup.Snapshot(mock(Rs2TileItemModel.class), item, mock(WorldView.class), 100));

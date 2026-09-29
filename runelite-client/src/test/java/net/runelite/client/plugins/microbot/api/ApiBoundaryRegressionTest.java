@@ -192,7 +192,7 @@ public class ApiBoundaryRegressionTest
             when(definition.getPrice()).thenReturn(10_000);
             when(env.client.getItemDefinition(1)).thenReturn(definition);
             ItemManager prices = mock(ItemManager.class);
-            when(prices.getItemPrice(1)).thenReturn(5_000);
+            when(prices.getItemPrice(1)).thenReturn(5_000L);
             env.install("itemManager", prices);
             Rs2TileItemModel model = new Rs2TileItemModel(mock(Tile.class), item, mock(WorldView.class));
             assertEquals(10_000_000_000L, model.getTotalGeValueLong());
@@ -201,9 +201,9 @@ public class ApiBoundaryRegressionTest
             assertEquals(Integer.MAX_VALUE, model.getTotalGeValue());
             assertTrue(model.isProfitableToHighAlch());
             assertFalse(model.isProfitableToHighAlch(1000));
-            when(prices.getItemPrice(1)).thenReturn(6000);
+            when(prices.getItemPrice(1)).thenReturn(6000L);
             assertFalse(model.isProfitableToHighAlch());
-            when(prices.getItemPrice(1)).thenReturn(6001);
+            when(prices.getItemPrice(1)).thenReturn(6001L);
             assertFalse(model.isProfitableToHighAlch());
         }
     }
