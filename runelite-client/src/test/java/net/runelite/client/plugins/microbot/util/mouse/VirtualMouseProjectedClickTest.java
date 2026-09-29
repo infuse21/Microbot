@@ -1,5 +1,6 @@
 package net.runelite.client.plugins.microbot.util.mouse;
 
+import java.awt.Canvas;
 import java.util.concurrent.atomic.AtomicInteger;
 import net.runelite.api.Client;
 import net.runelite.api.Point;
@@ -39,6 +40,46 @@ public class VirtualMouseProjectedClickTest
 		{
 			api.when(Microbot::getClient).thenReturn(client);
 			assertFalse(new VirtualMouse().tryClick(new Point(0, 0), () -> true));
+		}
+	}
+
+	@Test
+	public void smallProjectionShiftClicksUpdatedPoint()
+	{
+		Client client = mock(Client.class);
+		when(client.getCanvas()).thenReturn(new Canvas());
+		try (MockedStatic<Microbot> api = mockStatic(Microbot.class))
+		{
+			api.when(Microbot::getClient).thenReturn(client);
+			VirtualMouse mouse = new VirtualMouse();
+			Point updated = new Point(10, 0);
+			org.junit.Assert.assertTrue(mouse.tryClickProjected(new Point(0, 0), () -> updated));
+			assertEquals(updated, mouse.getLastClick());
+			assertEquals(updated, mouse.getLastMove());
+		}
+	}
+
+	@Test
+	public void largeProjectionShiftIsRejected()
+	{
+		Client client = mock(Client.class);
+		try (MockedStatic<Microbot> api = mockStatic(Microbot.class))
+		{
+			api.when(Microbot::getClient).thenReturn(client);
+			VirtualMouse mouse = new VirtualMouse();
+			assertFalse(mouse.tryClickProjected(new Point(0, 0), () -> new Point(25, 0)));
+			assertEquals(new Point(-1, -1), mouse.getLastClick());
+		}
+	}
+
+	@Test
+	public void invalidatedProjectionIsRejected()
+	{
+		Client client = mock(Client.class);
+		try (MockedStatic<Microbot> api = mockStatic(Microbot.class))
+		{
+			api.when(Microbot::getClient).thenReturn(client);
+			assertFalse(new VirtualMouse().tryClickProjected(new Point(0, 0), () -> null));
 		}
 	}
 }

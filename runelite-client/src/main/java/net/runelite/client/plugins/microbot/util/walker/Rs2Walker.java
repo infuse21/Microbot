@@ -4832,9 +4832,11 @@ public class Rs2Walker {
 
         @Override
         public boolean clickTile(WorldPoint target) {
-            if (clickNavigationMinimap(target)) {
-                lastActionType = "minimap-route-tile";
-                return true;
+            Rs2MiniMap.NavigationProjection projection = Rs2MiniMap.getNavigationProjection(target);
+            if (projection != null) {
+                boolean issued = clickNavigationMinimap(target, projection);
+                lastActionType = issued ? "minimap-route-tile" : "minimap-route-tile-cancelled";
+                return issued;
             }
             if (walkFastCanvasOnScreenOnly(target, true)) {
                 lastActionType = "canvas-route-tile";
@@ -4866,10 +4868,16 @@ public class Rs2Walker {
 		}
 
 		private boolean clickNavigationMinimap(WorldPoint target) {
-			Point point = Rs2MiniMap.getNavigationTargetPoint(target);
-			if (point == null) return false;
-			return Microbot.getMouse().tryClick(point,
-				() -> point.equals(Rs2MiniMap.getNavigationTargetPoint(target)));
+			Rs2MiniMap.NavigationProjection projection = Rs2MiniMap.getNavigationProjection(target);
+			return projection != null && clickNavigationMinimap(target, projection);
+		}
+
+		private boolean clickNavigationMinimap(WorldPoint target, Rs2MiniMap.NavigationProjection original) {
+			return Microbot.getMouse().tryClickProjected(original.getPoint(), () -> {
+				Rs2MiniMap.NavigationProjection current = Rs2MiniMap.getNavigationProjection(target);
+				return current != null && Double.compare(current.getZoom(), original.getZoom()) == 0
+					? current.getPoint() : null;
+			});
 		}
 
 		@Override

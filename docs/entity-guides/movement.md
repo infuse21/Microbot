@@ -2397,10 +2397,34 @@ transport configuration and retain NavigationEngine ownership through landing.
 NavigationEngine samples zoom, minimap bounds and loaded-scene margins each pass.
 Normal zoom keeps the 7–10 tile click range; zoomed-out clicks are bounded to 40
 tiles and their current projection must still fit the minimap immediately before
-dispatch, after mouse movement. A changed projection cancels the stale click.
+dispatch, after mouse movement. A changed minimap zoom cancels the stale click;
+normal player movement may shift the projection and must be reprojected.
 Never change the user's zoom as part of ordinary navigation.
 
 Extend interaction discovery to at least click reach plus three edges, but keep
 the existing interaction-ready distance. Ground-click selection stops at known
 non-walking edges even when their handler cannot resolve yet; clearing one edge
 must not allow a click past the next interaction.
+
+## 136. Do not turn cancelled minimap input into canvas fallback
+
+A valid projected point can become stale while the mouse moves because the player,
+minimap zoom or camera yaw changes. Reproject bounded player movement, but reject
+zoom changes, off-minimap points and large jumps; never fall through to a canvas
+click when an initially valid minimap point is rejected. Camera zoom-out makes
+distant ground tiles
+visible, exposing that fallback as repeated cursor travel off the minimap and back.
+Canvas fallback remains available when no minimap projection exists initially;
+intentional interaction-edge and final-approach canvas clicks remain separate.
+
+**Defensive check:** exercise the production walker adapter with an initially valid
+minimap point and rejected mouse dispatch; assert no canvas/client access occurs.
+
+## 137. Reproject normal movement without rejecting every waypoint
+
+The player can advance while natural mouse motion is in progress, moving the same
+world tile's minimap pixel even at constant zoom. Equality against the original
+pixel caused repeated click rejection, one-second recovery and stop-start walking.
+Use the latest clipped projection after motion when the minimap zoom is unchanged
+and displacement is small; cancel on zoom changes or large projection jumps.
+Never convert cancellation into a canvas click.

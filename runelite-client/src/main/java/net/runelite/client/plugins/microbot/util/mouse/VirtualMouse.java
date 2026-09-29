@@ -229,6 +229,31 @@ public class VirtualMouse extends Mouse {
     }
 
     @Override
+    public boolean tryClickProjected(Point point, java.util.function.Supplier<Point> currentPoint) {
+        if (point == null || currentPoint == null || Microbot.getClient().isClientThread()
+                || Thread.currentThread().isInterrupted()) return false;
+        final boolean[] dispatched = {false};
+        runClick(() -> {
+            if (currentPoint.get() == null) return;
+            if (shouldMoveNaturally(point)) Microbot.naturalMouse.moveTo(point.getX(), point.getY());
+            if (Thread.currentThread().isInterrupted()) return;
+            Point updated = currentPoint.get();
+            if (updated == null || !withinProjectedClickDrift(point, updated)) return;
+            if (!point.equals(updated)) setLastMove(updated);
+            handleClick(updated, false);
+            dispatched[0] = true;
+        });
+        return dispatched[0];
+    }
+
+    static boolean withinProjectedClickDrift(Point initial, Point updated) {
+        if (initial == null || updated == null) return false;
+        int dx = updated.getX() - initial.getX();
+        int dy = updated.getY() - initial.getY();
+        return dx * dx + dy * dy <= 24 * 24;
+    }
+
+    @Override
     public boolean tryClick(Point point, java.util.function.BooleanSupplier valid) {
         if (point == null || valid == null || Microbot.getClient().isClientThread()
                 || Thread.currentThread().isInterrupted()) return false;

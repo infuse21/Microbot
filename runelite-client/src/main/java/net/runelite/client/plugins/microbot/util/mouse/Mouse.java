@@ -69,6 +69,11 @@ public abstract class Mouse {
         return false;
     }
 
+    /** Reprojects a moving target immediately before dispatch; null cancels the click. */
+    public boolean tryClickProjected(Point point, java.util.function.Supplier<Point> currentPoint) {
+        return false;
+    }
+
     /** Returns true only after observing the requested menu event. Unsupported implementations reject it. */
     public boolean tryClick(Point point, NewMenuEntry entry, java.util.function.BooleanSupplier valid) {
         return false;

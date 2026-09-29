@@ -17,11 +17,30 @@ import java.awt.*;
 import java.awt.geom.Ellipse2D;
 
 public class Rs2MiniMap {
-	public static Point getNavigationTargetPoint(WorldPoint target) {
+	public static final class NavigationProjection {
+		private final Point point;
+		private final double zoom;
+
+		public NavigationProjection(Point point, double zoom) {
+			this.point = point;
+			this.zoom = zoom;
+		}
+
+		public Point getPoint() { return point; }
+		public double getZoom() { return zoom; }
+	}
+
+	public static NavigationProjection getNavigationProjection(WorldPoint target) {
 		return Microbot.getClientThread().runOnClientThreadOptional(() -> {
 			Point point = worldToMinimap(target);
-			return point != null && isPointInsideMinimap(point) ? point : null;
+			return point != null && isPointInsideMinimap(point)
+				? new NavigationProjection(point, Microbot.getClient().getMinimapZoom()) : null;
 		}).orElse(null);
+	}
+
+	public static Point getNavigationTargetPoint(WorldPoint target) {
+		NavigationProjection projection = getNavigationProjection(target);
+		return projection == null ? null : projection.getPoint();
 	}
 
 	public static int getNavigationClickReach() {
