@@ -6,7 +6,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import net.runelite.api.Client;
-import net.runelite.api.ItemID;
+import net.runelite.api.gameval.ItemID;
 import net.runelite.api.widgets.InterfaceID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
@@ -35,6 +35,7 @@ public class ResourceAreaGateSceneTest
 	@Test
 	public void sceneScopesThePaymentToThePendingGateAndRechecksBeforeDispatch()
 	{
+		assertEquals("spendable coin stack", 995, ItemID.COINS);
 		Transport row = Transport.loadAllFromResources().values().stream().flatMap(Set::stream)
 			.filter(candidate -> candidate.getObjectId() == 26760 && candidate.getCurrencyAmount() == 7500)
 			.findFirst().orElseThrow(AssertionError::new);

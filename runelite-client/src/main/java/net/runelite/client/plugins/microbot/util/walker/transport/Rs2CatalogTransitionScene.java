@@ -735,7 +735,7 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 		Rs2NpcModel vendor = purchasable == null ? null : shantayVendor(purchasable);
 		ShantayPassPolicy.Stage stage = ShantayPassPolicy.nextStage(transport,
 			passCarried,
-			Rs2Inventory.itemQuantity(ItemID.COINS),
+			Rs2Inventory.itemQuantity(net.runelite.api.gameval.ItemID.COINS),
 			eliteDiary,
 			vendor != null, pendingAction);
 		if (stage == ShantayPassPolicy.Stage.UNAVAILABLE)
@@ -869,7 +869,7 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 		if (player == null || player.getPlane() != 0 || player.distanceTo2D(transport.getOrigin()) > 6)
 			return null;
 		int state = Microbot.getVarbitValue(net.runelite.api.gameval.VarbitID.KARAM_DUNGEON_DOORDATA);
-		String action = BrimhavenEntrancePolicy.nextAction(state, Rs2Inventory.itemQuantity(ItemID.COINS),
+		String action = BrimhavenEntrancePolicy.nextAction(state, Rs2Inventory.itemQuantity(net.runelite.api.gameval.ItemID.COINS),
 			Rs2Dialogue.hasSelectAnOption() || Rs2Dialogue.hasContinue(), resourceAreaTitle(), zanarisOptions(),
 			brimhavenNpcText(4), brimhavenNpcText(6), pendingAction);
 		if (action == null || ("Pay".equals(action) || BrimhavenEntrancePolicy.CONFIRM.equals(action))
@@ -920,7 +920,7 @@ public final class Rs2CatalogTransitionScene implements CatalogTransitionScene
 			boolean requirementsMet = transport.getVarbits().stream()
 				.allMatch(bit -> bit.matches(Microbot.getVarbitValue(bit.getVarbitId())));
 			return ResourceAreaGatePolicy.nextAction(transport.getCurrencyAmount(),
-				Rs2Inventory.itemQuantity(ItemID.COINS), nearGate && requirementsMet,
+				Rs2Inventory.itemQuantity(net.runelite.api.gameval.ItemID.COINS), nearGate && requirementsMet,
 				Rs2Dialogue.hasSelectAnOption() || Rs2Dialogue.hasContinue(),
 				resourceAreaTitle(), zanarisOptions(), pendingAction);
 		}).orElse(null);

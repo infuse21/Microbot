@@ -6,7 +6,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import net.runelite.api.Client;
-import net.runelite.api.ItemID;
+import net.runelite.api.gameval.ItemID;
 import net.runelite.api.ObjectComposition;
 import net.runelite.api.widgets.InterfaceID;
 import net.runelite.api.widgets.Widget;
@@ -37,6 +37,7 @@ public class BrimhavenEntranceSceneTest
 	@Test
 	public void everyApproachUsesOnlyItsCurrentPaymentAndExactObjectState()
 	{
+		assertEquals("spendable coin stack", 995, ItemID.COINS);
 		for (Transport row : BrimhavenDungeonEntranceSourceTest.rows())
 		{
 			Client client = mock(Client.class);

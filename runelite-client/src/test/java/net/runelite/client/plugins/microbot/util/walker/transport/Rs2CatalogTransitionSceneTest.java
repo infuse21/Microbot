@@ -14,6 +14,45 @@ import static org.junit.Assert.assertFalse;
 public class Rs2CatalogTransitionSceneTest
 {
 	@Test
+	public void paidTransitionsReadSpendableCoins() throws java.io.IOException
+	{
+		java.util.concurrent.atomic.AtomicInteger checks = new java.util.concurrent.atomic.AtomicInteger();
+		try (java.io.InputStream bytecode = Rs2CatalogTransitionScene.class
+			.getResourceAsStream("Rs2CatalogTransitionScene.class"))
+		{
+			assertTrue("compiled transition scene must be available", bytecode != null);
+			new org.objectweb.asm.ClassReader(bytecode).accept(new org.objectweb.asm.ClassVisitor(org.objectweb.asm.Opcodes.ASM9)
+			{
+				@Override
+				public org.objectweb.asm.MethodVisitor visitMethod(int access, String name, String descriptor,
+					String signature, String[] exceptions)
+				{
+					return new org.objectweb.asm.MethodVisitor(org.objectweb.asm.Opcodes.ASM9)
+					{
+						private int itemId;
+						@Override
+						public void visitIntInsn(int opcode, int operand)
+						{
+							itemId = operand;
+						}
+						@Override
+						public void visitMethodInsn(int opcode, String owner, String method, String desc, boolean isInterface)
+						{
+							if (owner.equals("net/runelite/client/plugins/microbot/util/inventory/Rs2Inventory")
+								&& method.equals("itemQuantity") && desc.startsWith("(I)"))
+							{
+								assertEquals("spendable coins in " + name, 995, itemId);
+								checks.incrementAndGet();
+							}
+						}
+					};
+				}
+			}, org.objectweb.asm.ClassReader.SKIP_DEBUG | org.objectweb.asm.ClassReader.SKIP_FRAMES);
+		}
+		assertEquals("Shantay, Brimhaven and Resource Area fare checks", 3, checks.get());
+	}
+
+	@Test
 	public void largeAgilityObjectCanResolveEveryUnderwallApproachLane()
 	{
 		java.util.List<Transport> rows = Transport.loadAllFromResources().values().stream()

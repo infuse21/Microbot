@@ -263,3 +263,16 @@ code that scans `Rs2Bank.getAll()` before the bank has been opened in the curren
 
 **Defensive check:** Reproduce after a fresh client start with a restored bank snapshot and compare
 the cold ID-based lookup against the equivalent name lookup; route-planning code must use the ID path.
+
+## 17. Use the gameval coin ID for spendable currency
+
+`net.runelite.api.gameval.ItemID.COINS` is 995, the spendable inventory stack.
+The deprecated `net.runelite.api.ItemID.COINS` is 617, not that stack; its corresponding
+spendable constant is `COINS_995`. Do not mix those two namespaces when checking fares.
+
+**Why this matters:** The banked Shantay route correctly withdrew 205 coins, but the
+gate resolver counted item 617, reported no affordable purchase stage and skipped the gate.
+Brimhaven Dungeon and Wilderness Resource Area payment checks used the same incorrect ID.
+
+**Defensive check:** Verify the compiled payment handlers pass 995 to `Rs2Inventory.itemQuantity`,
+then exercise Shantay with coins carried and no pass to confirm purchase and crossing.
